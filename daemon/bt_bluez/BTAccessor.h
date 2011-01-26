@@ -81,8 +81,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     {
         DiscoveryControl(busRev, *org.bluez.Adapter.StartDiscovery);
         if (duration > 0) {
-            qcc::Alarm alarm(duration * 1000, this, 0, (void*)STOP_DISCOVERY);
-            bzBus.GetInternal().GetDispatcher().AddAlarm(alarm);
+            DispatchOperation(new DispatchInfo(DispatchInfo::STOP_DISCOVERY),  duration * 1000);
         }
     }
 
@@ -100,8 +99,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
         if (bluetoothAvailable) {
             SetDiscoverabilityProperty();
             if (duration > 0) {
-                qcc::Alarm alarm(duration * 1000, this, 0, (void*)STOP_DISCOVERABILITY);
-                bzBus.GetInternal().GetDispatcher().AddAlarm(alarm);
+                DispatchOperation(new DispatchInfo(DispatchInfo::STOP_DISCOVERABILITY),  duration * 1000);
             }
         }
     }
@@ -220,13 +218,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
 
   private:
 
-    typedef enum {
-        CONNECT_BLUEZ,
-        DISCONNECT_BLUEZ,
-        RESTART_BLUEZ,
-        STOP_DISCOVERY,
-        STOP_DISCOVERABILITY
-    } AlarmTypes;
+    struct DispatchInfo;
 
     void ConnectBlueZ();
     void DisconnectBlueZ();
@@ -308,6 +300,12 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
         return adapter;
     }
 
+    void DispatchOperation(DispatchInfo* op, uint32_t delay = 0)
+    {
+        qcc::Alarm alarm(delay, this, 0, (void*)op);
+        bzBus.GetInternal().GetDispatcher().AddAlarm(alarm);
+    }
+
 
 
 /******************************************************************************/
@@ -325,8 +323,26 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
         uint32_t timestamp;
     };
 
+    struct DispatchInfo {
+        typedef enum {
+            CONNECT_BLUEZ,
+            DISCONNECT_BLUEZ,
+            RESTART_BLUEZ,
+            STOP_DISCOVERY,
+            STOP_DISCOVERABILITY,
+            ADAPTER_ADDED,
+            DEVICE_FOUND
+        } DispatchTypes;
+        DispatchTypes operation;
 
-    qcc::Alarm dispatchAdapterAdded;
+        qcc::String adapterPath;
+        BDAddress addr;
+        uint32_t uuidRev;
+
+        DispatchInfo(DispatchTypes operation) : operation(operation) { }
+        DispatchInfo(DispatchTypes operation, const char* adapterPath) : operation(operation), adapterPath(adapterPath) { }
+        DispatchInfo(DispatchTypes operation, const BDAddress& addr, uint32_t uuidRev) : operation(operation), addr(addr), uuidRev(uuidRev) { }
+    };
 
     BusAttachment bzBus;
     const qcc::String busGuid;

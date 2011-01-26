@@ -1095,44 +1095,47 @@ void BTTransport::BTAccessor::AdapterRemoved(const char* adapterObjPath)
 
 void BTTransport::BTAccessor::AlarmTriggered(const Alarm& alarm, QStatus reason)
 {
+    DispatchInfo* op = static_cast<DispatchInfo*>(alarm.GetContext());
 
-    if (alarm == dispatchAdapterAdded) {
-        qcc::String* adapterPath = static_cast<qcc::String*>(alarm.GetContext());
-        if (reason == ER_OK) {
-            AdapterAdded(adapterPath->c_str());
-        }
-        delete adapterPath;
-    } else {
-        if (reason == ER_OK) {
-            switch (reinterpret_cast<intptr_t>(alarm.GetContext())) {
-            case CONNECT_BLUEZ:
-                QCC_DbgPrintf(("Connecting BlueZ"));
-                ConnectBlueZ();
-                break;
+    if (reason == ER_OK) {
+        switch (op->operation) {
+        case DispatchInfo::CONNECT_BLUEZ:
+            QCC_DbgPrintf(("Connecting BlueZ"));
+            ConnectBlueZ();
+            break;
 
-            case DISCONNECT_BLUEZ:
-                QCC_DbgPrintf(("Disconnecting BlueZ"));
-                DisconnectBlueZ();
-                break;
+        case DispatchInfo::DISCONNECT_BLUEZ:
+            QCC_DbgPrintf(("Disconnecting BlueZ"));
+            DisconnectBlueZ();
+            break;
 
-            case RESTART_BLUEZ:
-                QCC_DbgPrintf(("Restarting BlueZ"));
-                DisconnectBlueZ();
-                ConnectBlueZ();
-                break;
+        case DispatchInfo::RESTART_BLUEZ:
+            QCC_DbgPrintf(("Restarting BlueZ"));
+            DisconnectBlueZ();
+            ConnectBlueZ();
+            break;
 
-            case STOP_DISCOVERY:
-                QCC_DbgPrintf(("Stopping Discovery"));
-                StopDiscovery();
-                break;
+        case DispatchInfo::STOP_DISCOVERY:
+            QCC_DbgPrintf(("Stopping Discovery"));
+            StopDiscovery();
+            break;
 
-            case STOP_DISCOVERABILITY:
-                QCC_DbgPrintf(("Stopping Discoverability"));
-                StopDiscoverability();
-                break;
-            }
+        case DispatchInfo::STOP_DISCOVERABILITY:
+            QCC_DbgPrintf(("Stopping Discoverability"));
+            StopDiscoverability();
+            break;
+
+        case DispatchInfo::ADAPTER_ADDED:
+            AdapterAdded(op->adapterPath.c_str());
+            break;
+
+        case DispatchInfo::DEVICE_FOUND:
+            transport->FoundDevice(op->addr, op->uuidRev);
+            break;
         }
     }
+
+    delete op;
 }
 
 
@@ -1141,8 +1144,7 @@ void BTTransport::BTAccessor::AdapterAddedSignalHandler(const InterfaceDescripti
                                                         Message& msg)
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::AdapterAddedSignalHandler - signal from \"%s\"", sourcePath));
-    dispatchAdapterAdded = Alarm(0, this, 0, new qcc::String(msg->GetArg(0)->v_objPath.str));
-    bzBus.GetInternal().GetDispatcher().AddAlarm(dispatchAdapterAdded);
+    DispatchOperation(new DispatchInfo(DispatchInfo::ADAPTER_ADDED, msg->GetArg(0)->v_objPath.str));
 }
 
 
@@ -1163,8 +1165,7 @@ void BTTransport::BTAccessor::DefaultAdapterChangedSignalHandler(const Interface
     /*
      * We are in a signal handler so kick off the restart in a new thread.
      */
-    Alarm alarm(2 * 1000, this, 0, (void*)RESTART_BLUEZ);
-    bzBus.GetInternal().GetDispatcher().AddAlarm(alarm);
+    DispatchOperation(new DispatchInfo(DispatchInfo::RESTART_BLUEZ), 2 * 1000);
 }
 
 
@@ -1179,14 +1180,13 @@ void BTTransport::BTAccessor::NameOwnerChangedSignalHandler(const InterfaceDescr
     if (strcmp(msg->GetArg(0)->v_string.str, bzBusName) == 0) {
         QCC_DbgPrintf(("BlueZ has changed owners \"%s\" -> \"%s\"",
                        msg->GetArg(1)->v_string.str, msg->GetArg(2)->v_string.str));
-        AlarmTypes op;
+        DispatchInfo::DispatchTypes op;
         if (msg->GetArg(2)->v_string.len > 0) {
-            op = (msg->GetArg(1)->v_string.len > 0) ? RESTART_BLUEZ :  CONNECT_BLUEZ;
+            op = (msg->GetArg(1)->v_string.len > 0) ? DispatchInfo::RESTART_BLUEZ : DispatchInfo::CONNECT_BLUEZ;
         } else {
-            op = DISCONNECT_BLUEZ;
+            op = DispatchInfo::DISCONNECT_BLUEZ;
         }
-        Alarm alarm(2 * 1000, this, 0, (void*)op);
-        bzBus.GetInternal().GetDispatcher().AddAlarm(alarm);
+        DispatchOperation(new DispatchInfo(op), 2 * 1000);
     }
 }
 
@@ -1235,7 +1235,8 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
                         foundInfo->uuidRev = uuidRev;
                         foundInfo->timestamp = now;
 
-                        transport->FoundDevice(addr, uuidRev);
+                        DispatchOperation(new DispatchInfo(DispatchInfo::DEVICE_FOUND, addr, uuidRev));
+                        break;
                     }
                     deviceLock.Unlock();
                 }
