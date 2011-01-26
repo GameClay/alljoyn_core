@@ -104,8 +104,10 @@ static char** callArgv;
 static BTTransport* btTrans;
 
 class AutoConnect : public TransportListener {
+
   public:
     AutoConnect(BusAttachment& bus, Transport& transport) : bus(bus), transport(transport) { }
+
     void FoundBus(const qcc::String& busAddr, const vector<qcc::String>& names);
     QStatus Wait(uint32_t timeout = 30000);
 

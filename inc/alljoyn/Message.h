@@ -170,7 +170,6 @@ class _Message {
     friend class AllJoynPeerObj;
 
   public:
-
     /**
      * Constructor for a message
      *
@@ -675,7 +674,12 @@ class _Message {
     } MessageHeader;
 
 
-    char myEndian;               ///< Native endianness of host system we are running on.
+#if (QCC_TARGET_ENDIAN == QCC_LITTLE_ENDIAN)
+    static const char myEndian = ALLJOYN_LITTLE_ENDIAN; ///< Native endianness of host system we are running on: little endian.
+#else
+    static const char myEndian = ALLJOYN_BIG_ENDIAN;    ///< Native endianness of host system we are running on: big endian.
+#endif
+
     bool endianSwap;             ///< true if endianness will be swapped.
 
     MessageHeader msgHeader;     ///< Current message header.

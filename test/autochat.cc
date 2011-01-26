@@ -1,5 +1,5 @@
-/*
- * Copyright 2010-2011, Qualcomm Innovation Center, Inc.
+/******************************************************************************
+ * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -12,7 +12,9 @@
  *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
- */
+ ******************************************************************************/
+
+#include <set>
 
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/ProxyBusObject.h>
@@ -21,6 +23,8 @@
 #include <alljoyn/DBusStd.h>
 #include <alljoyn/AllJoynStd.h>
 #include <qcc/Log.h>
+#include <qcc/Util.h>
+#include <qcc/Thread.h>
 // #include <qcc/Environ.h>
 #include <qcc/String.h>
 #include <assert.h>
@@ -40,9 +44,10 @@ class MyBusListener;
 /* static data */
 static ajn::BusAttachment* s_bus = NULL;
 static ChatObject* s_chatObj = NULL;
-static MyBusListener* s_busListener = NULL;
+static MyBusListener*  s_busListener = NULL;
 static qcc::String s_advertisedname;
 
+static std::set<qcc::String> connections;
 
 /* Bus object */
 class ChatObject : public BusObject {
@@ -84,7 +89,7 @@ class ChatObject : public BusObject {
     /** Receive a signal from another Chat client */
     void ChatSignalHandler(const InterfaceDescription::Member* member, const char* srcPath, Message& msg)
     {
-        printf("%s: %s\n", msg->GetSender(), msg->GetArg(0)->v_string.str);
+        printf("%s: %s", msg->GetSender(), msg->GetArg(0)->v_string.str);
     }
 
     void NameAcquiredCB(Message& msg, void* context)
@@ -184,22 +189,37 @@ class ChatObject : public BusObject {
 };
 
 class MyBusListener : public BusListener {
-    void FoundName(const char* name, const char* guid, const char* namePrefix, const char* busAddress)
+    void FoundAdvertisedName(const char* name, const QosInfo& advQos, const char* namePrefix)
     {
-        printf("FoundName signal received from %s\n", busAddress);
+        printf("FoundName signal received for %s\n", name);
 
-        /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
+        /* We found a remote bus that is advertising autochat's well-known name so connect to it */
         uint32_t disposition;
-        QStatus status = s_bus->ConnectToRemoteBus(busAddress, disposition);
-        if ((ER_OK == status) && (ALLJOYN_CONNECT_REPLY_SUCCESS == disposition)) {
-            printf("Connected to bus %s having well known name %s\n", busAddress, name);
+        SessionId sessionId;
+        QosInfo qos = advQos;
+        QStatus status = s_bus->JoinSession(name, disposition, sessionId, qos);
+        if ((ER_OK == status) && (ALLJOYN_JOINSESSION_REPLY_SUCCESS == disposition)) {
+            printf("Joined session %s with id %d\n", name, sessionId);
+            connections.insert(name);
         } else {
-            printf("ConnectToRemoteBus failed (status=%s, disposition=%d)\n", QCC_StatusText(status), disposition);
+            printf("JoinSession failed (status=%s, disposition=%d)\n", QCC_StatusText(status), disposition);
         }
 
     }
     void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner)
     {
+        if (!newOwner && connections.count(busName)) {
+            connections.erase(busName);
+            printf("Chatter %s has left the building\n", busName);
+            return;
+        }
+        if (newOwner && (s_advertisedname.compare(busName) != 0)) {
+            qcc::String name = busName;
+            if (name.find(NAME_PREFIX) == 0) {
+                printf("Chatter %s has entered the building\n", busName);
+                connections.insert(name);
+            }
+        }
     }
 };
 
@@ -216,16 +236,24 @@ static void usage()
 
 int main(int argc, char** argv)
 {
+    int n = 0;
     QStatus status = ER_OK;
     qcc::String daemonAddr = "unix:abstract=bluebus";
+    qcc::String myName;
+// #ifdef _WIN32
+//    daemonAddr = env->Find("BUS_ADDRESS", "tcp:addr=127.0.0.1,port=9955");
+// #else
+//    daemonAddr = env->Find("BUS_ADDRESS", "unix:abstract=bluebus");
+// #endif
 
     /* Parse command line args */
     for (int i = 1; i < argc; ++i) {
         if (0 == ::strcmp("-n", argv[i])) {
             if (++i < argc) {
+                myName = argv[i];
                 s_advertisedname = NAME_PREFIX;
                 s_advertisedname += ".";
-                s_advertisedname += argv[i];
+                s_advertisedname += myName;
                 continue;
             } else {
                 printf("Missing parameter for \"-n\" option\n");
@@ -247,6 +275,10 @@ int main(int argc, char** argv)
             usage();
         }
     }
+
+    /* Set AllJoyn logging */
+    // QCC_SetLogLevels("ALLJOYN=7;ALL=1");
+    // QCC_UseOSLogging(true);
 
     /* Create message bus */
     BusAttachment* bus = new BusAttachment("chat", true);
@@ -310,7 +342,7 @@ int main(int argc, char** argv)
     // Look for the prefix
     MsgArg serviceName("s", NAME_PREFIX);
     status = alljoynObj.MethodCall(::org::alljoyn::Bus::InterfaceName,
-                                   "FindName",
+                                   "FindAdvertisedName",
                                    &serviceName,
                                    1,
                                    reply,
@@ -318,23 +350,23 @@ int main(int argc, char** argv)
     if (ER_OK == status) {
         if (reply->GetType() != MESSAGE_METHOD_RET) {
             status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
-        } else if (reply->GetArg(0)->v_uint32 != ALLJOYN_FINDNAME_REPLY_SUCCESS) {
+        } else if (reply->GetArg(0)->v_uint32 != ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS) {
             status = ER_FAIL;
         }
     } else {
-        printf("%s.FindName failed\n", org::alljoyn::Bus::InterfaceName);
+        printf("%s.FindAdvertisedName failed\n", org::alljoyn::Bus::InterfaceName);
     }
 
-    /* Take input from stdin and send it as a chat messages */
-    size_t len = 0;
-    ssize_t rd;
-    char* buf = NULL;
-    while ((ER_OK == status) && (0 < (rd = getline(&buf, &len, stdin)))) {
-        buf[len - 2] = '\0';
-        chatObj.SendChatSignal(buf);
-    }
-    if (buf) {
-        delete buf;
+    while (true) {
+        if (connections.size() > 0) {
+            char abuf[128];
+            sprintf(abuf, "this is autochat message %d from %s\n", n++, myName.c_str());
+            chatObj.SendChatSignal(abuf);
+            qcc::Sleep(500 + 8 * qcc::Rand8());
+        } else {
+            n = 0;
+            qcc::Sleep(2000);
+        }
     }
 
     /* Deregister the ServiceObject. */

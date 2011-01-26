@@ -24,6 +24,8 @@
 
 #include <qcc/platform.h>
 
+#include <map>
+
 #include "RemoteEndpoint.h"
 
 #include <qcc/String.h>
@@ -39,14 +41,13 @@ namespace ajn {
  */
 class VirtualEndpoint : public BusEndpoint {
   public:
-
     /**
      * Constructor
      *
      * @param uniqueName      Unique name for this endpoint.
-     * @param busEndpoint     The first endpoint of the bus-to-bus connection responsible for this virtual endpoint.
+     * @param b2bEp           Initial Bus-to-bus endpoint for this virtual endpoint.
      */
-    VirtualEndpoint(const char* uniqueName, RemoteEndpoint& busEndpoint);
+    VirtualEndpoint(const char* uniqueName, RemoteEndpoint& b2bEp);
 
     /**
      * Send an outgoing message.
@@ -98,9 +99,10 @@ class VirtualEndpoint : public BusEndpoint {
     /**
      * Get the BusToBus endpoint associated with this virtual endpoint.
      *
+     * @param sessionId   Id of session between src and dest.
      * @return The current (top of queue) bus-to-bus endpoint.
      */
-    RemoteEndpoint* GetBusToBusEndpoint() { return m_b2bEndpoints.front(); }
+    RemoteEndpoint* GetBusToBusEndpoint(SessionId sessionId = 0) const;
 
     /**
      * Add an alternate bus-to-bus endpoint that can route for this endpoint.
@@ -119,6 +121,40 @@ class VirtualEndpoint : public BusEndpoint {
     bool RemoveBusToBusEndpoint(RemoteEndpoint& endpoint);
 
     /**
+     * Map a session id to one of this VirtualEndpoint's B2B endpoints.
+     *
+     * @param sessionId  The session id.
+     * @param b2bEp      The bus-to-bus endpoint for the session.
+     * @return  ER_OK if successful.
+     */
+    QStatus AddSessionRef(SessionId sessionId, RemoteEndpoint& b2bEp);
+
+    /**
+     * Map a session id to the best of this VirtualEndpoint's B2B endpoints that match qos.
+     *
+     * @param sessionId  The session id.
+     * @param qos        Qualifying qos for B2B endpoint or NULL to indicate no constraints.
+     * @param b2bEp      [OUT] Written with B2B chosen for session.
+     * @return  ER_OK if successful.
+     */
+    QStatus AddSessionRef(SessionId sessionId, QosInfo* qos, RemoteEndpoint*& b2bEp);
+
+    /**
+     * Return the "best" matching B2B endpoint for qos.
+     *
+     * @param qos   QoS to use for measuring acceptibility of B2B endpoints.
+     * @return      QoS compatibile B2B endpoint or NULL if none is found.
+     */
+    RemoteEndpoint* GetQosCompatibleB2B(const QosInfo& qos);
+
+    /**
+     * Remove (counted) mapping of sessionId to B2B endpoint.
+     *
+     * @param sessionId  The session id.
+     */
+    void RemoveSessionRef(SessionId sessionId);
+
+    /**
      * Return true iff the given bus-to-bus endpoint can potentially be used to route
      * messages for this virtual endpoint.
      *
@@ -135,23 +171,18 @@ class VirtualEndpoint : public BusEndpoint {
      */
     bool AllowRemoteMessages() { return true; }
 
-    /**
-     * Get the number of bus to bus endpoints associated with the virtual endpoint.
-     *
-     * @return Number of bus to bus endpoints associated with the virtual endpoint.
-     */
-    size_t GetBusToBusEndpointCount() const {
-        m_b2bEndpointsLock.Lock();
-        size_t cnt = m_b2bEndpoints.size();
-        m_b2bEndpointsLock.Unlock();
-        return cnt;
-    }
 
   private:
 
-    qcc::String m_uniqueName;                     /**< The unique name for this endpoint */
-    std::vector<RemoteEndpoint*> m_b2bEndpoints;   /**< Set of b2bEndpoints that can route for this virtual endpoint */
-    mutable qcc::Mutex m_b2bEndpointsLock;        /**< Lock that protects m_b2bEndpoints */
+    qcc::String m_uniqueName;                                  /**< The unique name for this endpoint */
+    std::multimap<SessionId, RemoteEndpoint*> m_b2bEndpoints;   /**< Set of b2bs that can route for this virtual ep */
+
+    /** B2BInfo is a data container that holds B2B endpoint selection criteria */
+    struct B2BInfo {
+        QosInfo qos;     /**< Qos for B2BEndpoint */
+        uint32_t hops;   /**< Currently unused hop count from local daemon to final destination */
+    };
+    mutable qcc::Mutex m_b2bEndpointsLock;                     /**< Lock that protects m_b2bEndpoints */
 };
 
 }

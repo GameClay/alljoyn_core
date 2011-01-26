@@ -78,6 +78,13 @@ class BusEndpoint : public MessageSink {
     virtual const qcc::String& GetUniqueName() const = 0;
 
     /**
+     * Get the unique name of the endpoint's local controller object.
+     *
+     * @return  Unique name for endpoint's controller.
+     */
+    qcc::String GetControllerUniqueName() const;
+
+    /**
      * Return the user id of the endpoint.
      *
      * @return  User ID number.

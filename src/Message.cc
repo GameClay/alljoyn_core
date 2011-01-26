@@ -259,10 +259,6 @@ QStatus _Message::GetArgs(const char* signature, ...)
 
 _Message::_Message(BusAttachment& bus) : bus(bus)
 {
-    static const uint32_t i32 = 1;
-    static const uint8_t* iEnd = (uint8_t*)(&i32);
-
-    myEndian = (*iEnd) ? ALLJOYN_LITTLE_ENDIAN : ALLJOYN_BIG_ENDIAN;
     msgHeader.msgType = MESSAGE_INVALID;
     msgHeader.endian = myEndian;
     endianSwap = false;

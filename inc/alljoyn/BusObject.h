@@ -241,10 +241,8 @@ class BusObject : public MessageReceiver {
     /**
      * Called by the message bus when the object has been successfully registered. The object can
      * perform any initialization such as adding match rules at this time.
-     * @remark
-     * This base class implementation @b must be called explicitly by any overriding derived class.
      */
-    virtual void ObjectRegistered(void) { isRegistered = true; }
+    virtual void ObjectRegistered(void) { }
 
     /**
      * Called by the message bus when the object has been successfully deregistered

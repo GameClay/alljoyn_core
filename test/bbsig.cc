@@ -77,19 +77,21 @@ static unsigned long timeToLive = 0;
 /** AllJoynListener receives discovery events from AllJoyn */
 class MyBusListener : public BusListener {
   public:
-    void FoundName(const char* name, const char* guid, const char* namePrefix, const char* busAddress)
+    void FoundAdvertisedName(const char* name, const char* namePrefix)
     {
-        QCC_SyncPrintf("FoundName(name=%s, guid=%s, addr=%s)\n", name, guid, busAddress);
+        QCC_SyncPrintf("FoundAdvertisedName(name=%s, prefix=%s)\n", name, namePrefix);
 
         if (0 == strcmp(name, g_wellKnownName.c_str())) {
             /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
             uint32_t disposition;
-            QStatus status = g_msgBus->ConnectToRemoteBus(busAddress, disposition);
-            if ((ER_OK == status) && (ALLJOYN_CONNECT_REPLY_SUCCESS == disposition)) {
+            SessionId sessionId;
+            QosInfo qos;
+            QStatus status = g_msgBus->JoinSession(name, disposition, sessionId, qos);
+            if ((ER_OK == status) && (ALLJOYN_JOINSESSION_REPLY_SUCCESS == disposition)) {
                 /* Release main thread */
                 g_discoverEvent.SetEvent();
             } else {
-                QCC_LogError(status, ("ConnectToRemoteBus failed (status=%s, disposition=%d)", QCC_StatusText(status), disposition));
+                QCC_LogError(status, ("JoinSession failed (status=%s, disposition=%d)", QCC_StatusText(status), disposition));
             }
         }
     }
@@ -611,13 +613,13 @@ int main(int argc, char** argv)
 
             MsgArg serviceName("s", g_wellKnownName.c_str());
             status = alljoynObj.MethodCall(::ajn::org::alljoyn::Bus::InterfaceName,
-                                           "FindName",
+                                           "FindAdvertisedName",
                                            &serviceName,
                                            1,
                                            reply,
                                            5000);
             if (ER_OK != status) {
-                QCC_LogError(status, ("%s.FindName failed", ::ajn::org::alljoyn::Bus::InterfaceName));
+                QCC_LogError(status, ("%s.FindAdvertisedName failed", ::ajn::org::alljoyn::Bus::InterfaceName));
             }
         }
 

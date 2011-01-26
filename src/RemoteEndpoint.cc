@@ -66,7 +66,8 @@ RemoteEndpoint::RemoteEndpoint(BusAttachment& bus,
     txThread(bus, (qcc::String(incoming ? "tx-srv-" : "tx-cli-") + threadName).c_str(), txQueue, txWaitQueue, txQueueLock),
     connSpec(connectSpec),
     incoming(incoming),
-    processId(-1)
+    processId(-1),
+    refCount(0)
 {
 }
 
@@ -447,6 +448,19 @@ QStatus RemoteEndpoint::PushMessage(Message& msg)
 #endif
 
     return status;
+}
+
+void RemoteEndpoint::IncrementRef()
+{
+    IncrementAndFetch(&refCount);
+}
+
+void RemoteEndpoint::DecrementRef()
+{
+    int refs = DecrementAndFetch(&refCount);
+    if (refs <= 0) {
+        Stop();
+    }
 }
 
 }

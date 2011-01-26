@@ -43,10 +43,10 @@ using namespace ajn;
 using namespace qcc;
 using namespace std;
 
-static ConfigDB* singleton = NULL;
-
 ConfigDB* ConfigDB::GetConfigDB()
 {
+    static ConfigDB* singleton(NULL);
+
     if (!singleton) {
         singleton = new ConfigDB();
     }
@@ -65,11 +65,6 @@ void ConfigDB::NameOwnerChanged(const qcc::String& alias,
 ConfigDB::ConfigDB() : db(new DB()), stopping(false)
 {
     db->limitMap[qcc::String("service_start_timeout")] = 10000;  // 10 seconds
-}
-
-ConfigDB::~ConfigDB() {
-    singleton = NULL;
-    delete db;
 }
 
 bool ConfigDB::LoadConfigFile()

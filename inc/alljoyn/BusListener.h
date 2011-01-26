@@ -26,6 +26,9 @@
 #error Only include BusListener.h in C++ code.
 #endif
 
+#include <alljoyn/Session.h>
+#include <alljoyn/QosInfo.h>
+
 namespace ajn {
 
 /**
@@ -41,24 +44,21 @@ class BusListener {
 
     /**
      * Called by the bus when an external bus is discovered that is advertising a well-known name
-     * that this attachment has registered interest in via a DBus call to org.alljoyn.Bus.FindName
+     * that this attachment has registered interest in via a DBus call to org.alljoyn.Bus.FindAdvertisedName
      *
      * @param name         A well known name that the remote bus is advertising that is of interest to this attachment.
-     * @param guid         The GUID of the remote bus daemon.
-     * @param namePrefix   The well-known name prefix that was used in a call to FindName that triggered this callback.
-     * @param busAddress   The connection address of the remote bus (used for informational purposes only).
+     * @param advQos       Advertised quality of service.
+     * @param namePrefix   The well-known name prefix used in call to FindAdvertisedName that triggered this callback.
      */
-    virtual void FoundName(const char* name, const char* guid, const char* namePrefix, const char* busAddress) { }
+    virtual void FoundAdvertisedName(const char* name, const QosInfo& advQos, const char* namePrefix) { }
 
     /**
      * Called by the bus when an advertisement previously reported through FoundName has become unavailable.
      *
      * @param name         A well known name that the remote bus is advertising that is of interest to this attachment.
-     * @param guid         The GUID of the remote bus daemon.
-     * @param namePrefix   The well-known name prefix that was used in a call to FindName that triggered this callback.
-     * @param busAddress   The connection address of the remote bus (used for informational purposes only).
+     * @param namePrefix   The well-known name prefix that was used in a call to FindAdvertisedName that triggered this callback.
      */
-    virtual void LostAdvertisedName(const char* name, const char* guid, const char* namePrefix, const char* busAddress) { }
+    virtual void LostAdvertisedName(const char* name, const char* namePrefix) { }
 
     /**
      * Called by the bus when the ownership of any well-known name changes.
@@ -70,11 +70,11 @@ class BusListener {
     virtual void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner) { }
 
     /**
-     * Called by the bus when a daemon to daemon connection is unexpectedly lost.
+     * Called by the bus when a session becomes disconnected.
      *
-     * @param busAddress     The bus address of the connection that was lost.
+     * @param sessionId     Id of session that was lost.
      */
-    virtual void BusConnectionLost(const char* busAddress) { }
+    virtual void SessionLost(const SessionId& sessionId) { }
 };
 
 }

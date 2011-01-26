@@ -31,6 +31,7 @@
 #include <map>
 #include <vector>
 #include <alljoyn/Message.h>
+#include <alljoyn/QosInfo.h>
 #include <Status.h>
 
 namespace ajn {
@@ -54,12 +55,14 @@ class TransportListener {
      *
      * @param busAddr  The address of the bus formatted as a string that can be passed to
      *                 createEndpoint
-     * @param guid     The daemon guid that the bus has advertised.
+     * @param guid     GUID associated with this advertisement.
+     * @param qos      Quality of service being advertised.
      * @param names    The list of bus names that the bus has advertised or NULL if transport cannot determine list.
      * @param timer    Time to live for this set of names. (0 implies that the name is gone.)
      */
     virtual void FoundNames(const qcc::String& busAddr,
                             const qcc::String& guid,
+                            const QosInfo& qos,
                             const std::vector<qcc::String>* names,
                             uint8_t timer) = 0;
 

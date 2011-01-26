@@ -1,10 +1,12 @@
+#ifndef _ALLJOYN_SESSION_H
+#define _ALLJOYN_SESSION_H
 /**
  * @file
- * This file provides access to AllJoyn library version and build information.
+ * AllJoyn session related data types.
  */
 
 /******************************************************************************
- * Copyright 2010-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2011, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -18,15 +20,14 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  ******************************************************************************/
-#ifndef _ALLJOYN_VERSION_H
-#define _ALLJOYN_VERSION_H
 
 #include <qcc/platform.h>
 
 namespace ajn {
-const char* GetVersion();        /**< Gives the version of AllJoyn Library */
-const char* GetBuildInfo();      /**< Gives build information of AllJoyn Library */
-uint32_t GetNumericVersion();  /**< Gives the version of AllJoyn Library as a single number */
-};
+
+/** SessionId uniquely identifies an existing AllJoyn session */
+typedef uint32_t SessionId;
+
+}
 
 #endif

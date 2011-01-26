@@ -1,6 +1,6 @@
 /**
  * @file
- * This file provides access to AllJoyn library version and build information.
+ * Class for encapsulating Quality of Service information.
  */
 
 /******************************************************************************
@@ -18,15 +18,36 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  ******************************************************************************/
-#ifndef _ALLJOYN_VERSION_H
-#define _ALLJOYN_VERSION_H
 
 #include <qcc/platform.h>
+#include <alljoyn/QosInfo.h>
+
+#define QCC_MODULE "ALLJOYN"
+
+using namespace std;
 
 namespace ajn {
-const char* GetVersion();        /**< Gives the version of AllJoyn Library */
-const char* GetBuildInfo();      /**< Gives build information of AllJoyn Library */
-uint32_t GetNumericVersion();  /**< Gives the version of AllJoyn Library as a single number */
-};
 
-#endif
+bool QosInfo::IsCompatible(const QosInfo& other) const
+{
+    /* No overlapping transports means qos are not compatible */
+    if (0 == (transports & other.transports)) {
+        return false;
+    }
+
+    /* Not overlapping traffic types means qos are not compatible */
+    if (0 == (traffic & other.traffic)) {
+        return false;
+    }
+
+    /* Not overlapping proximities means qos are not compatible */
+    if (0 == (proximity & other.proximity)) {
+        return false;
+    }
+
+    return true;
+}
+
+
+}
+

@@ -35,7 +35,7 @@
 #include <alljoyn/BusListener.h>
 #include <alljoyn/DBusStd.h>
 #include <alljoyn/AllJoynStd.h>
-
+#include <alljoyn/QosInfo.h>
 #include "AuthMechanism.h"
 #include "AuthMechAnonymous.h"
 #include "AuthMechDBusCookieSHA1.h"
@@ -95,7 +95,7 @@ BusAttachment::Internal::Internal(const char* appName, BusAttachment& bus, Trans
     if (ER_OK != status) {
         QCC_LogError(status, ("Cannot create %s interface", org::freedesktop::DBus::InterfaceName));
     }
-    status = org::alljoyn::Bus::CreateInterfaces(bus);
+    status = org::alljoyn::CreateInterfaces(bus);
     if (ER_OK != status) {
         QCC_LogError(status, ("Cannot create %s interface", org::alljoyn::Bus::InterfaceName));
     }
@@ -258,7 +258,7 @@ QStatus BusAttachment::Connect(const char* connectSpec, RemoteEndpoint** newep)
                 assert(ajIface);
                 status = RegisterSignalHandler(busInternal,
                                                static_cast<MessageReceiver::SignalHandler>(&BusAttachment::Internal::AllJoynSignalHandler),
-                                               ajIface->GetMember("FoundName"),
+                                               ajIface->GetMember("FoundAdvertisedName"),
                                                NULL);
             }
             if (ER_OK == status) {
@@ -600,24 +600,30 @@ QStatus BusAttachment::NameHasOwner(const char* name, bool& hasOwner)
     return status;
 }
 
-QStatus BusAttachment::ConnectToRemoteBus(const char* busAddr, uint32_t& disposition)
+QStatus BusAttachment::CreateSession(const char* sessionName, const QosInfo& qos, uint32_t& disposition, SessionId& sessionId)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
     }
 
     Message reply(*this);
-    MsgArg arg("s", busAddr);
+    MsgArg args[2];
+
+    args[0].Set("s", sessionName);
+    args[1].Set("(qqq)", qos.proximity, qos.traffic, qos.transports);
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
-    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "Connect", &arg, 1, reply);
+    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "CreateSession", args, ArraySize(args), reply);
     if (ER_OK == status) {
         if (reply->GetType() == MESSAGE_METHOD_RET) {
             disposition = reply->GetArg(0)->v_uint32;
+            if (disposition == ALLJOYN_CREATESESSION_REPLY_SUCCESS) {
+                sessionId = reply->GetArg(1)->v_uint32;
+            }
         } else if (reply->GetType() == MESSAGE_ERROR) {
             status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
             String errMsg;
             const char* errName = reply->GetErrorName(&errMsg);
-            QCC_LogError(status, ("%s.Connect returned ERROR_MESSAGE (error=%s, \"%s\")",
+            QCC_LogError(status, ("%s.CreateSession returned ERROR_MESSAGE (error=%s, \"%s\")",
                                   org::alljoyn::Bus::InterfaceName,
                                   errName,
                                   errMsg.c_str()));
@@ -628,16 +634,53 @@ QStatus BusAttachment::ConnectToRemoteBus(const char* busAddr, uint32_t& disposi
     return status;
 }
 
-QStatus BusAttachment::DisconnectFromRemoteBus(const char* busAddr, uint32_t& disposition)
+QStatus BusAttachment::JoinSession(const char* sessionName, uint32_t& disposition, SessionId& sessionId, QosInfo& qos)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
     }
 
     Message reply(*this);
-    MsgArg arg("s", busAddr);
+    MsgArg args[2];
+
+    args[0].Set("s", sessionName);
+    args[1].Set("(qqq)", qos.proximity, qos.traffic, qos.transports);
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
-    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "Disconnect", &arg, 1, reply);
+    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "JoinSession", args, ArraySize(args), reply);
+    if (ER_OK == status) {
+        if (reply->GetType() == MESSAGE_METHOD_RET) {
+            disposition = reply->GetArg(0)->v_uint32;
+            if (disposition == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
+                sessionId = reply->GetArg(1)->v_uint32;
+                status = reply->GetArg(2)->Get("(qqq)", &qos.proximity, &qos.traffic, &qos.transports);
+            }
+        } else if (reply->GetType() == MESSAGE_ERROR) {
+            status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
+            String errMsg;
+            const char* errName = reply->GetErrorName(&errMsg);
+            QCC_LogError(status, ("%s.JoinSession returned ERROR_MESSAGE (error=%s, \"%s\")",
+                                  org::alljoyn::Bus::InterfaceName,
+                                  errName,
+                                  errMsg.c_str()));
+        } else {
+            status = ER_FAIL;
+        }
+    }
+    return status;
+}
+
+QStatus BusAttachment::LeaveSession(const SessionId& sessionId, uint32_t& disposition)
+{
+    if (!IsConnected()) {
+        return ER_BUS_NOT_CONNECTED;
+    }
+
+    Message reply(*this);
+    MsgArg args[1];
+
+    args[0].Set("u", sessionId);
+    const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
+    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "LeaveSession", args, ArraySize(args), reply);
     if (ER_OK == status) {
         if (reply->GetType() == MESSAGE_METHOD_RET) {
             disposition = reply->GetArg(0)->v_uint32;
@@ -645,7 +688,7 @@ QStatus BusAttachment::DisconnectFromRemoteBus(const char* busAddr, uint32_t& di
             status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
             String errMsg;
             const char* errName = reply->GetErrorName(&errMsg);
-            QCC_LogError(status, ("%s.Disconnect returned ERROR_MESSAGE (error=%s, \"%s\")",
+            QCC_LogError(status, ("%s.LeaveSession returned ERROR_MESSAGE (error=%s, \"%s\")",
                                   org::alljoyn::Bus::InterfaceName,
                                   errName,
                                   errMsg.c_str()));
@@ -669,31 +712,33 @@ void BusAttachment::Internal::AlarmTriggered(const Alarm& alarm, QStatus reason)
 {
     /* Dispatch thread for BusListener callbacks */
     Message& msg = *(reinterpret_cast<Message*>(alarm.GetContext()));
+    size_t numArgs;
+    const MsgArg* args;
+    msg->GetArgs(numArgs, args);
 
     if (reason == ER_OK) {
-        size_t numArgs;
-        const MsgArg* args;
-        msg->GetArgs(numArgs, args);
-
-        if (0 == strcmp("FoundName", msg->GetMemberName())) {
+        if (0 == strcmp("FoundAdvertisedName", msg->GetMemberName())) {
+            QosInfo qos;
+            msg->GetArg(1)->Get("(qqq)", &qos.proximity, &qos.traffic, &qos.transports);
             listenersLock.Lock();
             list<BusListener*>::iterator it = listeners.begin();
             while (it != listeners.end()) {
-                (*it++)->FoundName(args[0].v_string.str, args[1].v_string.str, args[2].v_string.str, args[3].v_string.str);
+                (*it++)->FoundAdvertisedName(args[0].v_string.str, qos, args[2].v_string.str);
             }
             listenersLock.Unlock();
         } else if (0 == strcmp("LostAdvertisedName", msg->GetMemberName())) {
             listenersLock.Lock();
             list<BusListener*>::iterator it = listeners.begin();
             while (it != listeners.end()) {
-                (*it++)->LostAdvertisedName(args[0].v_string.str, args[1].v_string.str, args[2].v_string.str, args[3].v_string.str);
+                (*it++)->LostAdvertisedName(args[0].v_string.str, args[1].v_string.str);
             }
             listenersLock.Unlock();
-        } else if (0 == strcmp("BusConnectionLost", msg->GetMemberName())) {
+        } else if (0 == strcmp("SessionLost", msg->GetMemberName())) {
             listenersLock.Lock();
             list<BusListener*>::iterator it = listeners.begin();
             while (it != listeners.end()) {
-                (*it++)->BusConnectionLost(args[0].v_string.str);
+                SessionId id = static_cast<SessionId>(args[0].v_uint32);
+                (*it++)->SessionLost(id);
             }
             listenersLock.Unlock();
         } else if (0 == strcmp("NameOwnerChanged", msg->GetMemberName())) {
@@ -704,9 +749,6 @@ void BusAttachment::Internal::AlarmTriggered(const Alarm& alarm, QStatus reason)
                                           (0 < args[1].v_string.len) ? args[1].v_string.str : NULL,
                                           (0 < args[2].v_string.len) ? args[2].v_string.str : NULL);
             }
-            listenersLock.Unlock();
-        } else {
-            QCC_LogError(ER_FAIL, ("Unrecognized signal \"%s.%s\" received", msg->GetInterface(), msg->GetMemberName()));
         }
     }
     delete &msg;

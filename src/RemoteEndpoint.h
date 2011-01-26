@@ -258,6 +258,17 @@ class RemoteEndpoint : public BusEndpoint, public qcc::ThreadListener {
      */
     Features& GetFeatures() { return features; }
 
+    /**
+     * Increment the reference count for this remote endpoint.
+     * RemoteEndpoints are destroyed when the number of references reaches zero.
+     */
+    void IncrementRef();
+
+    /**
+     * Decremeent the reference count for this remote endpoing.
+     * RemoteEndpoints are destroyed when the number of refereneces reaches zero.
+     */
+    void DecrementRef();
 
   private:
 
@@ -333,6 +344,7 @@ class RemoteEndpoint : public BusEndpoint, public qcc::ThreadListener {
 
     Features features;                       /**< Requested and negotiated features of this endpoint */
     uint32_t processId;                      /**< Process id of the process at the remote end of this endpoint */
+    int32_t refCount;                        /**< Number of active users of this remote endpoint */
 };
 
 }

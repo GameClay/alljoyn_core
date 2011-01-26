@@ -18,6 +18,7 @@ Import('env')
 # Test Programs
 progs = [
     env.Program('socktest',   ['socktest.cc']),
+    env.Program('autochat',   ['autochat.cc']),
     env.Program('remarshal',  ['remarshal.cc']),
     env.Program('unpack',     ['unpack.cc']),
     env.Program('rsa',        ['rsa.cc']),

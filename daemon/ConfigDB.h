@@ -58,11 +58,6 @@ class ConfigDB : public ajn::NameListener {
      */
     static ConfigDB* GetConfigDB();
 
-    /**
-     * Destructor.
-     */
-    ~ConfigDB();
-
     void Shutdown() { stopping = true; }
 
     /**

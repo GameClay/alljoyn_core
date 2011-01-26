@@ -32,6 +32,7 @@
 
 #include <alljoyn/BusObject.h>
 #include <alljoyn/Message.h>
+#include <alljoyn/QosInfo.h>
 
 #include "Bus.h"
 #include "NameTable.h"
@@ -50,7 +51,6 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     friend class RemoteEndpoint;
 
   public:
-
     /**
      * Constructor
      *
@@ -77,32 +77,50 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     void ObjectRegistered(void);
 
     /**
-     * Respond to a bus request to connect to a remote AllJoyn instance.
+     * Respond to a bus request to create a session.
      *
      * The input Message (METHOD_CALL) is expected to contain the following parameters:
-     *   connectSpec  string   The bus address of the remote daemon to connect to.
+     *   sessionName  string   Globally unique name for session.
+     *   qos          QosInfo  Quality of Service requirements for potential session joiners.
      *
      * The output Message (METHOD_REPLY) contains the following parameters:
-     *   resultCode   uint32   A ALLJOYN_CONNECT_* reply code (see AllJoynStd.h)
+     *   resultCode   uint32   A ALLJOYN_CREATESESSION_* reply code (see AllJoynStd.h).
+     *   sessionId    uint32   Session identifier.
      *
      * @param member  Member.
      * @param msg     The incoming message.
      */
-    void Connect(const InterfaceDescription::Member* member, Message& msg);
+    void CreateSession(const InterfaceDescription::Member* member, Message& msg);
 
     /**
-     * Respond to a bus request to disconnect from a remote AllJoyn instance.
+     * Respond to a bus request to join an existing session.
      *
      * The input Message (METHOD_CALL) is expected to contain the following parameters:
-     *   connectSpec  string   The bus address of the remote daemon to connect to.
+     *   sessionName  string   Name of session to join.
      *
      * The output Message (METHOD_REPLY) contains the following parameters:
-     *   resultCode   uint32   A ALLJOYN_CONNECT_* reply code (see AllJoynStd.h)
+     *   resultCode   uint32   A ALLJOYN_JOINSESSION_* reply code (see AllJoynStd.h).
+     *   sessionId    uint32   Session identifier.
+     *   qos          QosInfo  Quality of service for session.
      *
      * @param member  Member.
      * @param msg     The incoming message.
      */
-    void Disconnect(const InterfaceDescription::Member* member, Message& msg);
+    void JoinSession(const InterfaceDescription::Member* member, Message& msg);
+
+    /**
+     * Respond to a bus request to leave a previously joined or created session.
+     *
+     * The input Message (METHOD_CALL) is expected to contain the following parameters:
+     *   sessionId    uint32   Session identifier.
+     *
+     * The output Message (METHOD_REPLY) contains the following parameters:
+     *   resultCode   uint32   A ALLJOYN_LEAVESESSION_* reply code (see AllJoynStd.h).
+     *
+     * @param member  Member.
+     * @param msg     The incoming message.
+     */
+    void LeaveSession(const InterfaceDescription::Member* member, Message& msg);
 
     /**
      * Respond to a bus request to advertise the existence of a remote AllJoyn instance.
@@ -133,14 +151,6 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     void CancelAdvertiseName(const InterfaceDescription::Member* member, Message& msg);
 
     /**
-     * Process incoming ListAdvertisedNames method call from remote daemons.
-     *
-     * @param member  Member.
-     * @param msg     The incoming message.
-     */
-    void ListAdvertisedNames(const InterfaceDescription::Member* member, Message& msg);
-
-    /**
      * Respond to a bus request to look for advertisements from remote AllJoyn instances.
      *
      * The input Message (METHOD_CALL) is expected to contain the following parameters:
@@ -153,7 +163,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * @param member  Member.
      * @param msg     The incoming message.
      */
-    void FindName(const InterfaceDescription::Member* member, Message& msg);
+    void FindAdvertisedName(const InterfaceDescription::Member* member, Message& msg);
 
     /**
      * Respond to a bus request to cancel a previous (successful) FindName request.
@@ -167,7 +177,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * @param member  Member.
      * @param msg     The incoming message.
      */
-    void CancelFindName(const InterfaceDescription::Member* member, Message& msg);
+    void CancelFindAdvertisedName(const InterfaceDescription::Member* member, Message& msg);
 
     /**
      * Add a new Bus-to-bus endpoint.
@@ -183,6 +193,25 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * @param endpoint  Bus-to-bus endpoint to add.
      */
     void RemoveBusToBusEndpoint(RemoteEndpoint& endpoint);
+
+    /**
+     * Respond to a remote daemon request to attach a session through this daemon.
+     *
+     * The input Message (METHOD_CALL) is expected to contain the following parameters:
+     *   sessionName   string    The name of the session.
+     *   joiner        string    The unique name of the session joiner.
+     *   creator       string    The name of the session creator.
+     *   qosIn         QosInfo   The quality of service requested by the joiner.
+     *
+     * The output Message (METHOD_REPLY) contains the following parameters:
+     *   resultCode    uint32    A ALLJOYN_JOINSESSION_* reply code (see AllJoynStd.h).
+     *   sessionId     uint32    The session id (valid if resultCode indicates success).
+     *   qosOut        QonsInfo  The actual QoS for the session.
+     *
+     * @param member  Member.
+     * @param msg     The incoming message.
+     */
+    void AttachSession(const InterfaceDescription::Member* member, Message& msg);
 
     /**
      * Process incoming ExchangeNames signals from remote daemons.
@@ -218,10 +247,12 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * Internal use only.
      *
      * @param   busAddr   Address of discovered bus.
-     * @param   guid      Daemon GUID of discovered bus.
+     * @param   guid      GUID of daemon that sent the advertisment.
+     * @param   qos       Advertised quality of service
      * @param   names     Vector of bus names advertised by the discovered bus.
+     * @param   ttl       Number of seconds before this advertisment expires (0 means expire immediately)
      */
-    void FoundNames(const qcc::String& busAddr, const qcc::String& guid, const std::vector<qcc::String>* names, uint8_t ttl);
+    void FoundNames(const qcc::String& busAddr, const qcc::String& guid, const QosInfo& qos, const std::vector<qcc::String>* names, uint8_t ttl);
 
     /**
      * Called when a transport gets a surprise disconnect from a remote bus.
@@ -249,16 +280,27 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     std::multimap<qcc::String, qcc::String> discoverMap;
     qcc::Mutex discoverMapLock;            /**< Mutex that protects discoverMap */
 
-    /** Map of discovered bus names and their guids and busAddrs (protected by discoverMapLock) */
+    /** Map of discovered bus names (protected by discoverMapLock) */
     struct NameMapEntry {
-        qcc::String guid;
         qcc::String busAddr;
+        qcc::String guid;
+        QosInfo qos;
         uint32_t timestamp;
         uint32_t ttl;
-        NameMapEntry(qcc::String guid, qcc::String busAddr, uint32_t ttl) : guid(guid), busAddr(busAddr), timestamp(qcc::GetTimestamp()), ttl(ttl) { }
+        NameMapEntry(const qcc::String& busAddr, const qcc::String& guid, const QosInfo& qos, uint32_t ttl) : busAddr(busAddr), guid(guid), qos(qos), timestamp(qcc::GetTimestamp()), ttl(ttl) { }
 
     };
     std::multimap<qcc::String, NameMapEntry> nameMap;
+
+    /* Session map */
+    struct SessionMapEntry {
+        qcc::String name;
+        SessionId id;
+        QosInfo qos;
+        bool isMulticast;
+        std::vector<qcc::String> memberNames;
+    };
+    std::map<qcc::StringMapKey, SessionMapEntry> sessionMap;
 
     const qcc::GUID& guid;               /**< Global GUID of this daemon */
 
@@ -268,6 +310,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     qcc::Mutex virtualEndpointsLock;     /**< Mutex that protects virtualEndpoints map */
 
     std::map<qcc::StringMapKey, RemoteEndpoint*> b2bEndpoints;    /**< Map of bus-to-bus endpoints that are connected to external daemons */
+
     qcc::Mutex b2bEndpointsLock;         /**< Mutex that protects b2bEndpoints map */
 
     /** NameMapReaperThread removes expired names from the nameMap */
@@ -283,33 +326,47 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
 
     NameMapReaperThread nameMapReaper;           /**< Removes expired names from nameMap */
 
+    /** JoinSessionThread handles a JoinSession request from a local client on a separate thread */
+    class JoinSessionThread : public qcc::Thread {
+      public:
+        JoinSessionThread(AllJoynObj& ajObj, const Message& msg) : Thread("JoinSessionThread"), ajObj(ajObj), msg(msg) { }
+
+        void ThreadExit(Thread* thread);
+
+      protected:
+        qcc::ThreadReturn STDCALL Run(void* arg);
+
+      private:
+        AllJoynObj& ajObj;
+        Message msg;
+    };
+
+    std::vector<JoinSessionThread*> joinSessionThreads;  /**< List of outstanding join session requests */
+    qcc::Mutex joinSessionThreadsLock;                   /**< Lock that protects joinSessionThreads */
+
     /**
      * Utility function used to send a single FoundName signal.
      *
      * @param dest        Unique name of destination.
      * @param name        Well-known name that was found.
-     * @param guid        GUID of the remote bus that was found to be advertising name.
+     * @param advQos      Advertised quality of service for name.
      * @param namePrefix  Well-known name prefix used in call to FindName() that triggered this notification.
-     * @param busAddr     The bus addresss of the remote bus.
      * @return ER_OK if succssful.
      */
     QStatus SendFoundAdvertisedName(const qcc::String& dest,
                                     const qcc::String& name,
-                                    const qcc::String& guid,
-                                    const qcc::String& namePrefix,
-                                    const qcc::String& busAddr);
+                                    const QosInfo& advQos,
+                                    const qcc::String& namePrefix);
 
     /**
      * Utility function used to send LostAdvertisedName signals to each "interested" local endpoint.
      *
      * @param name        Well-known name that was found.
-     * @param guid        GUID of the remote bus that was found to be advertising name.
-     * @param busAddr     The bus addresss of the remote bus.
+     * @param advQos      Advertised quality of service for name.
      * @return ER_OK if succssful.
      */
     QStatus SendLostAdvertisedName(const qcc::String& name,
-                                   const qcc::String& guid,
-                                   const qcc::String& busAddr);
+                                   const QosInfo& advQos);
 
     /**
      * Add a virtual endpoint with a given unique name.
@@ -353,6 +410,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      */
     QStatus ExchangeNames(RemoteEndpoint& endpoint);
 
+#if 0
     /**
      * Process a connect request from a given (locally-connected) endpoint.
      *
@@ -360,7 +418,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * @param normConnectSpec    Normalized connect spec to be disconnected.
      * @return ER_OK if successful.
      */
-    QStatus ProcConnect(const qcc::String& uniqueName, const qcc::String& normConnectSpec, RemoteEndpoint** newep);
+    QStatus ProcConnect(const qcc::String& uniqueName, const qcc::String& normConnectSpec);
 
     /**
      * Process a disconnect request from a given (locally-connected) endpoint.
@@ -370,6 +428,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * @return ER_OK if successful.
      */
     QStatus ProcDisconnect(const qcc::String& uniqueName, const qcc::String& normConnectSpec);
+#endif
 
     /**
      * Process a request to cancel advertising a name from a given (locally-connected) endpoint.

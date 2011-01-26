@@ -53,8 +53,13 @@ using namespace ajn;
  * @param interlaced  If true use interlaced inquiry.
  */
 namespace ajn {
-extern QStatus ConfigureInquiry(uint16_t deviceId, uint16_t window, uint16_t interval, bool interlaced);
+namespace bluez {
+extern QStatus ConfigureInquiryScan(uint16_t deviceId, uint16_t window, uint16_t interval, bool interlaced, int8_t txPower);
+extern QStatus ConfigurePeriodicInquiry(uint16_t deviceId, uint16_t minPeriod, uint16_t maxPeriod, uint8_t length, uint8_t maxResponses);
 }
+}
+
+using namespace ajn::bluez;
 
 
 struct DeviceInfo {
@@ -65,6 +70,16 @@ struct DeviceInfo {
     } device[4];
 };
 
+void usage()
+{
+    printf("Usage hci [-l]\n\n");
+    printf("Options:\n");
+    printf("   -h      = Print this help message\n");
+    printf("   -l len     = Inquiry length\n");
+    printf("   -n num     = Number of devices to discover\n");
+    printf("   -i min max = Min and Max values for periodic inquiry\n");
+}
+
 int main(int argc, char** argv)
 {
 #ifdef WIN32
@@ -72,6 +87,37 @@ int main(int argc, char** argv)
 #else
     QStatus status;
     SocketFd hciFd;
+    int len = 1;
+    int num = 0;
+    int min = 2;
+    int max = 3;
+
+    for (int i = 1; i < argc; ++i) {
+        if (0 == strcmp("-l", argv[i])) {
+            ++i;
+            if (i == argc) {
+                usage();
+                exit(1);
+            }
+            sscanf(argv[i], "%d", &len);
+        }
+        if (0 == strcmp("-n", argv[i])) {
+            ++i;
+            if (i == argc) {
+                usage();
+                exit(1);
+            }
+            sscanf(argv[i], "%d", &num);
+        }
+        if (0 == strcmp("-i", argv[i])) {
+            i += 2;
+            if (i >= argc) {
+                usage();
+                exit(1);
+            }
+            sscanf(argv[i - 1], argv[i], "%d %d", &min, &max);
+        }
+    }
 
     hciFd = (SocketFd)socket(AF_BLUETOOTH, QCC_SOCK_RAW, 1);
     if (!hciFd) {
@@ -89,9 +135,19 @@ int main(int argc, char** argv)
     printf("%d devices\n", devInfo.numDevices);
     for (size_t i = 0; i < devInfo.numDevices; ++i) {
         printf("device[%d] id = %u\n", static_cast<uint32_t>(i), devInfo.device[i].id);
-        status = ConfigureInquiry(devInfo.device[i].id, 10, 2560, true);
+        status = ConfigureInquiryScan(devInfo.device[i].id, 10, 2560, true, 0);
+        if (status != ER_OK) {
+            printf("ConfigureInquiryScan failed: %s\n", QCC_StatusText(status));
+        }
     }
 
+    for (size_t i = 0; i < devInfo.numDevices; ++i) {
+        printf("ConfigurePeriodicInquiry hci%d min:%d max:%d len:%d num:%d\n", devInfo.device[i].id, min, max, len, num);
+        status = ConfigurePeriodicInquiry(devInfo.device[i].id, (uint16_t)min, (uint16_t)max, (uint8_t)len, (uint8_t)num);
+        if (status != ER_OK) {
+            printf("ConfigurePeriodicInquiry failed: %s\n", QCC_StatusText(status));
+        }
+    }
 #endif
     return 0;
 }

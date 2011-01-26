@@ -32,16 +32,14 @@
 #define QCC_MODULE  "ALLJOYN"
 
 /** Daemon-to-daemon protocol version number */
-#define ALLJOYN_PROTOCOL_VERSION  1
+#define ALLJOYN_PROTOCOL_VERSION  2
 
 namespace ajn {
 
 
 namespace org {
 namespace alljoyn {
-/**
- * Interface definitions for org.alljoyn.Bus
- */
+/** Interface definitions for org.alljoyn.Bus */
 namespace Bus {
 
 extern const char* ErrorName;                     /**< Standard AllJoyn error name */
@@ -58,48 +56,85 @@ extern const char* InterfaceName;                      /**<Interface name */
 namespace Authentication {
 extern const char* InterfaceName;                      /**<Interface name */
 }
+namespace Session {
+extern const char* InterfaceName;                      /**<Interface name */
+}
+}
 }
 
-QStatus CreateInterfaces(BusAttachment& bus);             /**< Create the org.alljoyn.Bus interfaces and sub-interfaces */
+/** Interface definitions for org.alljoyn.Daemon */
+namespace Daemon {
+
+extern const char* ErrorName;                     /**< Standard AllJoyn error name */
+extern const char* ObjectPath;                    /**< Object path */
+extern const char* InterfaceName;                 /**< Interface name */
+extern const char* WellKnownName;                 /**< Well known bus name */
 }
+
+QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljoyn.* interfaces and sub-interfaces */
 }
 }
 
 /**
- * @name org.alljoyn.Bus.Connect
+ * @name org.alljoyn.Bus.CreateSession
  *  Interface: org.alljoyn.Bus
- *  Method: UINT32 Connect(String busAddr)
+ *  Method: UINT32 status, UINT64 sessionId CreateSession(String sessionName, QoSInfo requiredQos)
  *
- *  busAddr = Remote bus address to connect to (e.g. bluetooth:addr=00.11.22.33.44.55, or tcp:addr=1.2.3.4,port=1234)
+ * Create a named session for other bus nodes to join.
  *
- *  Request the local daemon to connect to a given remote AllJoyn address.
+ * In params:
+ *  sessionName - Globally unique name for session.
+ *  requiredQos - Quality of service requirements for session joiners.
  *
- *  Returns a status code (see below) indicating success or failure.
+ * Out params:
+ *  status      - CreateSession return value (see below).
+ *  sessionId   - Bus assigned session id (valid if status == SUCCESS).
  */
 // @{
-/* org.alljoyn.Bus.Connect */
-#define ALLJOYN_CONNECT_REPLY_SUCCESS                 1   /**< Connect reply: Success */
-#define ALLJOYN_CONNECT_REPLY_INVALID_SPEC            2   /**< Connect reply: Invalid connect specification */
-#define ALLJOYN_CONNECT_REPLY_FAILED                  4   /**< Connect reply: Connect failed */
+/* org.alljoyn.Bus.CreateSession */
+#define ALLJOYN_CREATESESSION_REPLY_SUCCESS     1   /**< CreateSession reply: Success */
+#define ALLJOYN_CREATESESSION_REPLY_NOT_OWNER   2   /**< CreateSession reply: Caller doesn't own well-known name of session */
+#define ALLJOYN_CREATESESSION_REPLY_FAILED      3   /**< CreateSession reply: Failed */
 // @}
+
 /**
- * @name org.alljoyn.Bus.Disconnect
+ * @name org.alljoyn.Bus.JoinSession
  *  Interface: org.alljoyn.Bus
- *  Method: UINT32 Disconnect(String busAddr)
+ *  Method: UINT32 status, UINT64 sessionId JoinSession(String sessionName, QosInfo preferredQoS, QosInfo requiredQoS)
  *
- *  busAddr = Remote bus address to disconnect. Must match busAddress previously passed to Connect().
+ * Join an existing session.
  *
- *  Request the local daemon to disconnect from a given remote AllJoyn address previously connected
- *  via a call to Connect().
+ * In params:
+ *  sessionName  - Name of session to join.
+ *  desiredQos   - Desired quality of service.
+ *  requiredQos  - Required quality of service.
  *
- *  Returns a status code (see below) indicating success or failure.
+ * Out params:
+ *  status      - JoinSession return value (see below).
+ *  sessionId   - Session id.
+ *  qos         - Quality of service for session.
  */
 // @{
-/* org.alljoyn.Bus.Disconnect */
-#define ALLJOYN_DISCONNECT_REPLY_SUCCESS              1   /**< Disconnect reply: Success */
-#define ALLJOYN_DISCONNECT_REPLY_NO_CONN              2   /**< Disconnect reply: No connection matching spec was found */
-#define ALLJOYN_DISCONNECT_REPLY_FAILED               3   /**< Disconnect reply: Disconnect failed */
+/* org.alljoyn.Bus.JoinSession */
+#define ALLJOYN_JOINSESSION_REPLY_SUCCESS              1   /**< JoinSession reply: Success */
+#define ALLJOYN_JOINSESSION_REPLY_NO_SESSION           2   /**< JoinSession reply: Session with given name does not exist */
+#define ALLJOYN_JOINSESSION_REPLY_UNREACHABLE          3   /**< JoinSession reply: Failed to find suitable transport */
+#define ALLJOYN_JOINSESSION_REPLY_CONNECT_FAILED       4   /**< JoinSession reply: Connect to advertised address */
+#define ALLJOYN_JOINSESSION_REPLY_REJECTED             5   /**< JoinSession reply: The session creator rejected the join req */
+#define ALLJOYN_JOINSESSION_REPLY_BAD_QOS              6   /**< JoinSession reply: Failed due to qos incompatibilities */
+#define ALLJOYN_JOINSESSION_REPLY_FAILED              10   /**< JoinSession reply: Failed for unknown reason */
 // @}
+
+/**
+ * @name org.alljoyn.Bus.LeaveSession
+ *  Interface: org.alljoyn.Bus
+ *  Method: void LeaveSession(UINT64 sessionId)
+ *
+ * Leave a previously joined session.
+ *
+ * In params:
+ *  sessionId    - Id of session to leave.
+ */
 
 /**
  * @name org.alljoyn.Bus.AdvertiseName
@@ -140,42 +175,42 @@ QStatus CreateInterfaces(BusAttachment& bus);             /**< Create the org.al
 // @}
 
 /**
- * @name org.alljoyn.Bus.FindName
+ * @name org.alljoyn.Bus.FindAdvertisedName
  *  Interface: org.alljoyn.Bus
- *  Method: FindName(String wellKnownNamePrefix)
+ *  Method: FindAdvertisedName(String wellKnownNamePrefix)
  *
  *  wellKnownNamePrefix = Well-known name prefix of the attachment that client is interested in.
  *
  *  Register interest in a well-known attachment name being advertised by a remote AllJoyn instance.
- *  When the local AllJoyn daemon receives such an advertisement it will send an org.alljoyn.Bus.FoundName
+ *  When the local AllJoyn daemon receives such an advertisement it will send an org.alljoyn.Bus.FoundAdvertisedName
  *  signal. This attachment can then choose to ignore the advertisement or to connect to the remote Bus by
  *  calling org.alljoyn.Bus.Connect().
  *
  *  Returns a status code (see below) indicating success or failure.
  */
 // @{
-/* org.alljoyn.Bus.FindName */
-#define ALLJOYN_FINDNAME_REPLY_SUCCESS                1   /**< FindName reply: Success */
-#define ALLJOYN_FINDNAME_REPLY_ALREADY_DISCOVERING    2   /**< FindName reply: This enpoint has already requested discover for name */
-#define ALLJOYN_FINDNAME_REPLY_FAILED                 3   /**< FindName reply: Failed */
+/* org.alljoyn.Bus.FindAdvertisedName */
+#define ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS                1   /**< FindAdvertisedName reply: Success */
+#define ALLJOYN_FINDADVERTISEDNAME_REPLY_ALREADY_DISCOVERING    2   /**< FindAdvertisedName reply: This enpoint has already requested discover for name */
+#define ALLJOYN_FINDADVERTISEDNAME_REPLY_FAILED                 3   /**< FindAdvertisedName reply: Failed */
 // @}
 
 /**
- * @name org.alljoyn.Bus.CancelDiscover
+ * @name org.alljoyn.Bus.CancelFindAdvertisedName
  *  Interface: org.alljoyn.Bus
- *  Method: CancelFindName(String wellKnownName)
+ *  Method: CancelFindAdvertisedName(String wellKnownName)
  *
  *  wellKnownName = Well-known name of the attachment that client is no longer interested in.
  *
  *  Cancel interest in a well-known attachment name that was previously included in a call
- *  to org.alljoyn.Bus.FindName().
+ *  to org.alljoyn.Bus.FindAdvertisedName().
  *
  *  Returns a status code (see below) indicating success or failure.
  */
 // @{
 /* org.alljoyn.Bus.CancelDiscover */
-#define ALLJOYN_CANCELFINDNAME_REPLY_SUCCESS          1   /**< CancelFindName reply: Success */
-#define ALLJOYN_CANCELFINDNAME_REPLY_FAILED           2   /**< CancelFindName reply: Failed */
+#define ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_SUCCESS          1   /**< CancelFindAdvertisedName reply: Success */
+#define ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_FAILED           2   /**< CancelFindAdvertisedName reply: Failed */
 // @}
 }
 

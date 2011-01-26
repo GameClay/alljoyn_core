@@ -23,6 +23,8 @@
 #include <qcc/platform.h>
 #include <vector>
 #include "VirtualEndpoint.h"
+#include <qcc/String.h>
+#include <qcc/StringUtil.h>
 #include <alljoyn/Message.h>
 #include <Status.h>
 
@@ -33,26 +35,56 @@ using namespace qcc;
 
 namespace ajn {
 
-VirtualEndpoint::VirtualEndpoint(const char* uniqueName, RemoteEndpoint& busEndpoint)
+VirtualEndpoint::VirtualEndpoint(const char* uniqueName, RemoteEndpoint& b2bEp)
     : BusEndpoint(BusEndpoint::ENDPOINT_TYPE_VIRTUAL),
     m_uniqueName(uniqueName)
 {
-    m_b2bEndpoints.push_back(&busEndpoint);
+    m_b2bEndpoints.insert(pair<SessionId, RemoteEndpoint*>(0, &b2bEp));
 }
 
 QStatus VirtualEndpoint::PushMessage(Message& msg)
 {
     QStatus status = ER_BUS_NO_ROUTE;
+    String destStr = msg->GetDestination();
+    size_t atOff = destStr.find_first_of('@');
+
+    RemoteEndpoint* ep;
+
     m_b2bEndpointsLock.Lock();
-    vector<RemoteEndpoint*>::iterator it = m_b2bEndpoints.begin();
-    while (it != m_b2bEndpoints.end()) {
-        status = (*it++)->PushMessage(msg);
-        if (ER_OK == status) {
-            break;
+    if (atOff == String::npos) {
+        /* No session specified. Use first endpoint */
+        multimap<SessionId, RemoteEndpoint*>::iterator it = m_b2bEndpoints.begin();
+        if (it != m_b2bEndpoints.end()) {
+            status = ER_OK;
+            ep = it->second;
+        }
+    } else {
+        /* Find B2B based on session */
+        SessionId id = static_cast<SessionId>(qcc::StringToU32(destStr.substr(atOff + 1)));
+        multimap<SessionId, RemoteEndpoint*>::iterator it = m_b2bEndpoints.find(id);
+        if (it != m_b2bEndpoints.end()) {
+            status = ER_OK;
+            ep = it->second;
         }
     }
     m_b2bEndpointsLock.Unlock();
+
+    if (ep) {
+        status = ep->PushMessage(msg);
+    }
     return status;
+}
+
+RemoteEndpoint* VirtualEndpoint::GetBusToBusEndpoint(SessionId sessionId) const
+{
+    RemoteEndpoint* ret = NULL;
+    m_b2bEndpointsLock.Lock();
+    multimap<SessionId, RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.find(sessionId);
+    if (it != m_b2bEndpoints.end()) {
+        ret = it->second;
+    }
+    m_b2bEndpointsLock.Unlock();
+    return ret;
 }
 
 bool VirtualEndpoint::AddBusToBusEndpoint(RemoteEndpoint& endpoint)
@@ -60,17 +92,17 @@ bool VirtualEndpoint::AddBusToBusEndpoint(RemoteEndpoint& endpoint)
     QCC_DbgTrace(("VirtualEndpoint::AddBusToBusEndpoint(this=%s, b2b=%s)", GetUniqueName().c_str(), endpoint.GetUniqueName().c_str()));
 
     m_b2bEndpointsLock.Lock();
-    vector<RemoteEndpoint*>::iterator it = m_b2bEndpoints.begin();
+    multimap<SessionId, RemoteEndpoint*>::iterator it = m_b2bEndpoints.begin();
     bool found = false;
-    while (it != m_b2bEndpoints.end()) {
-        if (*it == &endpoint) {
+    while ((it != m_b2bEndpoints.end()) && (it->first == 0)) {
+        if (it->second == &endpoint) {
             found = true;
             break;
         }
         ++it;
     }
     if (!found) {
-        m_b2bEndpoints.push_back(&endpoint);
+        m_b2bEndpoints.insert(pair<SessionId, RemoteEndpoint*>(0, &endpoint));
     }
     m_b2bEndpointsLock.Unlock();
     return !found;
@@ -81,26 +113,97 @@ bool VirtualEndpoint::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
     QCC_DbgTrace(("VirtualEndpoint::RemoveBusToBusEndpoint(this=%s, b2b=%s)", GetUniqueName().c_str(), endpoint.GetUniqueName().c_str()));
 
     m_b2bEndpointsLock.Lock();
-    vector<RemoteEndpoint*>::iterator it = m_b2bEndpoints.begin();
+    multimap<SessionId, RemoteEndpoint*>::iterator it = m_b2bEndpoints.begin();
     while (it != m_b2bEndpoints.end()) {
-        if (*it == &endpoint) {
-            m_b2bEndpoints.erase(it);
-            break;
+        if (it->second == &endpoint) {
+            /* A non-zero session means that the b2b has one less ref */
+            if (it->first != 0) {
+                it->second->DecrementRef();
+            }
+            m_b2bEndpoints.erase(it++);
+        } else {
+            ++it;
         }
-        ++it;
     }
     bool isEmpty = m_b2bEndpoints.empty();
     m_b2bEndpointsLock.Unlock();
     return isEmpty;
 }
 
+QStatus VirtualEndpoint::AddSessionRef(SessionId id, RemoteEndpoint& b2bEp)
+{
+    m_b2bEndpointsLock.Lock();
+
+    /* Sanity check. Make sure b2bEp is connected to this virtual ep (with sessionId == 0) */
+    bool canUse = CanUseRoute(b2bEp);
+    if (canUse) {
+        /* Increment B2B ref count */
+        b2bEp.IncrementRef();
+
+        /* Map sessionId to b2bEp */
+        m_b2bEndpoints.insert(pair<SessionId, RemoteEndpoint*>(id, &b2bEp));
+    }
+    m_b2bEndpointsLock.Unlock();
+    return canUse ? ER_OK : ER_FAIL;
+}
+
+QStatus VirtualEndpoint::AddSessionRef(SessionId id, QosInfo* qos, RemoteEndpoint*& b2bEp)
+{
+    RemoteEndpoint* bestEp = NULL;
+    //uint32_t hops = 1000;
+
+    m_b2bEndpointsLock.Lock();
+
+#if 0
+    /* Look for best B2B that matches QOS */
+    multimap<SessionId, RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
+    while ((it != m_b2bEndpoints.end()) && (it->first == 0)) {
+        map<RemoteEndpoint*, B2BInfo>::const_iterator bit = m_b2bInfos.find(it->second);
+        if ((bit != m_b2bInfos.end()) && (!qos || bit->second.qos.IsCompatible(*qos)) && (bit->second.hops < hops)) {
+            bestEp = it->second;
+            hops = bit->second.hops;
+        }
+        ++it;
+    }
+#else
+    /* TODO: Placeholder until we exchange QoS and hop count via ExchangeNames */
+    multimap<SessionId, RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
+    if ((it != m_b2bEndpoints.end()) && (it->first == 0)) {
+        bestEp = it->second;
+    }
+#endif
+
+    /* Map session id to bestEp */
+    if (bestEp) {
+        bestEp->IncrementRef();
+        m_b2bEndpoints.insert(pair<SessionId, RemoteEndpoint*>(id, bestEp));
+    }
+    b2bEp = bestEp;
+    m_b2bEndpointsLock.Unlock();
+    return bestEp ? ER_OK : ER_FAIL;
+}
+
+void VirtualEndpoint::RemoveSessionRef(SessionId id)
+{
+    m_b2bEndpointsLock.Lock();
+    multimap<SessionId, RemoteEndpoint*>::iterator it = m_b2bEndpoints.find(id);
+    if (it != m_b2bEndpoints.end()) {
+        it->second->DecrementRef();
+        m_b2bEndpoints.erase(it);
+    } else {
+        QCC_LogError(ER_FAIL, ("VirtualEndpoint::RemoveSessionRef: vep=%s failed to find session = %d", m_uniqueName.c_str(), id));
+    }
+    m_b2bEndpointsLock.Unlock();
+
+}
+
 bool VirtualEndpoint::CanUseRoute(const RemoteEndpoint& b2bEndpoint) const
 {
     bool isFound = false;
     m_b2bEndpointsLock.Lock();
-    vector<RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
-    while (it != m_b2bEndpoints.end()) {
-        if (*it == &b2bEndpoint) {
+    multimap<SessionId, RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
+    while ((it != m_b2bEndpoints.end()) && (it->first == 0)) {
+        if (it->second == &b2bEndpoint) {
             isFound = true;
             break;
         }
@@ -108,6 +211,20 @@ bool VirtualEndpoint::CanUseRoute(const RemoteEndpoint& b2bEndpoint) const
     }
     m_b2bEndpointsLock.Unlock();
     return isFound;
+}
+
+RemoteEndpoint* VirtualEndpoint::GetQosCompatibleB2B(const QosInfo& qos)
+{
+    RemoteEndpoint* ret = NULL;
+    m_b2bEndpointsLock.Lock();
+    multimap<SessionId, RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
+    while ((it != m_b2bEndpoints.end()) && (it->first == 0)) {
+        // TODO: Need to qualify endpoint with qos
+        ret = it->second;
+        break;
+    }
+    m_b2bEndpointsLock.Unlock();
+    return ret;
 }
 
 }

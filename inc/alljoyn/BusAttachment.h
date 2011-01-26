@@ -34,7 +34,8 @@
 #include <alljoyn/BusObject.h>
 #include <alljoyn/ProxyBusObject.h>
 #include <alljoyn/InterfaceDescription.h>
-
+#include <alljoyn/QosInfo.h>
+#include <alljoyn/Session.h>
 #include <Status.h>
 
 namespace ajn {
@@ -46,7 +47,6 @@ class RemoteEndpoint;
  */
 class BusAttachment : public MessageReceiver {
   public:
-
     /**
      * Construct a BusAttachment.
      *
@@ -368,32 +368,50 @@ class BusAttachment : public MessageReceiver {
     QStatus AddLogonEntry(const char* authMechanism, const char* userName, const char* password);
 
     /**
-     * Request the local AllJoyn daemon to connect with a remote AllJoyn daemon.
-     * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Connect method call to the daemon
+     * Create a session.
+     * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.CreateSession method call to the local daemon
      * and interprets the response.
      *
-     * @param[in]  busAddr      The bus address of the remote daemon.
-     * @param[out] disposition  \ref ALLJOYN_CONNECT_REPLY_SUCCESS "ALLJOYN_CONNECT_REPLY_*" code from AllJoynStd.h
+     * @param[in]  sessionName   Name for session. Must be globally unique.
+     * @param[in]  qos           QoS requirements that potential joiners must meet in order to successfully join the session.
+     * @param[out] disposition   ALLJOYN_CREATESESSION_REPLY_*" constant from AllJoynStd.h
+     * @param[out] sessionId     Daemon assigned unique identifier for session. Valid if disposition is ALLJOYN_CREATESESSION_REPLY_SUCCESS.
      * @return
-     *      - #ER_OK if connect request was issued. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus ConnectToRemoteBus(const char* busAddr, uint32_t& disposition);
+    QStatus CreateSession(const char* sessionName, const QosInfo& qos, uint32_t& disposition, SessionId& sessionId);
 
     /**
-     * Request the local AllJoyn daemon to disconnect with a remote AllJoyn daemon.
-     * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Disconnect method call to the daemon
-     * and interprets the response. Disconnection from the remote bus will happen when all local AllJoyn clients
-     * that had previously connected to the remote bus issue this method call or disconnect from the local daemon.
+     * Join an existing session.
+     * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.JoinSession method call to the local daemon
+     * and interprets the response.
      *
-     * @param[in]  busAddr      The bus address of the remote daemon used in a previous call to ConnectToRemoteBus.
-     * @param[out] disposition  @ref ALLJOYN_DISCONNECT_REPLY_SUCCESS "ALLJOYN_DISCONNECT_REPLY_*" code from AllJoynStd.h
+     * @param[in]  sessionName   Name of existing session that caller wants to join.
+     * @param[out] disposition   ALLJOYN_JOINSESSION_REPLY_*" constant from AllJoynStd.h.
+     * @param[out] sessionId     Daemon assigned unique identifier for session. Valid if disposition is ALLJOYN_CREATESESSION_REPLY_SUCCESS.
+     * @param[out] qos           Quality of Service for session.
      * @return
-     *      - #ER_OK if Disconnect request was issued. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+     *      - Other error status codes indicating a failure.
      */
-    QStatus DisconnectFromRemoteBus(const char* busAddr, uint32_t& disposition);
+    QStatus JoinSession(const char* sessionName, uint32_t& disposition, SessionId& sessionId, QosInfo& qos);
+
+    /**
+     * Leave a previously joined or created session.
+     * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.LeaveSession method call to the local daemon
+     * and interprets the response.
+     *
+     * @param[in]  sessionId     Session id.
+     * @param[out] disposition   ALLJOYN_LEAVESESSION_REPLY_*" constant from AllJoynStd.h.
+     * @return
+     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+     *      - Other error status codes indicating a failure.
+     */
+    QStatus LeaveSession(const SessionId& sessionId, uint32_t& disposition);
 
     /**
      * Determine whether a given well-known name exists on the bus.

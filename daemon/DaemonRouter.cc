@@ -46,6 +46,7 @@ namespace ajn {
 
 
 class DeferredMsg : public ServiceStartListener {
+
   public:
     DeferredMsg(Message& msg, const qcc::String senderUniqueName, DaemonRouter& router) :
         msg(msg), senderUniqueName(senderUniqueName), router(router) { }
@@ -352,6 +353,29 @@ void DaemonRouter::UnregisterEndpoint(BusEndpoint& endpoint)
     if (&endpoint == localEndpoint) {
         localEndpoint = NULL;
     }
+}
+
+QStatus DaemonRouter::AddSessionRoute(const char* src, SessionId id, VirtualEndpoint& destEp, RemoteEndpoint*& b2bEp, QosInfo* qosHint)
+{
+    QStatus status = ER_FAIL;
+    if (b2bEp) {
+        status = destEp.AddSessionRef(id, *b2bEp);
+    } else if (qosHint) {
+        status = destEp.AddSessionRef(id, qosHint, b2bEp);
+    }
+
+    if (status == ER_OK) {
+        // TODO: Add to multicast list
+    }
+    return status;
+}
+
+QStatus DaemonRouter::RemoveSessionRoute(const char* src, SessionId id, VirtualEndpoint& destEp)
+{
+    destEp.RemoveSessionRef(id);
+
+    // TODO: Remove from multicast list
+    return ER_FAIL;
 }
 
 }

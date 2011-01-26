@@ -28,18 +28,30 @@
 #include <qcc/platform.h>
 #include <vector>
 
-#include <qcc/String.h>
 #include <qcc/GUID.h>
 #include <qcc/Mutex.h>
-#include <qcc/Thread.h>
 #include <qcc/Stream.h>
+#include <qcc/String.h>
+#include <qcc/Thread.h>
 
-#include "Transport.h"
+#include <alljoyn/QosInfo.h>
+
+#include "BDAddress.h"
+#include "BTController.h"
 #include "RemoteEndpoint.h"
+#include "Transport.h"
 
 #include <Status.h>
 
 namespace ajn {
+
+#define ALLJOYN_BT_VERSION_NUM_ATTR    0x400
+#define ALLJOYN_BT_CONN_ADDR_ATTR      0x401
+#define ALLJOYN_BT_L2CAP_PSM_ATTR      0x402
+#define ALLJOYN_BT_RFCOMM_CH_ATTR      0x403
+#define ALLJOYN_BT_ADVERTISEMENTS_ATTR 0x404
+
+#define ALLJOYN_BT_UUID_BASE "-1c25-481f-9dfb-59193d238280"
 
 /**
  * Class for a Bluetooth endpoint
@@ -49,7 +61,14 @@ class BTEndpoint;
 /**
  * %BTTransport is an implementation of Transport for Bluetooth.
  */
-class BTTransport : public Transport, public RemoteEndpoint::EndpointListener, public qcc::Thread {
+class BTTransport :
+    public Transport,
+    public RemoteEndpoint::EndpointListener,
+    public qcc::Thread,
+    public BluetoothDeviceInterface {
+
+    friend class BTController;
+
   public:
 
     /**
@@ -239,6 +258,11 @@ class BTTransport : public Transport, public RemoteEndpoint::EndpointListener, p
      */
     bool ExternallyConnectable() const { return true; }
 
+    /**
+     * Incomplete class for BT stack specific state.
+     */
+    class BTAccessor;
+
   protected:
     /**
      * Thread entry point.
@@ -249,15 +273,168 @@ class BTTransport : public Transport, public RemoteEndpoint::EndpointListener, p
 
   private:
 
-    class BTAccessor;
-    BusAttachment& bus;                                      /**< The message bus for this transport */
+    /**
+     * Internal connect method to establish a bus connection to a given BD Address.
+     *
+     * @param bdAddr    BD Address of the device to connect to.
+     * @param channel   RFCOMM channel to connect to (if psm is 0).
+     * @param psm       L2CAP PSM to connect to.
+     *
+     * @return  ER_OK if successful.
+     */
+    QStatus Connect(const BDAddress& bdAddr,
+                    uint8_t channel,
+                    uint16_t psm,
+                    RemoteEndpoint** newep);
+    QStatus Connect(const BDAddress& bdAddr,
+                    uint8_t channel,
+                    uint16_t psm)
+    {
+        return Connect(bdAddr, channel, psm, NULL);
+    }
+
+    /**
+     * Internal disconnect method to remove a bus connection from a given BD Address.
+     *
+     * @param bdAddr    BD Address of the device to connect to.
+     *
+     * @return  ER_OK if successful.
+     */
+    QStatus Disconnect(const BDAddress& bdAddr);
+
+    /**
+     * Called by BTAccessor to inform transport of an AllJoyn capable device.
+     * Processes the found device information or sends it to the BT topology
+     * manager master as appropriate.
+     *
+     * @param adBdAddr  BD Address of the device advertising names.
+     * @param uuidRev   UUID revision number of the device that was found.
+     *
+     * @return  ER_OK if successful.
+     */
+    QStatus FoundDevice(const BDAddress& bdAddr,
+                        uint32_t uuidRev);
+
+    /**
+     * Start the find operation for AllJoyn capable devices for 30 seconds.
+     * Exclude any results from any device that includes the specified UUID in
+     * its EIR.  If an AllJoyn capable device is found with a UUID that does
+     * not match the ignore UUID (and was not previously seen from that
+     * device), call the BTController::ProcessFoundBus() method with the
+     * appropriate information.
+     *
+     * @param ignoreUUID    EIR UUID revision to ignore
+     */
+    virtual void StartFind(uint32_t ignoreUUID);
+
+    /**
+     * Stop the find operation.  This is used to abort the find operation
+     * before the 30 seconds has elapsed.
+     */
+    virtual void StopFind();
+
+    /**
+     * Start the advertise operation for the given list of names for 30
+     * seconds.  This includes setting the SDP record to contain the
+     * information specified in the parameters.
+     *
+     * @param uuidRev   AllJoyn Bluetooth service UUID revision
+     * @param bdAddr    BD address of the connectable node
+     * @param channel   The RFCOMM channel number for the AllJoyn service
+     * @param psm       The L2CAP PSM number for the AllJoyn service
+     * @param names     The complete list of names to advertise
+     */
+    virtual void StartAdvertise(uint32_t uuidRev,
+                                const BDAddress& bdAddr,
+                                uint8_t channel,
+                                uint16_t psm,
+                                const BluetoothDeviceInterface::AdvertiseInfo& adInfo);
+
+    /**
+     * Stop the advertise operation.  This is used to abort the advertise
+     * operation before the 30 seconds has elapsed.
+     */
+    virtual void StopAdvertise();
+
+    /**
+     * This provides the Bluetooth transport with the information needed to
+     * call AllJoynObj::FoundNames and to generate the connect spec.
+     *
+     * @param bdAddr    BD address of the connectable node
+     * @param guid      Bus GUID of the discovered bus
+     * @param names     The advertised names
+     * @param channel   RFCOMM channel accepting connections
+     * @param psm       L2CAP PSM accepting connections
+     */
+    virtual void FoundBus(const BDAddress& bdAddr,
+                          const qcc::String& guid,
+                          const std::vector<qcc::String>& names,
+                          uint8_t channel,
+                          uint16_t psm);
+
+    /**
+     * Tells the Bluetooth transport to start listening for incoming connections.
+     *
+     * @param addr      [OUT] BD Address of the adapter listening for connections
+     * @param channel   [OUT] RFCOMM channel allocated
+     * @param psm       [OUT] L2CAP PSM allocated
+     */
+    virtual QStatus StartListen(BDAddress& addr,
+                                uint8_t& channel,
+                                uint16_t& psm);
+
+    /**
+     * Tells the Bluetooth transport to stop listening for incoming connections.
+     */
+    virtual void StopListen();
+
+    /**
+     * Retrieves the information from the specified device necessary to
+     * establish a connection and get the list of advertised names.
+     *
+     * @param addr      BD address of the device of interest.
+     * @param connAddr  [OUT] Address of the Bluetooth device accepting connections.
+     * @param uuidRev   [OUT] UUID revision number.
+     * @param channel   [OUT] RFCOMM channel that is accepting AllJoyn connections.
+     * @param psm       [OUT] L2CAP PSM that is accepting AllJoyn connections.
+     * @param adInfo    [OUT] Advertisement information.
+     */
+    virtual QStatus GetDeviceInfo(const BDAddress& addr,
+                                  BDAddress& connAddr,
+                                  uint32_t& uuidRev,
+                                  uint8_t& channel,
+                                  uint16_t& psm,
+                                  BluetoothDeviceInterface::AdvertiseInfo& adInfo);
+
+    /**
+     * Tells the Bluetooth transport to first initiate a secondary connection
+     * to the bus via the new device, then disconnect from the old device if
+     * the connection to the new device was successful.
+     *
+     * @param oldDev    BD Address of the old device to disconnect from
+     * @param newDev    BD Address of the new device to connect to
+     * @param channel   RFCOMM channel of the new device to connect to
+     * @param psm       L2CAP PSM of the new device to connect to
+     *
+     * @return  ER_OK if the connection was successfully moved.
+     */
+    virtual QStatus MoveConnection(const BDAddress& oldDev,
+                                   const BDAddress& newDev,
+                                   uint8_t channel,
+                                   uint16_t psm);
+
+
+
+    BusAttachment& bus;                            /**< The message bus for this transport */
     BTAccessor* btAccessor;                        /**< Object for accessing the Bluetooth device */
+    BTController* btController;                    /**< Bus Object that manages the BT topology */
     std::map<qcc::String, qcc::String> serverArgs; /**< Map of server configuration args */
-    std::vector<BTEndpoint*> threadList;            /**< List of active BT endpoints */
+    std::vector<BTEndpoint*> threadList;           /**< List of active BT endpoints */
     qcc::Mutex threadListLock;                     /**< Mutex that protects threadList */
     TransportListener* listener;
     bool transportIsStopping;                      /**< The transport has recevied a stop request */
-
+    QosInfo btQos;                                 /**< Hardcoded qos for bluetooth links */
+    bool btmActive;                                /**< Indicates if the Bluetooth Topology Manager is registered */
 };
 
 }

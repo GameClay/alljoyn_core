@@ -15,7 +15,10 @@
 
 Import('env')
 
-srcs = [ f for f in env.Glob('*.cc') + env.Glob('*.c') if not (env['OS_GROUP'] == 'windows' and str(f).endswith('DaemonUnixTransport.cc')) ]
+srcs = [ f for f in env.Glob('*.cc') + env.Glob('*.c')
+         if not (env['OS_GROUP'] == 'windows' and (str(f).endswith('DaemonUnixTransport.cc') or
+                                                   str(f).endswith('BTController.cc') or
+                                                   str(f).endswith('BTTransport.cc'))) ]
 daemon_objs = env.Object(srcs)
 config_objs = env.Object(['ConfigDB.cc',
                           'ServiceDB.cc',

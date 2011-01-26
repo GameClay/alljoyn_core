@@ -660,11 +660,13 @@ QStatus ProxyBusObject::ParseXml(const char* xml, const char* ident)
 
 ProxyBusObject::~ProxyBusObject()
 {
-    vector<Thread*>::iterator it = components->waitingThreads.begin();
-    while (it != components->waitingThreads.end()) {
-        (*it++)->Alert(SYNC_METHOD_ALERTCODE_ABORT);
+    if (components) {
+        vector<Thread*>::iterator it = components->waitingThreads.begin();
+        while (it != components->waitingThreads.end()) {
+            (*it++)->Alert(SYNC_METHOD_ALERTCODE_ABORT);
+        }
+        delete components;
     }
-    delete components;
 }
 
 ProxyBusObject::ProxyBusObject(BusAttachment& bus, const char* service, const char* path) :

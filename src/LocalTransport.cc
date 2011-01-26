@@ -381,7 +381,7 @@ QStatus LocalEndpoint::DoRegisterBusObject(BusObject& object, BusObject* parent,
 
         /* Notify object of registration. Defer if we are not connected yet. */
         if (bus.GetInternal().GetRouter().IsBusRunning()) {
-            object.ObjectRegistered();
+            BusIsConnected();
         }
     }
 
@@ -527,16 +527,48 @@ QStatus LocalEndpoint::UnRegisterSignalHandler(MessageReceiver* receiver,
 
 void LocalEndpoint::AlarmTriggered(const Alarm& alarm, QStatus reason)
 {
-    uint32_t serial = reinterpret_cast<uintptr_t>(alarm.GetContext());
-    Message msg(bus);
-    QCC_DbgPrintf(("Timed out waiting for METHOD_REPLY with serial %d", serial));
+    /*
+     * Alarms are used for two unrelated purposes within LocalEnpoint:
+     *
+     * When context is non-NULL, the alarm indicates that a method call
+     * with serial == *context has timed out.
+     *
+     * When context is NULL, the alarm indicates that the BusAttachment that this
+     * LocalEndpoint is a part of is connected to a daemon and any previously
+     * unregistered BusObjects should be registered
+     */
+    if (NULL != alarm.GetContext()) {
+        uint32_t serial = reinterpret_cast<uintptr_t>(alarm.GetContext());
+        Message msg(bus);
+        QCC_DbgPrintf(("Timed out waiting for METHOD_REPLY with serial %d", serial));
 
-    if (reason == ER_TIMER_EXITING) {
-        msg->ErrorMsg("org.alljoyn.Bus.Exiting", serial);
+        if (reason == ER_TIMER_EXITING) {
+            msg->ErrorMsg("org.alljoyn.Bus.Exiting", serial);
+        } else {
+            msg->ErrorMsg("org.alljoyn.Bus.Timeout", serial);
+        }
+        HandleMethodReply(msg);
     } else {
-        msg->ErrorMsg("org.alljoyn.Bus.Timeout", serial);
+        /* Call ObjectRegistered for any unregistered bus object */
+        objectsLock.Lock();
+        hash_map<const char*, BusObject*, hash<const char*>, PathEq>::iterator iter = localObjects.begin();
+        while (iter != localObjects.end()) {
+            if (!iter->second->isRegistered) {
+                BusObject* bo = iter->second;
+                bo->isRegistered = true;
+                objectsLock.Unlock();
+                bo->ObjectRegistered();
+                objectsLock.Lock();
+                iter = localObjects.begin();
+            } else {
+                ++iter;
+            }
+        }
+        objectsLock.Unlock();
+
+        /* Decrement refcount to indicate we are done calling out */
+        DecrementAndFetch(&refCount);
     }
-    HandleMethodReply(msg);
 }
 
 QStatus LocalEndpoint::HandleMethodCall(Message& message)
@@ -712,22 +744,9 @@ QStatus LocalEndpoint::HandleMethodReply(Message& message)
 void LocalEndpoint::BusIsConnected()
 {
     if (IncrementAndFetch(&refCount) > 1) {
-        /* Deferred object registrations are handled here */
-        objectsLock.Lock();
-        hash_map<const char*, BusObject*, hash<const char*>, PathEq>::iterator iter = localObjects.begin();
-        while (iter != localObjects.end()) {
-            if (!iter->second->isRegistered) {
-                // objectsLock.Unlock();
-                iter->second->ObjectRegistered();
-                // objectsLock.Lock();
-                iter = localObjects.begin();
-            } else {
-                ++iter;
-            }
-        }
-        objectsLock.Unlock();
+        /* Call ObjectRegistered callbacks on another thread */
+        bus.GetInternal().GetTimer().AddAlarm(Alarm(0, this));
     }
-    DecrementAndFetch(&refCount);
 }
 
 }

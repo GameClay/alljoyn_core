@@ -1,10 +1,10 @@
 /**
- * @file
- * This file provides access to AllJoyn library version and build information.
+ * @file This file defines the class for handling the client and server
+ * endpoints for the message bus wire protocol
  */
 
 /******************************************************************************
- * Copyright 2010-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2009-2010, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -18,15 +18,19 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  ******************************************************************************/
-#ifndef _ALLJOYN_VERSION_H
-#define _ALLJOYN_VERSION_H
 
 #include <qcc/platform.h>
 
-namespace ajn {
-const char* GetVersion();        /**< Gives the version of AllJoyn Library */
-const char* GetBuildInfo();      /**< Gives build information of AllJoyn Library */
-uint32_t GetNumericVersion();  /**< Gives the version of AllJoyn Library as a single number */
-};
+#include <BusEndpoint.h>
 
-#endif
+using namespace qcc;
+using namespace ajn;
+
+String BusEndpoint::GetControllerUniqueName() const {
+
+    /* An endpoint with unique name :X.Y has a controller with a unique name :X.1 */
+    String ret = GetUniqueName();
+    ret[GUID::SHORT_SIZE + 2] = '1';
+    ret.resize(GUID::SHORT_SIZE + 3);
+    return ret;
+}

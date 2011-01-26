@@ -80,9 +80,11 @@ class MyBusListener : public BusListener {
             printf("FoundName(name=%s, guid=%s, addr=%s)\n", name, guid, busAddress);
             /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
             uint32_t disposition;
-            QStatus status = g_msgBus->ConnectToRemoteBus(busAddress, disposition);
-            if ((ER_OK != status) || (ALLJOYN_CONNECT_REPLY_SUCCESS != disposition)) {
-                printf("ConnectToRemoteBus failed (status=%s, disposition=%d)", QCC_StatusText(status), disposition);
+            SessionId sessionId;
+            QosInfo qos;
+            QStatus status = g_msgBus->JoinSession(name, disposition, sessionId, qos);
+            if ((ER_OK != status) || (ALLJOYN_JOINSESSION_REPLY_SUCCESS != disposition)) {
+                printf("JoinSession failed (status=%s, disposition=%d)", QCC_StatusText(status), disposition);
             }
         }
     }

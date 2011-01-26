@@ -27,6 +27,7 @@
 #include <qcc/StringUtil.h>
 
 #include <alljoyn/BusAttachment.h>
+#include <alljoyn/QosInfo.h>
 
 #include "BusInternal.h"
 #include "RemoteEndpoint.h"
@@ -1192,8 +1193,15 @@ void DaemonTCPTransport::FoundCallback::Found(const qcc::String& busAddr, const 
         return;
     }
 
+    // TODO: Qos for TCP is currenlty fixed (hardcoded). However, this may change once tcp transport
+    //       can be used for both local and global (Internet-wide) connections
+    QosInfo qos;
+    qos.proximity = QosInfo::PROXIMITY_ANY;
+    qos.traffic = QosInfo::TRAFFIC_RELIABLE;
+    qos.transports = QosInfo::TRANSPORT_WLAN;
+
     if (m_listener) {
-        m_listener->FoundNames(busAddr, guid, &nameList, timer);
+        m_listener->FoundNames(busAddr, guid, qos, &nameList, timer);
     }
 }
 

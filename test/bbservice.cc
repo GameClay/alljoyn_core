@@ -362,27 +362,83 @@ class LocalTestObject : public BusObject {
 
     void ObjectRegistered(void)
     {
-        BusObject::ObjectRegistered();
+        Message reply(bus);
 
         /* Request a well-known name */
-        /* Note that you cannot make a blocking method call here */
         const ProxyBusObject& dbusObj = bus.GetDBusProxyObj();
         MsgArg args[2];
         args[0].Set("s", g_wellKnownName.c_str());
         args[1].Set("u", 6);
-        QStatus status = dbusObj.MethodCallAsync(ajn::org::freedesktop::DBus::InterfaceName,
-                                                 "RequestName",
-                                                 this,
-                                                 static_cast<MessageReceiver::ReplyHandler>(&LocalTestObject::NameAcquiredCB),
-                                                 args,
-                                                 ArraySize(args));
-        if (ER_OK != status) {
+        QStatus status = dbusObj.MethodCall(ajn::org::freedesktop::DBus::InterfaceName,
+                                            "RequestName",
+                                            args,
+                                            ArraySize(args),
+                                            reply);
+        if ((status != ER_OK) || (reply->GetType() != MESSAGE_METHOD_RET)) {
+            status = (status == ER_OK) ? ER_BUS_ERROR_RESPONSE : status;
             QCC_LogError(status, ("Failed to request name %s", g_wellKnownName.c_str()));
+            return;
+        } else {
+            size_t numArgs;
+            const MsgArg* replyArgs;
+            reply->GetArgs(numArgs, replyArgs);
+            if (replyArgs[0].v_uint32 != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
+                status = ER_FAIL;
+                QCC_LogError(status, ("RequestName(%s) returned failed status %d", g_wellKnownName.c_str(), replyArgs[0].v_uint32));
+                return;
+            }
         }
+
+        /* Create a session for incoming client connections */
+        const ProxyBusObject& alljoynObj = bus.GetAllJoynProxyObj();
+        MsgArg createSessionArgs[2];
+        createSessionArgs[0].Set("s", g_wellKnownName.c_str());
+        createSessionArgs[1].Set("(qqq)", QosInfo::PROXIMITY_ANY, QosInfo::TRAFFIC_RELIABLE, QosInfo::TRANSPORT_ANY);
+        status = alljoynObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName,
+                                       "CreateSession",
+                                       createSessionArgs,
+                                       ArraySize(createSessionArgs),
+                                       reply);
+
+        if ((status != ER_OK) || (reply->GetType() != MESSAGE_METHOD_RET)) {
+            status = (status == ER_OK) ? ER_BUS_ERROR_RESPONSE : status;
+            QCC_LogError(status, ("CreateSession(%s,<>) failed", g_wellKnownName.c_str()));
+            return;
+        } else {
+            size_t numArgs;
+            const MsgArg* replyArgs;
+            reply->GetArgs(numArgs, replyArgs);
+            if (replyArgs[0].v_uint32 != ALLJOYN_CREATESESSION_REPLY_SUCCESS) {
+                status = ER_FAIL;
+                QCC_LogError(status, ("CreateSession(%s) returned failed status %d", g_wellKnownName.c_str(), replyArgs[0].v_uint32));
+                return;
+            }
+        }
+
+        /* Begin Advertising the well-known name */
+        MsgArg advArg("s", g_wellKnownName.c_str());
+        status = alljoynObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName,
+                                       "AdvertiseName",
+                                       &advArg,
+                                       1,
+                                       reply);
+        if ((ER_OK != status) || (reply->GetType() != MESSAGE_METHOD_RET)) {
+            status = (status == ER_OK) ? ER_BUS_ERROR_RESPONSE : status;
+            QCC_LogError(status, ("Sending org.alljoyn.Bus.Advertise failed"));
+            return;
+        } else {
+            size_t numArgs;
+            const MsgArg* replyArgs;
+            reply->GetArgs(numArgs, replyArgs);
+            if (replyArgs[0].v_uint32 != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS) {
+                QCC_LogError(ER_FAIL, ("AdvertiseName(%s) failed with %d", g_wellKnownName.c_str(), replyArgs[0].v_uint32));
+                return;
+            }
+        }
+
 
         /* Add rule for receiving test signals */
         MsgArg arg("s", "type='signal',interface='org.alljoyn.alljoyn_test',member='my_signal'");
-        Message reply(bus);
         status = dbusObj.MethodCall(ajn::org::freedesktop::DBus::InterfaceName, "AddMatch", &arg, 1, reply);
         if (status != ER_OK) {
             QCC_LogError(status, ("Failed to register Match rule for 'org.alljoyn.alljoyn_test.my_signal'"));

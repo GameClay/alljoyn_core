@@ -66,7 +66,6 @@ static MyBusListener* s_busListener = NULL;
 
 class MyBusListener : public BusListener {
   public:
-
     MyBusListener(JavaVM* vm, jobject& jobj) : vm(vm), jobj(jobj) { }
 
     void FoundName(const char* name, const char* guid, const char* namePrefix, const char* busAddress)

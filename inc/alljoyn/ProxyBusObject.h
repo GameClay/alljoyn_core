@@ -413,6 +413,59 @@ class ProxyBusObject : public MessageReceiver {
                        uint8_t flags = 0) const;
 
     /**
+     * Make a fire-and-forget method call from this object. The caller will not be able to tell if
+     * the method call was succesful or not. This is equivalent to calling MethodCall() with
+     * flags == ALLJOYN_FLAG_NO_REPLY_EXPECTED. Because this call doesn't block it can be made from
+     * within a signal handler.
+     *
+     * @param ifaceName    Name of interface.
+     * @param methodName   Name of method.
+     * @param args         The arguments for the method call (can be NULL)
+     * @param numArgs      The number of arguments
+     * @param flags        Logical OR of the message flags for this method call. The following flags apply to method calls:
+     *                     - If #ALLJOYN_FLAG_ENCRYPTED is set the message is authenticated and the payload if any is encrypted.
+     *                     - If #ALLJOYN_FLAG_COMPRESSED is set the header is compressed for destinations that can handle header compression.
+     *                     - If #ALLJOYN_FLAG_AUTO_START is set the bus will attempt to start a service if it is not running.
+     *
+     * @return
+     *      - #ER_OK if the method call succeeded
+     */
+    QStatus MethodCall(const char* ifaceName,
+                       const char* methodName,
+                       const MsgArg* args,
+                       size_t numArgs,
+                       uint8_t flags = 0) const
+    {
+        return MethodCallAsync(ifaceName, methodName, NULL, NULL, args, numArgs, NULL, 0, flags |= ALLJOYN_FLAG_NO_REPLY_EXPECTED);
+    }
+
+    /**
+     * Make a fire-and-forget method call from this object. The caller will not be able to tell if
+     * the method call was succesful or not. This is equivalent to calling MethodCall() with
+     * flags == ALLJOYN_FLAG_NO_REPLY_EXPECTED. Because this call doesn't block it can be made from
+     * within a signal handler.
+     *
+     *
+     * @param method       Method being invoked.
+     * @param args         The arguments for the method call (can be NULL)
+     * @param numArgs      The number of arguments
+     * @param flags        Logical OR of the message flags for this method call. The following flags apply to method calls:
+     *                     - If #ALLJOYN_FLAG_ENCRYPTED is set the message is authenticated and the payload if any is encrypted.
+     *                     - If #ALLJOYN_FLAG_COMPRESSED is set the header is compressed for destinations that can handle header compression.
+     *                     - If #ALLJOYN_FLAG_AUTO_START is set the bus will attempt to start a service if it is not running.
+     *
+     * @return
+     *      - #ER_OK if the method call succeeded and the reply message type is #MESSAGE_METHOD_RET
+     */
+    QStatus MethodCall(const InterfaceDescription::Member& method,
+                       const MsgArg* args,
+                       size_t numArgs,
+                       uint8_t flags = 0) const
+    {
+        return MethodCallAsync(method, NULL, NULL, args, numArgs, NULL, 0, flags |= ALLJOYN_FLAG_NO_REPLY_EXPECTED);
+    }
+
+    /**
      * Make an asynchronous method call from this object
      *
      * @param method       Method being invoked.
@@ -531,6 +584,13 @@ class ProxyBusObject : public MessageReceiver {
      * @param other  The object being copied from.
      */
     ProxyBusObject(const ProxyBusObject& other);
+
+    /**
+     * Indicates if this is a valid (usable) proxy bus object.
+     *
+     * @return true if a valid proxy bus object, false otherwise.
+     */
+    bool IsValid() const { return bus != NULL; }
 
   private:
 

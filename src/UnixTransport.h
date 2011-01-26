@@ -59,7 +59,6 @@ class UnixTransport : public Transport, public RemoteEndpoint::EndpointListener,
     friend class UnixEndpoint;
 
   public:
-
     /**
      * Create a Unix domain socket based Transport.
      *

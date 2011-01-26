@@ -48,7 +48,9 @@ namespace ajn {
  * the Unix Domain Sockets way.
  */
 class DaemonUnixEndpoint : public RemoteEndpoint {
+
   public:
+
     DaemonUnixEndpoint(BusAttachment& bus, bool incoming, const qcc::String connectSpec, SocketFd sock) :
         RemoteEndpoint(bus, incoming, connectSpec, stream, "unix"),
         userId(-1),
