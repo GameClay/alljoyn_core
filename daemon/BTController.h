@@ -60,44 +60,49 @@ class BluetoothDeviceInterface {
 
 
     /**
-     * Start the find operation for AllJoyn capable devices for 30 seconds.
-     * Exclude any results from any device that includes the specified UUID in
-     * its EIR.  If an AllJoyn capable device is found with a UUID that does
-     * not match the ignore UUID (and was not previously seen from that
-     * device), call the BTController::ProcessFoundDevice() method with the
-     * appropriate information.
+     * Start the find operation for AllJoyn capable devices.  A duration may
+     * be specified that will result in the find operation to automatically
+     * stop after the specified number of seconds.  Exclude any results from
+     * any device that includes the specified UUID in its EIR.  If an AllJoyn
+     * capable device is found with a UUID that does not match the ignore UUID
+     * (and was not previously seen from that device), call the
+     * BTController::ProcessFoundDevice() method with the appropriate
+     * information.
      *
      * @param ignoreUUID    EIR UUID revision to ignore
+     * @param duration      Find duration in seconds (0 = forever)
      */
-    virtual void StartFind(uint32_t ignoreUUID) = 0;
+    virtual void StartFind(uint32_t ignoreUUID, uint32_t duration = 0) = 0;
 
     /**
-     * Stop the find operation.  This is used to abort the find operation
-     * before the 30 seconds has elapsed.
+     * Stop the find operation.
      */
     virtual void StopFind() = 0;
 
     /**
-     * Start the advertise operation for the given list of names for 30
-     * seconds.  This includes setting the SDP record to contain the
-     * information specified in the parameters.
+     * Start the advertise operation for the given list of names.  A duration
+     * may be specified that will result in the advertise operation to
+     * automatically stop after the specified number of seconds.  This
+     * includes setting the SDP record to contain the information specified in
+     * the parameters.
      *
      * @param uuidRev   AllJoyn Bluetooth service UUID revision
      * @param bdAddr    BD address of the connectable node
      * @param channel   The RFCOMM channel number for the AllJoyn service
      * @param psm       The L2CAP PSM number for the AllJoyn service
      * @param adInfo    The complete list of names to advertise and their associated GUIDs
+     * @param duration      Find duration in seconds (0 = forever)
      */
     virtual void StartAdvertise(uint32_t uuidRev,
                                 const BDAddress& bdAddr,
                                 uint8_t channel,
                                 uint16_t psm,
-                                const AdvertiseInfo& adInfo) = 0;
+                                const AdvertiseInfo& adInfo,
+                                uint32_t duration = 0) = 0;
 
 
     /**
-     * Stop the advertise operation.  This is used to abort the advertise
-     * operation before the 30 seconds has elapsed.
+     * Stop the advertise operation.
      */
     virtual void StopAdvertise() = 0;
 
@@ -298,18 +303,27 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     bool OKToConnect() { return IsMaster() && (directMinions < maxConnections); }
 
     /**
+     * Perform preparations for an outgoing connection.  For now, this just
+     * turns off discovery and discoverability when there are no other
+     * Bluetooth AllJoyn connections.
+     */
+    void PrepConnect();
+
+    /**
      * Send a method call to have our master connect to the remote device for
      * us.
      *
      * @param bdAddr   BD Address of device to connect to
      * @param channel  RFCOMM channel number
      * @param psm      L2CAP PSM number
+     * @param delegate [OUT] Unique name of the node the proxy connect was sent to
      *
      * @return ER_OK if successful.
      */
     QStatus ProxyConnect(const BDAddress& bdAddr,
                          uint8_t channel,
-                         uint16_t psm);
+                         uint16_t psm,
+                         qcc::String* delegate);
 
     /**
      * Send a method call to have our master disconnect fromthe remote device
@@ -379,7 +393,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
         uint32_t ignoreUUID;
         BDAddress ignoreAddr;
         std::set<qcc::String> names;
-        std::vector<MsgArg> nameArgs;
+        std::vector<const char*> nameArgs;
         FindNameArgInfo(BTController& bto) :
             NameArgInfo(bto, 4, bto.org.alljoyn.Bus.BTController.DelegateFind)
         { }
@@ -618,7 +632,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
         nodeStateLock.Lock();
         size = nodeStates.size();
         nodeStateLock.Unlock();
-        return size;
+        return size - 1;
     }
 
     void NextDirectMinion(NodeStateMap::const_iterator& minion)

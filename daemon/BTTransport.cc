@@ -464,10 +464,9 @@ QStatus BTTransport::FoundDevice(const BDAddress& adBdAddr,
 
 /********************************************************/
 
-void BTTransport::StartFind(uint32_t ignoreUUIDRev)
+void BTTransport::StartFind(uint32_t ignoreUUIDRev, uint32_t duration)
 {
-    QCC_DbgTrace(("BTTransport::StartFind(ignoreUUIDRev = %08x)", ignoreUUIDRev));
-    btAccessor->StartDiscovery(ignoreUUIDRev, 30);
+    btAccessor->StartDiscovery(ignoreUUIDRev, duration);
 }
 
 
@@ -481,11 +480,12 @@ void BTTransport::StartAdvertise(uint32_t uuidRev,
                                  const BDAddress& bdAddr,
                                  uint8_t channel,
                                  uint16_t psm,
-                                 const AdvertiseInfo& adInfo)
+                                 const AdvertiseInfo& adInfo,
+                                 uint32_t duration)
 {
     QStatus status = btAccessor->SetSDPInfo(uuidRev, bdAddr, channel, psm, adInfo);
     if (status == ER_OK) {
-        btAccessor->StartDiscoverability(30);
+        btAccessor->StartDiscoverability(duration);
     }
 }
 
@@ -565,6 +565,8 @@ QStatus BTTransport::Connect(const BDAddress& bdAddr,
     if (btController->OKToConnect()) {
         qcc::String authName;
 
+        btController->PrepConnect();
+
         conn = btAccessor->Connect(bus, bdAddr, channel, psm);
 
         if (!conn) {
@@ -604,7 +606,20 @@ QStatus BTTransport::Connect(const BDAddress& bdAddr,
             status = ER_BUS_TRANSPORT_NOT_STARTED;
         }
     } else {
-        status = btController->ProxyConnect(bdAddr, channel, psm);
+        qcc::String delegate;
+
+        status = btController->ProxyConnect(bdAddr, channel, psm, &delegate);
+
+        if (status == ER_OK) {
+            threadListLock.Lock();
+            std::vector<BTEndpoint*>::const_iterator it;
+            for (it = threadList.begin(); it != threadList.end(); ++it) {
+                if ((*it)->GetUniqueName() == delegate) {
+                    conn = *it;
+                }
+            }
+            threadListLock.Unlock();
+        }
     }
 
 exit:

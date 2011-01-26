@@ -316,43 +316,48 @@ class BTTransport :
                         uint32_t uuidRev);
 
     /**
-     * Start the find operation for AllJoyn capable devices for 30 seconds.
-     * Exclude any results from any device that includes the specified UUID in
-     * its EIR.  If an AllJoyn capable device is found with a UUID that does
-     * not match the ignore UUID (and was not previously seen from that
-     * device), call the BTController::ProcessFoundBus() method with the
-     * appropriate information.
+     * Start the find operation for AllJoyn capable devices.  A duration may
+     * be specified that will result in the find operation to automatically
+     * stop after the specified number of seconds.  Exclude any results from
+     * any device that includes the specified UUID in its EIR.  If an AllJoyn
+     * capable device is found with a UUID that does not match the ignore UUID
+     * (and was not previously seen from that device), call the
+     * BTController::ProcessFoundDevice() method with the appropriate
+     * information.
      *
      * @param ignoreUUID    EIR UUID revision to ignore
+     * @param duration      Find duration in seconds (0 = forever)
      */
-    virtual void StartFind(uint32_t ignoreUUID);
+    virtual void StartFind(uint32_t ignoreUUID, uint32_t duration = 0);
 
     /**
-     * Stop the find operation.  This is used to abort the find operation
-     * before the 30 seconds has elapsed.
+     * Stop the find operation.
      */
     virtual void StopFind();
 
     /**
-     * Start the advertise operation for the given list of names for 30
-     * seconds.  This includes setting the SDP record to contain the
-     * information specified in the parameters.
+     * Start the advertise operation for the given list of names.  A duration
+     * may be specified that will result in the advertise operation to
+     * automatically stop after the specified number of seconds.  This
+     * includes setting the SDP record to contain the information specified in
+     * the parameters.
      *
      * @param uuidRev   AllJoyn Bluetooth service UUID revision
      * @param bdAddr    BD address of the connectable node
      * @param channel   The RFCOMM channel number for the AllJoyn service
      * @param psm       The L2CAP PSM number for the AllJoyn service
-     * @param names     The complete list of names to advertise
+     * @param adInfo    The complete list of names to advertise and their associated GUIDs
+     * @param duration      Find duration in seconds (0 = forever)
      */
     virtual void StartAdvertise(uint32_t uuidRev,
                                 const BDAddress& bdAddr,
                                 uint8_t channel,
                                 uint16_t psm,
-                                const BluetoothDeviceInterface::AdvertiseInfo& adInfo);
+                                const BluetoothDeviceInterface::AdvertiseInfo& adInfo,
+                                uint32_t duration = 0);
 
     /**
-     * Stop the advertise operation.  This is used to abort the advertise
-     * operation before the 30 seconds has elapsed.
+     * Stop the advertise operation.
      */
     virtual void StopAdvertise();
 

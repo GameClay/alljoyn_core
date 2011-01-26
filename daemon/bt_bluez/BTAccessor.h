@@ -81,7 +81,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     {
         DiscoveryControl(busRev, *org.bluez.Adapter.StartDiscovery);
         if (duration > 0) {
-            qcc::Alarm alarm(duration * 1000, this, 0, (void*)STOP_DISCOVERABILITY);
+            qcc::Alarm alarm(duration * 1000, this, 0, (void*)STOP_DISCOVERY);
             bzBus.GetInternal().GetDispatcher().AddAlarm(alarm);
         }
     }

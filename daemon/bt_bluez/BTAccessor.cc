@@ -460,7 +460,7 @@ QStatus BTTransport::BTAccessor::SetSDPInfo(uint32_t uuidRev,
             uint32_t newHandle;
             status = AddRecord(sdpXml, newHandle);
             if (status == ER_OK) {
-                if (recordHandle != newHandle) {
+                if ((recordHandle != 0) && (recordHandle != newHandle)) {
                     QCC_DbgPrintf(("Removing extraneous AllJoyn service record (%x).", recordHandle));
                     RemoveRecord();
                 }
@@ -694,14 +694,14 @@ QStatus BTTransport::BTAccessor::GetDefaultAdapterAddress(BDAddress& addr)
 
         for (size_t i = 0; !addressFound && (i < size); ++i) {
             const char* key = NULL;
-            MsgArg value;
+            MsgArg* value;
             status = entries[i].Get("{sv}", &key, &value);
             if (status != ER_OK) {
                 goto exit;
             }
             if (strcmp(key, "Address") == 0) {
                 const char* bdAddrStr;
-                status = value.Get("s", &bdAddrStr);
+                status = value->Get("s", &bdAddrStr);
                 if (status != ER_OK) {
                     goto exit;
                 }
@@ -1122,10 +1122,12 @@ void BTTransport::BTAccessor::AlarmTriggered(const Alarm& alarm, QStatus reason)
                 break;
 
             case STOP_DISCOVERY:
+                QCC_DbgPrintf(("Stopping Discovery"));
                 StopDiscovery();
                 break;
 
             case STOP_DISCOVERABILITY:
+                QCC_DbgPrintf(("Stopping Discoverability"));
                 StopDiscoverability();
                 break;
             }
@@ -1170,8 +1172,7 @@ void BTTransport::BTAccessor::NameOwnerChangedSignalHandler(const InterfaceDescr
                                                             const char* sourcePath,
                                                             Message& msg)
 {
-    QCC_DbgTrace(("BTTransport::BTAccessor::NameOwnerChangedSignalHandler - %s",
-                  msg->GetArg(0)->v_string.str));
+    //QCC_DbgTrace(("BTTransport::BTAccessor::NameOwnerChangedSignalHandler - %s", msg->GetArg(0)->v_string.str));
     /*
      * We only care about changes to org.bluez
      */
@@ -1195,32 +1196,31 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
                                                        Message& msg)
 {
     const char* addrStr;
-    msg->GetArg(0)->Get("s", &addrStr);
-
-    QCC_DbgTrace(("BTTransport::BTAccessor::DeviceFoundSignalHandler - signal from \"%s\" - addr = %s", sourcePath, addrStr));
-
-    BDAddress addr(addrStr);
     size_t dictSize;
     MsgArg* dictionary;
     QStatus status;
 
-    status = msg->GetArg(1)->Get("a{sv}", &dictSize, &dictionary);
+    status = msg->GetArgs("sa{sv}", &addrStr, &dictSize, &dictionary);
     if (status != ER_OK) {
+        QCC_LogError(status, ("Parsing args from DeviceFound signal"));
         return;
     }
 
+    BDAddress addr(addrStr);
+    QCC_DbgTrace(("BTTransport::BTAccessor::DeviceFoundSignalHandler - found addr = %s", addrStr));
+
     for (size_t i = 0; i < dictSize; ++i) {
         const char* key;
-        const MsgArg var;
+        const MsgArg* var;
         status = dictionary[i].Get("{sv}", &key, &var);
         if (status == ER_OK) {
             if (strcmp(key, "UUIDs") == 0) {
                 QCC_DbgPrintf(("BTTransport::BTAccessor::DeviceFoundSignalHandler(): checking %s (%d UUIDs)",
-                               addrStr, var.v_array.GetNumElements()));
+                               addrStr, var->v_array.GetNumElements()));
 
                 qcc::String uuid;
                 uint32_t uuidRev = 0;
-                size_t count = FindAllJoynUUID(var, uuidRev);
+                size_t count = FindAllJoynUUID(*var, uuidRev);
 
                 if ((count > 0) && (uuidRev != busUUIDRev)) {
                     uint32_t now = GetTimestamp();
@@ -1252,7 +1252,7 @@ size_t BTTransport::BTAccessor::FindAllJoynUUID(const MsgArg& var,
     size_t count = 0;
 
     if (var.typeId == ALLJOYN_ARRAY) {
-        const MsgArg* uuids;
+        MsgArg* uuids;
         size_t listSize;
         QStatus status;
 
@@ -1263,6 +1263,8 @@ size_t BTTransport::BTAccessor::FindAllJoynUUID(const MsgArg& var,
             for (size_t i = 0; i < listSize; ++i) {
                 const char* uuid;
                 status = uuids[i].Get("s", &uuid);
+
+                QCC_DbgPrintf(("checking uuid: %s", uuid));
 
                 if ((status == ER_OK) &&
                     (strcasecmp(alljoynUUIDBase, uuid + ALLJOYN_BT_UUID_REV_SIZE) == 0)) {
@@ -1284,6 +1286,7 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
                                                uint16_t* psm,
                                                BluetoothDeviceInterface::AdvertiseInfo* adInfo)
 {
+    QCC_DbgTrace(("BTTransport::BTAccessor::GetDeviceInfo(addr = %s, ...)", addr.ToString().c_str()));
     QStatus status;
     qcc::String devObjPath;
 
@@ -1527,7 +1530,6 @@ void BTTransport::BTAccessor::ProcessXMLAdvertisementsAttr(const XmlElement* ele
 }
 
 
-
 QStatus BTTransport::BTAccessor::GetDeviceObjPath(const BDAddress& bdAddr,
                                                   qcc::String& devObjPath)
 {
@@ -1658,7 +1660,7 @@ void BTTransport::BTAccessor::AdapterPropertyChangedSignalHandler(const Interfac
     AdapterObject adapter = GetAdapterObject(sourcePath);
     if (adapter->IsValid()) {
         const char* property;
-        const MsgArg value;
+        const MsgArg* value;
 
         msg->GetArg(0)->Get("s", &property);
         msg->GetArg(1)->Get("v", &value);
@@ -1668,7 +1670,7 @@ void BTTransport::BTAccessor::AdapterPropertyChangedSignalHandler(const Interfac
 
         if (strcmp(property, "Discoverable") == 0) {
             bool disc;
-            value.Get("b", &disc);
+            value->Get("b", &disc);
 
             if (!disc && discoverable) {
                 // Adapter just became UNdiscoverable when it should still be discoverable.
