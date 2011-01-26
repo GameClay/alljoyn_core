@@ -310,6 +310,14 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     void PrepConnect();
 
     /**
+     * Perform operations necessary based on the result of connect operation.
+     * For now, this just restores the local discovery and discoverability
+     * when the connect operation failed and there are no other Bluetooth
+     * AllJoyn connections.
+     */
+    void PostConnect(QStatus status);
+
+    /**
      * Send a method call to have our master connect to the remote device for
      * us.
      *
@@ -647,6 +655,8 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
                  (master && (master->GetServiceName() == minion->first.c_str())));
     }
 
+    bool UseLocalFind() { return directMinions == 0; }
+    bool UseLocalAdvertise() { return directMinions <= 1; }
 
     BusAttachment& bus;
     BluetoothDeviceInterface& bt;

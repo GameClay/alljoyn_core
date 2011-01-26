@@ -88,7 +88,8 @@ BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
     master(NULL),
     uuidRev(INVALID_UUIDREV),
     directMinions(0),
-    maxConnections(min(StringToU32(Environ::GetAppEnviron()->Find("ALLJOYN_MAX_BT_CONNECTIONS"), 0, DEFAULT_MAX_CONNECTIONS), ABSOLUTE_MAX_CONNECTIONS)),
+    maxConnections(min(StringToU32(Environ::GetAppEnviron()->Find("ALLJOYN_MAX_BT_CONNECTIONS"), 0, DEFAULT_MAX_CONNECTIONS),
+                       ABSOLUTE_MAX_CONNECTIONS)),
     listening(false),
     advertise(*this),
     find(*this)
@@ -285,7 +286,21 @@ QStatus BTController::ProcessFoundDevice(const BDAddress& adBdAddr, uint32_t uui
         UUIDRevCacheInfo& ci = uuidRevCache[uuidRev];
 
         if (ci.uuidRev == INVALID_UUIDREV) {
+            nodeStateLock.Lock();
+            if (UseLocalFind()) {
+                bt.StopFind();
+                find.active = false;
+            }
+
             status = bt.GetDeviceInfo(adBdAddr, ci.connAddr, ci.uuidRev, ci.channel, ci.psm, ci.adInfo);
+
+            if (UseLocalFind()) {
+                bt.StartFind(find.ignoreUUID);
+                find.active = true;
+            }
+            nodeStateLock.Unlock();
+
+
             if (status != ER_OK) {
                 uuidRevCache.erase(uuidRev);
                 goto exit;
@@ -350,15 +365,57 @@ exit:
 void BTController::PrepConnect()
 {
     nodeStateLock.Lock();
-    if (directMinions == 0) {
+    if (UseLocalFind()) {
+        /*
+         * Gotta shut down the local find operation since it severely
+         * interferes with our ability to establish a connection.  Also, after
+         * a successful connection, the exchange of the SetState method call
+         * and response will result in one side or the other taking control of
+         * who performs the find operation.
+         */
         bt.StopFind();
         find.active = false;
     }
-    if (directMinions <= 1) {
+    if (UseLocalAdvertise()) {
+        /*
+         * Gotta shut down the local advertise operation since a successful
+         * connection will result in the exchange for the SetState method call
+         * and response afterwhich the node responsibility for advertising
+         * will be determined.
+         */
         bt.StopAdvertise();
         advertise.active = false;
     }
     nodeStateLock.Unlock();
+}
+
+
+void BTController::PostConnect(QStatus status)
+{
+    if (status != ER_OK) {
+        nodeStateLock.Lock();
+        if (UseLocalFind()) {
+            /*
+             * Gotta restart the find operation since the connect failed and
+             * we need to do the find for ourself.
+             */
+            bt.StartFind(find.ignoreUUID);
+            find.active = true;
+        }
+        if (UseLocalAdvertise()) {
+            /*
+             * Gotta restart the advertise operation since the connect failed and
+             * we need to do the advertise for ourself.
+             */
+            BluetoothDeviceInterface::AdvertiseInfo adInfo;
+            MsgArg arg("a{sas}", advertise.adInfoArgs.size(), &advertise.adInfoArgs.front());
+            ExtractAdInfo(arg, adInfo);
+            advertise.uuidRev = uuidRev;
+            bt.StartAdvertise(advertise.uuidRev, advertise.bdAddr, advertise.channel, advertise.psm, adInfo);
+            advertise.active = true;
+        }
+        nodeStateLock.Unlock();
+    }
 }
 
 
@@ -949,7 +1006,6 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo, bool allow)
     bool active = nameInfo.active;
     bool deferredClearArgs = false;
     bool advertiseOp = (&nameInfo == &advertise);
-    bool shortCircuit = (directMinions <= (advertiseOp ? 1 : 0));
 
     QCC_DbgTrace(("BTController::UpdateDelegations(nameInfo = <%s>, allow = %s)",
                   advertiseOp ? "advertise" : "find", allow ? "true" : "false"));
@@ -982,26 +1038,21 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo, bool allow)
     }
 
     if (sendSignal) {
-        if (shortCircuit) {
-            // Either there is no minion to 'find' for us or there is only one
-            // minion (designated for finding) so we need to 'advertise' for
-            // ourselves.
-            if (advertiseOp) {
-                if (nameInfo.active || deferredClearArgs) {
-                    BluetoothDeviceInterface::AdvertiseInfo adInfo;
-                    MsgArg arg("a{sas}", advertise.adInfoArgs.size(), &advertise.adInfoArgs.front());
-                    ExtractAdInfo(arg, adInfo);
-                    advertise.uuidRev = uuidRev;
-                    bt.StartAdvertise(advertise.uuidRev, advertise.bdAddr, advertise.channel, advertise.psm, adInfo);
-                } else {
-                    bt.StopAdvertise();
-                }
+        if (advertiseOp && UseLocalAdvertise()) {
+            if (nameInfo.active || deferredClearArgs) {
+                BluetoothDeviceInterface::AdvertiseInfo adInfo;
+                MsgArg arg("a{sas}", advertise.adInfoArgs.size(), &advertise.adInfoArgs.front());
+                ExtractAdInfo(arg, adInfo);
+                advertise.uuidRev = uuidRev;
+                bt.StartAdvertise(advertise.uuidRev, advertise.bdAddr, advertise.channel, advertise.psm, adInfo);
             } else {
-                if (nameInfo.active) {
-                    bt.StartFind(find.ignoreUUID);
-                } else {
-                    bt.StopFind();
-                }
+                bt.StopAdvertise();
+            }
+        } else if (UseLocalFind()) {
+            if (nameInfo.active) {
+                bt.StartFind(find.ignoreUUID);
+            } else {
+                bt.StopFind();
             }
         } else {
             Signal(nameInfo.minion->first.c_str(), *nameInfo.delegateSignal,

@@ -561,16 +561,17 @@ QStatus BTTransport::Connect(const BDAddress& bdAddr,
 {
     QStatus status;
     BTEndpoint* conn;
+    bool useLocal = btController->OKToConnect();
 
-    if (btController->OKToConnect()) {
+    if (useLocal) {
         qcc::String authName;
 
         btController->PrepConnect();
 
         conn = btAccessor->Connect(bus, bdAddr, channel, psm);
+        status = conn ? ER_OK : ER_FAIL;
 
-        if (!conn) {
-            status = ER_FAIL;
+        if (status != ER_OK) {
             goto exit;
         }
 
@@ -632,6 +633,11 @@ exit:
             *newep = NULL;
         }
     }
+
+    if (useLocal) {
+        btController->PostConnect(status);
+    }
+
     return status;
 }
 
