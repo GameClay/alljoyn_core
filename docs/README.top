@@ -7,6 +7,10 @@ The documentation for the project as a whole can be found in the
 **Build instructions** are found in: `alljoyn_core/docs/BUILD.txt` (there is
 also and HTML version available in the directory.
 
+Detailed **contribution instructions** are found in:
+`alljoyn_core/docs/CONTRIBUTE.txt` these can also be found at
+http://alljoyn.github.com/contribute.html
+
 **Release Notes** are found in: `alljoyn_core/docs/ReleaseNotes.txt`
 
 The only exceptions to this are the license and export compliance
