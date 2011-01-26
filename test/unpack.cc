@@ -265,25 +265,6 @@ int main(int argc, char** argv)
         }
     }
     /*
-     * Variant of Empty array of strings
-     */
-    if (status == ER_OK) {
-        MsgArg vArg;
-        MsgArg arg;
-        arg.Set("as", 0, NULL);
-        vArg.Set("v", &arg);
-        MsgArg *variant;
-        MsgArg* asArray;
-        size_t las;
-        status = vArg.Get("v", &variant);
-        if (status == ER_OK) {
-            status = variant->Get("as", &las, &asArray);
-            if (las != 0) {
-                status = ER_FAIL;
-            }
-        }
-    }
-    /*
      * Dictionary
      */
     if (status == ER_OK) {
@@ -294,10 +275,10 @@ int main(int argc, char** argv)
         size_t numEntries = ArraySize(keys);
         MsgArg* dictEntries = new MsgArg[ArraySize(keys)];
 
-        dictEntries[0].Set("{iv}", 0, new MsgArg("s", keys[0]));
+        dictEntries[0].Set("{iv}", 1, new MsgArg("s", keys[0]));
         dictEntries[1].Set("{iv}", 1, new MsgArg("(ss)", keys[1], "bean"));
-        dictEntries[2].Set("{iv}", 2, new MsgArg("s", keys[2]));
-        dictEntries[3].Set("{iv}", 3, new MsgArg("(ss)", keys[3], "mellow"));
+        dictEntries[2].Set("{iv}", 1, new MsgArg("s", keys[2]));
+        dictEntries[3].Set("{iv}", 1, new MsgArg("(ss)", keys[3], "mellow"));
 
         status = dict.v_array.SetElements("{iv}", numEntries, dictEntries);
         if (status == ER_OK) {
@@ -312,28 +293,6 @@ int main(int argc, char** argv)
                     status = entries[i].Get("{is}", &key, &str1);
                     if (status == ER_BUS_SIGNATURE_MISMATCH) {
                         status = entries[i].Get("{i(ss)}", &key, &str1, &str2);
-                    }
-                    if (key != i) {
-                        status = ER_FAIL;
-                    }
-                    if (status != ER_OK) {
-                        break;
-                    }
-                }
-            }
-        }
-        /* Try using wilcard matching */
-        if (status == ER_OK) {
-            MsgArg* entries;
-            size_t num;
-            status = dict.Get("a{iv}", &num, &entries);
-            if (status == ER_OK) {
-                for (size_t i = 0; i < num; ++i) {
-                    MsgArg *val;
-                    uint32_t key;
-                    status = entries[i].Get("{iv}", &key, &val);
-                    if (key != i) {
-                        status = ER_FAIL;
                     }
                     if (status != ER_OK) {
                         break;

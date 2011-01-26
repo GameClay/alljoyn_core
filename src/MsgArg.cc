@@ -40,10 +40,7 @@ using namespace qcc;
 
 namespace ajn {
 
-/*
- * Maximum array length (2^26) is defined by the specification
- */
-#define MAX_ARRAY_LEN    67108864
+#define ARRAY_SANITY_CHECK   256 * 1024
 
 qcc::String MsgArg::ToString(size_t indent) const
 {
@@ -633,7 +630,7 @@ QStatus MsgArg::BuildArray(MsgArg* arry, const qcc::String elemSig, va_list* arg
     /*
      * Check that the number of elements makes sense
      */
-    if (numElements > MAX_ARRAY_LEN) {
+    if (numElements > ARRAY_SANITY_CHECK) {
         status = ER_BUS_BAD_VALUE;
         QCC_LogError(status, ("Too many array elements - could be an address"));
         arry->typeId = ALLJOYN_INVALID;
@@ -1232,23 +1229,21 @@ QStatus MsgArg::VParseArgs(const char*& signature, size_t sigLen, const MsgArg* 
         }
         AllJoynTypeId typeId = (AllJoynTypeId)(*signature++);
         switch (typeId) {
-        case ALLJOYN_VARIANT:
-            if ((argList - 1)->typeId != ALLJOYN_VARIANT) {
-                status = ER_BUS_SIGNATURE_MISMATCH;
-                break;
-            }
-            /* Falling through */
         case ALLJOYN_WILDCARD:
             /* argp is a pointer to a MsgArg */
-            {
-                const MsgArg** p = va_arg(argp, const MsgArg**);
-                if (!p) {
-                    status = ER_INVALID_ADDRESS;
-                    break;
-                }
-                *p = arg;
+        {
+            MsgArg* p = va_arg(argp, MsgArg*);
+            if (!p) {
+                status = ER_INVALID_ADDRESS;
+                break;
             }
-            break;
+            p->Clear();
+            memcpy(p, arg, sizeof(MsgArg));
+            *p = *arg;
+            /* Don't grant ownership */
+            p->flags = 0;
+        }
+        break;
 
         case ALLJOYN_ARRAY:
             if ((arg->typeId & 0xFF) != ALLJOYN_ARRAY) {
@@ -1392,6 +1387,11 @@ QStatus MsgArg::VParseArgs(const char*& signature, size_t sigLen, const MsgArg* 
                 }
                 sigLen -= (signature - keySig + 1);
             }
+            break;
+
+        case ALLJOYN_VARIANT:
+            status = ER_BUS_BAD_SIGNATURE;
+            QCC_LogError(status, ("Variant ('v') not permitted for unpacking"));
             break;
 
         default:

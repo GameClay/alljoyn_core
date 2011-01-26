@@ -43,6 +43,11 @@
 #include <alljoyn/DBusStd.h>
 #include <alljoyn/AllJoynStd.h>
 #include <alljoyn/version.h>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
+
 #include <Status.h>
 
 using namespace std;
@@ -207,6 +212,12 @@ class BasicSampleObject : public BusObject {
 
 /** Main entry point */
 int main(int argc, char** argv, char** envArg) {
+#ifdef _WIN32
+    WSADATA wsaData;
+    WORD version = MAKEWORD(2, 0);
+    int error = WSAStartup(version, &wsaData);
+#endif
+
     QStatus status = ER_OK;
 
     printf("AllJoyn Library version: %s\n", ajn::GetVersion());

@@ -470,7 +470,11 @@ class ProxyBusObject : public MessageReceiver {
                             uint8_t flags = 0) const;
 
     /**
-     * Initialize this proxy object from an XML string. Calling this method does several things:
+     * Introspect the remote object (across AllJoyn) and use the introspection data
+     * to populate this ProxyBusObject and any descendant ProxyBusObjects (stored
+     * in this object's children container) that are mentioned in the introspection data.
+     *
+     * Calling this method does several things:
      *
      *  -# Create and register any new InterfaceDescription(s) that are mentioned in the XML.
      *     (Interfaces that are already registered with the bus are left "as-is".)
@@ -486,13 +490,13 @@ class ProxyBusObject : public MessageReceiver {
      * may be registered with the bus. Similarly, any objects that were successfully created
      * before the failure will exist in this object's set of children.
      *
-     * @param xml       The XML string to parse.
+     * @param source    I/O source of XML.
      * @param ident     Identity tag used in any error logging associated with this parsing.
      * @return
      *      - #ER_OK if parsing is completely successful.
      *      - An error status otherwise.
      */
-    QStatus ParseIntrospection(const char* xml, const char* ident);
+    QStatus ParseIntrospection(qcc::Source& source, const char* ident);
 
     /**
      * Explicitly secure the connection to the remote peer for this proxy object. Peer-to-peer

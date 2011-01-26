@@ -1069,6 +1069,12 @@ int main(int argc, char** argv)
     qcc::GUID guid;
     Environ* env;
 
+#ifdef _WIN32
+    WSADATA wsaData;
+    WORD version = MAKEWORD(2, 0);
+    int error = WSAStartup(version, &wsaData);
+#endif
+
     /* Parse command line args */
     ParseCmdLine(argc, argv);
 

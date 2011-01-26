@@ -382,6 +382,12 @@ int main(int argc, char* * argv)
     StringSource src(policyConfig);
     config->LoadSource(src);
 
+#ifdef _WIN32
+    WSADATA wsaData;
+    WORD version = MAKEWORD(2, 0);
+    int error = WSAStartup(version, &wsaData);
+#endif
+
     printf("AllJoyn Library version: %s\n", ajn::GetVersion());
     printf("AllJoyn Library build info: %s\n", ajn::GetBuildInfo());
 

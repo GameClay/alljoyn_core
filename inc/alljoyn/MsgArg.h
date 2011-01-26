@@ -452,15 +452,14 @@ class MsgArg {
      *  - @c 's'  A pointer to a char*  (character string is valid for the lifetime of the MsgArg)
      *  - @c 't'  A pointer to a uint64_t
      *  - @c 'u'  A pointer to a uint32_t
-     *  - @c 'v'  A pointer to a pointer to a MsgArg, matches to a variant but returns a pointer to
-     *            the MsgArg of the undlerying real type.
+     *  - @c 'v'  A pointer to a MsgArg, matches to any value type so is equivalent to the wildcard.
      *  - @c 'x'  A pointer to an int64_t
      *  - @c 'y'  A pointer to a uint8_t
      *
      *  - @c '(' and @c ')'  A list of pointers as required for each of the struct members.
      *  - @c '{' and @c '}'  Pointers as required for the key and value members.
      *
-     *  - @c '*' A pointer to a pointer to a MsgArg. This matches any value type.
+     *  - @c '*' A pointer to a MsgArg. This matches any value type.
      *
      * Examples:
      *

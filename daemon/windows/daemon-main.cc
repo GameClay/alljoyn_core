@@ -305,6 +305,12 @@ int main(int argc, char** argv, char** env)
     OptParse::ParseResultCode parseCode(opts.ParseResult());
     ConfigDB* config(ConfigDB::GetConfigDB());
 
+#ifdef _WIN32
+    WSADATA wsaData;
+    WORD version = MAKEWORD(2, 0);
+    int error = WSAStartup(version, &wsaData);
+#endif
+
     switch (parseCode) {
     case OptParse::PR_OK:
         break;

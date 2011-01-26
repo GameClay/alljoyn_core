@@ -167,6 +167,12 @@ static void PrintFlags(uint32_t flags)
 
 int main(int argc, char** argv)
 {
+#ifdef _WIN32
+    WSADATA wsaData;
+    WORD version = MAKEWORD(2, 0);
+    int error = WSAStartup(version, &wsaData);
+#endif
+
     QStatus status;
     uint16_t port = 0;
 

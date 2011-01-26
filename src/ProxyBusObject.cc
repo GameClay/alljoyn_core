@@ -580,7 +580,8 @@ QStatus ProxyBusObject::IntrospectRemoteObject()
         qcc::String ident = reply->GetSender();
         ident += " : ";
         ident += reply->GetObjectPath();
-        status = ParseIntrospection(reply->GetArg(0)->v_string.str, ident.c_str());
+        StringSource ss(reply->GetArg(0)->v_string.str);
+        status = ParseIntrospection(ss, ident.c_str());
     }
     return status;
 }
@@ -630,7 +631,8 @@ void ProxyBusObject::IntrospectMethodCB(Message& msg, void* context)
     qcc::String ident = msg->GetSender();
     ident += " : ";
     ident += msg->GetObjectPath();
-    QStatus status = ParseIntrospection(msg->GetArg(0)->v_string.str, ident.c_str());
+    StringSource ss(msg->GetArg(0)->v_string.str);
+    QStatus status = ParseIntrospection(ss, ident.c_str());
 
     /* Call the callback */
     (ctx->listener->*ctx->callback)(status, ctx->obj, ctx->context);
@@ -641,10 +643,8 @@ struct ProxyBusObject::ParseRoot {
     const XmlElement* root;
 };
 
-QStatus ProxyBusObject::ParseIntrospection(const char* xml, const char* ident)
+QStatus ProxyBusObject::ParseIntrospection(Source& source, const char* ident)
 {
-    StringSource source(xml);
-
     /* Parse the XML reply to update this ProxyBusObject instance (plus any new interfaces) */
     XmlParseContext pc(source);
     QStatus status = XmlElement::Parse(pc);

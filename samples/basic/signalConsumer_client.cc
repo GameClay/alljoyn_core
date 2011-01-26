@@ -42,6 +42,7 @@
 
 #ifdef _WIN32
 #include <process.h>
+#include <winsock2.h>
 #else
 #include <unistd.h>
 #endif
@@ -205,6 +206,13 @@ class SignalListeningObject : public BusObject {
 /** Main entry point */
 int main(int argc, char** argv, char** envArg)
 {
+
+#ifdef _WIN32
+    WSADATA wsaData;
+    WORD version = MAKEWORD(2, 0);
+    int error = WSAStartup(version, &wsaData);
+#endif
+
     QStatus status = ER_OK;
 
     printf("AllJoyn Library version: %s\n", ajn::GetVersion());
