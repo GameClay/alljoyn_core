@@ -1,0 +1,32 @@
+README.android
+--------------
+
+This file describes the contents of the Android (ARM) binary release package.
+
+
+Release Contents
+----------------
+
+The release package contains the following files and directories:
+
+ReleaseNotes.txt   - Description of release including changes since last
+                     release and known issues.
+
+inc                - C++ header include directory.
+
+bin                - Directory containing bus daemon and C++ samples and 
+                     test progams.
+
+bin/bbdaemon       - Simplified bus daemon implementation 
+                     Does not require configuration files.
+                     Does not implement DBus policy rules.
+
+bin/alljoyn-daemon - Full-featured Bus daemon implementation.
+				     Requires configuration file.
+                     Implements DBus policy rules.
+
+bin/bbclient       - An example of a bus client.
+                  
+
+
+

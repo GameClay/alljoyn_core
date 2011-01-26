@@ -1,0 +1,18 @@
+Import('env')
+Import('common_objs')
+
+# AllJoyn Sources
+srcs = [ f for f in env.Glob('*.cc') + env.Glob('*.c')
+         if not (str(f).endswith('version.cc') or
+                 (env['OS_GROUP'] == 'windows' and str(f).endswith('UnixTransport.cc'))) ]
+
+objs = common_objs + env.Object(srcs)
+
+version_cc = env.GenVersion('version')
+env.Depends(version_cc, objs)
+objs.append(env.Object(version_cc))
+
+# AllJoyn Library
+liballjoyn = env.StaticLibrary('alljoyn', objs)
+
+Return('liballjoyn')

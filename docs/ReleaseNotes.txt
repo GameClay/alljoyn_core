@@ -1,0 +1,38 @@
+AllJoyn Version 1.8.0 Release Notes
+-----------------------------------
+
+Platform Support
+----------------
+1) Linux Ubuntu 9.10 32-bit (x86)
+2) Android Froyo 2.2 (ARM7)
+
+
+Features added in this release
+------------------------------
+Initial Open Source Release
+
+
+Issues Addressed in this Release
+--------------------------------
+Initial Open Source Release
+
+
+Known issues and limitations with this release
+----------------------------------------------
+1) Bluetooth stability is improved but problems with sudden disconnects
+   still exist when the bus topology is anything other than a single
+   piconet configuration.
+
+2) org.alljoyn.Bus.Connect may fail if called too quickly after
+   org.allJoyn.Bus.Disconnect for the same remote host. (ALLJOYN-194)
+
+
+Compatibility
+-------------
+N/A
+
+
+Change history
+--------------
+Initial Open Source Release
+

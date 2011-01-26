@@ -1,0 +1,44 @@
+# Copyright 2010-2011, Qualcomm Innovation Center, Inc.
+# 
+#    Licensed under the Apache License, Version 2.0 (the "License");
+#    you may not use this file except in compliance with the License.
+#    You may obtain a copy of the License at
+# 
+#        http://www.apache.org/licenses/LICENSE-2.0
+# 
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS,
+#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#    See the License for the specific language governing permissions and
+#    limitations under the License.
+
+.PHONY: default clean
+
+default: all
+
+all: basic_client basic_service nameChange_client signal_service signalConsumer_client
+
+basic_client:
+	make -f Make_basic_client
+
+basic_service: 
+	make -f Make_basic_service
+
+nameChange_client: 
+	make -f Make_nameChange_client
+
+signal_service: 
+	make -f Make_signal_service
+
+signalConsumer_client:
+	make -f Make_signalConsumer_client
+
+clean:
+	make -f Make_basic_client clean
+	make -f Make_basic_service clean
+	make -f Make_nameChange_client clean
+	make -f Make_signal_service clean
+	make -f Make_signalConsumer_client clean
+	make -f Make_basic_client clean
+	
+

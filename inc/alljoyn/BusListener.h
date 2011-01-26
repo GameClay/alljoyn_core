@@ -1,0 +1,82 @@
+/**
+ * @file
+ * BusListener is an abstract base class (interface) implemented by users of the
+ * AllJoyn API in order to asynchronously receive bus  related event information.
+ */
+
+/******************************************************************************
+ * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ ******************************************************************************/
+#ifndef _ALLJOYN_BUSLISTENER_H
+#define _ALLJOYN_BUSLISTENER_H
+
+#ifndef __cplusplus
+#error Only include BusListener.h in C++ code.
+#endif
+
+namespace ajn {
+
+/**
+ * Abstract base class implemented by AllJoyn users and called by AllJoyn to inform
+ * users of bus related events.
+ */
+class BusListener {
+  public:
+    /**
+     * Virtual destructor for derivable class.
+     */
+    virtual ~BusListener() { }
+
+    /**
+     * Called by the bus when an external bus is discovered that is advertising a well-known name
+     * that this attachment has registered interest in via a DBus call to org.alljoyn.Bus.FindName
+     *
+     * @param name         A well known name that the remote bus is advertising that is of interest to this attachment.
+     * @param guid         The GUID of the remote bus daemon.
+     * @param namePrefix   The well-known name prefix that was used in a call to FindName that triggered this callback.
+     * @param busAddress   The connection address of the remote bus (used for informational purposes only).
+     */
+    virtual void FoundName(const char* name, const char* guid, const char* namePrefix, const char* busAddress) { }
+
+    /**
+     * Called by the bus when an advertisement previously reported through FoundName has become unavailable.
+     *
+     * @param name         A well known name that the remote bus is advertising that is of interest to this attachment.
+     * @param guid         The GUID of the remote bus daemon.
+     * @param namePrefix   The well-known name prefix that was used in a call to FindName that triggered this callback.
+     * @param busAddress   The connection address of the remote bus (used for informational purposes only).
+     */
+    virtual void LostAdvertisedName(const char* name, const char* guid, const char* namePrefix, const char* busAddress) { }
+
+    /**
+     * Called by the bus when the ownership of any well-known name changes.
+     *
+     * @param busName        The well-known name that has changed.
+     * @param previousOwner  The unique name that previously owned the name or NULL if there was no previous owner.
+     * @param newOwner       The unique name that now owns the name or NULL if the there is no new owner.
+     */
+    virtual void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner) { }
+
+    /**
+     * Called by the bus when a daemon to daemon connection is unexpectedly lost.
+     *
+     * @param busAddress     The bus address of the connection that was lost.
+     */
+    virtual void BusConnectionLost(const char* busAddress) { }
+};
+
+}
+
+#endif
