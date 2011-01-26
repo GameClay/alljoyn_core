@@ -1265,8 +1265,6 @@ size_t BTTransport::BTAccessor::FindAllJoynUUID(const MsgArg& var,
                 const char* uuid;
                 status = uuids[i].Get("s", &uuid);
 
-                QCC_DbgPrintf(("checking uuid: %s", uuid));
-
                 if ((status == ER_OK) &&
                     (strcasecmp(alljoynUUIDBase, uuid + ALLJOYN_BT_UUID_REV_SIZE) == 0)) {
                     qcc::String uuidRevStr(uuid, ALLJOYN_BT_UUID_REV_SIZE);
@@ -1336,6 +1334,10 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                                                BluetoothDeviceInterface::AdvertiseInfo* adInfo)
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::ProcessSDPXML()"));
+    bool foundConnAddr = !connAddr;
+    bool foundUUIDRev = !uuidRev;
+    bool foundPSMChannel = !psm && !channel;
+    bool foundAdInfo = !adInfo;
     QStatus status;
 
     status = XmlElement::Parse(xmlctx);
@@ -1372,8 +1374,9 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                             const std::map<qcc::String, qcc::String>::const_iterator valueIt(attrs.find("value"));
                             if (valueIt != attrs.end()) {
                                 qcc::String uuidStr = valueIt->second;
-                                if (uuidStr.compare(ALLJOYN_BT_UUID_REV_SIZE, ALLJOYN_BT_UUID_BASE_SIZE, alljoynUUIDBase) != 0) {
-                                    *uuidRev = StringToU32(uuidStr.substr(0, ALLJOYN_BT_UUID_REV_SIZE));
+                                if (uuidStr.compare(ALLJOYN_BT_UUID_REV_SIZE, ALLJOYN_BT_UUID_BASE_SIZE, alljoynUUIDBase) == 0) {
+                                    *uuidRev = StringToU32(uuidStr.substr(0, ALLJOYN_BT_UUID_REV_SIZE), 16);
+                                    foundUUIDRev = true;
                                 }
                             }
                         }
@@ -1400,6 +1403,7 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                             QCC_LogError(status, ("Failed to parse the BD Address: \"%s\"", addrStr.c_str()));
                             goto exit;
                         }
+                        foundConnAddr = true;
                         QCC_DbgPrintf(("    Attribute ID: %04x  ALLJOYN_BT_CONN_ADDR_ATTR: %s", attrId, addrStr.c_str()));
                     }
                     break;
@@ -1420,6 +1424,7 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                         if ((*psm < 0x1001) || ((*psm & 0x1) != 0x1) || (*psm > 0x8fff)) {
                             *psm = INVALID_PSM;
                         }
+                        foundPSMChannel = true;
                     }
                     break;
 
@@ -1439,12 +1444,14 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                         if ((*channel < 1) || (*channel > 31)) {
                             *channel = INVALID_CHANNEL;
                         }
+                        foundPSMChannel = true;
                     }
                     break;
 
                 case ALLJOYN_BT_ADVERTISEMENTS_ATTR:
                     if (adInfo) {
                         ProcessXMLAdvertisementsAttr(*valElem, *adInfo);
+                        foundAdInfo = true;
 
                         QCC_DbgPrintf(("    Attribute ID: %04x  ALLJOYN_BT_ADVERTISEMENTS_ATTR:", attrId));
 #ifndef NDEBUG
@@ -1459,13 +1466,15 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                     break;
 
                 default:
+                    // QCC_DbgPrintf(("    Attribute ID: %04x", attrId));
                     break;
                 }
             }
         }
 
-        if ((!channel || (*channel == INVALID_CHANNEL)) &&
-            (!psm || (*psm == INVALID_PSM))) {
+        if (((!channel || (*channel == INVALID_CHANNEL)) &&
+             (!psm || (*psm == INVALID_PSM))) ||
+            (!foundConnAddr || !foundUUIDRev || !foundPSMChannel || !foundAdInfo)) {
             status = ER_FAIL;
         }
     } else {
