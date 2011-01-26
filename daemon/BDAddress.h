@@ -43,7 +43,7 @@ class BDAddress {
      *
      * @param other     BD Address to copy from.
      */
-    BDAddress(const BDAddress& other) : buf(buf), cacheValid(false) { }
+    BDAddress(const BDAddress& other) : buf(other.buf), cacheValid(false) { }
 
     /**
      * Constructor that initializes the BD Address from a string in one of the
