@@ -182,71 +182,69 @@ BTTransport::BTAccessor::BTAccessor(BTTransport* transport,
     // Must be initialized after 'bzBus' is initialized!
     bzManagerObj = ProxyBusObject(bzBus, bzBusName, bzMgrObjPath);
 
-    if (!org.bluez.Manager.interface) {
-        for (tableIndex = 0; tableIndex < ifcTableSize; ++tableIndex) {
-            InterfaceDescription* ifc;
-            const InterfaceTable& table(ifcTables[tableIndex]);
-            bzBus.CreateInterface(table.ifcName, ifc);
+    for (tableIndex = 0; tableIndex < ifcTableSize; ++tableIndex) {
+        InterfaceDescription* ifc;
+        const InterfaceTable& table(ifcTables[tableIndex]);
+        bzBus.CreateInterface(table.ifcName, ifc);
 
-            if (ifc) {
-                for (member = 0; member < table.tableSize; ++member) {
-                    ifc->AddMember(table.desc[member].type,
-                                   table.desc[member].name,
-                                   table.desc[member].inputSig,
-                                   table.desc[member].outSig,
-                                   table.desc[member].argNames,
-                                   table.desc[member].annotation);
-                }
-                ifc->Activate();
+        if (ifc) {
+            for (member = 0; member < table.tableSize; ++member) {
+                ifc->AddMember(table.desc[member].type,
+                               table.desc[member].name,
+                               table.desc[member].inputSig,
+                               table.desc[member].outSig,
+                               table.desc[member].argNames,
+                               table.desc[member].annotation);
+            }
+            ifc->Activate();
 
-                if (table.desc == bzManagerIfcTbl) {
-                    org.bluez.Manager.interface =             ifc;
-                    org.bluez.Manager.DefaultAdapter =        ifc->GetMember("DefaultAdapter");
-                    org.bluez.Manager.ListAdapters =          ifc->GetMember("ListAdapters");
-                    org.bluez.Manager.AdapterAdded =          ifc->GetMember("AdapterAdded");
-                    org.bluez.Manager.AdapterRemoved =        ifc->GetMember("AdapterRemoved");
-                    org.bluez.Manager.DefaultAdapterChanged = ifc->GetMember("DefaultAdapterChanged");
+            if (table.desc == bzManagerIfcTbl) {
+                org.bluez.Manager.interface =             ifc;
+                org.bluez.Manager.DefaultAdapter =        ifc->GetMember("DefaultAdapter");
+                org.bluez.Manager.ListAdapters =          ifc->GetMember("ListAdapters");
+                org.bluez.Manager.AdapterAdded =          ifc->GetMember("AdapterAdded");
+                org.bluez.Manager.AdapterRemoved =        ifc->GetMember("AdapterRemoved");
+                org.bluez.Manager.DefaultAdapterChanged = ifc->GetMember("DefaultAdapterChanged");
 
-                    bzBus.RegisterSignalHandler(this,
-                                                SignalHandler(&BTTransport::BTAccessor::AdapterAddedSignalHandler),
-                                                org.bluez.Manager.AdapterAdded, bzMgrObjPath);
+                bzBus.RegisterSignalHandler(this,
+                                            SignalHandler(&BTTransport::BTAccessor::AdapterAddedSignalHandler),
+                                            org.bluez.Manager.AdapterAdded, bzMgrObjPath);
 
-                    bzBus.RegisterSignalHandler(this,
-                                                SignalHandler(&BTTransport::BTAccessor::AdapterRemovedSignalHandler),
-                                                org.bluez.Manager.AdapterRemoved, bzMgrObjPath);
+                bzBus.RegisterSignalHandler(this,
+                                            SignalHandler(&BTTransport::BTAccessor::AdapterRemovedSignalHandler),
+                                            org.bluez.Manager.AdapterRemoved, bzMgrObjPath);
 
-                    bzBus.RegisterSignalHandler(this,
-                                                SignalHandler(&BTTransport::BTAccessor::DefaultAdapterChangedSignalHandler),
-                                                org.bluez.Manager.DefaultAdapterChanged, bzMgrObjPath);
+                bzBus.RegisterSignalHandler(this,
+                                            SignalHandler(&BTTransport::BTAccessor::DefaultAdapterChangedSignalHandler),
+                                            org.bluez.Manager.DefaultAdapterChanged, bzMgrObjPath);
 
-                } else if (table.desc == bzAdapterIfcTbl) {
-                    org.bluez.Adapter.interface =          ifc;
-                    org.bluez.Adapter.CreateDevice =       ifc->GetMember("CreateDevice");
-                    org.bluez.Adapter.FindDevice =         ifc->GetMember("FindDevice");
-                    org.bluez.Adapter.GetProperties =      ifc->GetMember("GetProperties");
-                    org.bluez.Adapter.ListDevices =        ifc->GetMember("ListDevices");
-                    org.bluez.Adapter.RemoveDevice =       ifc->GetMember("RemoveDevice");
-                    org.bluez.Adapter.SetProperty =        ifc->GetMember("SetProperty");
-                    org.bluez.Adapter.StartDiscovery =     ifc->GetMember("StartDiscovery");
-                    org.bluez.Adapter.StopDiscovery =      ifc->GetMember("StopDiscovery");
-                    org.bluez.Adapter.DeviceCreated =      ifc->GetMember("DeviceCreated");
-                    org.bluez.Adapter.DeviceDisappeared =  ifc->GetMember("DeviceDisappeared");
-                    org.bluez.Adapter.DeviceFound =        ifc->GetMember("DeviceFound");
-                    org.bluez.Adapter.DeviceRemoved =      ifc->GetMember("DeviceRemoved");
-                    org.bluez.Adapter.PropertyChanged =    ifc->GetMember("PropertyChanged");
+            } else if (table.desc == bzAdapterIfcTbl) {
+                org.bluez.Adapter.interface =          ifc;
+                org.bluez.Adapter.CreateDevice =       ifc->GetMember("CreateDevice");
+                org.bluez.Adapter.FindDevice =         ifc->GetMember("FindDevice");
+                org.bluez.Adapter.GetProperties =      ifc->GetMember("GetProperties");
+                org.bluez.Adapter.ListDevices =        ifc->GetMember("ListDevices");
+                org.bluez.Adapter.RemoveDevice =       ifc->GetMember("RemoveDevice");
+                org.bluez.Adapter.SetProperty =        ifc->GetMember("SetProperty");
+                org.bluez.Adapter.StartDiscovery =     ifc->GetMember("StartDiscovery");
+                org.bluez.Adapter.StopDiscovery =      ifc->GetMember("StopDiscovery");
+                org.bluez.Adapter.DeviceCreated =      ifc->GetMember("DeviceCreated");
+                org.bluez.Adapter.DeviceDisappeared =  ifc->GetMember("DeviceDisappeared");
+                org.bluez.Adapter.DeviceFound =        ifc->GetMember("DeviceFound");
+                org.bluez.Adapter.DeviceRemoved =      ifc->GetMember("DeviceRemoved");
+                org.bluez.Adapter.PropertyChanged =    ifc->GetMember("PropertyChanged");
 
-                } else if (table.desc == bzServiceIfcTbl) {
-                    org.bluez.Service.interface =          ifc;
-                    org.bluez.Service.AddRecord =          ifc->GetMember("AddRecord");
-                    org.bluez.Service.RemoveRecord =       ifc->GetMember("RemoveRecord");
+            } else if (table.desc == bzServiceIfcTbl) {
+                org.bluez.Service.interface =          ifc;
+                org.bluez.Service.AddRecord =          ifc->GetMember("AddRecord");
+                org.bluez.Service.RemoveRecord =       ifc->GetMember("RemoveRecord");
 
-                } else {
-                    org.bluez.Device.interface =           ifc;
-                    org.bluez.Device.DiscoverServices =    ifc->GetMember("DiscoverServices");
-                    org.bluez.Device.GetProperties =       ifc->GetMember("GetProperties");
-                    org.bluez.Device.DisconnectRequested = ifc->GetMember("DisconnectRequested");
-                    org.bluez.Device.PropertyChanged =     ifc->GetMember("PropertyChanged");
-                }
+            } else {
+                org.bluez.Device.interface =           ifc;
+                org.bluez.Device.DiscoverServices =    ifc->GetMember("DiscoverServices");
+                org.bluez.Device.GetProperties =       ifc->GetMember("GetProperties");
+                org.bluez.Device.DisconnectRequested = ifc->GetMember("DisconnectRequested");
+                org.bluez.Device.PropertyChanged =     ifc->GetMember("PropertyChanged");
             }
         }
     }
