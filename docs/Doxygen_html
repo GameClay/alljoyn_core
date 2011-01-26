@@ -31,7 +31,7 @@ PROJECT_NAME           = "AllJoyn C++ API Reference Manual"
 # This could be handy for archiving the generated documentation or
 # if some version control system is used.
 
-PROJECT_NUMBER         = "Version 1.7.0"
+PROJECT_NUMBER         = "Version 1.8.0"
 
 # The OUTPUT_DIRECTORY tag is used to specify the (relative or absolute)
 # base path where the generated documentation will be put.
@@ -568,25 +568,21 @@ WARN_LOGFILE           =
 # directories like "/usr/src/myproject". Separate the files or directories
 # with spaces.
 
-INPUT                  = ../build/android/arm/release/dist/inc/Status.h \
-						 ../build/android/arm/release/dist/inc/alljoyn \
-			             ../build/android/arm/release/dist/inc/qcc \
-			             allJoynDocumentation
-
-#INPUT                  = ../inc/ \
-#                         allJoynDocumentation \
-#                         ../../common/inc/qcc/atomic.h \
-#                         ../../common/inc/qcc/Log.h \
-#                         ../../common/inc/qcc/ManagedObj.h \
-#                         ../../common/inc/qcc/platform.h \
-#                         ../../common/inc/qcc/String.h \
-#                         ../../common/inc/qcc/windows/atomic.h \
-#                         ../../common/inc/qcc/windows/splice_types.h \
-#                         ../../common/inc/qcc/windows/unicode.h \
-#                         ../../common/inc/qcc/posix/atomic.h \
-#                         ../../common/inc/qcc/posix/splice_types.h \
-#                         ../../common/inc/qcc/posix/unicode.h
-
+INPUT                  = ../inc/ \
+                         allJoynDocumentation \
+                         ../../common/inc/qcc/atomic.h \
+                         ../../common/inc/qcc/Log.h \
+                         ../../common/inc/qcc/ManagedObj.h \
+                         ../../common/inc/qcc/platform.h \
+                         ../../common/inc/qcc/String.h \
+                         ../../common/inc/qcc/windows/atomic.h \
+                         ../../common/inc/qcc/windows/mapping.h \
+                         ../../common/inc/qcc/windows/splice_types.h \
+                         ../../common/inc/qcc/windows/unicode.h \
+                         ../../common/inc/qcc/posix/atomic.h \
+                         ../../common/inc/qcc/posix/splice_types.h \
+                         ../../common/inc/qcc/posix/unicode.h
+                         
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding, which is
 # also the default input encoding. Doxygen uses libiconv (or the iconv built
@@ -778,7 +774,7 @@ IGNORE_PREFIX          =
 # If the GENERATE_HTML tag is set to YES (the default) Doxygen will
 # generate HTML output.
 
-GENERATE_HTML          = NO
+GENERATE_HTML          = YES
 
 # The HTML_OUTPUT tag is used to specify where the HTML docs will be put.
 # If a relative path is entered the value of OUTPUT_DIRECTORY will be
@@ -812,7 +808,7 @@ HTML_FOOTER            = footer.html
 # the style sheet file to the HTML output directory, so don't put your own
 # stylesheet in the HTML output directory as well, or it will be erased!
 
-HTML_STYLESHEET        = 
+HTML_STYLESHEET        =
 
 # If the HTML_ALIGN_MEMBERS tag is set to YES, the members of classes,
 # files or namespaces will be aligned in HTML using tables. If set to
@@ -1001,13 +997,13 @@ SEARCHENGINE           = YES
 # If the GENERATE_LATEX tag is set to YES (the default) Doxygen will
 # generate Latex output.
 
-GENERATE_LATEX         = YES
+GENERATE_LATEX         = NO
 
 # The LATEX_OUTPUT tag is used to specify where the LaTeX docs will be put.
 # If a relative path is entered the value of OUTPUT_DIRECTORY will be
 # put in front of it. If left blank `latex' will be used as the default path.
 
-LATEX_OUTPUT           = android_release_latex
+LATEX_OUTPUT           = latex
 
 # The LATEX_CMD_NAME tag can be used to specify the LaTeX command name to be
 # invoked. If left blank `latex' will be used as the default command name.

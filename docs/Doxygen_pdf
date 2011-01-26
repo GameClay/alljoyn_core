@@ -576,6 +576,7 @@ INPUT                  = ../inc/ \
                          ../../common/inc/qcc/platform.h \
                          ../../common/inc/qcc/String.h \
                          ../../common/inc/qcc/windows/atomic.h \
+                         ../../common/inc/qcc/windows/mapping.h \
                          ../../common/inc/qcc/windows/splice_types.h \
                          ../../common/inc/qcc/windows/unicode.h \
                          ../../common/inc/qcc/posix/atomic.h \
@@ -773,7 +774,7 @@ IGNORE_PREFIX          =
 # If the GENERATE_HTML tag is set to YES (the default) Doxygen will
 # generate HTML output.
 
-GENERATE_HTML          = YES
+GENERATE_HTML          = NO
 
 # The HTML_OUTPUT tag is used to specify where the HTML docs will be put.
 # If a relative path is entered the value of OUTPUT_DIRECTORY will be
@@ -996,7 +997,7 @@ SEARCHENGINE           = YES
 # If the GENERATE_LATEX tag is set to YES (the default) Doxygen will
 # generate Latex output.
 
-GENERATE_LATEX         = NO
+GENERATE_LATEX         = YES
 
 # The LATEX_OUTPUT tag is used to specify where the LaTeX docs will be put.
 # If a relative path is entered the value of OUTPUT_DIRECTORY will be
