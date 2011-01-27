@@ -30,6 +30,7 @@
 #include <qcc/String.h>
 
 #include <alljoyn/BusAttachment.h>
+#include <alljoyn/QosInfo.h>
 
 #include "BDAddress.h"
 #include "BTController.h"
@@ -66,6 +67,10 @@ BTTransport::BTTransport(BusAttachment& bus) :
     transportIsStopping(false),
     btmActive(false)
 {
+    btQos.proximity = QosInfo::PROXIMITY_PHYSICAL;
+    btQos.traffic = QosInfo::TRAFFIC_RELIABLE;
+    btQos.transports = QosInfo::TRANSPORT_BLUETOOTH;
+
     btController = new BTController(bus, *this);
     QStatus status = btController->Init();
     if (status == ER_OK) {
