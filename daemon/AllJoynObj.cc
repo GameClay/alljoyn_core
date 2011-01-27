@@ -125,8 +125,8 @@ QStatus AllJoynObj::Init()
     busConnLostSignal = alljoynIntf->GetMember("BusConnectionLost");
 
     /* Make this object implement org.alljoyn.Daemon */
-    const InterfaceDescription* ajDaemonIntf = bus.GetInterface(org::alljoyn::Daemon::InterfaceName);
-    if (!ajDaemonIntf) {
+    daemonIface = bus.GetInterface(org::alljoyn::Daemon::InterfaceName);
+    if (!daemonIface) {
         status = ER_BUS_NO_SUCH_INTERFACE;
         QCC_LogError(status, ("Failed to get %s interface", org::alljoyn::Daemon::InterfaceName));
         return status;
@@ -134,22 +134,22 @@ QStatus AllJoynObj::Init()
 
     /* Hook up the methods to their handlers */
     const MethodEntry daemonMethodEntries[] = {
-        { ajDaemonIntf->GetMember("AttachSession"),     static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::AttachSession) }
+        { daemonIface->GetMember("AttachSession"),     static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::AttachSession) }
     };
-    AddInterface(*ajDaemonIntf);
+    AddInterface(*daemonIface);
     status = AddMethodHandlers(daemonMethodEntries, ArraySize(daemonMethodEntries));
     if (ER_OK != status) {
         QCC_LogError(status, ("AddMethods for %s failed", org::alljoyn::Daemon::InterfaceName));
     }
 
-    exchangeNamesSignal = ajDaemonIntf->GetMember("ExchangeNames");
+    exchangeNamesSignal = daemonIface->GetMember("ExchangeNames");
     assert(exchangeNamesSignal);
 
     /* Register a signal handler for ExchangeNames */
     if (ER_OK == status) {
         status = bus.RegisterSignalHandler(this,
                                            static_cast<MessageReceiver::SignalHandler>(&AllJoynObj::ExchangeNamesSignalHandler),
-                                           ajDaemonIntf->GetMember("ExchangeNames"),
+                                           daemonIface->GetMember("ExchangeNames"),
                                            NULL);
     } else {
         QCC_LogError(status, ("Failed to register ExchangeNamesSignalHandler"));
@@ -159,7 +159,7 @@ QStatus AllJoynObj::Init()
     if (ER_OK == status) {
         status = bus.RegisterSignalHandler(this,
                                            static_cast<MessageReceiver::SignalHandler>(&AllJoynObj::NameChangedSignalHandler),
-                                           ajDaemonIntf->GetMember("NameChanged"),
+                                           daemonIface->GetMember("NameChanged"),
                                            NULL);
     } else {
         QCC_LogError(status, ("Failed to register NameChangedSignalHandler"));
@@ -433,14 +433,6 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
     String sessionName = args[0].v_string.str;
     QosInfo qosIn;
     args[1].Get("(qqq)", &qosIn.proximity, &qosIn.traffic, &qosIn.transports);
-
-//TODO: Take this out when marshaling bug is fixed
-#if 1
-    qosIn.proximity = QosInfo::PROXIMITY_ANY;
-    qosIn.traffic = QosInfo::TRAFFIC_RELIABLE;
-    qosIn.transports = QosInfo::TRANSPORT_ANY;
-#endif
-
     QCC_DbgTrace(("JoinSession(%s, <0x%x, %d, 0x%x>)", sessionName.c_str(), qosIn.proximity, qosIn.traffic, qosIn.transports));
 
     /* Step 1: If there is a busAddr from advertsement use it to (possibly) create a physical connection */
@@ -470,30 +462,56 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
         if (trans == NULL) {
             replyCode = ALLJOYN_JOINSESSION_REPLY_UNREACHABLE;
         } else {
+            /* Give up locks around connect because it takes so long */
+            ajObj.discoverMapLock.Unlock();
+            ajObj.router.UnlockNameTable();
             status = trans->Connect(nme->busAddr.c_str(), &b2bEp);
             if (status != ER_OK) {
                 QCC_LogError(status, ("trans->Connect(%s) failed", nme->busAddr.c_str()));
                 replyCode = ALLJOYN_JOINSESSION_REPLY_CONNECT_FAILED;
             }
+            ajObj.router.LockNameTable();
+            ajObj.discoverMapLock.Lock();
+
+            /* Re-acquire sessionEp since it may have gone away while we didn't have the lock */
+            ep = ajObj.router.FindEndpoint(sessionName);
+            sessionEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
         }
     }
 
     /* If there was a physical connect, wait for the new b2b endpoint to have a virtual ep for our destination */
     uint32_t startTime = GetTimestamp();
-    while ((replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) && b2bEp) {
-        if (!sessionEp) {
-            ep = ajObj.router.FindEndpoint(sessionName);
-            sessionEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
-        }
-        if (sessionEp && sessionEp->CanUseRoute(*b2bEp)) {
-            break;
-        }
-        uint32_t now = GetTimestamp();
-        if (now > (startTime + 10000)) {
-            replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-            break;
-        } else {
-            qcc::Sleep(50);
+    String b2bEpName = b2bEp ? b2bEp->GetUniqueName() : "";
+
+    if (b2bEp) {
+        while (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
+
+            /* Does sessionEp route through b2bEp? If so, we're done */
+            if (sessionEp && sessionEp->CanUseRoute(*b2bEp)) {
+                break;
+            }
+
+            /* Otherwise wait */
+            uint32_t now = GetTimestamp();
+            if (now > (startTime + 10000)) {
+                replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+                break;
+            } else {
+                ajObj.discoverMapLock.Unlock();
+                ajObj.router.UnlockNameTable();
+                qcc::Sleep(50);
+                ajObj.router.LockNameTable();
+                ajObj.discoverMapLock.Lock();
+
+                /* Must re-find b2bEp since we gave up the lock */
+                b2bEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
+                if (!b2bEp) {
+                    replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+                }
+                /* Try to re-find sessionEp */
+                ep = ajObj.router.FindEndpoint(sessionName);
+                sessionEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
+            }
         }
     }
 
@@ -521,13 +539,18 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
         attachArgs[3].Set("s", b2bEp->GetUniqueName().c_str());
         attachArgs[4].Set("(qqq)", qosIn.proximity, qosIn.traffic, qosIn.transports);
         ProxyBusObject controllerObj(ajObj.bus, endControllerName.c_str(), org::alljoyn::Daemon::ObjectPath);
-        QCC_DbgPrintf(("Sending AttachSession(%s, %s, %s, <%x, %x, %x>) to %s",
+        controllerObj.AddInterface(*ajObj.daemonIface);
+        QCC_DbgPrintf(("Sending AttachSession(%s, %s, %s, %s, <%x, %x, %x>) to %s",
                        attachArgs[0].v_string.str,
                        attachArgs[1].v_string.str,
                        attachArgs[2].v_string.str,
                        attachArgs[3].v_string.str,
                        qosIn.proximity, qosIn.traffic, qosIn.transports,
                        endControllerName.c_str()));
+
+        /* Give up the locks during the sync method call */
+        ajObj.discoverMapLock.Unlock();
+        ajObj.router.UnlockNameTable();
         status = controllerObj.MethodCall(org::alljoyn::Daemon::InterfaceName,
                                           "AttachSession",
                                           attachArgs,
@@ -552,15 +575,22 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             QCC_DbgPrintf(("Received AttachSession response: replyCode=%d, sessionId=0x%x, qos=<%x, %x, %x>",
                            replyCode, id, qosOut.proximity, qosOut.traffic, qosOut.transports));
         }
+
+        /* Re-lock and re-acquire b2bEp */
+        ajObj.router.LockNameTable();
+        ajObj.discoverMapLock.Lock();
+        if (!b2bEpName.empty()) {
+            b2bEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
+        }
     }
 
     /* If session was unsuccessful, we need to cleanup any b2b ep that was created */
-    if (!reusedB2b && (replyCode != ALLJOYN_JOINSESSION_REPLY_SUCCESS)) {
+    if (b2bEp && !reusedB2b && (replyCode != ALLJOYN_JOINSESSION_REPLY_SUCCESS)) {
         b2bEp->DecrementRef();
     }
 
     /* If session was successful, Add a session to the table */
-    if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
+    if (b2bEp && (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS)) {
         status = ajObj.router.AddSessionRoute(msg->GetSender(), id, *sessionEp, b2bEp, b2bEp ? NULL : &qosIn);
         if (status != ER_OK) {
             replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
@@ -630,10 +660,10 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     /* Received a daemon request to establish a session route */
 
     /* Parse message args */
-    String sessionName;
-    String src;
-    String dest;
-    String srcB2B;
+    const char* sessionName;
+    const char* src;
+    const char* dest;
+    const char* srcB2B;
     QosInfo inQos;
 
     size_t na;
@@ -655,7 +685,8 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     if (!destEp) {
         /* no route */
         replyCode = ALLJOYN_JOINSESSION_REPLY_UNREACHABLE;
-    } else if (destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_REMOTE) {
+    } else if ((destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_REMOTE) ||
+               (destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_LOCAL)) {
         /* This daemon serves dest directly */
 
         /* Check for a session in the session map */
@@ -670,17 +701,17 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
             /* Give the endpoint a chance to accept or reject the new member */
             Message reply(bus);
             MsgArg acceptArgs[4];
-            acceptArgs[0].Set("s", sessionName.c_str());
-            acceptArgs[1].Set("s", src.c_str());
-            acceptArgs[2].Set("s", dest.c_str());
+            acceptArgs[0].Set("s", sessionName);
+            acceptArgs[1].Set("s", src);
+            acceptArgs[2].Set("s", dest);
             acceptArgs[3].Set("(qqq)", inQos.proximity, inQos.traffic, inQos.transports);
-            ProxyBusObject peerObj(bus, dest.c_str(), org::alljoyn::Bus::Peer::ObjectPath);
+            ProxyBusObject peerObj(bus, dest, org::alljoyn::Bus::Peer::ObjectPath);
             QCC_DbgPrintf(("Invoking SessionAccept(%s, %s, %s, <%x, %x, %x> on %s",
                            acceptArgs[0].v_string.str,
                            acceptArgs[1].v_string.str,
                            acceptArgs[2].v_string.str,
                            inQos.proximity, inQos.traffic, inQos.transports,
-                           dest.c_str()));
+                           dest));
             status = peerObj.MethodCall(org::alljoyn::Bus::Peer::Session::InterfaceName,
                                         "SessionAccept",
                                         acceptArgs,
@@ -702,7 +733,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                     qosOut = sit->second.qos;
                     replyCode = ALLJOYN_JOINSESSION_REPLY_SUCCESS;
                     sessionMap[sessionName].memberNames.push_back(src);
-                    router.AddSessionRoute(dest.c_str(), id, *srcEp, srcB2BEp);
+                    router.AddSessionRoute(dest, id, *srcEp, srcB2BEp);
                 } else {
                     replyCode = (srcB2BEp && srcEp) ? ALLJOYN_JOINSESSION_REPLY_REJECTED : ALLJOYN_JOINSESSION_REPLY_FAILED;
                 }
@@ -721,16 +752,17 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
         VirtualEndpoint* vDestEp = static_cast<VirtualEndpoint*>(destEp);
         RemoteEndpoint* destB2B = vDestEp->GetQosCompatibleB2B(inQos);
         if (destB2B) {
-            /* Forward SessionAttach to next hop */
+            /* Forward AttachSession to next hop */
             Message reply(bus);
             String endControllerName = vDestEp->GetControllerUniqueName();
             MsgArg attachArgs[5];
-            attachArgs[0].Set("s", sessionName.c_str());
-            attachArgs[1].Set("s", src.c_str());
-            attachArgs[2].Set("s", dest.c_str());
+            attachArgs[0].Set("s", sessionName);
+            attachArgs[1].Set("s", src);
+            attachArgs[2].Set("s", dest);
             attachArgs[3].Set("s", destB2B->GetUniqueName().c_str());
             attachArgs[4].Set("(qqq)", inQos.proximity, inQos.traffic, inQos.transports);
             ProxyBusObject controllerObj(bus, endControllerName.c_str(), org::alljoyn::Daemon::ObjectPath);
+            controllerObj.AddInterface(*daemonIface);
             QCC_DbgPrintf(("Forwarding AttachSession(%s, %s, %s, %s, <%x, %x, %x>) to %s",
                            attachArgs[0].v_string.str,
                            attachArgs[1].v_string.str,
@@ -758,8 +790,8 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                     VirtualEndpoint* srcEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
 
                     if (srcB2BEp && srcEp) {
-                        router.AddSessionRoute(dest.c_str(), id, *srcEp, srcB2BEp);
-                        router.AddSessionRoute(src.c_str(), id, *vDestEp, destB2B);
+                        router.AddSessionRoute(dest, id, *srcEp, srcB2BEp);
+                        router.AddSessionRoute(src, id, *vDestEp, destB2B);
                         id = tempId;
                         qosOut = tempQos;
                     } else {
@@ -786,7 +818,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     replyArgs[1].Set("u", id);
     replyArgs[2].Set("(qqq)", qosOut.proximity, qosOut.traffic, qosOut.transports);
     status = MethodReply(msg, replyArgs, ArraySize(replyArgs));
-    QCC_DbgPrintf(("AllJoynObj::AttachSession(%s) returned (%d,%u) (status=%s)", sessionName.c_str(), replyCode, id, QCC_StatusText(status)));
+    QCC_DbgPrintf(("AllJoynObj::AttachSession(%s) returned (%d,%u) (status=%s)", sessionName, replyCode, id, QCC_StatusText(status)));
 
     /* Log error if reply could not be sent */
     if (ER_OK != status) {
@@ -1217,7 +1249,6 @@ QStatus AllJoynObj::ExchangeNames(RemoteEndpoint& endpoint)
 
     /* Send all endpoint info except for endpoints related to destination */
     while (it != names.end()) {
-        printf("Examining unique name: %s\n", it->first.c_str());
         if ((it->first.size() <= shortGuidLen) || (0 != it->first.compare(1, shortGuidLen, shortGuidStr))) {
             MsgArg* aliasNames = new MsgArg[it->second.size()];
             vector<qcc::String>::const_iterator ait = it->second.begin();
@@ -1226,7 +1257,6 @@ QStatus AllJoynObj::ExchangeNames(RemoteEndpoint& endpoint)
                 /* Send exportable endpoints */
                 // if ((ait->size() > guidLen) && (0 == ait->compare(ait->size() - guidLen, guidLen, guidStr))) {
                 if (true) {
-                    printf("New alias for %s: %s\n", it->first.c_str(), ait->c_str());
                     aliasNames[numAliases++].Set("s", ait->c_str());
                 }
                 ++ait;
@@ -1364,9 +1394,8 @@ void AllJoynObj::NameChangedSignalHandler(const InterfaceDescription::Member* me
     const MsgArg* args;
     msg->GetArgs(numArgs, args);
 
-    const InterfaceDescription* ajnDaemonIface = bus.GetInterface(org::alljoyn::Daemon::InterfaceName);
-    assert(ajnDaemonIface);
-    const InterfaceDescription::Member* nameChangedMember = ajnDaemonIface->GetMember("NameChanged");
+    assert(daemonIface);
+    const InterfaceDescription::Member* nameChangedMember = daemonIface->GetMember("NameChanged");
     assert(nameChangedMember);
 
     const qcc::String alias = args[0].v_string.str;

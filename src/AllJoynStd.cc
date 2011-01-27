@@ -40,7 +40,7 @@ const char* org::alljoyn::Bus::Peer::ObjectPath = "/org/alljoyn/Bus/Peer";
 
 /** org.alljoyn.Daemon interface definitions */
 const char* org::alljoyn::Daemon::ErrorName = "org.alljoyn.Daemon.ErStatus";
-const char* org::alljoyn::Daemon::ObjectPath = "/org/alljoyn/Daemon";
+const char* org::alljoyn::Daemon::ObjectPath = "/org/alljoyn/Bus";
 const char* org::alljoyn::Daemon::InterfaceName = "org.alljoyn.Daemon";
 const char* org::alljoyn::Daemon::WellKnownName = "org.alljoyn.Daemon";
 

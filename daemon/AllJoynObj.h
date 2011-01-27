@@ -264,6 +264,9 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
   private:
     Bus& bus;                             /**< The bus */
     DaemonRouter& router;                 /**< The router */
+
+    const InterfaceDescription* daemonIface;               /**< org.alljoyn.Daemon interface */
+
     const InterfaceDescription::Member* foundNameSignal;   /**< org.alljoyn.Bus.FoundName signal */
     const InterfaceDescription::Member* lostAdvNameSignal; /**< org.alljoyn.Bus.LostAdvertisdName signal */
     const InterfaceDescription::Member* busConnLostSignal; /**< org.alljoyn.Bus.BusConnectionLost signal */

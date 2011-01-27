@@ -645,6 +645,7 @@ QStatus BusAttachment::JoinSession(const char* sessionName, uint32_t& dispositio
 
     args[0].Set("s", sessionName);
     args[1].Set("(qqq)", qos.proximity, qos.traffic, qos.transports);
+
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
     QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "JoinSession", args, ArraySize(args), reply);
     if (ER_OK == status) {

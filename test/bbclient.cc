@@ -79,8 +79,8 @@ class MyBusListener : public BusListener {
             /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
             uint32_t disposition = 0;
             SessionId sessionId;
-            QosInfo qos;
-            QStatus status = g_msgBus->JoinSession(name, disposition, sessionId, qos);
+            QosInfo qosIn = qos;
+            QStatus status = g_msgBus->JoinSession(name, disposition, sessionId, qosIn);
             if ((ER_OK == status) && (ALLJOYN_JOINSESSION_REPLY_SUCCESS == disposition)) {
                 /* Release main thread */
                 g_discoverEvent.SetEvent();
@@ -104,7 +104,7 @@ class MyBusListener : public BusListener {
 
         if (newOwner && (0 == strcmp(name, g_wellKnownName.c_str()))) {
             /* Inform main thread that name is available */
-            g_discoverEvent.SetEvent();
+            //g_discoverEvent.SetEvent();
         }
     }
 };
