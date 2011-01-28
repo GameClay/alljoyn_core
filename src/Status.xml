@@ -15,7 +15,6 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
 
 -->
 <status_block xmlns:xi="http://www.w3.org/2001/XInclude">
-    return ER_ALLJOYN
   <xi:include href="../common/src/Status.xml"/>
 
   <offset>0x9000</offset>
