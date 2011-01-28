@@ -114,7 +114,7 @@ QStatus BTTransport::NormalizeTransportSpec(const char* inSpec, qcc::String& out
             it = argMap.find("channel");
             outSpec.append(",channel=");
             if (it == argMap.end()) {
-                outSpec += U32ToString(BTAccessor::INVALID_CHANNEL);
+                outSpec += U32ToString(BTController::INVALID_CHANNEL);
             } else {
                 outSpec += it->second;
             }
@@ -123,7 +123,7 @@ QStatus BTTransport::NormalizeTransportSpec(const char* inSpec, qcc::String& out
             outSpec.append(",psm=");
             if (it == argMap.end()) {
                 outSpec.append("0x");
-                outSpec += U32ToString(BTAccessor::INVALID_PSM, 16);
+                outSpec += U32ToString(BTController::INVALID_PSM, 16);
             } else {
                 outSpec += it->second;
             }
@@ -373,8 +373,8 @@ QStatus BTTransport::Connect(const char* connectSpec, RemoteEndpoint** newep)
         goto exit;
     }
 
-    channel = StringToU32(argMap["channel"], 0, BTAccessor::INVALID_CHANNEL);
-    psm = StringToU32(argMap["psm"], 0, BTAccessor::INVALID_PSM);
+    channel = StringToU32(argMap["channel"], 0, BTController::INVALID_CHANNEL);
+    psm = StringToU32(argMap["psm"], 0, BTController::INVALID_PSM);
 
     status = Connect(bdAddr, channel, psm, newep);
 
@@ -499,7 +499,7 @@ void BTTransport::StopAdvertise()
 {
     BDAddress bdAddr;
     AdvertiseInfo adInfo;
-    btAccessor->SetSDPInfo(INVALID_UUIDREV, bdAddr, BTAccessor::INVALID_CHANNEL, BTAccessor::INVALID_PSM, adInfo);
+    btAccessor->SetSDPInfo(BTController::INVALID_UUIDREV, bdAddr, BTController::INVALID_CHANNEL, BTController::INVALID_PSM, adInfo);
     btAccessor->StopDiscoverability();
 }
 
@@ -640,7 +640,7 @@ exit:
     }
 
     if (useLocal) {
-        btController->PostConnect(status);
+        btController->PostConnect(status, *newep);
     }
 
     return status;
@@ -658,13 +658,13 @@ QStatus BTTransport::Disconnect(const BDAddress& bdAddr)
 }
 
 
+#if 0
 QStatus BTTransport::MoveConnection(const BDAddress& oldDev,
                                     const BDAddress& newDev,
                                     uint8_t channel,
                                     uint16_t psm)
 {
     return ER_NOT_IMPLEMENTED;
-#if 0
     if (!btmActive) {
         return ER_BUS_TRANSPORT_NOT_AVAILABLE;
     }
@@ -717,7 +717,7 @@ exit:
         btAccessor->Disconnect(oldDev);
     }
     return status;
-#endif
 }
+#endif
 
 }

@@ -65,6 +65,7 @@
 #include "BlueZHCIUtils.h"
 #include "BlueZIfc.h"
 #include "BTAccessor.h"
+#include "BTController.h"
 #include "BTEndpoint.h"
 #include "BTTransport.h"
 
@@ -368,6 +369,7 @@ void BTTransport::BTAccessor::ConnectBlueZ()
      */
     if (!bluetoothAvailable && (EnumerateAdapters() == ER_OK)) {
         bluetoothAvailable = true;
+        transport->BTDevicePower(true);
     }
 }
 
@@ -401,6 +403,8 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
     defaultAdapterObj = AdapterObject();
     anyAdapterObj = AdapterObject();
     adapterLock.Unlock();
+
+    transport->BTDevicePower(false);
 }
 
 
@@ -414,7 +418,7 @@ QStatus BTTransport::BTAccessor::SetSDPInfo(uint32_t uuidRev,
                   uuidRev, bdAddr.ToString().c_str(), channel, psm));
     QStatus status = ER_OK;
 
-    if ((uuidRev == INVALID_UUIDREV) || adInfo.empty()) {
+    if ((uuidRev == BTController::INVALID_UUIDREV) || adInfo.empty()) {
         if (recordHandle != 0) {
             RemoveRecord();
         }
@@ -563,7 +567,7 @@ QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
             shutdown(rfcommLFd, SHUT_RDWR);
             close(rfcommLFd);
             rfcommLFd = -1;
-            channel = INVALID_CHANNEL;
+            channel = BTController::INVALID_CHANNEL;
         } else {
             QCC_DbgPrintf(("Bound RFCOMM channel: %d", channel));
 
@@ -575,7 +579,7 @@ QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
                 shutdown(rfcommLFd, SHUT_RDWR);
                 close(rfcommLFd);
                 rfcommLFd = -1;
-                channel = INVALID_CHANNEL;
+                channel = BTController::INVALID_CHANNEL;
             }
         }
     }
@@ -607,7 +611,7 @@ QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
             shutdown(l2capLFd, SHUT_RDWR);
             close(l2capLFd);
             l2capLFd = -1;
-            psm = INVALID_PSM;
+            psm = BTController::INVALID_PSM;
         } else {
             QCC_DbgPrintf(("Bound PSM: %#04x", psm));
             ConfigL2cap(l2capLFd);
@@ -619,7 +623,7 @@ QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
                 shutdown(l2capLFd, SHUT_RDWR);
                 close(l2capLFd);
                 l2capLFd = -1;
-                psm = INVALID_PSM;
+                psm = BTController::INVALID_PSM;
             }
         }
     }
@@ -802,7 +806,7 @@ BTEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
     bool usingRfcomm;
 
 
-    if ((channel == INVALID_CHANNEL) && (psm == INVALID_PSM)) {
+    if ((channel == BTController::INVALID_CHANNEL) && (psm == BTController::INVALID_PSM)) {
         status = GetDeviceInfo(bdAddr, NULL, NULL, &channel, &psm, NULL);
         if (status != ER_OK) {
             return NULL;
@@ -810,7 +814,7 @@ BTEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
     }
 
 
-    usingRfcomm = (psm == INVALID_PSM);
+    usingRfcomm = (psm == BTController::INVALID_PSM);
 
     memset(&addr, 0, sizeof(addr));
 
@@ -1223,18 +1227,19 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
                 if ((count > 0) && (uuidRev != busUUIDRev)) {
                     uint32_t now = GetTimestamp();
 
+                    QCC_DbgHLPrintf(("Found AllJoyn device: %s  UUIDRev = %08x", addrStr, uuidRev));
+
                     deviceLock.Lock();
-                    FoundInfo* foundInfo = &foundDevices[addr];
+                    FoundInfo& foundInfo = foundDevices[addr];
 
-                    if ((foundInfo->uuidRev == INVALID_UUIDREV) ||
-                        (foundInfo->uuidRev != uuidRev) ||
-                        (now - foundInfo->timestamp > FOUND_DEVICE_INFO_REFRESH)) {
+                    if ((foundInfo.uuidRev == BTController::INVALID_UUIDREV) ||
+                        (foundInfo.uuidRev != uuidRev) ||
+                        (now - foundInfo.timestamp > FOUND_DEVICE_INFO_REFRESH)) {
 
-                        foundInfo->uuidRev = uuidRev;
-                        foundInfo->timestamp = now;
+                        foundInfo.uuidRev = uuidRev;
+                        foundInfo.timestamp = now;
 
                         DispatchOperation(new DispatchInfo(DispatchInfo::DEVICE_FOUND, addr, uuidRev));
-                        break;
                     }
                     deviceLock.Unlock();
                 }
@@ -1420,7 +1425,7 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                         QCC_DbgPrintf(("    Attribute ID: %04x  ALLJOYN_BT_L2CAP_PSM_ATTR: %s", attrId, psmStr.c_str()));
                         *psm = StringToU32(psmStr);
                         if ((*psm < 0x1001) || ((*psm & 0x1) != 0x1) || (*psm > 0x8fff)) {
-                            *psm = INVALID_PSM;
+                            *psm = BTController::INVALID_PSM;
                         }
                         foundPSMChannel = true;
                     }
@@ -1440,7 +1445,7 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                         QCC_DbgPrintf(("    Attribute ID: %04x  ALLJOYN_BT_RFCOMM_CH_ATTR: %s", attrId, channelStr.c_str()));
                         *channel = StringToU32(channelStr);
                         if ((*channel < 1) || (*channel > 31)) {
-                            *channel = INVALID_CHANNEL;
+                            *channel = BTController::INVALID_CHANNEL;
                         }
                         foundPSMChannel = true;
                     }
@@ -1470,8 +1475,8 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
             }
         }
 
-        if (((!channel || (*channel == INVALID_CHANNEL)) &&
-             (!psm || (*psm == INVALID_PSM))) ||
+        if (((!channel || (*channel == BTController::INVALID_CHANNEL)) &&
+             (!psm || (*psm == BTController::INVALID_PSM))) ||
             (!foundConnAddr || !foundUUIDRev || !foundPSMChannel || !foundAdInfo)) {
             status = ER_FAIL;
         }
@@ -1565,7 +1570,7 @@ QStatus BTTransport::BTAccessor::GetDeviceObjPath(const BDAddress& bdAddr,
             } else {
                 qcc::String errMsg;
                 const char* errName = rsp->GetErrorName(&errMsg);
-                QCC_DbgHLPrintf(("GetDeviceObjPath(): FindDevice method call: %s - %s", errName, errMsg.c_str()));
+                QCC_DbgPrintf(("GetDeviceObjPath(): FindDevice method call: %s - %s", errName, errMsg.c_str()));
             }
         }
     }
@@ -1578,7 +1583,7 @@ QStatus BTTransport::BTAccessor::GetDeviceObjPath(const BDAddress& bdAddr,
             if (status != ER_OK) {
                 qcc::String errMsg;
                 const char* errName = rsp->GetErrorName(&errMsg);
-                QCC_DbgHLPrintf(("GetDeviceObjPath(): CreateDevice method call: %s - %s", errName, errMsg.c_str()));
+                QCC_DbgPrintf(("GetDeviceObjPath(): CreateDevice method call: %s - %s", errName, errMsg.c_str()));
             }
         }
     }
@@ -1607,7 +1612,7 @@ void BTTransport::BTAccessor::DiscoveryControl(uint32_t busRev, const InterfaceD
         status = adapter->MethodCall(method, NULL, 0, rsp, BT_DEFAULT_TO);
         if (status == ER_OK) {
             bool started = &method == org.bluez.Adapter.StartDiscovery;
-            QCC_DbgPrintf(("%s discovery", started ? "Started" : "Stopped"));
+            QCC_DbgHLPrintf(("%s discovery", started ? "Started" : "Stopped"));
             if (started) {
                 static const uint16_t MIN_PERIOD = 6;
                 static const uint16_t MAX_PERIOD = 10;
@@ -1647,6 +1652,8 @@ void BTTransport::BTAccessor::SetDiscoverabilityProperty()
         adapterList.push_back(adapterIt->second);
     }
     adapterLock.Unlock();
+
+    QCC_DbgHLPrintf(("%s discoverability", discoverable ? "Enabled" : "Disabled"));
 
     for (list<AdapterObject>::const_iterator it = adapterList.begin(); it != adapterList.end(); ++it) {
         Message reply(bzBus);

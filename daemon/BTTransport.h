@@ -70,7 +70,6 @@ class BTTransport :
     friend class BTController;
 
   public:
-
     /**
      * Returns the name of this transport
      */
@@ -190,6 +189,14 @@ class BTTransport :
      * @see BTTransport::StartListen
      */
     QStatus StopListen(const char* listenSpec);
+
+    /**
+     * Function for the BT Accessor to inform a change in the
+     * power/availablity of the Bluetooth device.
+     *
+     * @param on    true if BT device is powered on and available, false otherwise.
+     */
+    void BTDevicePower(bool on) { btController->BTDevicePower(on); }
 
     /**
      * Callback for BTEndpoint thead exit.
@@ -410,24 +417,6 @@ class BTTransport :
                                   uint8_t& channel,
                                   uint16_t& psm,
                                   BluetoothDeviceInterface::AdvertiseInfo& adInfo);
-
-    /**
-     * Tells the Bluetooth transport to first initiate a secondary connection
-     * to the bus via the new device, then disconnect from the old device if
-     * the connection to the new device was successful.
-     *
-     * @param oldDev    BD Address of the old device to disconnect from
-     * @param newDev    BD Address of the new device to connect to
-     * @param channel   RFCOMM channel of the new device to connect to
-     * @param psm       L2CAP PSM of the new device to connect to
-     *
-     * @return  ER_OK if the connection was successfully moved.
-     */
-    virtual QStatus MoveConnection(const BDAddress& oldDev,
-                                   const BDAddress& newDev,
-                                   uint8_t channel,
-                                   uint16_t psm);
-
 
 
     BusAttachment& bus;                            /**< The message bus for this transport */

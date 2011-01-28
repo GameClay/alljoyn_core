@@ -35,6 +35,7 @@
 
 #include "BDAddress.h"
 #include "BlueZUtils.h"
+#include "BTController.h"
 #include "BTTransport.h"
 
 #include <Status.h>
@@ -44,9 +45,6 @@ namespace ajn {
 
 class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListener {
   public:
-    static const uint8_t INVALID_CHANNEL = 0xff;    /**< Invalid RFCOMM channel value */
-    static const uint16_t INVALID_PSM = 0;          /**< Invalid L2CAP PSM value */
-
     /**
      * Constructor
      *
@@ -88,7 +86,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     /**
      * Stop discovery (inquiry)
      */
-    void StopDiscovery() { DiscoveryControl(INVALID_UUIDREV, *org.bluez.Adapter.StopDiscovery); }
+    void StopDiscovery() { DiscoveryControl(BTController::INVALID_UUIDREV, *org.bluez.Adapter.StopDiscovery); }
 
     /**
      * Start discoverability (inquiry scan)
