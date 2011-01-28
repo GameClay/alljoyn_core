@@ -29,6 +29,7 @@
 #include <qcc/Stream.h>
 
 #include "BusInternal.h"
+#include "SASLEngine.h"
 
 namespace ajn {
 
@@ -43,19 +44,19 @@ class BusAttachment;
  * %EndpointAuth is a utility class responsible for adding endpoint authentication
  * to BusEndpoint implementations.
  */
-class EndpointAuth {
+class EndpointAuth : public SASLEngine::ExtensionHandler {
   public:
 
     /**
      * Constructor
      *
      * @param bus          Bus for which authentication is done
-     * @param stream       Stream used to communicate with media.
+     * @param endpoint     The endpoint being authenticated.
      * @param isAcceptor   Indicates if the endpoint is the acceptor of a connection (default is false).
      */
-    EndpointAuth(BusAttachment& bus, qcc::Stream& stream, bool isAcceptor = false) :
+    EndpointAuth(BusAttachment& bus, RemoteEndpoint& endpoint, bool isAcceptor = false) :
         bus(bus),
-        stream(stream),
+        endpoint(endpoint),
         uniqueName(bus.GetInternal().GetRouter().GenerateUniqueName()),
         isAccepting(isAcceptor),
         remoteProtocolVersion(0)
@@ -71,17 +72,11 @@ class EndpointAuth {
      *
      * @param authMechanisms  The authentication mechanisms to try.
      * @param authUsed        Returns the name of the authentication method that was used to establish the connection.
-     * @param isBusToBus      [IN,OUT] When initiating connection indicate [IN] whether this is a bus-to-bus connection.
-     *                        When responding to a connection attempt indicate [OUT] whether this is a bus-to-bus connection.
-     * @param allowRemote     [IN,OUT] When initiating a connection this input tells the local daemon whether it wants to receive
-     *                        messages from remote busses.
-     *                        When accepting a connection, this output indicates whether the connected endpoint is willing to receive
-     *                        messages from remote busses.
      * @return
      *      - ER_OK if successful
      *      - An error status otherwise
      */
-    QStatus Establish(const qcc::String& authMechanisms, qcc::String& authUsed, bool& isBusToBus, bool& allowRemote);
+    QStatus Establish(const qcc::String& authMechanisms, qcc::String& authUsed);
 
     /**
      * Get the unique bus name assigned by the bus for this endpoint.
@@ -121,10 +116,18 @@ class EndpointAuth {
 
   private:
 
-    EndpointAuth();
+    /**
+     * Handle SASL extension commands during establishment.
+     *
+     * @param sasl    The sasl engine instance.
+     * @param extCmd  The extension command string or an empty string.
+     *
+     * @return  A command/response string or an empty string.
+     */
+    qcc::String SASLCallout(SASLEngine &sasl, const qcc::String& extCmd);
 
     BusAttachment& bus;
-    qcc::Stream& stream;             ///< Stream connection to peer bus node
+    RemoteEndpoint& endpoint;
     qcc::String uniqueName;          ///< Unique bus name for endpoint
     qcc::String remoteName;          ///< Bus name for the peer at other end of this endpoint
 
@@ -135,8 +138,8 @@ class EndpointAuth {
 
     /* Internal methods */
 
-    QStatus Hello(bool isBusToBus, bool allowRemote);
-    QStatus WaitHello(bool& isBusToBus, bool& allowRemote);
+    QStatus Hello();
+    QStatus WaitHello();
 };
 
 }

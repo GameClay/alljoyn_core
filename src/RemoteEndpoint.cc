@@ -56,16 +56,17 @@ RemoteEndpoint::RemoteEndpoint(BusAttachment& bus,
                                const char* threadName) :
     BusEndpoint(BusEndpoint::ENDPOINT_TYPE_REMOTE),
     bus(bus),
-    auth(bus, stream, incoming),
+    stream(stream),
+    auth(bus, *this, incoming),
     txQueue(),
     txWaitQueue(),
     txQueueLock(),
     exitCount(0),
-    rxThread(bus, (qcc::String(incoming ? "rx-srv-" : "rx-cli-") + threadName).c_str(), stream, incoming),
-    txThread(bus, (qcc::String(incoming ? "tx-srv-" : "tx-cli-") + threadName).c_str(), stream, txQueue, txWaitQueue, txQueueLock),
+    rxThread(bus, (qcc::String(incoming ? "rx-srv-" : "rx-cli-") + threadName).c_str(), incoming),
+    txThread(bus, (qcc::String(incoming ? "tx-srv-" : "tx-cli-") + threadName).c_str(), txQueue, txWaitQueue, txQueueLock),
     connSpec(connectSpec),
     incoming(incoming),
-    allowRemote(false)
+    processId(-1)
 {
 }
 
@@ -78,20 +79,19 @@ RemoteEndpoint::~RemoteEndpoint()
     Join();
 }
 
-QStatus RemoteEndpoint::Start(bool isBusToBus, bool allowRemote)
+QStatus RemoteEndpoint::Start()
 {
     QCC_DbgTrace(("RemoteEndpoint::Start(isBusToBus = %s, allowRemote = %s)",
-                  isBusToBus ? "true" : "false",
-                  allowRemote ? "true" : "false"));
+                  features.isBusToBus ? "true" : "false",
+                  features.allowRemote ? "true" : "false"));
     QStatus status;
     Router& router = bus.GetInternal().GetRouter();
     bool isTxStarted = false;
     bool isRxStarted = false;
 
-    if (isBusToBus) {
+    if (features.isBusToBus) {
         endpointType = BusEndpoint::ENDPOINT_TYPE_BUS2BUS;
     }
-    this->allowRemote = allowRemote;
 
     /* Start the TX thread */
     status = txThread.Start(this, this);
@@ -185,13 +185,14 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
     QStatus status = ER_OK;
     RemoteEndpoint* ep = reinterpret_cast<RemoteEndpoint*>(arg);
 
-    /* Receive messages until the socket is disconnected */
     Router& router = bus.GetInternal().GetRouter();
+    qcc::Event& ev = ep->GetSource().GetSourceEvent(); 
+    /* Receive messages until the socket is disconnected */
     while (!IsStopping() && (ER_OK == status)) {
-        status = Event::Wait(source.GetSourceEvent());
+        status = Event::Wait(ev);
         if (ER_OK == status) {
             Message msg(bus);
-            status = msg->Unmarshal(source, ep->GetUniqueName(), (validateSender && BusEndpoint::ENDPOINT_TYPE_BUS2BUS != ep->GetEndpointType()));
+            status = msg->Unmarshal(*ep, (validateSender && BusEndpoint::ENDPOINT_TYPE_BUS2BUS != ep->GetEndpointType()));
             switch (status) {
             case ER_OK :
                 status = router.PushMessage(msg, *ep);
@@ -288,7 +289,7 @@ void* RemoteEndpoint::TxThread::Run(void* arg)
                 queueLock.Unlock();
 
                 /* Deliver message */
-                status = msg->Deliver(sink);
+                status = msg->Deliver(*ep);
             }
         }
     }

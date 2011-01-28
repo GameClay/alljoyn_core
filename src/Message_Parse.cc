@@ -487,6 +487,24 @@ QStatus _Message::ParseValue(MsgArg* arg, const char*& sigPtr)
         status = ParseVariant(arg);
         break;
 
+    case ALLJOYN_HANDLE:
+        {
+            bufPos = AlignPtr(bufPos, 4);
+            if (endianSwap) {
+                EndianSwap32(*((uint32_t*)bufPos));
+            }
+            uint32_t index = *((uint32_t*)bufPos);
+            uint32_t numHandles = (hdrFields.field[ALLJOYN_HDR_FIELD_HANDLES].typeId == ALLJOYN_INVALID) ? 0 : hdrFields.field[ALLJOYN_HDR_FIELD_HANDLES].v_uint32;
+            if (index >  numHandles) {
+                status = ER_BUS_NO_SUCH_HANDLE;
+            } else {
+                arg->typeId = typeId;
+                arg->v_handle.fd = handles[index];
+                bufPos += 4;
+            }
+        }
+        break;
+
     default:
         status = ER_BUS_BAD_VALUE_TYPE;
         break;
@@ -697,26 +715,38 @@ static const size_t MAX_PULL = (128 * 1024);
 /*
  * Pull exactly the number or bytes requested from the source
  */
-static QStatus PullExactBytes(Source& source,
-                              void* buffer,
-                              size_t numBytes)
+static QStatus PullExact(Source& source,
+                         void* buffer,
+                         size_t numBytes,
+                         qcc::SocketFd* fdList,
+                         size_t maxFds,
+                         size_t& numFds)
 {
     QStatus status = ER_OK;
     uint8_t* bufPos = (uint8_t*)buffer;
+    maxFds = 0;
     size_t bytesRead = 0;
     while (numBytes > 0) {
         size_t toRead = (std::min)(numBytes, MAX_PULL);
-        status = source.PullBytes(bufPos, toRead, bytesRead, PULL_TIMEOUT(toRead));
+        if ((maxFds > 0) && (numFds == 0)) {
+            numFds = maxFds;
+            status = source.PullBytesAndFds(bufPos, toRead, bytesRead, fdList, maxFds, PULL_TIMEOUT(toRead));
+            if ((status == ER_OK) && (numFds > 0)) {
+                QCC_DbgHLPrintf(("Message was accompanied by %d handles", numFds));
+            }
+        } else {
+            status = source.PullBytes(bufPos, toRead, bytesRead, PULL_TIMEOUT(toRead));
+        }
         if (status != ER_OK) {
             QCC_DbgPrintf(("PullBytes %s", QCC_StatusText(status)));
             break;
         }
+        assert(bytesRead > 0);
         bufPos += bytesRead;
         numBytes -= bytesRead;
     }
     return status;
 }
-
 
 /*
  * Map from from wire protocol values to our enumeration type
@@ -731,7 +761,7 @@ static const AllJoynFieldType FieldTypeMapping[] = {
     ALLJOYN_HDR_FIELD_DESTINATION,       /*  6 */
     ALLJOYN_HDR_FIELD_SENDER,            /*  7 */
     ALLJOYN_HDR_FIELD_SIGNATURE,         /*  8 */
-    ALLJOYN_HDR_FIELD_UNKNOWN,           /*  9 */
+    ALLJOYN_HDR_FIELD_HANDLES,           /*  9 */
     ALLJOYN_HDR_FIELD_UNKNOWN,           /* 10 */
     ALLJOYN_HDR_FIELD_UNKNOWN,           /* 11 */
     ALLJOYN_HDR_FIELD_UNKNOWN,           /* 12 */
@@ -758,7 +788,7 @@ QStatus _Message::HeaderChecks(bool pedantic)
             break;
         }
 
-    /* Falling through */
+        /* Falling through */
     case MESSAGE_METHOD_CALL:
         if (hdrFields.field[ALLJOYN_HDR_FIELD_PATH].typeId == ALLJOYN_INVALID) {
             status = ER_BUS_PATH_MISSING;
@@ -776,7 +806,7 @@ QStatus _Message::HeaderChecks(bool pedantic)
             break;
         }
 
-    /* Falling through */
+        /* Falling through */
     case MESSAGE_METHOD_RET:
         if (hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].typeId == ALLJOYN_INVALID) {
             status = ER_BUS_REPLY_SERIAL_MISSING;
@@ -801,13 +831,17 @@ QStatus _Message::HeaderChecks(bool pedantic)
     return status;
 }
 
-QStatus _Message::Unmarshal(Source& source, const qcc::String& endpointName, bool checkSender, bool pedantic, uint32_t timeout)
+QStatus _Message::Unmarshal(RemoteEndpoint& endpoint, bool checkSender, bool pedantic, uint32_t timeout)
 {
     QStatus status;
-    size_t pktSize = 0;
+    size_t pktSize;
     size_t allocSize;
     uint8_t* endOfHdr;
+    qcc::SocketFd fdList[qcc::SOCKET_MAX_FILE_DESCRIPTORS];
+    size_t maxFds = endpoint.GetFeatures().handlePassing ? ArraySize(fdList) : 0;
     MsgArg* senderField = &hdrFields.field[ALLJOYN_HDR_FIELD_SENDER];
+    Source& source = endpoint.GetSource();
+    const qcc::String& endpointName = endpoint.GetUniqueName();
 
     if (!bus.IsStarted()) {
         return ER_BUS_BUS_NOT_STARTED;
@@ -825,12 +859,17 @@ QStatus _Message::Unmarshal(Source& source, const qcc::String& endpointName, boo
      * Read the message header
      */
     size_t pulled;
-    status = source.PullBytes(&msgHeader, sizeof(AllJoynMessageHeader), pulled, timeout ? timeout : Event::WAIT_FOREVER);
+    if (maxFds > 0) {
+        numHandles = maxFds;
+        status = source.PullBytesAndFds(&msgHeader, sizeof(MessageHeader), pulled, fdList, numHandles, timeout ? timeout : Event::WAIT_FOREVER);
+    } else {
+        status = source.PullBytes(&msgHeader, sizeof(MessageHeader), pulled, timeout ? timeout : Event::WAIT_FOREVER);
+    }
     if (status != ER_OK) {
         goto ExitUnmarshal;
     }
-    if (pulled < sizeof(AllJoynMessageHeader)) {
-        status = PullExactBytes(source, (uint8_t*)(&msgHeader) + pulled, sizeof(AllJoynMessageHeader) - pulled);
+    if (pulled < sizeof(MessageHeader)) {
+        status = PullExact(source, (uint8_t*)(&msgHeader) + pulled, sizeof(MessageHeader) - pulled, fdList, maxFds, numHandles);
         if (status != ER_OK) {
             goto ExitUnmarshal;
         }
@@ -889,28 +928,30 @@ QStatus _Message::Unmarshal(Source& source, const qcc::String& endpointName, boo
      */
     memcpy(msgBuf, &msgHeader, sizeof(msgHeader));
     bufPos = (uint8_t*)msgBuf + sizeof(msgHeader);
-    /*
-     * Read the entire message
-     */
-    QCC_DbgPrintf(("Msg type:%d headerLen: %d Attempting to read %d bytes", msgHeader.msgType, msgHeader.headerLen, pktSize));
-    status = PullExactBytes(source, bufPos, pktSize);
-    if (status != ER_OK) {
-        goto ExitUnmarshal;
-    }
     bufEOD = bufPos + pktSize;
+    endOfHdr = bufPos + msgHeader.headerLen;
     /*
      * Zero fill the pad at the end of the buffer
      */
     memset(bufEOD, 0, (uint8_t*)msgBuf + allocSize - bufEOD);
+
+    QCC_DbgPrintf(("Msg type:%d headerLen: %d Attempting to read %d bytes", msgHeader.msgType, msgHeader.headerLen, pktSize));
+
+    status = PullExact(source, bufPos, pktSize, fdList, maxFds, numHandles);
+    if (status != ER_OK) {
+        goto ExitUnmarshal;
+    }
+    if (numHandles > 0) {
+        handles = new qcc::SocketFd[numHandles];
+        memcpy(handles, fdList, numHandles * sizeof(qcc::SocketFd));
+    }
     /*
      * Parse the received header fields - each header starts on an 8 byte boundary
      */
-    endOfHdr = bufPos + msgHeader.headerLen;
     while (bufPos < endOfHdr) {
         bufPos = AlignPtr(bufPos, 8);
         AllJoynFieldType fieldId = (*bufPos >= ArraySize(FieldTypeMapping)) ? ALLJOYN_HDR_FIELD_UNKNOWN : FieldTypeMapping[*bufPos];
         const char* sigPtr = (char*)(++bufPos);
-
         /*
          * An invalid field type is an error
          */
@@ -960,9 +1001,6 @@ QStatus _Message::Unmarshal(Source& source, const qcc::String& endpointName, boo
      * Header is always padded to end on an 8 byte boundary
      */
     bufPos = AlignPtr(bufPos, 8);
-    /*
-     * Save start of body
-     */
     bodyPtr = bufPos;
     /*
      * If header is compressed try to expand it
@@ -994,6 +1032,24 @@ QStatus _Message::Unmarshal(Source& source, const qcc::String& endpointName, boo
      * Check the validity of the message header
      */
     status = HeaderChecks(pedantic);
+    /*
+     * Check if there are handles accompanying this message and if we expect them.
+     */
+    if (status == ER_OK) {
+        const uint32_t expectFds = (hdrFields.field[ALLJOYN_HDR_FIELD_HANDLES].typeId == ALLJOYN_INVALID) ? 0 : hdrFields.field[ALLJOYN_HDR_FIELD_HANDLES].v_uint32;
+        if (!endpoint.GetFeatures().handlePassing) {
+            /*
+             * Handles are not allowed if handle passing is not enabled.
+             */
+            if (expectFds || numHandles) {
+                status = ER_BUS_HANDLES_NOT_ENABLED;
+                QCC_LogError(status, ("Handle passing was not negotiated on this connection"));
+            }
+        } else if (expectFds != numHandles) {
+            status = ER_BUS_HANDLES_MISMATCH;
+            QCC_LogError(status, ("Wrong number of handles accompanied this message: expected %d got %d", expectFds, numHandles));
+        }
+    }
     if (status != ER_OK) {
         goto ExitUnmarshal;
     }
@@ -1067,7 +1123,7 @@ ExitUnmarshal:
         /*
          * Message is in an unknown state so clear it.
          */
-        memset(&msgHeader, 0, sizeof(AllJoynMessageHeader));
+        memset(&msgHeader, 0, sizeof(MessageHeader));
     }
     return status;
 }

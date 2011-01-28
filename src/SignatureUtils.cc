@@ -38,8 +38,6 @@ using namespace qcc;
 
 namespace ajn {
 
-#define ARRAY_SANITY_CHECK   256 * 1024
-
 bool SignatureUtils::IsBasicType(AllJoynTypeId typeId)
 {
     switch (typeId) {
@@ -55,6 +53,7 @@ bool SignatureUtils::IsBasicType(AllJoynTypeId typeId)
     case ALLJOYN_OBJECT_PATH:
     case ALLJOYN_STRING:
     case ALLJOYN_SIGNATURE:
+    case ALLJOYN_HANDLE:
         return true;
 
     default:
@@ -136,6 +135,7 @@ QStatus SignatureUtils::MakeSignature(const MsgArg* values, uint8_t numValues, c
         case ALLJOYN_STRING:
         case ALLJOYN_VARIANT:
         case ALLJOYN_BYTE:
+        case ALLJOYN_HANDLE:
             typeChar = (char)values->typeId;
             break;
 
@@ -162,6 +162,7 @@ size_t SignatureUtils::AlignmentForType(AllJoynTypeId typeId)
     case ALLJOYN_BOOLEAN:
     case ALLJOYN_INT32:
     case ALLJOYN_UINT32:
+    case ALLJOYN_HANDLE:
         return 4;
 
     case ALLJOYN_OBJECT_PATH:
@@ -205,11 +206,12 @@ size_t SignatureUtils::AlignmentForType(AllJoynTypeId typeId)
 #define PadUp(n, i)   (((n) + (i) - 1) & ~((i) - 1))
 
 
-size_t SignatureUtils::GetSize(const MsgArg* values, size_t numValues, size_t sz)
+size_t SignatureUtils::GetSize(const MsgArg* values, size_t numValues, size_t offset)
 {
     if (values == NULL) {
-        return sz;
+        return offset;
     }
+    size_t sz = offset;
     while (numValues--) {
         // QCC_DbgPrintf(("GetSize @%ld %s", sz, values->ToString().c_str()));
         switch (values->typeId) {
@@ -257,6 +259,7 @@ size_t SignatureUtils::GetSize(const MsgArg* values, size_t numValues, size_t sz
         case ALLJOYN_BOOLEAN:
         case ALLJOYN_INT32:
         case ALLJOYN_UINT32:
+        case ALLJOYN_HANDLE:
             sz = PadUp(sz, 4) + 4;
             break;
 
@@ -350,6 +353,7 @@ QStatus SignatureUtils::ParseCompleteType(const char*& sigPtr)
     case ALLJOYN_VARIANT:
     case ALLJOYN_STRUCT:
     case ALLJOYN_WILDCARD:
+    case ALLJOYN_HANDLE:
         return ER_OK;
 
     case ALLJOYN_DICT_ENTRY_OPEN:
@@ -431,6 +435,7 @@ QStatus SignatureUtils::ParseContainerSignature(MsgArg& container, const char*& 
         case ALLJOYN_SIGNATURE:
         case ALLJOYN_VARIANT:
         case ALLJOYN_STRUCT:
+        case ALLJOYN_HANDLE:
             ++outer->members;
             break;
 

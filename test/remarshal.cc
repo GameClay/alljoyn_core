@@ -32,10 +32,13 @@
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/Message.h>
 #include <alljoyn/version.h>
-#include "../src/PeerState.h"
-#include "../src/SignatureUtils.h"
 
 #include <Status.h>
+
+/* Private files included for unit testing */
+#include <PeerState.h>
+#include <SignatureUtils.h>
+#include <RemoteEndpoint.h>
 
 using namespace qcc;
 using namespace std;
@@ -77,9 +80,9 @@ class MyMessage : public _Message {
 
     QStatus UnmarshalBody() { return UnmarshalArgs("*"); }
 
-    QStatus Unmarshal(qcc::Source& source, const qcc::String& endpointName, bool pedantic = true)
+    QStatus Unmarshal(RemoteEndpoint& ep, bool pedantic = true)
     {
-        return _Message::Unmarshal(source, endpointName, pedantic);
+        return _Message::Unmarshal(ep, pedantic);
     }
 
     QStatus ReMarshal(const char* senderName)
@@ -87,9 +90,9 @@ class MyMessage : public _Message {
         return _Message::ReMarshal(senderName, true);
     }
 
-    QStatus Deliver(qcc::Sink& sink)
+    QStatus Deliver(RemoteEndpoint& ep)
     {
-        return _Message::Deliver(sink);
+        return _Message::Deliver(ep);
     }
 };
 
@@ -101,6 +104,7 @@ static QStatus TestRemarshal(const MsgArg* argList, size_t numArgs, const char* 
 {
     QStatus status;
     Pipe stream;
+    RemoteEndpoint ep(*gBus, false, "", stream, "dummy");
     MyMessage msg;
     uint32_t serial;
 
@@ -119,12 +123,12 @@ static QStatus TestRemarshal(const MsgArg* argList, size_t numArgs, const char* 
     if (status != ER_OK) {
         return status;
     }
-    status = msg.Deliver(stream);
+    status = msg.Deliver(ep);
     if (status != ER_OK) {
         return status;
     }
 
-    status = msg.Unmarshal(stream, msg.GetSender());
+    status = msg.Unmarshal(ep);
     if (status != ER_OK) {
         printf("Message::Unmarshal status:%s\n", QCC_StatusText(status));
         return status;
@@ -136,12 +140,12 @@ static QStatus TestRemarshal(const MsgArg* argList, size_t numArgs, const char* 
     }
 
     msg.ReMarshal("from.sender");
-    status = msg.Deliver(stream);
+    status = msg.Deliver(ep);
     if (status != ER_OK) {
         printf("Message::ReMarshal status:%s\n", QCC_StatusText(status));
         return status;
     }
-    status = msg.Unmarshal(stream, msg.GetSender());
+    status = msg.Unmarshal(ep);
     if (status != ER_OK) {
         printf("Message::Unmarshal status:%s\n", QCC_StatusText(status));
         return status;

@@ -22,6 +22,8 @@
 
 #include <ctype.h>
 #include <qcc/platform.h>
+#include <queue>
+#include <algorithm>
 
 #include <qcc/Util.h>
 #include <qcc/Debug.h>
@@ -32,10 +34,13 @@
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/Message.h>
 #include <alljoyn/version.h>
-#include "../src/PeerState.h"
-#include "../src/SignatureUtils.h"
 
 #include <Status.h>
+
+/* Private files included for unit testing */
+#include <PeerState.h>
+#include <SignatureUtils.h>
+#include <RemoteEndpoint.h>
 
 using namespace qcc;
 using namespace std;
@@ -45,6 +50,40 @@ using namespace ajn;
 static BusAttachment* gBus;
 static bool fuzzing = false;
 static bool quiet = false;
+
+
+class TestPipe : public qcc::Pipe
+{
+  public:
+    TestPipe() : qcc::Pipe() {}
+
+    QStatus PullBytesAndFds(void* buf, size_t reqBytes, size_t& actualBytes, SocketFd* fdList, size_t& numFds, uint32_t timeout = Event::WAIT_FOREVER)
+    {
+        numFds = std::min(numFds, fds.size());
+        for (size_t i = 0; i < numFds; ++i) {
+            *fdList++ = fds.front();
+            fds.pop();
+        }
+        return PullBytes(buf, reqBytes, actualBytes);
+    }
+
+    QStatus PushBytesAndFds(const void* buf, size_t numBytes, size_t& numSent, SocketFd* fdList, size_t numFds, uint32_t pid = -1)
+    {
+        while (numFds--) {
+            fds.push(*fdList++);
+        }
+        return PushBytes(buf, numBytes, numSent);
+    }
+
+    /** Destructor */
+    virtual ~TestPipe() { }
+
+  private:
+
+     /* OOB file descriptors */
+     std::queue<qcc::SocketFd>fds;
+
+};
 
 void Randfuzzing(void* buf, size_t len, uint8_t percent)
 {
@@ -94,14 +133,14 @@ class MyMessage : public _Message {
 
     QStatus UnmarshalBody() { return UnmarshalArgs("*"); }
 
-    QStatus Unmarshal(qcc::Source& source, const qcc::String& endpointName, bool pedantic = true)
+    QStatus Unmarshal(RemoteEndpoint& ep, const qcc::String& endpointName, bool pedantic = true)
     {
-        return _Message::Unmarshal(source, endpointName, pedantic);
+        return _Message::Unmarshal(ep, pedantic);
     }
 
-    QStatus Deliver(qcc::Sink& sink)
+    QStatus Deliver(RemoteEndpoint& ep)
     {
-        return _Message::Deliver(sink);
+        return _Message::Deliver(ep);
     }
 };
 
@@ -127,7 +166,7 @@ typedef struct {
     uint32_t headerLen;    ///< Length of the header fields
 } MsgHeader;
 
-static void Fuzz(Pipe& stream)
+static void Fuzz(TestPipe& stream)
 {
     uint8_t* fuzzBuf;
     size_t size = stream.AvailBytes();
@@ -235,9 +274,11 @@ static void Fuzz(Pipe& stream)
 static QStatus TestMarshal(const MsgArg* argList, size_t numArgs, const char* exception = NULL)
 {
     QStatus status;
-    Pipe stream;
+    TestPipe stream;
     MyMessage msg;
     uint32_t serial;
+    RemoteEndpoint ep(*gBus, false, "", stream, "dummy");
+    ep.GetFeatures().handlePassing = true;
 
     if (numArgs == 0) {
         if (!quiet) printf("Empty arg.v_struct.Elements, arg.v_struct.numElements\n");
@@ -254,7 +295,7 @@ static QStatus TestMarshal(const MsgArg* argList, size_t numArgs, const char* ex
     if (status != ER_OK) {
         return status;
     }
-    status = msg.Deliver(stream);
+    status = msg.Deliver(ep);
     if (status != ER_OK) {
         return status;
     }
@@ -263,7 +304,7 @@ static QStatus TestMarshal(const MsgArg* argList, size_t numArgs, const char* ex
         Fuzz(stream);
     }
 
-    status = msg.Unmarshal(stream, ":88.88");
+    status = msg.Unmarshal(ep, ":88.88");
     if (status != ER_OK) {
         if (!quiet) printf("Message::Unmarshal status:%s\n", QCC_StatusText(status));
         return status;
@@ -664,6 +705,14 @@ QStatus MarshalTests()
      * Structs
      */
     if (fuzzing || (status == ER_OK)) {
+        MsgArg args[2];
+        status = args[0].Set("s", "hello");
+        status = args[1].Set("(qqq)", q, q, q);
+        if (status == ER_OK) {
+            status = TestMarshal(args, 2);
+        }
+    }
+    if (fuzzing || (status == ER_OK)) {
         MsgArg argList;
         status = argList.Set("((ydx)(its))", y, &d, &x, i, &t, s);
         if (status == ER_OK) {
@@ -797,6 +846,45 @@ QStatus MarshalTests()
             status = TestMarshal(&arg, 1);
         }
     }
+    /*
+     * handles
+     */
+    if (fuzzing || (status == ER_OK)) {
+        qcc::SocketFd handle = 0x3A4D1E;
+        MsgArg arg("h", &handle);
+        status = TestMarshal(&arg, 1);
+    }
+    if (fuzzing || (status == ER_OK)) {
+        qcc::SocketFd h1 = 0xABABAB;
+        qcc::SocketFd h2 = 0xCDCDCD;
+        qcc::SocketFd h3 = 0xEFEFEF;
+        MsgArg args[3];
+        size_t numArgs = ArraySize(args);
+        MsgArg::Set(args, numArgs, "hhh", &h1, &h2, &h3);
+        status = TestMarshal(args, ArraySize(args));
+    }
+    if (fuzzing || (status == ER_OK)) {
+        qcc::SocketFd h1 = 0xABABAB;
+        qcc::SocketFd h2 = 0xCDCDCD;
+        qcc::SocketFd h3 = 0xEFEFEF;
+        MsgArg arg("(shshsh)", "first handle", &h1, "second handle", &h2, "third handle", &h3);
+        status = TestMarshal(&arg, 1);
+    }
+    if (fuzzing || (status == ER_OK)) {
+        MsgArg handles[8];
+        for (size_t i = 0; i < ArraySize(handles); ++i) {
+            qcc::SocketFd h = i * 2;;
+            handles[i].Set("h", &h);
+        }
+        MsgArg arg("ah", ArraySize(handles), handles);
+        status = TestMarshal(&arg, 1);
+    }
+    if (fuzzing || (status == ER_OK)) {
+        qcc::SocketFd handle = 0x3A4D1E;
+        MsgArg h("h", &handle);
+        MsgArg arg("(ivi)", 999, &h, 666);
+        status = TestMarshal(&arg, 1);
+    }
     return status;
 }
 
@@ -804,23 +892,25 @@ QStatus MarshalTests()
 QStatus TestMsgUnpack()
 {
     QStatus status;
-    Pipe stream;
+    TestPipe stream;
     MyMessage msg;
     MsgArg args[4];
     size_t numArgs = ArraySize(args);
     uint32_t serial;
     double d = 0.9;
+    RemoteEndpoint ep(*gBus, false, "", stream, "dummy");
+    ep.GetFeatures().handlePassing = true;
 
     MsgArg::Set(args, numArgs, "usyd", 4, "hello", 8, &d);
     status = msg.MethodCall("a.b.c", "/foo/bar", "foo.bar", "test", serial, args, numArgs);
     if (status != ER_OK) {
         return status;
     }
-    status = msg.Deliver(stream);
+    status = msg.Deliver(ep);
     if (status != ER_OK) {
         return status;
     }
-    status = msg.Unmarshal(stream, ":88.88");
+    status = msg.Unmarshal(ep, ":88.88");
     if (status != ER_OK) {
         return status;
     }
@@ -880,10 +970,10 @@ int main(int argc, char** argv)
     if (status == ER_OK) {
         const char* good[] = {
             "aiaaiaaaiaaaaiaaaaaaiaaaaaaaaaaaaaaaaaaaaaaaaaaaaai",
-            "sigaa{s(vvvvvs(iia(ii)))}a(a(a(a(a(a(a(a(a(a(a(a(a(iii)))))))))))))(((a(((ai))))))",
+            "sigaa{s(vvvvvs(iia(ii)))}a(a(a(a(a(a(a(a(a(a(a(a(a(hii)))))))))))))(((a(((ai))))))",
             "(ybnqiuxtdsogai(i)va{ii})((((((((((ii))))))))))aaa(a(iai))si",
             "a{i(((((((((a((((((i)))))))))))))))}",
-            "((ii)(xx)(ss)(y)(ddd)(nnn)(b)(b)(b)(b)a(o))",
+            "((ii)(xx)(ss)(y)(dhd)(nnn)(b)(h)(b)(b)a(o))",
             "a{ya{ba{na{qa{ia{ua{xa{ta{da{sa{oa{ga(ybnqiuxtsaogv)}}}}}}}}}}}}"
         };
         for (size_t i = 0; i < ArraySize(good); i++) {

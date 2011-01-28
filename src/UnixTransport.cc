@@ -364,13 +364,17 @@ QStatus UnixTransport::Connect(const char* connectArgs, RemoteEndpoint** newep)
         m_endpointListLock.Lock();
         m_endpointList.push_back(conn);
         m_endpointListLock.Unlock();
-        bool isBusToBus = false;
-        bool allowRemote = m_bus.GetInternal().AllowRemoteMessages();
+
+        /* Initialized the features for this endpoint */
+        conn->GetFeatures().isBusToBus = false;
+        conn->GetFeatures().allowRemote = m_bus.GetInternal().AllowRemoteMessages();
+        conn->GetFeatures().handlePassing = true;
+
         qcc::String authName;
-        status = conn->Establish("EXTERNAL", authName, isBusToBus, allowRemote);
+        status = conn->Establish("EXTERNAL", authName);
         if (status == ER_OK) {
             conn->SetListener(this);
-            status = conn->Start(false, allowRemote);
+            status = conn->Start();
         }
 
         /*
@@ -409,6 +413,15 @@ QStatus UnixTransport::Connect(const char* connectArgs, RemoteEndpoint** newep)
             *newep = NULL;
         }
     } else {
+        /*
+         * If we don't disable this every read will have credentials which adds overhead if have
+         * enabled unix file descriptor passing.
+         */
+        int disableCred = 0;
+        rc = setsockopt(sockFd, SOL_SOCKET, SO_PASSCRED, &disableCred, sizeof(disableCred));
+        if (rc == -1) {
+            QCC_LogError(status, ("UnixTransport(): setsockopt(SO_PASSCRED) failed"));
+        }
         if (newep) {
             *newep = conn;
         }

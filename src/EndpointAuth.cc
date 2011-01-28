@@ -33,6 +33,7 @@
 #include <alljoyn/AllJoynStd.h>
 #include <alljoyn/Message.h>
 
+#include "RemoteEndpoint.h"
 #include "EndpointAuth.h"
 #include "BusUtil.h"
 #include "SASLEngine.h"
@@ -50,26 +51,26 @@ namespace ajn {
 static const uint32_t HELLO_RESPONSE_TIMEOUT = 5000;
 
 
-QStatus EndpointAuth::Hello(bool isBusToBus, bool allowRemote)
+QStatus EndpointAuth::Hello()
 {
     QStatus status;
     Message hello(bus);
     Message response(bus);
     uint32_t serial;
 
-    status = hello->HelloMessage(isBusToBus, allowRemote, serial);
+    status = hello->HelloMessage(endpoint.features.isBusToBus, endpoint.features.allowRemote, serial);
     if (status != ER_OK) {
         return status;
     }
     /*
      * Send the hello message and wait for a response
      */
-    status = hello->Deliver(stream);
+    status = hello->Deliver(endpoint);
     if (status != ER_OK) {
         return status;
     }
 
-    status = response->Unmarshal(stream, qcc::String(), false, true, HELLO_RESPONSE_TIMEOUT);
+    status = response->Unmarshal(endpoint, false, true, HELLO_RESPONSE_TIMEOUT);
     if (status != ER_OK) {
         return status;
     }
@@ -89,11 +90,11 @@ QStatus EndpointAuth::Hello(bool isBusToBus, bool allowRemote)
      * Remote name for the endpoint is the sender of the reply.
      */
     remoteName = response->GetSender();
-    QCC_DbgHLPrintf(("EP remote %sname %s", isBusToBus ? "(bus-to-bus) " : "", remoteName.c_str()));
+    QCC_DbgHLPrintf(("EP remote %sname %s", endpoint.features.isBusToBus ? "(bus-to-bus) " : "", remoteName.c_str()));
     /*
      * bus-to-bus establishment uses an extended "hello" method.
      */
-    if (isBusToBus) {
+    if (endpoint.features.isBusToBus) {
         status = response->UnmarshalArgs("ssu");
         if (ER_OK == status) {
             uniqueName = response->GetArg(0)->v_string.str;
@@ -121,12 +122,12 @@ QStatus EndpointAuth::Hello(bool isBusToBus, bool allowRemote)
 }
 
 
-QStatus EndpointAuth::WaitHello(bool& isBusToBus, bool& allowRemote)
+QStatus EndpointAuth::WaitHello()
 {
     QStatus status;
     Message hello(bus);
 
-    status = hello->Unmarshal(stream, qcc::String(), false);
+    status = hello->Unmarshal(endpoint, false);
     if (ER_OK == status) {
         if (hello->GetType() != MESSAGE_METHOD_CALL) {
             QCC_DbgPrintf(("First message must be Hello/BusHello method call"));
@@ -149,8 +150,8 @@ QStatus EndpointAuth::WaitHello(bool& isBusToBus, bool& allowRemote)
                 QCC_DbgPrintf(("Hello expected member \"Hello\""));
                 return ER_BUS_ESTABLISH_FAILED;
             }
-            isBusToBus = false;
-            allowRemote = (0 != (hello->GetFlags() & ALLJOYN_FLAG_ALLOW_REMOTE_MSG));
+            endpoint.features.isBusToBus = false;
+            endpoint.features.allowRemote = (0 != (hello->GetFlags() & ALLJOYN_FLAG_ALLOW_REMOTE_MSG));
             /*
              * Remote name for the endpoint is the unique name we are allocating.
              */
@@ -183,8 +184,8 @@ QStatus EndpointAuth::WaitHello(bool& isBusToBus, bool& allowRemote)
                 QCC_DbgPrintf(("BusHello expected 2 args with signature \"su\""));
                 return ER_BUS_ESTABLISH_FAILED;
             }
-            isBusToBus = true;
-            allowRemote = true;
+            endpoint.features.isBusToBus = true;
+            endpoint.features.allowRemote = true;
             /*
              * Remote name for the endpoint is the sender of the hello.
              */
@@ -194,20 +195,49 @@ QStatus EndpointAuth::WaitHello(bool& isBusToBus, bool& allowRemote)
                            org::alljoyn::Bus::InterfaceName));
             return ER_BUS_ESTABLISH_FAILED;
         }
-        QCC_DbgHLPrintf(("EP remote %sname %s", isBusToBus ? "(bus-to-bus) " : "", remoteName.c_str()));
-        status = hello->HelloReply(isBusToBus, uniqueName);
+        QCC_DbgHLPrintf(("EP remote %sname %s", endpoint.features.isBusToBus ? "(bus-to-bus) " : "", remoteName.c_str()));
+        status = hello->HelloReply(endpoint.features.isBusToBus, uniqueName);
     }
     if (ER_OK == status) {
-        status = hello->Deliver(stream);
+        status = hello->Deliver(endpoint);
     }
     return status;
 }
 
 
+static const char NegotiateUnixFd[] = "NEGOTIATE_UNIX_FD";
+static const char AgreeUnixFd[] = "AGREE_UNIX_FD";
+
+qcc::String EndpointAuth::SASLCallout(SASLEngine &sasl, const qcc::String& extCmd)
+{
+    qcc::String rsp;
+
+    if (sasl.GetRole() == AuthMechanism::RESPONDER) {
+        if (extCmd.empty() && endpoint.features.handlePassing) {
+            rsp = NegotiateUnixFd;
+#ifdef QCC_OS_WINDOWS
+            rsp += " " + qcc::U32ToString(qcc::GetPid());
+#endif
+            endpoint.features.handlePassing = false;
+        } else if (extCmd.find(AgreeUnixFd) == 0) {
+            endpoint.features.handlePassing = true;
+            endpoint.processId = qcc::StringToU32(extCmd.substr(sizeof(AgreeUnixFd) - 1), 0, -1);
+        }
+    } else {
+        if (extCmd.find(NegotiateUnixFd) == 0) {
+            rsp = AgreeUnixFd;
+#ifdef QCC_OS_WINDOWS
+            rsp += " " + qcc::U32ToString(qcc::GetPid());
+#endif
+            endpoint.features.handlePassing = true;
+            endpoint.processId = qcc::StringToU32(extCmd.substr(sizeof(NegotiateUnixFd) - 1), 0, -1);
+        }
+    }
+    return rsp;
+}
+
 QStatus EndpointAuth::Establish(const qcc::String& authMechanisms,
-                                qcc::String& authUsed,
-                                bool& isBusToBus,
-                                bool& allowRemote)
+                                qcc::String& authUsed)
 {
     QStatus status = ER_OK;
     size_t numPushed;
@@ -218,7 +248,7 @@ QStatus EndpointAuth::Establish(const qcc::String& authMechanisms,
     QCC_DbgPrintf(("EndpointAuth::Establish authMechanisms=\"%s\"", authMechanisms.c_str()));
 
     if (isAccepting) {
-        SASLEngine sasl(bus, AuthMechanism::CHALLENGER, authMechanisms, NULL);
+        SASLEngine sasl(bus, AuthMechanism::CHALLENGER, authMechanisms, NULL, this);
         /*
          * The server's GUID is sent to the client when the authentication succeeds
          */
@@ -229,7 +259,7 @@ QStatus EndpointAuth::Establish(const qcc::String& authMechanisms,
              * Get the challenge
              */
             inStr.clear();
-            status = stream.GetLine(inStr);
+            status = endpoint.GetSource().GetLine(inStr);
             if (status != ER_OK) {
                 QCC_LogError(status, ("Failed to read from stream"));
                 goto ExitEstablish;
@@ -249,7 +279,7 @@ QStatus EndpointAuth::Establish(const qcc::String& authMechanisms,
             /*
              * Send the response
              */
-            status = stream.PushBytes((void*)(outStr.data()), outStr.length(), numPushed);
+            status = endpoint.GetSink().PushBytes((void*)(outStr.data()), outStr.length(), numPushed);
             if (status == ER_OK) {
                 QCC_DbgPrintf(("Sent %s", outStr.c_str()));
             } else {
@@ -260,9 +290,9 @@ QStatus EndpointAuth::Establish(const qcc::String& authMechanisms,
         /*
          * Wait for the hello message
          */
-        status = WaitHello(isBusToBus, allowRemote);
+        status = WaitHello();
     } else {
-        SASLEngine sasl(bus, AuthMechanism::RESPONDER, authMechanisms, NULL);
+        SASLEngine sasl(bus, AuthMechanism::RESPONDER, authMechanisms, NULL, endpoint.features.isBusToBus ? NULL : this);
         while (true) {
             status = sasl.Advance(inStr, outStr, state);
             if (status != ER_OK) {
@@ -272,7 +302,7 @@ QStatus EndpointAuth::Establish(const qcc::String& authMechanisms,
             /*
              * Send the response
              */
-            status = stream.PushBytes((void*)(outStr.data()), outStr.length(), numPushed);
+            status = endpoint.GetSink().PushBytes((void*)(outStr.data()), outStr.length(), numPushed);
             if (status == ER_OK) {
                 QCC_DbgPrintf(("Sent %s", outStr.c_str()));
             } else {
@@ -300,7 +330,7 @@ QStatus EndpointAuth::Establish(const qcc::String& authMechanisms,
              * Get the challenge
              */
             inStr.clear();
-            status = stream.GetLine(inStr);
+            status = endpoint.GetSource().GetLine(inStr);
             if (status != ER_OK) {
                 QCC_LogError(status, ("Failed to read from stream"));
                 goto ExitEstablish;
@@ -309,7 +339,7 @@ QStatus EndpointAuth::Establish(const qcc::String& authMechanisms,
         /*
          * Send the hello message and wait for a response
          */
-        status = Hello(isBusToBus, allowRemote);
+        status = Hello();
     }
 
 ExitEstablish:

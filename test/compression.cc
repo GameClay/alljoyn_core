@@ -34,6 +34,9 @@
 
 #include <Status.h>
 
+/* Private files included for unit testing */
+#include <RemoteEndpoint.h>
+
 
 using namespace qcc;
 using namespace std;
@@ -66,14 +69,14 @@ class MyMessage : public _Message {
         return SignalMsg("", destination, objPath, interface, signalName, NULL, 0, ALLJOYN_FLAG_COMPRESSED, ttl);
     }
 
-    QStatus Unmarshal(qcc::Source& source, const qcc::String& endpointName, bool pedantic = true)
+    QStatus Unmarshal(RemoteEndpoint& ep, const qcc::String& endpointName, bool pedantic = true)
     {
-        return _Message::Unmarshal(source, endpointName, pedantic);
+        return _Message::Unmarshal(ep, pedantic);
     }
 
-    QStatus Deliver(qcc::Sink& sink)
+    QStatus Deliver(RemoteEndpoint& ep)
     {
-        return _Message::Deliver(sink);
+        return _Message::Deliver(ep);
     }
 
 };
@@ -88,6 +91,7 @@ int main(int argc, char** argv)
     uint32_t serial;
     MyMessage msg(bus);
     Pipe stream;
+    RemoteEndpoint ep(bus, false, "", stream, "dummy");
 
     printf("AllJoyn Library version: %s\n", ajn::GetVersion());
     printf("AllJoyn Library build info: %s\n", ajn::GetBuildInfo());
@@ -186,7 +190,7 @@ int main(int argc, char** argv)
             printf("Error %s\n", QCC_StatusText(status));
             return -1;
         }
-        status = msg.Deliver(stream);
+        status = msg.Deliver(ep);
         if (status != ER_OK) {
             printf("Error %s\n", QCC_StatusText(status));
             return -1;
@@ -196,7 +200,7 @@ int main(int argc, char** argv)
     for (int i = 0; i < 10; ++i) {
         qcc::String sig = "test" + qcc::U32ToString(i);
         MyMessage msg2(bus);
-        status = msg2.Unmarshal(stream, ":88.88");
+        status = msg2.Unmarshal(ep, ":88.88");
         if (status != ER_OK) {
             printf("Error %s\n", QCC_StatusText(status));
             return -1;

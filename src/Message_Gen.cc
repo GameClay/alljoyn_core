@@ -384,21 +384,50 @@ QStatus _Message::MarshalArgs(const MsgArg* arg, size_t numArgs)
             break;
 
         case ALLJOYN_VARIANT:
-        {
-            /* First byte is reserved for the length */
-            char sig[257];
-            size_t len = 0;
-            status = SignatureUtils::MakeSignature(arg->v_variant.val, 1, sig + 1, len);
-            if (status == ER_OK) {
-                sig[0] = (char)len;
-                MarshalBytes(sig, len + 2);
-                status = MarshalArgs(arg->v_variant.val, 1);
+            {
+                /* First byte is reserved for the length */
+                char sig[257];
+                size_t len = 0;
+                status = SignatureUtils::MakeSignature(arg->v_variant.val, 1, sig + 1, len);
+                if (status == ER_OK) {
+                    sig[0] = (char)len;
+                    MarshalBytes(sig, len + 2);
+                    status = MarshalArgs(arg->v_variant.val, 1);
+                }
             }
-        }
-        break;
+            break;
 
         case ALLJOYN_BYTE:
             Marshal1(arg->v_byte);
+            break;
+
+        case ALLJOYN_HANDLE:
+            {
+                uint32_t index = 0;
+                /* Check if handle is already listed */
+                while ((index < numHandles) && (handles[index] != arg->v_handle.fd)) {
+                    ++index;
+                }
+                /* If handle was not found expand handle array */
+                if (index == numHandles) {
+                    qcc::SocketFd* h = new qcc::SocketFd[numHandles + 1];
+                    memcpy(h, handles, numHandles * sizeof(qcc::SocketFd));
+                    delete [] handles;
+                    handles = h;
+                    status = qcc::SocketDup(arg->v_handle.fd, handles[numHandles++]);
+                    if (status != ER_OK) {
+                        --numHandles;
+                        break;
+                    }
+                }
+                /* Marshal the index of the handle */
+                MarshalPad4();
+                if (endianSwap) {
+                    MarshalReversed(&index, 4);
+                } else {
+                    Marshal4(index);
+                }
+            }
             break;
 
         default:
@@ -413,55 +442,54 @@ QStatus _Message::MarshalArgs(const MsgArg* arg, size_t numArgs)
     return status;
 }
 
-
-static QStatus PushBytes(Sink& sink,
-                         void* buffer,
-                         size_t numBytes)
-{
-    size_t pushed = 0;
-    QStatus status = ER_OK;
-    uint8_t* bufPos = (uint8_t*)buffer;
-    while (numBytes > 0) {
-        status = sink.PushBytes(bufPos, numBytes, pushed);
-        if (ER_ALERTED_THREAD == status) {
-            status = ER_OK;
-        }
-        if (status != ER_OK) {
-            break;
-        }
-        bufPos += pushed;
-        numBytes -= pushed;
-    }
-    return status;
-}
-
-
-QStatus _Message::Deliver(Sink& sink)
+QStatus _Message::Deliver(RemoteEndpoint& endpoint)
 {
     QStatus status = ER_OK;
+    Sink& sink = endpoint.GetSink();
     size_t len = bufEOD - (uint8_t*)msgBuf;
+    size_t pushed;
 
     if (len == 0) {
         status = ER_BUS_EMPTY_MESSAGE;
         QCC_LogError(status, ("Message is empty"));
+        return status;
+    }
+    /*
+     * Handles can only be passed if that feature was negotiated.
+     */
+    if (handles && !endpoint.GetFeatures().handlePassing) {
+        status = ER_BUS_HANDLES_NOT_ENABLED;
+        QCC_LogError(status, ("Handle passing was not negotiated on this connection"));
+        return status;
+    }
+    /*
+     * If the mssage has a TTL check if it has expired
+     */
+    if (ttl && IsExpired()) {
+        QCC_DbgHLPrintf(("TTL has expired - discarding message %s", Description().c_str()));
+        return ER_OK;
+    }
+    /*
+     * Push the message to the endpoint sink (only push handles in the first chunk)
+     */
+    if (handles) {
+        status = sink.PushBytesAndFds(msgBuf, len, pushed, handles, numHandles, endpoint.GetProcessId());
     } else {
-        /*
-         * If the mssage has a TTL check if it has expired
-         */
-        if (ttl && IsExpired()) {
-            QCC_DbgHLPrintf(("TTL has expired - discarding message %s", Description().c_str()));
-        } else {
-            /*
-             * Push the message to the endpoint sink
-             */
-            status = PushBytes(sink, msgBuf, len);
-            if (status == ER_OK) {
-                QCC_DbgHLPrintf(("Deliver message %s", Description().c_str()));
-                QCC_DbgPrintf(("%s", ToString().c_str()));
-            } else {
-                QCC_LogError(status, ("Failed to deliver message %s", Description().c_str()));
-            }
-        }
+        status = sink.PushBytes(msgBuf, len, pushed);
+    }
+    /*
+     * Continue pushing until we are done
+     */
+    while ((status == ER_OK) && (pushed != len)) {
+        len -= pushed;
+        msgBuf += pushed;
+        status = sink.PushBytes(msgBuf, len, pushed);
+    }
+    if (status == ER_OK) {
+        QCC_DbgHLPrintf(("Deliver message %s", Description().c_str()));
+        QCC_DbgPrintf(("%s", ToString().c_str()));
+    } else {
+        QCC_LogError(status, ("Failed to deliver message %s", Description().c_str()));
     }
     return status;
 }
@@ -480,6 +508,7 @@ static const uint8_t FieldTypeMapping[] = {
     6,  /* ALLJOYN_HDR_FIELD_DESTINATION       */
     7,  /* ALLJOYN_HDR_FIELD_SENDER            */
     8,  /* ALLJOYN_HDR_FIELD_SIGNATURE         */
+    9,  /* ALLJOYN_HDR_FIELD_HANDLES           */
     16, /* ALLJOYN_HDR_FIELD_TIMESTAMP         */
     17, /* ALLJOYN_HDR_FIELD_TIME_TO_LIVE      */
     18  /* ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN */
@@ -554,13 +583,13 @@ void _Message::MarshalHeaderFields()
                 /*
                  * Use standard variant marshaling for the other cases.
                  */
-            {
-                MsgArg variant(ALLJOYN_VARIANT);
-                variant.v_variant.val = field;
-                MarshalArgs(&variant, 1);
-                variant.v_variant.val = NULL;
-            }
-            break;
+                {
+                    MsgArg variant(ALLJOYN_VARIANT);
+                    variant.v_variant.val = field;
+                    MarshalArgs(&variant, 1);
+                    variant.v_variant.val = NULL;
+                }
+                break;
             }
         }
     }
@@ -714,7 +743,7 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
      * Perfom endian-swap on the buffer so the header member remains in native endianess.
      */
     if (endianSwap) {
-        AllJoynMessageHeader* hdr = (AllJoynMessageHeader*)msgBuf;
+        MessageHeader* hdr = (MessageHeader*)msgBuf;
         EndianSwap32(hdr->bodyLen);
         EndianSwap32(hdr->serialNum);
         EndianSwap32(hdr->headerLen);
@@ -736,6 +765,18 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
     status = MarshalArgs(args, numArgs);
     if (status != ER_OK) {
         goto ExitMarshalMessage;
+    }
+    /*
+     * If there handles to be marshalled we need to patch up the message header to add the
+     * ALLJOYN_HDR_FIELD_HANDLES field. Since handles are rare it is more efficient to do a
+     * re-marshal than to parse out handle occurences in every message.
+     */
+    if (handles) {
+        hdrFields.field[ALLJOYN_HDR_FIELD_HANDLES].Set("u", numHandles);
+        status = ReMarshal(NULL);
+        if (status != ER_OK) {
+            goto ExitMarshalMessage;
+        }
     }
     /*
      * Assert that our two different body size computations agree
@@ -808,27 +849,13 @@ ExitMarshalMessage:
 }
 
 
-/*
- * Clear the header fields - this also frees any data allocated to them.
- */
-void _Message::ClearHeader()
-{
-    if (msgHeader.msgType != MESSAGE_INVALID) {
-        for (uint32_t fieldId = ALLJOYN_HDR_FIELD_INVALID; fieldId < ArraySize(hdrFields.field); fieldId++) {
-            hdrFields.field[fieldId].Clear();
-        }
-        delete [] msgArgs;
-        msgArgs = NULL;
-        numMsgArgs = 0;
-        ttl = 0;
-        msgHeader.msgType = MESSAGE_INVALID;
-    }
-}
-
-
 QStatus _Message::HelloMessage(bool isBusToBus, bool allowRemote, uint32_t& serial)
 {
     QStatus status;
+    /*
+     * Clear any stale header fields
+     */
+    ClearHeader();
     if (isBusToBus) {
         /* org.alljoyn.Bus.BusHello */
         hdrFields.field[ALLJOYN_HDR_FIELD_PATH].typeId = ALLJOYN_OBJECT_PATH;

@@ -121,4 +121,11 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
   <status name="ER_BUS_CANNOT_ADD_INTERFACE" comment="An interface cannot be added to an object that is already registered."/>
   <status name="ER_BUS_CANNOT_ADD_HANDLER" comment="A method handler cannot be added to an object that is already registered."/>
   <status name="ER_BUS_KEYSTORE_NOT_LOADED" comment="Key store has not been loaded"/>
+  <status name="ER_BUS_MEDIA_STREAM_NOT_FOUND" comment="Media stream was not found"/>
+  <status name="ER_BUS_MEDIA_STREAM_OPEN" comment="Media stream is open"/>
+  <status name="ER_BUS_MEDIA_STREAM_CLOSED" comment="Media stream is closed"/>
+  <status name="ER_BUS_MEDIA_STREAM_EXISTS" comment="Media stream is already added"/>
+  <status name="ER_BUS_NO_SUCH_HANDLE" comment="Handle is not in the handle table"/>
+  <status name="ER_BUS_HANDLES_NOT_ENABLED" comment="Passing of handles is not enabled for this connection"/>
+  <status name="ER_BUS_HANDLES_MISMATCH" comment="Message had more handles than expected"/>
 </status_block>

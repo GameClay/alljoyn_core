@@ -66,13 +66,13 @@
 /*
  * Forward declarations.
  */
-namespace qcc {
-class Sink;
-class Source;
+namespace ajn {
+class RemoteEndpoint;
 };
 
 
 namespace ajn {
+
 
 /** Message types */
 typedef enum {
@@ -94,13 +94,14 @@ typedef enum {
     ALLJOYN_HDR_FIELD_INTERFACE,                ///< a message interface header field type
     ALLJOYN_HDR_FIELD_MEMBER,                   ///< a member (message/signal) name header field type
     ALLJOYN_HDR_FIELD_ERROR_NAME,               ///< an error name header field type
-    ALLJOYN_HDR_FIELD_REPLY_SERIAL,     ///< a reply serial number header field type
+    ALLJOYN_HDR_FIELD_REPLY_SERIAL,             ///< a reply serial number header field type
     ALLJOYN_HDR_FIELD_DESTINATION,              ///< message destination header field type
     ALLJOYN_HDR_FIELD_SENDER,                   ///< senders well-known name header field type
     ALLJOYN_HDR_FIELD_SIGNATURE,                ///< message signature header field type
+    ALLJOYN_HDR_FIELD_HANDLES,                  ///< number of file/socket handles that accompany the message
     /* AllJoyn defined header field types */
     ALLJOYN_HDR_FIELD_TIMESTAMP,                ///< time stamp header field type
-    ALLJOYN_HDR_FIELD_TIME_TO_LIVE,     ///< messages time-to-live header field type
+    ALLJOYN_HDR_FIELD_TIME_TO_LIVE,             ///< messages time-to-live header field type
     ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN,        ///< message compression token header field type
     ALLJOYN_HDR_FIELD_UNKNOWN                   ///< unknown header field type also used as maximum number of header field types.
 } AllJoynFieldType;
@@ -572,8 +573,7 @@ class _Message {
      * Reads and unmarshals a message from a source. Only the message header is unmarshaled at this
      * time.
      *
-     * @param source         The source to marshal the message data from.
-     * @param endpointName   Name of Endpoint that received this message.
+     * @param endpoint       The endpoint to marshal the message data from.
      * @param checkSender    True if message's sender field shold be validated against the endpoint's unique name.
      * @param pedantic       Perform detailed checks on the header fields.
      * @param timeout        If non-zero, a timeout in milliseconds to wait for a message to unmarshal.
@@ -581,18 +581,18 @@ class _Message {
      *      - #ER_OK if successful
      *      - An error status otherwise
      */
-    QStatus Unmarshal(qcc::Source& source, const qcc::String& endpointName, bool checkSender, bool pedantic = true, uint32_t timeout = 0);
+    QStatus Unmarshal(RemoteEndpoint& endpoint, bool checkSender, bool pedantic = true, uint32_t timeout = 0);
 
     /**
      * @internal
      * Deliver a marshaled message to an sink.
      *
-     * @param sink    Sink to receive marshaled message.
+     * @param endpoint   Endpoint to receive marshaled message.
      * @return
      *      - #ER_OK if successful
      *      - An error status otherwise
      */
-    QStatus Deliver(qcc::Sink& sink);
+    QStatus Deliver(RemoteEndpoint& endpoint);
 
     /**
      * @internal
@@ -651,7 +651,7 @@ class _Message {
      */
     QStatus HelloReply(bool isBusToBus, const qcc::String& uniqueName);
 
-    typedef struct AllJoynMessageHeader {
+    typedef struct MessageHeader {
         char endian;           ///< The endian-ness of this message
         uint8_t msgType;       ///< Indicates if the message is method call, signal, etc.
         uint8_t flags;         ///< Flag bits
@@ -659,14 +659,14 @@ class _Message {
         uint32_t bodyLen;      ///< Length of the body data
         uint32_t serialNum;    ///< serial of this message
         uint32_t headerLen;    ///< Length of the header fields
-        AllJoynMessageHeader() : endian(0), msgType(MESSAGE_INVALID), flags(0), majorVersion(0), bodyLen(0), serialNum(0), headerLen(0) { }
-    } AllJoynMessageHeader;
+        MessageHeader() : endian(0), msgType(MESSAGE_INVALID), flags(0), majorVersion(0), bodyLen(0), serialNum(0), headerLen(0) { }
+    } MessageHeader;
 
 
     char myEndian;               ///< Native endianness of host system we are running on.
     bool endianSwap;             ///< true if endianness will be swapped.
 
-    AllJoynMessageHeader msgHeader; ///< Current message header.
+    MessageHeader msgHeader;     ///< Current message header.
 
     uint8_t numMsgArgs;          ///< Number of message args (signature cannot be longer than 255 chars).
     MsgArg* msgArgs;             ///< Pointer to the unmarshaled arguments.
@@ -687,6 +687,9 @@ class _Message {
     qcc::String authMechanism;   ///< For secure messages indicates the authentication mechanism that was used
 
     qcc::String rcvEndpointName; ///< Name of Endpoint that received this message.
+
+    qcc::SocketFd* handles;      ///< Array of file/socket descriptors.
+    size_t numHandles;           ///< Number of handles in the handles array
 
     /**
      * The header fields for this message. Which header fields are present depends on the message

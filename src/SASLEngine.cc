@@ -87,6 +87,7 @@ static const char* StateText[] = {
     "WAIT_FOR_DATA",
     "WAIT_FOR_OK",
     "WAIT_FOR_REJECT",
+    "WAIT_EXT_RESPONSE",
     "AUTH_SUCCESS",
     "AUTH_FAILED"
 };
@@ -161,7 +162,7 @@ static AuthCmdType ParseAuth(qcc::String& str)
     if (pos != qcc::String::npos) {
         str.erase(pos);
     }
-    uint32_t i;
+    size_t i;
     for (i = 0; i < (ArraySize(AllJoynAuthCmdList) - 1); ++i) {
         if (str.compare(0, AllJoynAuthCmdList[i].len, AllJoynAuthCmdList[i].cmdStr) == 0) {
             str.erase(0, AllJoynAuthCmdList[i].len);
@@ -353,11 +354,20 @@ QStatus SASLEngine::Response(qcc::String& inStr, qcc::String& outStr)
         case ALLJOYN_WAIT_FOR_DATA:
         case ALLJOYN_WAIT_FOR_OK:
             /*
-             * Succesfully authenticated
+             * Succesfully authenticated - check for extension commands.
              */
             remoteId = inStr.erase(0, 1);
-            outStr = ComposeAuth(CMD_BEGIN, localId);
-            SetState(ALLJOYN_AUTH_SUCCESS);
+            if (extHandler) {
+                outStr = extHandler->SASLCallout(*this, "");
+                if (!outStr.empty()) {
+                    SetState(ALLJOYN_WAIT_EXT_RESPONSE);
+                    outStr += CRLF;
+                }
+            }
+            if (outStr.empty()) {
+                outStr = ComposeAuth(CMD_BEGIN, localId);
+                SetState(ALLJOYN_AUTH_SUCCESS);
+            }
             break;
 
         default:
@@ -378,6 +388,16 @@ QStatus SASLEngine::Response(qcc::String& inStr, qcc::String& outStr)
             SetState(ALLJOYN_WAIT_FOR_REJECT);
             break;
 
+        case ALLJOYN_WAIT_EXT_RESPONSE:
+            outStr = extHandler->SASLCallout(*this, "ERROR");
+            if (!outStr.empty()) {
+                outStr += CRLF;
+            } else {
+                outStr = ComposeAuth(CMD_BEGIN, localId);
+                SetState(ALLJOYN_AUTH_SUCCESS);
+            }
+            break;
+
         default:
             status = ER_AUTH_FAIL;
             break;
@@ -386,11 +406,19 @@ QStatus SASLEngine::Response(qcc::String& inStr, qcc::String& outStr)
 
     default:
         switch (authState) {
+        case ALLJOYN_WAIT_EXT_RESPONSE:
+            outStr = extHandler->SASLCallout(*this, inStr);
+            if (!outStr.empty()) {
+                outStr += CRLF;
+            } else {
+                outStr = ComposeAuth(CMD_BEGIN, localId);
+                SetState(ALLJOYN_AUTH_SUCCESS);
+            }
+            break;
         case ALLJOYN_WAIT_FOR_DATA:
         case ALLJOYN_WAIT_FOR_OK:
             outStr = ComposeAuth(CMD_ERROR, "Unexpected Command");
             break;
-
         default:
             status = ER_AUTH_FAIL;
             break;
@@ -564,7 +592,19 @@ QStatus SASLEngine::Challenge(qcc::String& inStr, qcc::String& outStr)
         break;
 
     default:
-        outStr = ComposeAuth(CMD_ERROR, "Unknown");
+        if (extHandler && (authState == ALLJOYN_WAIT_FOR_BEGIN)) {
+            /* 
+             * Commands received after main authentication conversation is complete may be
+             * extension commands.
+             */
+            outStr = extHandler->SASLCallout(*this, inStr);
+            if (!outStr.empty()) {
+                outStr += CRLF;
+            }
+        }
+        if (outStr.empty()) {
+            outStr = ComposeAuth(CMD_ERROR, "Unknown");
+        }
         break;
     }
     QCC_DbgPrintf(("Challenger sending %s", outStr.c_str()));
@@ -593,14 +633,14 @@ QStatus SASLEngine::Advance(qcc::String authIn, qcc::String& authOut, AuthState&
     return status;
 }
 
-
-SASLEngine::SASLEngine(BusAttachment& bus, AuthMechanism::AuthRole authRole, const qcc::String& mechanisms, AuthListener* listener) :
-    bus(bus),
+SASLEngine::SASLEngine(BusAttachment& bus, AuthMechanism::AuthRole authRole, const qcc::String& mechanisms, AuthListener* listener, ExtensionHandler* extHandler) :
+bus(bus),
     authRole(authRole),
     listener(listener),
     authCount(0),
     authMechanism(NULL),
-    authState((authRole == AuthMechanism::RESPONDER) ? ALLJOYN_SEND_AUTH_REQ : ALLJOYN_WAIT_FOR_AUTH)
+    authState((authRole == AuthMechanism::RESPONDER) ? ALLJOYN_SEND_AUTH_REQ : ALLJOYN_WAIT_FOR_AUTH),
+    extHandler(extHandler)
 {
     ParseAuthNames(authSet, mechanisms);
     QCC_DbgPrintf(("SASL %s mechanisms %s", (authRole == AuthMechanism::RESPONDER) ? "Responder" : "Challenger", mechanisms.c_str()));

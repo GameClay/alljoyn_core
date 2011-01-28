@@ -2943,22 +2943,25 @@ void* BTTransport::Run(void* arg)
             } else {
                 /* Accept a new connection */
                 qcc::String authName;
-                bool isBusToBus = false;
-                bool allowRemote = false;
                 BTEndpoint* conn(btAccessor->Accept(bus, (*it)->GetFD(), *it == &rfcommEvent));
                 if (!conn) {
                     continue;
                 }
 
+                /* Initialized the features for this endpoint */
+                conn->GetFeatures().isBusToBus = false;
+                conn->GetFeatures().allowRemote = false;
+                conn->GetFeatures().handlePassing = false;
+
                 threadListLock.Lock();
                 threadList.push_back(conn);
                 threadListLock.Unlock();
                 QCC_DbgPrintf(("BTTransport::Run: Calling conn->Establish() [for accepted connection]"));
-                status = conn->Establish("ANONYMOUS", authName, isBusToBus, allowRemote);
+                status = conn->Establish("ANONYMOUS", authName);
                 if (ER_OK == status) {
                     QCC_DbgPrintf(("Starting endpoint [for accepted connection]"));
                     conn->SetListener(this);
-                    status = conn->Start(isBusToBus, allowRemote);
+                    status = conn->Start();
                 }
 
                 if (ER_OK != status) {
@@ -3131,8 +3134,6 @@ QStatus BTTransport::Connect(const char* connectSpec, RemoteEndpoint** newep)
     qcc::String authName;
     qcc::String devObjPath;
     qcc::String normSpec;
-    bool isDaemon = bus.GetInternal().GetRouter().IsDaemon();
-    bool allowRemote = bus.GetInternal().AllowRemoteMessages();
 
     conn = btAccessor->Connect(bus, connectSpec);
     if (!conn) {
@@ -3140,11 +3141,16 @@ QStatus BTTransport::Connect(const char* connectSpec, RemoteEndpoint** newep)
         goto errorExit;
     }
 
+    /* Initialized the features for this endpoint */
+    conn->GetFeatures().isBusToBus = true;
+    conn->GetFeatures().allowRemote = bus.GetInternal().AllowRemoteMessages();
+    conn->GetFeatures().handlePassing = false;
+
     threadListLock.Lock();
     threadList.push_back(conn);
     threadListLock.Unlock();
     QCC_DbgPrintf(("BTTransport::Connect: Calling conn->Establish() [connectSpec = %s]", connectSpec));
-    status = conn->Establish("ANONYMOUS", authName, isDaemon, allowRemote);
+    status = conn->Establish("ANONYMOUS", authName);
     if (ER_OK != status) {
         QCC_LogError(status, ("BTEndpoint::Establish failed"));
         goto errorExit;
@@ -3153,7 +3159,7 @@ QStatus BTTransport::Connect(const char* connectSpec, RemoteEndpoint** newep)
     QCC_DbgPrintf(("Starting endpoint [connectSpec = %s]", connectSpec));
     /* Start the endpoint */
     conn->SetListener(this);
-    status = conn->Start(isDaemon, allowRemote);
+    status = conn->Start();
     if (ER_OK != status) {
         QCC_LogError(status, ("BTEndpoint::Start failed"));
         goto errorExit;

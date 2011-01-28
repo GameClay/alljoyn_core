@@ -51,9 +51,41 @@ class SASLEngine {
         ALLJOYN_WAIT_FOR_DATA,
         ALLJOYN_WAIT_FOR_OK,
         ALLJOYN_WAIT_FOR_REJECT,
+        ALLJOYN_WAIT_EXT_RESPONSE,///< Wait for a response to an extension command */
         ALLJOYN_AUTH_SUCCESS,     ///< Authentication was successful - conversation it over
         ALLJOYN_AUTH_FAILED       ///< Authentication failed - conversation it over
     } AuthState;
+
+    /**
+     * %ExtCommmandHandler is a class for implementing an entension command handler for commands
+     * that are outside of the normal SASL command set.  
+     */
+    class ExtensionHandler {
+      public:
+        /**
+         * The expected behavior depends on whether the SASL role is RESPONDER or CHALLENGER.
+         *
+         * For a RESPONDER the SASLCallout is first called with an empty string. This prompts the
+         * responder to provide an extension command to send. The next call delivers the
+         * CHALLENGER's response and responder either returns an empty string to terminate the
+         * extension exchange or a new extension command to continue the exchange.
+         *
+         * For a CHALLENGER the each call contains the responder's extension command and the return
+         * value is the challenger's response. If the challenger responds with an empty string an
+         * ERROR will be sent to the responder. 
+         *
+         * @param sasl    The sasl engine instance.
+         * @param extCmd  The extension command string or an empty string.
+         *
+         * @return  A command/response string or an empty string.
+         */
+        virtual qcc::String SASLCallout(SASLEngine &sasl, const qcc::String& extCmd) = 0;
+
+        /*
+         * Destructor
+         */
+        virtual ~ExtensionHandler() {}
+    };
 
     /**
      * Constructor
@@ -62,8 +94,9 @@ class SASLEngine {
      * @param authRole      Challenger or responder end of the authentication conversation
      * @param mechanisms    The mechanisms to use for this authentication conversation
      * @param listener      Listener for handling password and other authentication related requests.
+     * @param extHandler    The an optional handler for extension commands.
      */
-    SASLEngine(BusAttachment& bus, AuthMechanism::AuthRole authRole, const qcc::String& mechanisms, AuthListener* listener = NULL);
+    SASLEngine(BusAttachment& bus, AuthMechanism::AuthRole authRole, const qcc::String& mechanisms, AuthListener* listener = NULL, ExtensionHandler* extHandler = NULL);
 
     /**
      * Destructor
@@ -111,6 +144,13 @@ class SASLEngine {
     QStatus GetMasterSecret(qcc::KeyBlob& secret) {
         return (authState != ALLJOYN_AUTH_SUCCESS) ? ER_BUS_KEY_UNAVAILABLE : authMechanism->GetMasterSecret(secret);
     }
+
+    /**
+     * Get the role of this SASL engine instance.
+     *
+     * @return  Returns the role of this SASL engine instance.
+     */
+    AuthMechanism::AuthRole GetRole() { return authRole; }
 
   private:
 
@@ -163,6 +203,11 @@ class SASLEngine {
      * Identifier string to send to remote authenticated endpoint
      */
     qcc::String localId;
+
+    /**
+     * Extension handler if present.
+     */
+    ExtensionHandler* extHandler;
 
     /**
      * Internal methods

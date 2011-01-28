@@ -76,11 +76,11 @@ class SignatureUtils {
      *
      * @param values     A pointer to an array of data values
      * @param numValues  Length of the array
-     * @param sz         Returns the length of the signature
+     * @param sz         The starting offset so alignment can be correctly computed.
      *
      * @return  The marshaled size of the array of MsgArgs
      */
-    static size_t GetSize(const MsgArg* values, size_t numValues = 1, size_t sz = 0);
+    static size_t GetSize(const MsgArg* values, size_t numValues, size_t offset = 0);
 
     /**
      * Parses a complete type leaving the signature pointer pointing at the first character after

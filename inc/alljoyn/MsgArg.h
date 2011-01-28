@@ -48,7 +48,8 @@ typedef enum {
     ALLJOYN_BOOLEAN          = 'b',    ///< AllJoyn boolean basic type, @c 0 is @c FALSE and @c 1 is @c TRUE - Everything else is invalid
     ALLJOYN_DOUBLE           = 'd',    ///< AllJoyn IEEE 754 double basic type
     ALLJOYN_DICT_ENTRY       = 'e',    ///< AllJoyn dictionary or map container type - an array of key-value pairs
-    ALLJOYN_SIGNATURE        = 'g',    ///< AllJoyn SIGNATURE basic type
+    ALLJOYN_SIGNATURE        = 'g',    ///< AllJoyn signature basic type
+    ALLJOYN_HANDLE           = 'h',    ///< AllJoyn socket handle basic type
     ALLJOYN_INT32            = 'i',    ///< AllJoyn 32-bit signed integer basic type
     ALLJOYN_INT16            = 'n',    ///< AllJoyn 16-bit signed integer basic type
     ALLJOYN_OBJECT_PATH      = 'o',    ///< AllJoyn Name of an AllJoyn object instance basic type
@@ -98,7 +99,7 @@ typedef struct {
 
 
 /**
- * Type for a SIGNATURE
+ * Type for a signature
  * The same as AllJoynString except the length is a single byte (thus signatures have a maximum length of 255).
  * The content must be a valid signature.
  */
@@ -160,7 +161,6 @@ class AllJoynArray {
     MsgArg* elements;   /**< Pointer to array  */
 };
 
-
 /**
  * Type for a variant
  */
@@ -177,6 +177,20 @@ typedef struct {
     MsgArg* members;           /**< Pointer to members of the structure */
 } AllJoynStruct;
 
+/**
+ * Type for a handle. An handle is an abstraction of a platform-specific socket or file descriptor.
+ *
+ * @Note Handles associated with in a message received by the application will be closed when the
+ * message destructor is called. If the application code needs to continue using the handle the
+ * handle must be duplicated by calling qcc:SocketDup() or the appropriate platform-specific APIs.
+ * Handles that are passed in when creating a message to be sent are duplicated internally and can
+ * be closed by the caller after the message has been created. Handles that have been duplicated
+ * using qcc::SocketDup() must be closed by calling qcc::Close(). Handles duplicated by calling a
+ * native platform "dup" API must be closed using the native "close" API.
+ */
+typedef struct {
+   qcc::SocketFd fd;           /**< A platform-specific socket file descriptor */
+} AllJoynHandle;
 
 /**
  * Type for a dictionary entry
@@ -258,6 +272,7 @@ class MsgArg {
         AllJoynString v_string;
         AllJoynString v_objPath;
         AllJoynSignature v_signature;
+        AllJoynHandle v_handle;
         AllJoynArray v_array;
         AllJoynStruct v_struct;
         AllJoynDictEntry v_dictEntry;
@@ -369,6 +384,7 @@ class MsgArg {
      *  - @c 'b'  A bool value
      *  - @c 'd'  A pointer to a double (64 bits)
      *  - @c 'g'  A pointer to a NUL terminated string (pointer must remain valid for lifetime of the MsgArg)
+     *  - @c 'h'  A pointer to a qcc::SocketFd
      *  - @c 'i'  An int (32 bits)
      *  - @c 'n'  An int (16 bits)
      *  - @c 'o'  A pointer to a NUL terminated string (pointer must remain valid for lifetime of the MsgArg)
@@ -445,6 +461,7 @@ class MsgArg {
      *  - @c 'b'  A pointer to a bool
      *  - @c 'd'  A pointer to a double (64 bits)
      *  - @c 'g'  A pointer to a char*  (character string is valid for the lifetime of the MsgArg)
+     *  - @c 'h'  A pointer to a qcc::SocketFd
      *  - @c 'i'  A pointer to a uint16_t
      *  - @c 'n'  A pointer to an int16_t
      *  - @c 'o'  A pointer to a char*  (character string is valid for the lifetime of the MsgArg)

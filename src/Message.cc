@@ -61,6 +61,7 @@ static const char* HdrId[] = {
     "DESTINATION",
     "SENDER",
     "SIGNATURE",
+    "HANDLES",
     "TIMESTAMP",
     "TIME_TO_LIVE",
     "COMPRESSION_TOKEN"
@@ -89,6 +90,7 @@ const AllJoynTypeId HeaderFields::FieldType[] = {
     ALLJOYN_STRING,      /* ALLJOYN_HDR_FIELD_DESTINATION            */
     ALLJOYN_STRING,      /* ALLJOYN_HDR_FIELD_SENDER                 */
     ALLJOYN_SIGNATURE,   /* ALLJOYN_HDR_FIELD_SIGNATURE              */
+    ALLJOYN_UINT32,      /* ALLJOYN_HDR_FIELD_HANDLES                */
     ALLJOYN_UINT32,      /* ALLJOYN_HDR_FIELD_TIMESTAMP              */
     ALLJOYN_UINT16,      /* ALLJOYN_HDR_FIELD_TIME_TO_LIVE           */
     ALLJOYN_UINT32,      /* ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN      */
@@ -105,6 +107,7 @@ const bool HeaderFields::Compressible[] = {
     true,             /* ALLJOYN_HDR_FIELD_DESTINATION       */
     true,             /* ALLJOYN_HDR_FIELD_SENDER            */
     true,             /* ALLJOYN_HDR_FIELD_SIGNATURE         */
+    false,            /* ALLJOYN_HDR_FIELD_HANDLES           */
     false,            /* ALLJOYN_HDR_FIELD_TIMESTAMP         */
     true,             /* ALLJOYN_HDR_FIELD_TIME_TO_LIVE      */
     false,            /* ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN */
@@ -267,18 +270,25 @@ _Message::_Message(BusAttachment& bus) : bus(bus)
     msgArgs = NULL;
     numMsgArgs = 0;
     ttl = 0;
+    handles = NULL;
+    numHandles = 0;
 }
 
 _Message::~_Message(void)
 {
     delete [] msgBuf;
     delete [] msgArgs;
+    while (numHandles) {
+        qcc::Close(handles[--numHandles]);
+    }
+    delete [] handles;
 }
 
 QStatus _Message::ReMarshal(const char* senderName, bool newSerial)
 {
-    /* Update sender field */
-    hdrFields.field[ALLJOYN_HDR_FIELD_SENDER].Set("s", senderName);
+    if (senderName) {
+        hdrFields.field[ALLJOYN_HDR_FIELD_SENDER].Set("s", senderName);
+    }
 
     if (newSerial) {
         msgHeader.serialNum = bus.GetInternal().NextSerial();
@@ -313,7 +323,7 @@ QStatus _Message::ReMarshal(const char* senderName, bool newSerial)
      * If we need to do an endian-swap do so directly in the buffer
      */
     if (endianSwap) {
-        AllJoynMessageHeader* hdr = (AllJoynMessageHeader*)msgBuf;
+        MessageHeader* hdr = (MessageHeader*)msgBuf;
         EndianSwap32(hdr->bodyLen);
         EndianSwap32(hdr->serialNum);
         EndianSwap32(hdr->headerLen);
@@ -330,7 +340,8 @@ QStatus _Message::ReMarshal(const char* senderName, bool newSerial)
         memcpy(bufPos, bodyPtr, msgHeader.bodyLen);
         bodyPtr = bufPos;
     }
-    bufEOD = bufPos + msgHeader.bodyLen;
+    bufPos += msgHeader.bodyLen;
+    bufEOD = bufPos;
     /*
      * Zero fill the pad at the end of the buffer
      */
@@ -363,6 +374,28 @@ bool _Message::IsExpired(uint32_t* tillExpireMS) const
         *tillExpireMS = expires;
     }
     return expires == 0;
+}
+
+/*
+ * Clear the header fields - this also frees any data allocated to them.
+ */
+void _Message::ClearHeader()
+{
+    if (msgHeader.msgType != MESSAGE_INVALID) {
+        for (uint32_t fieldId = ALLJOYN_HDR_FIELD_INVALID; fieldId < ArraySize(hdrFields.field); fieldId++) {
+            hdrFields.field[fieldId].Clear();
+        }
+        delete [] msgArgs;
+        msgArgs = NULL;
+        numMsgArgs = 0;
+        ttl = 0;
+        msgHeader.msgType = MESSAGE_INVALID;
+        while (numHandles) {
+            qcc::Close(handles[--numHandles]);
+        }
+        delete [] handles;
+        handles = NULL;
+    }
 }
 
 }

@@ -222,7 +222,7 @@ void DaemonUnixTransport::EndpointExit(RemoteEndpoint* ep)
 
 void* DaemonUnixTransport::Run(void* arg)
 {
-    QStatus status;
+    QStatus status = ER_OK;
 
     while (!IsStopping()) {
 
@@ -287,8 +287,6 @@ void* DaemonUnixTransport::Run(void* arg)
 
             if (status == ER_OK) {
                 qcc::String authName;
-                bool isBusToBus = false;
-                bool allowRemote = false;
                 DaemonUnixEndpoint* conn;
                 ssize_t ret;
                 char nulbuf = 255;
@@ -339,13 +337,18 @@ void* DaemonUnixTransport::Run(void* arg)
                     }
                 }
 
+                /* Initialized the features for this endpoint */
+                conn->GetFeatures().isBusToBus = false;
+                conn->GetFeatures().allowRemote = false;
+                conn->GetFeatures().handlePassing = true;
+
                 m_endpointListLock.Lock();
                 m_endpointList.push_back(conn);
                 m_endpointListLock.Unlock();
-                status = conn->Establish("EXTERNAL", authName, isBusToBus, allowRemote);
+                status = conn->Establish("EXTERNAL", authName);
                 if (ER_OK == status) {
                     conn->SetListener(this);
-                    status = conn->Start(isBusToBus, allowRemote);
+                    status = conn->Start();
                 }
                 if (ER_OK != status) {
                     QCC_LogError(status, ("Error starting RemoteEndpoint"));
@@ -409,205 +412,14 @@ QStatus DaemonUnixTransport::NormalizeTransportSpec(const char* inSpec, qcc::Str
 
 QStatus DaemonUnixTransport::Connect(const char* connectArgs, RemoteEndpoint** newep)
 {
-    QStatus status;
-
-    /*
-     * Don't bother trying to create new endpoints if we're shutting down.
-     */
-    if (IsRunning() == false || m_stopping == true) {
-        return ER_BUS_TRANSPORT_NOT_STARTED;
-    }
-
-    /*
-     * Parse and normalize the connectArgs.
-     */
-    qcc::String normSpec;
-    map<qcc::String, qcc::String> argMap;
-    status = NormalizeTransportSpec(connectArgs, normSpec, argMap);
-    if (ER_OK != status) {
-        QCC_LogError(status, ("Invalid unix connect spec \"%s\"", connectArgs));
-        return status;
-    }
-
-    /*
-     * Check to see if we are already connected to a remote endpoint identified
-     * by the connect spec.  If we are, we never duplicate the connection.
-     */
-    m_endpointListLock.Lock();
-    for (list<DaemonUnixEndpoint*>::const_iterator i = m_endpointList.begin(); i != m_endpointList.end(); ++i) {
-        if (normSpec == (*i)->GetConnectSpec()) {
-            m_endpointListLock.Unlock();
-            return ER_BUS_ALREADY_CONNECTED;
-        }
-    }
-    m_endpointListLock.Unlock();
-
-    /*
-     * This is a new not previously satisfied connection request, so attempt
-     * to connect to the remote TCP address and port specified in the connectSpec.
-     */
-    SocketFd sockFd = -1;
-    status = Socket(QCC_AF_UNIX, QCC_SOCK_STREAM, sockFd);
-    if (status != ER_OK) {
-        QCC_LogError(status, ("Create socket failed"));
-        return status;
-    }
-
-
-    qcc::String& connectAddr = argMap["_spec"];
-    status = qcc::Connect(sockFd, connectAddr.c_str());
-    if (status == ER_OK) {
-        int enableCred = 1;
-        int ret = setsockopt(sockFd, SOL_SOCKET, SO_PASSCRED, &enableCred, sizeof(enableCred));
-        if (ret == -1) {
-            status = ER_OS_ERROR;
-        }
-    }
-
-    DaemonUnixEndpoint* conn = NULL;
-
-    if (status == ER_OK) {
-        ssize_t ret;
-        char nulbuf = 0;
-        struct cmsghdr* cmsg;
-        struct ucred* cred;
-        struct iovec iov[] = { { &nulbuf, sizeof(nulbuf) } };
-        char cbuf[CMSG_SPACE(sizeof(struct ucred))];
-        struct msghdr msg;
-        msg.msg_name = NULL;
-        msg.msg_namelen = 0;
-        msg.msg_iov = iov;
-        msg.msg_iovlen = ArraySize(iov);
-        msg.msg_control = cbuf;
-        msg.msg_controllen = ArraySize(cbuf);
-        msg.msg_flags = 0;
-
-        cmsg = CMSG_FIRSTHDR(&msg);
-        cmsg->cmsg_level = SOL_SOCKET;
-        cmsg->cmsg_type = SCM_CREDENTIALS;
-        cmsg->cmsg_len = CMSG_LEN(sizeof(struct ucred));
-        cred = reinterpret_cast<struct ucred*>(CMSG_DATA(cmsg));
-        cred->uid = GetUid();
-        cred->gid = GetGid();
-        cred->pid = GetPid();
-
-        QCC_DbgHLPrintf(("Sending UID: %u  GID: %u  PID %u", cred->uid, cred->gid, cred->pid));
-
-        ret = sendmsg(sockFd, &msg, 0);
-
-        if (ret == 1) {
-
-            /*
-             * The underling transport mechanism is started, but we need to
-             * create a UnixEndpoint object that will orchestrate the movement
-             * of data across the transport.
-             */
-            conn = new DaemonUnixEndpoint(m_bus, false, normSpec, sockFd);
-            m_endpointListLock.Lock();
-            m_endpointList.push_back(conn);
-            m_endpointListLock.Unlock();
-
-            bool isDaemon = true;
-            bool allowRemote = m_bus.GetInternal().AllowRemoteMessages();
-            qcc::String authName;
-            status = conn->Establish("EXTERNAL", authName, isDaemon, allowRemote);
-            if (status == ER_OK) {
-                conn->SetListener(this);
-                status = conn->Start(isDaemon, allowRemote);
-                if (ER_OK != status) {
-                    QCC_LogError(status, ("DaemonUnixEndpoint::Start failed"));
-                }
-            } else {
-                QCC_LogError(status, ("DaemonUnixEndpoint::Establish failed"));
-            }
-        } else {
-            status = ER_OS_ERROR;
-            QCC_LogError(status, ("DaemonUnixEndpoint::Connect failed sending nul byte"));
-        }
-    } else {
-        QCC_LogError(status, ("Connect to %s failed", connectAddr.c_str()));
-    }
-
-    /*
-     * If we got an error, we need to cleanup the socket and zero out the
-     * returned endpoint.  If we got this done without a problem, we return
-     * a pointer to the new endpoint.
-     */
-    if (status != ER_OK) {
-        if (conn) {
-            /*
-             * We put the endpoint into our list of active endpoints to make
-             * life easier reporting problems up the chain of command behind
-             * the scenes if we got an error during the endpoint startup.  If
-             * we did get an error, we need to remove the endpoint if it
-             * is still there and the endpoint exit callback didn't kill it.
-             */
-            m_endpointListLock.Lock();
-            list<DaemonUnixEndpoint*>::iterator i = find(m_endpointList.begin(), m_endpointList.end(), conn);
-            if (i != m_endpointList.end()) {
-                m_endpointList.erase(i);
-            }
-            m_endpointListLock.Unlock();
-            delete conn;
-            conn = NULL;
-        }
-    }
-
-    /*
-     * If we got an error, we need to cleanup the socket and zero out the
-     * returned endpoint.  If we got this done without a problem, we return
-     * a pointer to the new endpoint.
-     */
-    if (status != ER_OK) {
-        if (sockFd >= 0) {
-            Shutdown(sockFd);
-            qcc::Close(sockFd);
-        }
-    }
-
-    if (newep) {
-        *newep = conn;
-    }
-
-    return status;
+    /* The daemon doesn't make outgoing connections over this transport */
+    return ER_NOT_IMPLEMENTED;
 }
 
 QStatus DaemonUnixTransport::Disconnect(const char* connectSpec)
 {
-    QCC_DbgHLPrintf(("DaemonUnixTransport::Disconnect(): %s", connectSpec));
-
-    /*
-     * Higher level code tells us which connection is refers to by giving us the
-     * same connect spec it used in the Connect() call.  We have to determine the
-     * address and port in exactly the same way
-     */
-    qcc::String normSpec;
-    map<qcc::String, qcc::String> argMap;
-    QStatus status = NormalizeTransportSpec(connectSpec, normSpec, argMap);
-    if (ER_OK != status) {
-        QCC_LogError(status, ("DaemonUnixtransport::Disconnect(): Invalid Unix connect spec \"%s\"", connectSpec));
-        return status;
-    }
-
-    /*
-     * Stop the remote endpoint.  Be careful here since calling Stop() on the
-     * TCPEndpoint is going to cause the transmit and receive threads of the
-     * underlying RemoteEndpoint to exit, which will cause our EndpointExit()
-     * to be called, which will walk the list of endpoints and delete the one
-     * we are stopping.  Once we poke ep->Stop(), the pointer to ep must be
-     * considered dead.
-     */
-    status = ER_BUS_BAD_TRANSPORT_ARGS;
-    m_endpointListLock.Lock();
-    for (list<DaemonUnixEndpoint*>::iterator i = m_endpointList.begin(); i != m_endpointList.end(); ++i) {
-        if (!(*i)->IsIncomingConnection() && (*i)->GetConnectSpec() == normSpec) {
-            DaemonUnixEndpoint* ep = *i;
-            m_endpointListLock.Unlock();
-            return ep->Stop();
-        }
-    }
-    m_endpointListLock.Unlock();
-    return status;
+    /* The daemon doesn't make outgoing connections over this transport */
+    return ER_NOT_IMPLEMENTED;
 }
 
 QStatus DaemonUnixTransport::StartListen(const char* listenSpec)

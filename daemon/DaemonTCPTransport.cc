@@ -177,11 +177,14 @@ void* DaemonTCPEndpoint::AuthThread::Run(void* arg)
         return (void*)ER_FAIL;
     }
 
+    /* Initialized the features for this endpoint */
+    conn->GetFeatures().isBusToBus = false; 
+    conn->GetFeatures().isBusToBus = false;
+    conn->GetFeatures().handlePassing = false;
+
     /* Run the actual connection authentication code. */
-    bool isBusToBus = false;
-    bool allowRemote = false;
     qcc::String authName;
-    status = conn->Establish("ANONYMOUS", authName, isBusToBus, allowRemote);
+    status = conn->Establish("ANONYMOUS", authName);
     if (status != ER_OK) {
         conn->m_stream.Close();
         conn->m_state = FAILED;
@@ -191,7 +194,7 @@ void* DaemonTCPEndpoint::AuthThread::Run(void* arg)
 
     /* Authentication succeeded, crank up the transport. */
     conn->SetListener(conn->m_transport);
-    status = conn->Start(isBusToBus, allowRemote);
+    status = conn->Start();
     if (status != ER_OK) {
         conn->m_stream.Close();
         conn->m_state = FAILED;
@@ -756,13 +759,17 @@ QStatus DaemonTCPTransport::Connect(const char* connectSpec, RemoteEndpoint** ne
         m_endpointListLock.Lock();
         m_endpointList.push_back(conn);
         m_endpointListLock.Unlock();
-        bool isBusToBus = true;
-        bool allowRemote = m_bus.GetInternal().AllowRemoteMessages();
+
+        /* Initialized the features for this endpoint */
+        conn->GetFeatures().isBusToBus = true;
+        conn->GetFeatures().allowRemote = m_bus.GetInternal().AllowRemoteMessages();
+        conn->GetFeatures().handlePassing = false;
+
         qcc::String authName;
-        status = conn->Establish("ANONYMOUS", authName, isBusToBus, allowRemote);
+        status = conn->Establish("ANONYMOUS", authName);
         if (status == ER_OK) {
             conn->SetListener(this);
-            status = conn->Start(isBusToBus, allowRemote);
+            status = conn->Start();
         }
 
         /*
