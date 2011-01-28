@@ -774,4 +774,21 @@ QStatus BusAttachment::CreateInterfacesFromXml(const char* xml)
     return status;
 }
 
+bool BusAttachment::Internal::CallAcceptListeners(const char* sessionName, const char* joiner, const QosInfo& qos)
+{
+    /* Call all listeners. Any positive response means accept the joinSession request */
+    listenersLock.Lock();
+    list<BusListener*>::iterator it = listeners.begin();
+    bool isAccepted = false;
+    while (it != listeners.end()) {
+        bool answer = (*it)->AcceptSession(sessionName, joiner, qos);
+        if (answer) {
+            isAccepted = true;
+        }
+        ++it;
+    }
+    listenersLock.Unlock();
+    return isAccepted;
+}
+
 }

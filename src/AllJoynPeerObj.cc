@@ -34,6 +34,7 @@
 #include <alljoyn/DBusStd.h>
 #include <alljoyn/Message.h>
 #include <alljoyn/MessageReceiver.h>
+#include <alljoyn/QosInfo.h>
 
 #include "KeyStore.h"
 #include "BusEndpoint.h"
@@ -72,6 +73,12 @@ AllJoynPeerObj::AllJoynPeerObj(BusAttachment& bus) : BusObject(bus, org::alljoyn
         AddMethodHandler(ifc->GetMember("ExchangeGuids"), static_cast<MessageReceiver::MethodHandler>(&AllJoynPeerObj::ExchangeGuids));
         AddMethodHandler(ifc->GetMember("GenSessionKey"), static_cast<MessageReceiver::MethodHandler>(&AllJoynPeerObj::GenSessionKey));
         AddMethodHandler(ifc->GetMember("ExchangeGroupKeys"), static_cast<MessageReceiver::MethodHandler>(&AllJoynPeerObj::ExchangeGroupKeys));
+    }
+    /* Add org.alljoyn.Bus.Peer.Session interface */
+    {
+        const InterfaceDescription* ifc = bus.GetInterface(org::alljoyn::Bus::Peer::Session::InterfaceName);
+        AddInterface(*ifc);
+        AddMethodHandler(ifc->GetMember("AcceptSession"), static_cast<MessageReceiver::MethodHandler>(&AllJoynPeerObj::AcceptSession));
     }
 }
 
@@ -827,6 +834,31 @@ void AllJoynPeerObj::NameOwnerChanged(const char* busName, const char* previousO
         delete conversations[busName];
         conversations.erase(busName);
         lock.Unlock();
+    }
+}
+
+void AllJoynPeerObj::AcceptSession(const InterfaceDescription::Member* member, Message& msg)
+{
+    size_t na;
+    const MsgArg* args;
+    QosInfo qos;
+    assert(msg->GetType() == MESSAGE_METHOD_CALL);
+    msg->GetArgs(na, args);
+    assert(na == 4);
+    QStatus status = args[3].Get("(qqq)", &qos.proximity, &qos.traffic, &qos.transports);
+
+    if (status == ER_OK) {
+        MsgArg replyArg;
+
+        /* Call bus listeners */
+        bool isAccepted = bus.GetInternal().CallAcceptListeners(args[0].v_string.str, args[1].v_string.str, qos);
+
+        /* Reply to AcceptSession */
+        replyArg.Set("b", isAccepted);
+        status = MethodReply(msg, &replyArg, 1);
+    }
+    if (ER_OK != status) {
+        QCC_LogError(status, ("AllJoynPeerObj::AcceptSession failed"));
     }
 }
 

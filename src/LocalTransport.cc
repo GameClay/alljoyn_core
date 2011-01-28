@@ -227,7 +227,7 @@ QStatus LocalEndpoint::Diagnose(Message& message)
         QCC_LogError(status, ("No such object %s", message->GetObjectPath()));
     } else if (!obj->ImplementsInterface(message->GetInterface())) {
         status = ER_BUS_OBJECT_NO_SUCH_INTERFACE;
-        QCC_LogError(status, ("Object %s has no interface %s", message->GetObjectPath(), message->GetInterface()));
+        QCC_LogError(status, ("Object %s has no interface %s (member=%s)", message->GetObjectPath(), message->GetInterface(), message->GetMemberName()));
     } else {
         status = ER_BUS_OBJECT_NO_SUCH_MEMBER;
         QCC_LogError(status, ("Object %s has no member %s", message->GetObjectPath(), message->GetMemberName()));

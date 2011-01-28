@@ -246,6 +246,14 @@ class AllJoynPeerObj : public BusObject, public BusListener {
     void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner);
 
     /**
+     * AcceptSession method handler called when the local daemon asks permission to accpet a JoinSession request.
+     *
+     * @param member  The member that was called
+     * @param msg     The method call message
+     */
+    void AcceptSession(const InterfaceDescription::Member* member, Message& msg);
+
+    /**
      * The peer-to-peer authentication mechanisms available to this object
      */
     qcc::String peerAuthMechanisms;

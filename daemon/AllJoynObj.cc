@@ -438,6 +438,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
     /* Step 1: If there is a busAddr from advertsement use it to (possibly) create a physical connection */
     ajObj.router.LockNameTable();
     ajObj.discoverMapLock.Lock();
+    ajObj.virtualEndpointsLock.Lock();
     NameMapEntry* nme = NULL;
     multimap<String, NameMapEntry>::iterator nmit = ajObj.nameMap.lower_bound(sessionName);
     while (nmit != ajObj.nameMap.end() && (nmit->first == sessionName)) {
@@ -463,6 +464,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             replyCode = ALLJOYN_JOINSESSION_REPLY_UNREACHABLE;
         } else {
             /* Give up locks around connect because it takes so long */
+            ajObj.virtualEndpointsLock.Unlock();
             ajObj.discoverMapLock.Unlock();
             ajObj.router.UnlockNameTable();
             status = trans->Connect(nme->busAddr.c_str(), &b2bEp);
@@ -472,8 +474,9 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             }
             ajObj.router.LockNameTable();
             ajObj.discoverMapLock.Lock();
+            ajObj.virtualEndpointsLock.Lock();
 
-            /* Re-acquire sessionEp since it may have gone away while we didn't have the lock */
+            /* Re-acquire sessionEp since it may have gone away or moved while we didn't have the lock */
             ep = ajObj.router.FindEndpoint(sessionName);
             sessionEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
         }
@@ -497,11 +500,13 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                 replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
                 break;
             } else {
+                ajObj.virtualEndpointsLock.Unlock();
                 ajObj.discoverMapLock.Unlock();
                 ajObj.router.UnlockNameTable();
                 qcc::Sleep(50);
                 ajObj.router.LockNameTable();
                 ajObj.discoverMapLock.Lock();
+                ajObj.virtualEndpointsLock.Lock();
 
                 /* Must re-find b2bEp since we gave up the lock */
                 b2bEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
@@ -549,6 +554,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                        endControllerName.c_str()));
 
         /* Give up the locks during the sync method call */
+        ajObj.virtualEndpointsLock.Unlock();
         ajObj.discoverMapLock.Unlock();
         ajObj.router.UnlockNameTable();
         status = controllerObj.MethodCall(org::alljoyn::Daemon::InterfaceName,
@@ -579,8 +585,15 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
         /* Re-lock and re-acquire b2bEp */
         ajObj.router.LockNameTable();
         ajObj.discoverMapLock.Lock();
+        ajObj.virtualEndpointsLock.Lock();
+
         if (!b2bEpName.empty()) {
             b2bEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
+        }
+        sessionEp = static_cast<VirtualEndpoint*>(ajObj.router.FindEndpoint(sessionName));
+        if (!sessionEp) {
+            QCC_LogError(ER_FAIL, ("Session destination unexpectedly left the bus"));
+            replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
         }
     }
 
@@ -597,6 +610,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
         }
     }
 
+    ajObj.virtualEndpointsLock.Unlock();
     ajObj.discoverMapLock.Unlock();
     ajObj.router.UnlockNameTable();
 
@@ -706,26 +720,33 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
             acceptArgs[2].Set("s", dest);
             acceptArgs[3].Set("(qqq)", inQos.proximity, inQos.traffic, inQos.transports);
             ProxyBusObject peerObj(bus, dest, org::alljoyn::Bus::Peer::ObjectPath);
-            QCC_DbgPrintf(("Invoking SessionAccept(%s, %s, %s, <%x, %x, %x> on %s",
+            const InterfaceDescription* sessionIntf = bus.GetInterface(org::alljoyn::Bus::Peer::Session::InterfaceName);
+            assert(sessionIntf);
+            peerObj.AddInterface(*sessionIntf);
+            QCC_DbgPrintf(("Calling AcceptSession(%s, %s, %s, <%x, %x, %x> on %s",
                            acceptArgs[0].v_string.str,
                            acceptArgs[1].v_string.str,
                            acceptArgs[2].v_string.str,
                            inQos.proximity, inQos.traffic, inQos.transports,
                            dest));
+            discoverMapLock.Unlock();
+            router.UnlockNameTable();
             status = peerObj.MethodCall(org::alljoyn::Bus::Peer::Session::InterfaceName,
-                                        "SessionAccept",
+                                        "AcceptSession",
                                         acceptArgs,
                                         ArraySize(acceptArgs),
                                         reply);
+            router.LockNameTable();
+            discoverMapLock.Lock();
             if ((status == ER_OK) && (reply->GetType() == MESSAGE_METHOD_RET)) {
                 size_t na;
                 const MsgArg* replyArgs;
                 reply->GetArgs(na, replyArgs);
-                uint32_t isAccepted;
+                bool isAccepted;
                 replyArgs[0].Get("b", &isAccepted);
 
                 BusEndpoint* ep = router.FindEndpoint(srcB2B);
-                RemoteEndpoint* srcB2BEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_REMOTE)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
+                RemoteEndpoint* srcB2BEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
                 ep = router.FindEndpoint(src);
                 VirtualEndpoint* srcEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
                 if (srcEp && srcB2BEp && isAccepted) {
@@ -742,7 +763,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                     status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
                 }
                 replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                QCC_LogError(status, ("SessionAccept failed"));
+                QCC_LogError(status, ("AcceptSession failed"));
             }
         }
     } else if (destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL) {
@@ -770,7 +791,12 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                            attachArgs[3].v_string.str,
                            inQos.proximity, inQos.traffic, inQos.transports,
                            endControllerName.c_str()));
+            discoverMapLock.Unlock();
+            router.UnlockNameTable();
             status = controllerObj.MethodCall(org::alljoyn::Daemon::InterfaceName, "AttachSession", attachArgs, ArraySize(attachArgs), reply);
+            router.LockNameTable();
+            discoverMapLock.Lock();
+
 
             if ((status == ER_OK) && (reply->GetType() == MESSAGE_METHOD_RET)) {
                 size_t na;
@@ -803,7 +829,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                         status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
                     }
                     replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                    QCC_LogError(status, ("SessionAccept failed"));
+                    QCC_LogError(status, ("AttachSession failed"));
                 }
             }
         }
@@ -1180,13 +1206,13 @@ void AllJoynObj::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
      */
     router.LockNameTable();
     virtualEndpointsLock.Lock();
-    map<qcc::String, VirtualEndpoint>::iterator it = virtualEndpoints.begin();
+    map<qcc::String, VirtualEndpoint*>::iterator it = virtualEndpoints.begin();
     while (it != virtualEndpoints.end()) {
-        if (it->second.RemoveBusToBusEndpoint(endpoint)) {
+        if (it->second->RemoveBusToBusEndpoint(endpoint)) {
 
             /* Remove virtual endpoint with no more b2b eps */
-            String exitingEpName = it->second.GetUniqueName();
-            RemoveVirtualEndpoint(it++->second);
+            String exitingEpName = it->second->GetUniqueName();
+            RemoveVirtualEndpoint(*(it++->second));
 
             /* Let directly connected daemons know that this virtual endpoint is gone. */
             b2bEndpointsLock.Lock();
@@ -1484,17 +1510,18 @@ VirtualEndpoint& AllJoynObj::AddVirtualEndpoint(const qcc::String& uniqueName, R
     VirtualEndpoint* vep = NULL;
 
     virtualEndpointsLock.Lock();
-    map<qcc::String, VirtualEndpoint>::iterator it = virtualEndpoints.find(uniqueName);
+    map<qcc::String, VirtualEndpoint*>::iterator it = virtualEndpoints.find(uniqueName);
     if (it == virtualEndpoints.end()) {
         /* Add new virtual endpoint */
-        pair<map<qcc::String, VirtualEndpoint>::iterator, bool> ret =
-            virtualEndpoints.insert(pair<qcc::String, VirtualEndpoint>(uniqueName,
-                                                                       VirtualEndpoint(uniqueName.c_str(), busToBusEndpoint)));
-        vep = &(ret.first->second);
+        pair<map<qcc::String, VirtualEndpoint*>::iterator, bool> ret =
+
+            virtualEndpoints.insert(pair<qcc::String, VirtualEndpoint*>(uniqueName,
+                                                                        new VirtualEndpoint(uniqueName.c_str(), busToBusEndpoint)));
+        vep = ret.first->second;
         added = true;
     } else {
         /* Add the busToBus endpoint to the existing virtual endpoint */
-        vep = &(it->second);
+        vep = it->second;
         added = vep->AddBusToBusEndpoint(busToBusEndpoint);
     }
     virtualEndpointsLock.Unlock();
@@ -1522,6 +1549,7 @@ void AllJoynObj::RemoveVirtualEndpoint(VirtualEndpoint& vep)
     router.RemoveVirtualAliases(vep);
     router.UnregisterEndpoint(vep);
     virtualEndpoints.erase(vep.GetUniqueName());
+    delete &vep;
     virtualEndpointsLock.Unlock();
     router.UnlockNameTable();
 }
@@ -1530,9 +1558,9 @@ VirtualEndpoint* AllJoynObj::FindVirtualEndpoint(const qcc::String& uniqueName)
 {
     VirtualEndpoint* ret = NULL;
     virtualEndpointsLock.Lock();
-    map<qcc::String, VirtualEndpoint>::iterator it = virtualEndpoints.find(uniqueName);
+    map<qcc::String, VirtualEndpoint*>::iterator it = virtualEndpoints.find(uniqueName);
     if (it != virtualEndpoints.end()) {
-        ret = &(it->second);
+        ret = it->second;
     }
     virtualEndpointsLock.Unlock();
     return ret;

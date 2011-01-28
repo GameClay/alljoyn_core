@@ -126,7 +126,7 @@ QStatus org::alljoyn::CreateInterfaces(BusAttachment& bus)
             QCC_LogError(status, ("Failed to create %s interface", org::alljoyn::Bus::Peer::Session::InterfaceName));
             return status;
         }
-        ifc->AddMethod("SessionAccept",     "sss(qqq)", "b",  "name,src,dest,qos,accepted");
+        ifc->AddMethod("AcceptSession",     "sss(qqq)", "b",  "name,src,dest,qos,accepted");
         ifc->Activate();
     }
     return status;

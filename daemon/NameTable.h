@@ -225,7 +225,7 @@ class NameTable {
         }
     };
 
-    mutable qcc::Mutex lock;                                            /**< Lock protecting name tables */
+    mutable qcc::Mutex lock;                                             /**< Lock protecting name tables */
     std::hash_map<qcc::String, BusEndpoint*, Hash, Equal> uniqueNames;   /**< Unique name table */
     std::hash_map<qcc::String, std::deque<NameQueueEntry>, Hash, Equal> aliasNames;  /**< Alias name table */
     uint32_t uniqueId;

@@ -174,7 +174,7 @@ class VirtualEndpoint : public BusEndpoint {
 
   private:
 
-    qcc::String m_uniqueName;                                  /**< The unique name for this endpoint */
+    const qcc::String m_uniqueName;                             /**< The unique name for this endpoint */
     std::multimap<SessionId, RemoteEndpoint*> m_b2bEndpoints;   /**< Set of b2bs that can route for this virtual ep */
 
     /** B2BInfo is a data container that holds B2B endpoint selection criteria */

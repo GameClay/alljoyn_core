@@ -309,7 +309,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
 
     const InterfaceDescription::Member* exchangeNamesSignal;   /**< org.alljoyn.Bus.ExchangeNames signal member */
 
-    std::map<qcc::String, VirtualEndpoint> virtualEndpoints;   /**< Map of endpoints that reside behind a connected AllJoyn daemon */
+    std::map<qcc::String, VirtualEndpoint*> virtualEndpoints;  /**< Map of endpoints that reside behind a connected AllJoyn daemon */
     qcc::Mutex virtualEndpointsLock;     /**< Mutex that protects virtualEndpoints map */
 
     std::map<qcc::StringMapKey, RemoteEndpoint*> b2bEndpoints;    /**< Map of bus-to-bus endpoints that are connected to external daemons */

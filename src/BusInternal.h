@@ -181,6 +181,16 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
      */
     const qcc::String& GetListenAddresses() const { return listenAddresses; }
 
+    /**
+     * Inform BusListeners of incoming JoinSession attempt.
+     *
+     * @param sessionName    Name of session.
+     * @param joiner         Unique name of potential joiner.
+     * @param qos            Incoming quality of service.
+     * @return   Return true if JoinSession request is accepted. false if rejected.
+     */
+    bool CallAcceptListeners(const char* sessionName, const char* joiner, const QosInfo& qos);
+
   private:
 
     void ThreadExit(qcc::Thread* thread);

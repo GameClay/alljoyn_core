@@ -223,6 +223,14 @@ class MyAuthListener : public AuthListener {
 
 };
 
+class MyBusListener : public BusListener {
+    bool AcceptSession(const char* sessionName, const char* joiner, const QosInfo& qos)
+    {
+        QCC_SyncPrintf("Accepting JoinSession request from %s\n", joiner);
+        return true;
+    }
+};
+
 class LocalTestObject : public BusObject {
 
     class DelayedResponse : public Thread, public ThreadListener {
@@ -722,6 +730,12 @@ int main(int argc, char** argv)
         status = g_msgBus->Start();
     } else {
         QCC_LogError(status, ("BusAttachment::Start failed"));
+    }
+
+    /* Create a bus listener to be used to accept incoming session requests */
+    if (ER_OK == status) {
+        BusListener* myBusListener = new MyBusListener();
+        g_msgBus->RegisterBusListener(*myBusListener);
     }
 
     /* Register local objects and connect to the daemon */
