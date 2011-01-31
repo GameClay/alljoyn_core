@@ -25,6 +25,8 @@
 #include <qcc/String.h>
 #include <qcc/Timer.h>
 #include <qcc/atomic.h>
+#include <qcc/XmlElement.h>
+#include <qcc/StringSource.h>
 
 #include <assert.h>
 #include <algorithm>
@@ -51,6 +53,7 @@
 #include "KeyStore.h"
 #include "BusInternal.h"
 #include "AllJoynPeerObj.h"
+#include "XmlHelper.h"
 
 #define QCC_MODULE "ALLJOYN"
 
@@ -645,6 +648,20 @@ void BusAttachment::Internal::AlarmTriggered(const Alarm& alarm)
 uint32_t BusAttachment::GetTimestamp()
 {
     return qcc::GetTimestamp();
+}
+
+QStatus BusAttachment::CreateInterfacesFromXml(const char* xml)
+{
+    StringSource source(xml);
+
+    /* Parse the XML to update this ProxyBusObject instance (plus any new children and interfaces) */
+    XmlParseContext pc(source);
+    QStatus status = XmlElement::Parse(pc);
+    if (status == ER_OK) {
+        XmlHelper xmlHelper(this, "BusAttachment");
+        status = xmlHelper.AddInterfaceDefinitions(pc.root);
+    }
+    return status;
 }
 
 }

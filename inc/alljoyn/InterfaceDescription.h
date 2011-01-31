@@ -58,7 +58,7 @@ namespace ajn {
 class InterfaceDescription {
 
     friend class BusAttachment;
-    friend class ProxyBusObject;
+    friend class XmlHelper;
 
   public:
 

@@ -92,6 +92,23 @@ class BusAttachment : public MessageReceiver {
     QStatus CreateInterface(const char* name, InterfaceDescription*& iface, bool secure = false);
 
     /**
+     * Initialize one more interface descriptions from an XML string in DBus introspection format.
+     * The root tag of the XML can be a <node> or a standalone <interface> tag. To initialize more
+     * than one interface the interfaces need to be nested in a <node> tag. 
+     *
+     * Note that when this method fails during parsing, the return code will be set accordingly.
+     * However, any interfaces which were successfully parsed prior to the failure may be registered
+     * with the bus. 
+     *
+     * @param xml     An XML string in DBus introspection format.
+     *
+     * @return
+     *      - #ER_OK if parsing is completely successful.
+     *      - An error status otherwise.
+     */
+    QStatus CreateInterfacesFromXml(const char* xml);
+
+    /**
      * Retrieve an existing InterfaceDescription.
      *
      * @param name       Interface name

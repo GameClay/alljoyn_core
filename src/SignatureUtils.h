@@ -114,6 +114,15 @@ class SignatureUtils {
     static uint8_t CountCompleteTypes(const char* signature);
 
     /**
+     * Check if a signature is a single complete type.
+     *
+     * @param signature  The signature to check.
+     *
+     * @return  Returns true if the signature is valid and is one complete type.
+     */
+    static bool IsCompleteType(const char* signature) { return ParseCompleteType(signature) && (*signature == 0); }
+
+    /**
      * Parses and verifies a signature for a container type
      *
      * @param container  The container to parse.

@@ -41,9 +41,9 @@
 
 #include "Router.h"
 #include "LocalTransport.h"
-#include "BusUtil.h"
 #include "AllJoynPeerObj.h"
 #include "BusInternal.h"
+#include "XmlHelper.h"
 
 #include <Status.h>
 
@@ -580,7 +580,7 @@ QStatus ProxyBusObject::IntrospectRemoteObject()
         qcc::String ident = reply->GetSender();
         ident += " : ";
         ident += reply->GetObjectPath();
-        status = ParseIntrospection(reply->GetArg(0)->v_string.str, ident.c_str());
+        status = ParseXml(reply->GetArg(0)->v_string.str, ident.c_str());
     }
     return status;
 }
@@ -630,203 +630,23 @@ void ProxyBusObject::IntrospectMethodCB(Message& msg, void* context)
     qcc::String ident = msg->GetSender();
     ident += " : ";
     ident += msg->GetObjectPath();
-    QStatus status = ParseIntrospection(msg->GetArg(0)->v_string.str, ident.c_str());
+    QStatus status = ParseXml(msg->GetArg(0)->v_string.str, ident.c_str());
 
     /* Call the callback */
     (ctx->listener->*ctx->callback)(status, ctx->obj, ctx->context);
     delete ctx;
 }
 
-struct ProxyBusObject::ParseRoot {
-    const XmlElement* root;
-};
-
-QStatus ProxyBusObject::ParseIntrospection(const char* xml, const char* ident)
+QStatus ProxyBusObject::ParseXml(const char* xml, const char* ident)
 {
     StringSource source(xml);
 
-    /* Parse the XML reply to update this ProxyBusObject instance (plus any new interfaces) */
+    /* Parse the XML to update this ProxyBusObject instance (plus any new children and interfaces) */
     XmlParseContext pc(source);
     QStatus status = XmlElement::Parse(pc);
-
-    if (ER_OK == status) {
-        ParseRoot root = { &pc.root };
-        status = ParseNode(root, ident);
-    }
-    return status;
-}
-
-QStatus ProxyBusObject::ParseNode(const ParseRoot& parseRoot, const char* ident)
-{
-    const XmlElement* root = parseRoot.root;
-    QStatus status = ER_OK;
-
-    /* Sanity check. Root element must be a node */
-    if (root->GetName() != "node") {
-        status = ER_BUS_BAD_XML;
-        QCC_LogError(status, ("Introspection root element must be <node>"));
-        return status;
-    }
-
-    /* Iterate over <interface> elements */
-    const vector<XmlElement*>& rootChildren = root->GetChildren();
-    vector<XmlElement*>::const_iterator it = rootChildren.begin();
-    while ((ER_OK == status) && (it != rootChildren.end())) {
-        const XmlElement* elem = *it++;
-        qcc::String elemName = elem->GetName();
-        if (elemName == "interface") {
-            qcc::String ifName = elem->GetAttribute("name");
-            if (IsLegalInterfaceName(ifName.c_str())) {
-
-                // TODO @@ get "secure" annotation
-
-                /* Create a new inteface */
-                InterfaceDescription intf(ifName.c_str(), false);
-
-                /* Iterate over <method>, <signal> and <property> elements */
-                const vector<XmlElement*>& ifChildren = elem->GetChildren();
-                vector<XmlElement*>::const_iterator ifIt = ifChildren.begin();
-                while ((ER_OK == status) && (ifIt != ifChildren.end())) {
-                    const XmlElement* ifChildElem = *ifIt++;
-                    qcc::String ifChildName = ifChildElem->GetName();
-                    qcc::String memberName = ifChildElem->GetAttribute("name");
-                    if ((ifChildName == "method") || (ifChildName == "signal")) {
-                        if (IsLegalMemberName(memberName.c_str())) {
-
-                            bool isMethod = (ifChildName == "method");
-                            bool isSignal = (ifChildName == "signal");
-                            bool isFirstArg = true;
-                            qcc::String inSig;
-                            qcc::String outSig;
-                            qcc::String argList;
-
-                            /* Iterate over args */
-                            const vector<XmlElement*>& argChildren = ifChildElem->GetChildren();
-                            vector<XmlElement*>::const_iterator argIt = argChildren.begin();
-                            while ((ER_OK == status) && (argIt != argChildren.end())) {
-                                const XmlElement* argElem = *argIt++;
-                                if (argElem->GetName() == "arg") {
-                                    if (!isFirstArg) {
-                                        argList += ',';
-                                    }
-                                    isFirstArg = false;
-                                    qcc::String nameAtt = argElem->GetAttribute("name");
-                                    qcc::String directionAtt = argElem->GetAttribute("direction");
-                                    qcc::String typeAtt = argElem->GetAttribute("type");
-
-                                    if (typeAtt.empty() || (isMethod && directionAtt.empty())) {
-                                        status = ER_FAIL;
-                                        QCC_LogError(status, ("Malformed <arg> tag (bad attributes)"));
-                                        break;
-                                    }
-
-                                    argList += argElem->GetAttribute("name");
-                                    if (isSignal || (argElem->GetAttribute("direction") == "in")) {
-                                        inSig += argElem->GetAttribute("type");
-                                    } else {
-                                        outSig += argElem->GetAttribute("type");
-                                    }
-                                }
-                            }
-
-                            /* Add the member */
-                            // TODO @@ annotations
-                            if ((ER_OK == status) && (isMethod || isSignal)) {
-                                status = intf.AddMember(isMethod ? MESSAGE_METHOD_CALL : MESSAGE_SIGNAL,
-                                                        memberName.c_str(),
-                                                        inSig.empty() ? NULL : inSig.c_str(),
-                                                        outSig.empty() ? NULL : outSig.c_str(),
-                                                        argList.empty() ? NULL : argList.c_str(),
-                                                        0);
-                            }
-                        } else {
-                            status = ER_FAIL;
-                            QCC_LogError(status, ("Illegal member name \"%s\" introspection data for %s",
-                                                  memberName.c_str(),
-                                                  ident));
-                        }
-                    } else if (ifChildName == "property") {
-                        qcc::String sig = ifChildElem->GetAttribute("type");
-                        qcc::String accessStr = ifChildElem->GetAttribute("access");
-                        /* TODO @@ Improve signature checking */
-                        if (sig.empty() || memberName.empty()) {
-                            status = ER_FAIL;
-                            QCC_LogError(status, ("Unspecified type or name attriute for property %s in introspection data from %s",
-                                                  memberName.c_str(), ident));
-                        } else {
-                            uint8_t access = 0;
-                            if (accessStr == "read") access = PROP_ACCESS_READ;
-                            if (accessStr == "write") access = PROP_ACCESS_WRITE;
-                            if (accessStr == "readwrite") access = PROP_ACCESS_RW;
-                            status = intf.AddProperty(memberName.c_str(), sig.c_str(), access);
-                        }
-                    } else if (ifChildName != "annotation") {
-                        status = ER_FAIL;
-                        QCC_LogError(status, ("Unknown element \"%s\" found in introspection data from %s", ifChildName.c_str(), ident));
-                        break;
-                    }
-                }
-                /* Add the interface with all its methods, signals and properties */
-                if (ER_OK == status) {
-                    InterfaceDescription* newIntf = NULL;
-                    status = bus->CreateInterface(intf.GetName(), newIntf);
-                    if (ER_OK == status) {
-                        /* Assign new interface */
-                        *newIntf = intf;
-                        newIntf->Activate();
-                        AddInterface(*newIntf);
-                    } else if (ER_BUS_IFACE_ALREADY_EXISTS == status) {
-                        /* Make sure definition matches existing one */
-                        const InterfaceDescription* existingIntf = bus->GetInterface(intf.GetName());
-                        if (existingIntf) {
-                            if (*existingIntf == intf) {
-                                AddInterface(*existingIntf);
-                                status = ER_OK;
-                            } else {
-                                status = ER_BUS_INTERFACE_MISMATCH;
-                                QCC_LogError(status, ("XML interface description does not match existing definition for \"%s\"",
-                                                      intf.GetName()));
-                            }
-                        } else {
-                            status = ER_FAIL;
-                            QCC_LogError(status, ("Failed to retrieve existing interface \"%s\"", intf.GetName()));
-                        }
-                    } else {
-                        QCC_LogError(status, ("Failed to create new inteface \"%s\"", intf.GetName()));
-                    }
-                }
-            } else {
-                status = ER_FAIL;
-                QCC_LogError(status, ("Invalid interface name \"%s\" in XML introspection data for %s", ifName.c_str(), ident));
-            }
-        } else if (elemName == "node") {
-            qcc::String relativePath = elem->GetAttribute("name");
-            qcc::String childObjPath = path;
-            if (0 || childObjPath.size() > 1) {
-                childObjPath += '/';
-            }
-            childObjPath += relativePath;
-            if (!relativePath.empty() & IsLegalObjectPath(childObjPath.c_str())) {
-                /* Check for existing child with the same name. Use this child if found, otherwise create a new one */
-                ParseRoot childRoot = { elem };
-                ProxyBusObject* childObj = GetChild(relativePath.c_str());
-                if (NULL != childObj) {
-                    status = childObj->ParseNode(childRoot, ident);
-                } else {
-                    ProxyBusObject childObj(*bus, serviceName.c_str(), childObjPath.c_str());
-                    status = childObj.ParseNode(childRoot, ident);
-                    if (ER_OK == status) {
-                        AddChild(childObj);
-                    }
-                }
-                if (ER_OK != status) {
-                    QCC_LogError(status, ("Failed to parse child object %s in introspection data for %s", childObjPath.c_str(), ident));
-                }
-            } else {
-                status = ER_FAIL;
-                QCC_LogError(status, ("Illegal child object name \"%s\" specified in introspection for %s", relativePath.c_str(), ident));
-            }
-        }
+    if (status == ER_OK) {
+        XmlHelper xmlHelper(bus, ident ? ident : path.c_str());
+        status = xmlHelper.AddProxyObjects(*this, pc.root);
     }
     return status;
 }
@@ -841,7 +661,7 @@ ProxyBusObject::~ProxyBusObject()
 }
 
 ProxyBusObject::ProxyBusObject(BusAttachment& bus, const char* service, const char* path) :
-    bus(&bus),
+bus(&bus),
     components(new Components),
     path(path),
     serviceName(service)

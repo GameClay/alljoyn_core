@@ -55,9 +55,9 @@ using namespace ajn;
 namespace org {
     namespace alljoyn {
         namespace sock_test {
-            const char* InterfaceName = "org.alljoyn.sock_test";
-            const char* WellKnownName = "org.alljoyn.sock_test";
-            const char* ObjectPath = "/org/alljoyn/sock_test";
+            const char* Interface = "org.alljoyn.sock_test";
+            const char* Service = "org.alljoyn.sock_test";
+            const char* Path = "/org/alljoyn/sock_test";
         }
     }
 }
@@ -102,19 +102,13 @@ static const char ifcXML[] =
 class SockService : public BusObject {
   public:
 
-    SockService(BusAttachment &bus) : BusObject(bus, ::org::alljoyn::sock_test::ObjectPath)
+    SockService(BusAttachment &bus) : BusObject(bus, ::org::alljoyn::sock_test::Path)
     {
-        InterfaceDescription *ifc;
-        QStatus status = bus.CreateInterface(::org::alljoyn::sock_test::InterfaceName, ifc);
-        if (status == ER_OK) {
-            ifc->AddMethod("PutSock",  "h",  NULL, "sock");
-            ifc->AddMethod("GetSock",  NULL, "h",  "sock");
-            ifc->Activate();
+        const InterfaceDescription *ifc = bus.GetInterface(::org::alljoyn::sock_test::Interface);
+        if (ifc) {
             AddInterface(*ifc);
-
             AddMethodHandler(ifc->GetMember("PutSock"), static_cast<MessageReceiver::MethodHandler>(&SockService::PutSock));
             AddMethodHandler(ifc->GetMember("GetSock"), static_cast<MessageReceiver::MethodHandler>(&SockService::GetSock));
-
         }
     }
 
@@ -124,7 +118,7 @@ class SockService : public BusObject {
         const ProxyBusObject& dbusObj = bus.GetDBusProxyObj();
         MsgArg args[2];
         size_t numArgs = ArraySize(args);
-        MsgArg::Set(args, numArgs, "su", ::org::alljoyn::sock_test::WellKnownName, 6);
+        MsgArg::Set(args, numArgs, "su", ::org::alljoyn::sock_test::Service, 6);
         QStatus status = dbusObj.MethodCallAsync(ajn::org::freedesktop::DBus::InterfaceName,
                                                  "RequestName",
                                                  this,
@@ -132,7 +126,7 @@ class SockService : public BusObject {
                                                  args,
                                                  numArgs);
         if (ER_OK != status) {
-            QCC_LogError(status, ("Failed to request name %s", ::org::alljoyn::sock_test::WellKnownName));
+            QCC_LogError(status, ("Failed to request name %s", ::org::alljoyn::sock_test::Service));
         }
     }
 
@@ -170,7 +164,7 @@ class SockService : public BusObject {
         uint32_t ownership = 0;
         QStatus status = msg->GetArgs("u", &ownership);
         if ((status != ER_OK) || (ownership != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER)) {
-            QCC_LogError(status, ("Failed to obtain name (ownership=%d) %s", ownership, ::org::alljoyn::sock_test::WellKnownName));
+            QCC_LogError(status, ("Failed to obtain name (ownership=%d) %s", ownership, ::org::alljoyn::sock_test::Service));
         }
     }
 };
@@ -326,8 +320,8 @@ int main(int argc, char** argv)
     if (client) {
 
         /* Create the proxy object */
-        ProxyBusObject remoteObj(bus, ::org::alljoyn::sock_test::WellKnownName, ::org::alljoyn::sock_test::ObjectPath);
-        status = remoteObj.ParseIntrospection(ifcXML, "sock_test");
+        ProxyBusObject remoteObj(bus, ::org::alljoyn::sock_test::Service, ::org::alljoyn::sock_test::Path);
+        status = remoteObj.ParseXml(ifcXML, "sock_test");
         if (status != ER_OK) {
             QCC_LogError(status, ("Failed to parse XML"));
             goto Exit;
@@ -342,7 +336,7 @@ int main(int argc, char** argv)
             if (status == ER_OK) {
                 Message reply(bus);
                 MsgArg arg("h", &handles[0]);
-                status = remoteObj.MethodCall(::org::alljoyn::sock_test::InterfaceName, "PutSock", &arg, 1, reply);
+                status = remoteObj.MethodCall(::org::alljoyn::sock_test::Interface, "PutSock", &arg, 1, reply);
                 /* Don't need this handle anymore */
                 qcc::Close(handles[0]);
                 if (ER_OK == status) {
@@ -372,6 +366,11 @@ int main(int argc, char** argv)
         }
         bus.WaitStop();
     } else {
+        QStatus status = bus.CreateInterfacesFromXml(ifcXML);
+        if (status != ER_OK) {
+            QCC_LogError(status, ("Failed to parse XML"));
+            goto Exit;
+        }
         SockService sockService(bus);
         bus.RegisterBusObject(sockService);
         bus.WaitStop();

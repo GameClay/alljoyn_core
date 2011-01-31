@@ -486,13 +486,14 @@ class ProxyBusObject : public MessageReceiver {
      * may be registered with the bus. Similarly, any objects that were successfully created
      * before the failure will exist in this object's set of children.
      *
-     * @param xml       The XML string to parse.
-     * @param ident     Identity tag used in any error logging associated with this parsing.
+     * @param xml         An XML string in DBus introspection format.
+     * @param identifier  An optional identifying string to include in error logging messages.
+     *
      * @return
      *      - #ER_OK if parsing is completely successful.
      *      - An error status otherwise.
      */
-    QStatus ParseIntrospection(const char* xml, const char* ident);
+    QStatus ParseXml(const char* xml, const char* identifier = NULL);
 
     /**
      * Explicitly secure the connection to the remote peer for this proxy object. Peer-to-peer
@@ -534,6 +535,7 @@ class ProxyBusObject : public MessageReceiver {
   private:
 
     /**
+     * @internal
      * Method return handler used to process synchronous method calls.
      *
      * @param msg     Method return message
@@ -542,22 +544,41 @@ class ProxyBusObject : public MessageReceiver {
     void SyncReplyHandler(Message& msg, void* context);
 
     /**
+     * @internal
      * Introspection method_reply handler. (Internal use only)
      */
     void IntrospectMethodCB(Message& message, void* context);
 
+
     /**
+     * @internal
+     * Internal introspection xml parse tree type.
+     */
+    struct IntrospectionXml;
+
+    /**
+     * @internal
      * Parse a single introspecton <node> element.
      *
-     * @param root    XML root element (must be a <node>).
-     * @param ident   Identification used in error messages.
+     * @param parseNode  XML element (must be a <node>).
      *
      * @return
      *       - #ER_OK if completely successful.
      *       - An error status otherwise
      */
-    struct ParseRoot;
-    QStatus ParseNode(const ParseRoot& parseRoot, const char* ident);
+    static QStatus ParseNode(const IntrospectionXml& node);
+
+    /**
+     * @internal
+     * Parse a single introspecton <interface> element.
+     *
+     * @param parseNode  XML element (must be an <interface>).
+     *
+     * @return
+     *       - #ER_OK if completely successful.
+     *       - An error status otherwise
+     */
+    static QStatus ParseInterface(const IntrospectionXml& ifc);
 
     /** Bus associated with object */
     BusAttachment* bus;
