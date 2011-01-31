@@ -218,11 +218,6 @@ int main(int argc, char** argv)
 {
     QStatus status = ER_OK;
     qcc::String daemonAddr = "unix:abstract=bluebus";
-// #ifdef _WIN32
-//    daemonAddr = env->Find("BUS_ADDRESS", "tcp:addr=127.0.0.1,port=9955");
-// #else
-//    daemonAddr = env->Find("BUS_ADDRESS", "unix:abstract=bluebus");
-// #endif
 
     /* Parse command line args */
     for (int i = 1; i < argc; ++i) {
@@ -252,10 +247,6 @@ int main(int argc, char** argv)
             usage();
         }
     }
-
-    /* Set AllJoyn logging */
-    // QCC_SetLogLevels("ALLJOYN=7;ALL=1");
-    // QCC_UseOSLogging(true);
 
     /* Create message bus */
     BusAttachment* bus = new BusAttachment("chat", true);
