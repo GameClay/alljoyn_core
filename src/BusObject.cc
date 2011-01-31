@@ -288,15 +288,19 @@ void BusObject::Introspect(const InterfaceDescription::Member* member, Message& 
 
 QStatus BusObject::AddMethodHandler(const InterfaceDescription::Member* member, MessageReceiver::MethodHandler handler)
 {
-    QStatus status;
-
+    if (!member) {
+        return ER_BAD_ARG_1;
+    }
+    if (!handler) {
+        return ER_BAD_ARG_2;
+    }
+    QStatus status = ER_OK;
     if (isRegistered) {
         status = ER_BUS_CANNOT_ADD_HANDLER;
         QCC_LogError(status, ("Cannot add method handler to an object that is already registered"));
     } else if (ImplementsInterface(member->iface->GetName())) {
         MethodContext ctx = { member, handler };
         components->methodContexts.push_back(ctx);
-        status = ER_OK;
     } else {
         status = ER_BUS_NO_SUCH_INTERFACE;
         QCC_LogError(status, ("Cannot add method handler for unknown interface"));
@@ -306,6 +310,9 @@ QStatus BusObject::AddMethodHandler(const InterfaceDescription::Member* member, 
 
 QStatus BusObject::AddMethodHandlers(const MethodEntry* entries, size_t numEntries)
 {
+    if (!entries) {
+        return ER_BAD_ARG_1;
+    }
     QStatus status = ER_OK;
     for (size_t i = 0; i < numEntries; ++i) {
         status = AddMethodHandler(entries[i].member, entries[i].handler);
