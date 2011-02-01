@@ -491,6 +491,15 @@ QStatus LocalEndpoint::RegisterSignalHandler(MessageReceiver* receiver,
                                              const InterfaceDescription::Member* member,
                                              const char* srcPath)
 {
+    if (!receiver) {
+        return ER_BAD_ARG_1;
+    }
+    if (!signalHandler) {
+        return ER_BAD_ARG_2;
+    }
+    if (!member) {
+        return ER_BAD_ARG_3;
+    }
     signalTable.Add(receiver, signalHandler, member, srcPath ? srcPath : "");
     return ER_OK;
 }
@@ -500,6 +509,15 @@ QStatus LocalEndpoint::UnRegisterSignalHandler(MessageReceiver* receiver,
                                                const InterfaceDescription::Member* member,
                                                const char* srcPath)
 {
+    if (!receiver) {
+        return ER_BAD_ARG_1;
+    }
+    if (!signalHandler) {
+        return ER_BAD_ARG_2;
+    }
+    if (!member) {
+        return ER_BAD_ARG_3;
+    }
     signalTable.Remove(receiver, signalHandler, member, srcPath ? srcPath : "");
     return ER_OK;
 }
