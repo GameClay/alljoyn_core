@@ -4,8 +4,8 @@
  *
  * NOTE: This tool (ab)uses some AllJoyn interfaces in inappropriate ways and
  * contains some bad programing constructs (i.e., known memory leaks, etc.).
- * The code in this tool should not be used as an example of how to the AllJoyn
- * API.
+ * The code in this tool should not be used as an example of how to use the
+ * AllJoyn API.
  */
 
 /******************************************************************************
@@ -1084,7 +1084,7 @@ int main(int argc, char** argv)
     /* Get env vars */
     if (busAddr.empty()) {
         env = Environ::GetAppEnviron();
-        busAddr = env->Find("DBUS_SESSION_BUS_ADDRESS", "unix:abstract=bluebus");
+        busAddr = env->Find("DBUS_SESSION_BUS_ADDRESS", "unix:abstract=alljoyn");
     }
 
     /* Start the msg bus */

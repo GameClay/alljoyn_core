@@ -217,7 +217,7 @@ static void usage()
 int main(int argc, char** argv)
 {
     QStatus status = ER_OK;
-    qcc::String daemonAddr = "unix:abstract=bluebus";
+    qcc::String daemonAddr = "unix:abstract=alljoyn";
 
     /* Parse command line args */
     for (int i = 1; i < argc; ++i) {

@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * This file tests BlueBus use of the DBus wire protocol
+ * This file tests AllJoyn use of the DBus wire protocol
  */
 
 /******************************************************************************

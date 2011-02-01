@@ -219,7 +219,7 @@ int main(int argc, char** argv, char** envArg)
 
     /* Get env vars */
     Environ* env = Environ::GetAppEnviron();
-    qcc::String clientArgs = env->Find("DBUS_SESSION_BUS_ADDRESS", "unix:abstract=bluebus");
+    qcc::String clientArgs = env->Find("DBUS_SESSION_BUS_ADDRESS", "unix:abstract=alljoyn");
 
     /* Create message bus */
     g_msgBus = new BusAttachment("DaemonTester");
