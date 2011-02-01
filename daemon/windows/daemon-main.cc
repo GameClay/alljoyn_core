@@ -61,7 +61,7 @@ using namespace std;
 
 static const char defaultConfig[] =
     "<busconfig>"
-    "  <type>windowsalljoyn</type>"
+    "  <type>alljoyn</type>"
     "  <listen>tcp:addr=127.0.0.1,port=9955</listen>"
     "  <policy context=\"default\">"
     "    <!-- Allow everything to be sent -->"
@@ -71,6 +71,12 @@ static const char defaultConfig[] =
     "    <!-- Allow anyone to own anything -->"
     "    <allow own=\"*\"/>"
     "  </policy>"
+    "  <limit name=\"auth_timeout\">32768</limit>"
+    "  <limit name=\"max_incomplete_connections_tcp\">16</limit>"
+    "  <limit name=\"max_completed_connections_tcp\">64</limit>"
+    "  <alljoyn module=\"ipns\">"
+    "    <property interfaces=\"*\"/>"
+    "  </alljoyn>"
     "</busconfig>";
 
 BusAttachment* g_ajBus = NULL;
@@ -119,15 +125,15 @@ class OptParse {
 
 void OptParse::PrintUsage()
 {
-    printf("%s [--version] [--config-file=FILE] [--print-address] [--verbosity=LEVEL]\n\n"
-           "    --version\n"
-           "        Print the version and copyright string, and exit.\n\n"
+    printf("%s [--config-file=FILE] [--print-address] [--verbosity=LEVEL] [--version]\n\n"
            "    --config-file=FILE\n"
            "        Use the specified configuration file.\n\n"
            "    --print-address\n"
            "        Print the socket address to STDOUT\n\n"
            "    --verbosity=LEVEL\n"
-           "        Set the logging level to LEVEL.\n",
+           "        Set the logging level to LEVEL.\n\n"
+           "    --version\n"
+           "        Print the version and copyright string, and exit.\n",
            argv[0]);
 }
 

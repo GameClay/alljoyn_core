@@ -230,7 +230,7 @@ extern "C" {
 JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_simpleOnCreate(JNIEnv* env, jobject jobj)
 {
     QStatus status = ER_OK;
-    const char* daemonAddr = "unix:abstract=bluebus";
+    const char* daemonAddr = "unix:abstract=alljoyn";
     jboolean iscopy;
 
     /* Set AllJoyn logging */

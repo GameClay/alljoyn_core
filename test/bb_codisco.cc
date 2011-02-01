@@ -141,7 +141,7 @@ int main(int argc, char** argv)
 #ifdef _WIN32
     qcc::String connectArgs = env->Find("BUS_ADDRESS", "tcp:addr=127.0.0.1,port=9955");
 #else
-    qcc::String connectArgs = env->Find("BUS_ADDRESS", "unix:abstract=bluebus");
+    qcc::String connectArgs = env->Find("BUS_ADDRESS", "unix:abstract=alljoyn");
 #endif
 
     /* Create message bus */

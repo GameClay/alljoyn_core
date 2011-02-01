@@ -35,6 +35,7 @@
 #include <vector>
 
 #include <qcc/String.h>
+#include <qcc/StringSource.h>
 #include <qcc/StringUtil.h>
 #include <qcc/Environ.h>
 #include <qcc/FileStream.h>
@@ -53,11 +54,6 @@
 #include "BusController.h"
 #include "ConfigDB.h"
 
-#define dbg(_fmt, _args ...) fprintf(stderr, "DBG %s %s[%u]: " _fmt "\n", __FILE__, __PRETTY_FUNCTION__, __LINE__, ## _args)
-#ifndef dbg
-#define dbg(_fmt, _args ...) do { } while (0)
-#endif
-
 #define DAEMON_EXIT_OK            0
 #define DAEMON_EXIT_OPTION_ERROR  1
 #define DAEMON_EXIT_CONFIG_ERROR  2
@@ -75,6 +71,33 @@ using namespace std;
 
 static volatile sig_atomic_t reload;
 static volatile sig_atomic_t quit;
+
+/*
+ * Simple config to allow all messages with PolicyDB tied into DaemonRouter and
+ * to provide some non-default limits for the daemon tcp transport.
+ */
+static const char internalConfig[] =
+    "<busconfig>"
+    "  <type>alljoyn</type>"
+    "  <listen>unix:abstract=alljoyn</listen>"
+    "  <listen>bluetooth:</listen>"
+    "  <listen>tcp:addr=0.0.0.0,port=9955</listen>"
+    "  <policy context=\"default\">"
+    "    <allow send_interface=\"*\"/>"
+    "    <allow receive_interface=\"*\"/>"
+    "    <allow own=\"*\"/>"
+    "    <allow user=\"*\"/>"
+    "    <allow send_requested_reply=\"true\"/>"
+    "    <allow receive_requested_reply=\"true\"/>"
+    "  </policy>"
+    "  <limit name=\"auth_timeout\">32768</limit>"
+    "  <limit name=\"max_incomplete_connections_tcp\">16</limit>"
+    "  <limit name=\"max_completed_connections_tcp\">64</limit>"
+    "  <alljoyn module=\"ipns\">"
+    "    <property interfaces=\"*\"/>"
+    "  </alljoyn>"
+    "</busconfig>";
+
 
 void SignalHandler(int sig)
 {
@@ -106,7 +129,7 @@ class OptParse {
 
     OptParse(int argc, char** argv) :
         argc(argc), argv(argv), fork(false), noFork(false), printAddressFd(-1), printPidFd(-1),
-        session(false), system(false), verbosity(LOG_WARNING)
+        session(false), system(false), verbosity(LOG_WARNING), internalConfig(false)
     { }
 
     ParseResultCode ParseResult();
@@ -117,6 +140,7 @@ class OptParse {
     int GetPrintAddressFd() const { return printAddressFd; }
     int GetPrintPidFd() const { return printPidFd; }
     int GetVerbosity() const { return verbosity; }
+    bool GetInternalConfig() const { return internalConfig; }
 
   private:
     int argc;
@@ -130,6 +154,7 @@ class OptParse {
     bool session;
     bool system;
     int verbosity;
+    bool internalConfig;
 
     void PrintUsage();
 };
@@ -137,14 +162,19 @@ class OptParse {
 
 void OptParse::PrintUsage()
 {
+    qcc::String cmd = argv[0];
+    cmd = cmd.substr(cmd.find_last_of('/') + 1);
+
     fprintf(stderr,
-            "%s [--version] [--session] [--system] [--config-file=FILE] [--print-address[=DESCRIPTOR]] [--print-pid[=DESCRIPTOR]] [--fork] [--nofork] [--verbosity=LEVEL]\n\n"
-            "    --version\n"
-            "        Print the version and copyright string, and exit.\n\n"
+            "%s [--session | --system | --internal | --config-file=FILE]\n"
+            "%*s [--print-address[=DESCRIPTOR]] [--print-pid[=DESCRIPTOR]]\n"
+            "%*s [--fork] [--nofork] [--verbosity=LEVEL] [--version]\n\n"
             "    --session\n"
             "        Use the standard configuration for the per-login-session message bus.\n\n"
             "    --system\n"
             "        Use the standard configuration for the system message bus.\n\n"
+            "    --internal\n"
+            "        Use a basic internally defined message bus for AllJoyn.\n\n"
             "    --config-file=FILE\n"
             "        Use the specified configuration file.\n\n"
             "    --print-address[=DESCRIPTOR]\n"
@@ -155,10 +185,14 @@ void OptParse::PrintUsage()
             "        Force the daemon to fork and run in the background.\n\n"
             "    --nofork\n"
             "        Force the daemon to only run in the foreground (override config file\n"
-            "        setting).\n"
+            "        setting).\n\n"
             "    --verbosity=LEVEL\n"
-            "        Set the logging level to LEVEL.\n",
-            argv[0]);
+            "        Set the logging level to LEVEL.\n\n"
+            "    --version\n"
+            "        Print the version and copyright string, and exit.\n",
+            cmd.c_str(),
+            static_cast<int>(cmd.size()), "",
+            static_cast<int>(cmd.size()), "");
 }
 
 
@@ -184,19 +218,25 @@ OptParse::ParseResultCode OptParse::ParseResult()
             result = PR_EXIT_NO_ERROR;
             goto exit;
         } else if (arg.compare("--session") == 0) {
-            if (!configFile.empty()) {
+            if (!configFile.empty() || internalConfig) {
                 result = PR_OPTION_CONFLICT;
                 goto exit;
             }
             configFile = "/etc/dbus-1/session.conf";
         } else if (arg.compare("--system") == 0) {
-            if (!configFile.empty()) {
+            if (!configFile.empty() || internalConfig) {
                 result = PR_OPTION_CONFLICT;
                 goto exit;
             }
             configFile = "/etc/dbus-1/system.conf";
-        } else if (arg.compare("--config-file") == 0) {
+        } else if (arg.compare("--internal") == 0) {
             if (!configFile.empty()) {
+                result = PR_OPTION_CONFLICT;
+                goto exit;
+            }
+            internalConfig = true;
+        } else if (arg.compare("--config-file") == 0) {
+            if (!configFile.empty() || internalConfig) {
                 result = PR_OPTION_CONFLICT;
                 goto exit;
             }
@@ -207,7 +247,7 @@ OptParse::ParseResultCode OptParse::ParseResult()
             }
             configFile = argv[i];
         } else if (arg.compare(0, sizeof("--config-file") - 1, "--config-file") == 0) {
-            if (!configFile.empty()) {
+            if (!configFile.empty() || internalConfig) {
                 result = PR_OPTION_CONFLICT;
                 goto exit;
             }
@@ -432,7 +472,7 @@ int daemon(OptParse& opts)
         reload = 0;
         sigsuspend(&waitmask);
 
-        if (reload) {
+        if (reload && !opts.GetInternalConfig()) {
             Log(LOG_INFO, "Reloading config files.\n");
 
             config->LoadConfigFile();
@@ -475,10 +515,6 @@ int main(int argc, char** argv, char** env)
 #endif
 
     LoggerSetting* loggerSettings(LoggerSetting::GetLoggerSetting(argv[0]));
-// #ifndef NDEBUG
-    loggerSettings->SetSyslog(false);
-    loggerSettings->SetFile(stdout);
-// #endif
 
     OptParse opts(argc, argv);
     OptParse::ParseResultCode parseCode(opts.ParseResult());
@@ -499,11 +535,19 @@ int main(int argc, char** argv, char** env)
 
     loggerSettings->SetLevel(opts.GetVerbosity());
 
-    config->SetConfigFile(opts.GetConfigFile());
-    if (!config->LoadConfigFile()) {
-        delete config;
-        return DAEMON_EXIT_CONFIG_ERROR;
+    if (opts.GetInternalConfig()) {
+        StringSource src(internalConfig);
+        config->LoadSource(src);
+    } else {
+        config->SetConfigFile(opts.GetConfigFile());
+        if (!config->LoadConfigFile()) {
+            delete config;
+            return DAEMON_EXIT_CONFIG_ERROR;
+        }
     }
+
+    loggerSettings->SetSyslog(config->GetSyslog());
+    loggerSettings->SetFile((opts.GetFork() || (config->GetFork() && !opts.GetNoFork())) ? NULL : stderr);
 
 #ifndef QCC_OS_ANDROID
     if ((getuid() == 0) && !config->GetUser().empty()) {

@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * This file tests BlueBus use of the DBus wire protocol
+ * This file tests AllJoyn use of the DBus wire protocol
  */
 
 /******************************************************************************
@@ -43,7 +43,7 @@ using namespace qcc;
 using namespace std;
 using namespace ajn;
 
-static const char SockName[] = "@bluebus";
+static const char SockName[] = "@alljoyn";
 
 
 
