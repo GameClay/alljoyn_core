@@ -120,7 +120,7 @@ class SignatureUtils {
      *
      * @return  Returns true if the signature is valid and is one complete type.
      */
-    static bool IsCompleteType(const char* signature) { return ParseCompleteType(signature) && (*signature == 0); }
+    static bool IsCompleteType(const char* signature) { return (ParseCompleteType(signature) == ER_OK) && (*signature == 0); }
 
     /**
      * Parses and verifies a signature for a container type
