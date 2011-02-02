@@ -127,7 +127,7 @@ QStatus XmlHelper::ParseInterface(const XmlElement* elem, ProxyBusObject* obj)
         } else if (ifChildName == "property") {
             qcc::String sig = ifChildElem->GetAttribute("type");
             qcc::String accessStr = ifChildElem->GetAttribute("access");
-            if (!SignatureUtils::IsCompleteType(sig.c_str()))  {
+            if (!SignatureUtils::IsCompleteType(sig.c_str())) {
                 status = ER_BUS_BAD_SIGNATURE;
                 QCC_LogError(status, ("Invalid signature for property %s in introspection data from %s", memberName.c_str(), ident));
             } else if (memberName.empty()) {

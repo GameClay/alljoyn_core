@@ -124,7 +124,7 @@ class EndpointAuth : public SASLEngine::ExtensionHandler {
      *
      * @return  A command/response string or an empty string.
      */
-    qcc::String SASLCallout(SASLEngine &sasl, const qcc::String& extCmd);
+    qcc::String SASLCallout(SASLEngine& sasl, const qcc::String& extCmd);
 
     BusAttachment& bus;
     RemoteEndpoint& endpoint;

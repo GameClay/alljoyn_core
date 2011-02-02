@@ -415,10 +415,12 @@ QStatus SASLEngine::Response(qcc::String& inStr, qcc::String& outStr)
                 SetState(ALLJOYN_AUTH_SUCCESS);
             }
             break;
+
         case ALLJOYN_WAIT_FOR_DATA:
         case ALLJOYN_WAIT_FOR_OK:
             outStr = ComposeAuth(CMD_ERROR, "Unexpected Command");
             break;
+
         default:
             status = ER_AUTH_FAIL;
             break;
@@ -593,7 +595,7 @@ QStatus SASLEngine::Challenge(qcc::String& inStr, qcc::String& outStr)
 
     default:
         if (extHandler && (authState == ALLJOYN_WAIT_FOR_BEGIN)) {
-            /* 
+            /*
              * Commands received after main authentication conversation is complete may be
              * extension commands.
              */
@@ -634,7 +636,7 @@ QStatus SASLEngine::Advance(qcc::String authIn, qcc::String& authOut, AuthState&
 }
 
 SASLEngine::SASLEngine(BusAttachment& bus, AuthMechanism::AuthRole authRole, const qcc::String& mechanisms, AuthListener* listener, ExtensionHandler* extHandler) :
-bus(bus),
+    bus(bus),
     authRole(authRole),
     listener(listener),
     authCount(0),

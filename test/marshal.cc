@@ -54,10 +54,9 @@ static bool fuzzing = false;
 static bool quiet = false;
 
 
-class TestPipe : public qcc::Pipe
-{
+class TestPipe : public qcc::Pipe {
   public:
-    TestPipe() : qcc::Pipe() {}
+    TestPipe() : qcc::Pipe() { }
 
     QStatus PullBytesAndFds(void* buf, size_t reqBytes, size_t& actualBytes, SocketFd* fdList, size_t& numFds, uint32_t timeout = Event::WAIT_FOREVER)
     {
@@ -72,7 +71,7 @@ class TestPipe : public qcc::Pipe
         }
         if (status == ER_OK) {
             status = PullBytes(buf, reqBytes, actualBytes);
-        } 
+        }
         return status;
     }
 
@@ -99,7 +98,7 @@ class TestPipe : public qcc::Pipe
   private:
 
     /* OOB file descriptors */
-    std::queue<qcc::SocketFd>fds;
+    std::queue<qcc::SocketFd> fds;
 
 };
 
@@ -224,11 +223,11 @@ static void Fuzz(TestPipe& stream)
         /*
          * Toggle flag bits
          */
-        {
-            uint8_t bit = (1 << qcc::Rand8() % 8);
-            hdr->flags ^= bit;
-        }
-        break;
+    {
+        uint8_t bit = (1 << qcc::Rand8() % 8);
+        hdr->flags ^= bit;
+    }
+    break;
 
     case 4:
         /*
@@ -935,7 +934,7 @@ QStatus MarshalTests()
         bool wasQuiet = quiet;
         quiet = true;
         const size_t max_array_size = 1024 * 1024 * 64;
-        uint8_t* big = new uint8_t[max_array_size]; 
+        uint8_t* big = new uint8_t[max_array_size];
         MsgArg arg;
         status = arg.Set("ay", max_array_size, big);
         if (status == ER_OK) {

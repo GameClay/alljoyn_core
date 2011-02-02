@@ -42,11 +42,10 @@ namespace ajn {
 /**
  * XmlHelper is a utility class for traversing introspection XML.
  */
-class XmlHelper
-{
+class XmlHelper {
   public:
 
-    XmlHelper(BusAttachment* bus, const char* ident) : bus(bus), ident(ident) {}
+    XmlHelper(BusAttachment* bus, const char* ident) : bus(bus), ident(ident) { }
 
     /**
      * Traverse the XML tree adding all interfaces to the bus. Nodes are ignored.

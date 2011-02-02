@@ -189,7 +189,7 @@ typedef struct {
  * native platform "dup" API must be closed using the native "close" API.
  */
 typedef struct {
-   qcc::SocketFd fd;           /**< A platform-specific socket file descriptor */
+    qcc::SocketFd fd;          /**< A platform-specific socket file descriptor */
 } AllJoynHandle;
 
 /**

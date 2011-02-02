@@ -53,16 +53,16 @@ using namespace ajn;
 
 /** Sample constants */
 namespace org {
-    namespace alljoyn {
-        namespace sock_test {
-            const char* Interface = "org.alljoyn.sock_test";
-            const char* Service = "org.alljoyn.sock_test";
-            const char* Path = "/org/alljoyn/sock_test";
-        }
-    }
+namespace alljoyn {
+namespace sock_test {
+const char* Interface = "org.alljoyn.sock_test";
+const char* Service = "org.alljoyn.sock_test";
+const char* Path = "/org/alljoyn/sock_test";
+}
+}
 }
 
-static BusAttachment *gBus = NULL;
+static BusAttachment* gBus = NULL;
 
 /** Signal handler */
 static void SigIntHandler(int sig)
@@ -86,25 +86,25 @@ static void usage(void)
     printf("\n");
 }
 
-static const char ifcXML[] = 
-"<node name=\"/org/alljoyn/sock_test\">"
-"  <interface name=\"org.alljoyn.sock_test\">"
-"    <method name=\"PutSock\">"
-"      <arg name=\"sock\" type=\"h\" direction=\"in\"/>"
-"    </method>"
-"    <method name=\"GetSock\">"
-"      <arg name=\"sock\" type=\"h\" direction=\"out\"/>"
-"    </method>"
-"  </interface>"
-"</node>";
+static const char ifcXML[] =
+    "<node name=\"/org/alljoyn/sock_test\">"
+    "  <interface name=\"org.alljoyn.sock_test\">"
+    "    <method name=\"PutSock\">"
+    "      <arg name=\"sock\" type=\"h\" direction=\"in\"/>"
+    "    </method>"
+    "    <method name=\"GetSock\">"
+    "      <arg name=\"sock\" type=\"h\" direction=\"out\"/>"
+    "    </method>"
+    "  </interface>"
+    "</node>";
 
 
 class SockService : public BusObject {
   public:
 
-    SockService(BusAttachment &bus) : BusObject(bus, ::org::alljoyn::sock_test::Path)
+    SockService(BusAttachment& bus) : BusObject(bus, ::org::alljoyn::sock_test::Path)
     {
-        const InterfaceDescription *ifc = bus.GetInterface(::org::alljoyn::sock_test::Interface);
+        const InterfaceDescription* ifc = bus.GetInterface(::org::alljoyn::sock_test::Interface);
         if (ifc) {
             AddInterface(*ifc);
             AddMethodHandler(ifc->GetMember("PutSock"), static_cast<MessageReceiver::MethodHandler>(&SockService::PutSock));
@@ -179,7 +179,7 @@ class ListenThread : public qcc::Thread {
 
     qcc::ThreadReturn STDCALL Run(void* arg)
     {
-        qcc::SocketFd *newSock = static_cast<qcc::SocketFd*>(arg);
+        qcc::SocketFd* newSock = static_cast<qcc::SocketFd*>(arg);
         QStatus status = qcc::Listen(sock, 0);
         if (status == ER_OK) {
             listening = true;

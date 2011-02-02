@@ -56,7 +56,7 @@ class RemoteEndpoint : public BusEndpoint, public qcc::ThreadListener {
       public:
 
         Features() : isBusToBus(false), allowRemote(false), handlePassing(false)
-        {}
+        { }
 
         bool isBusToBus;       /**< When initiating connection this is an input value indicating if this is a bus-to-bus connection.
                                     When accepting a connection this is an output value indicicating if this is bus-to-bus connection. */

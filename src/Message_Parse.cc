@@ -478,22 +478,22 @@ QStatus _Message::ParseValue(MsgArg* arg, const char*& sigPtr)
         break;
 
     case ALLJOYN_HANDLE:
-        {
-            bufPos = AlignPtr(bufPos, 4);
-            if (endianSwap) {
-                EndianSwap32(*((uint32_t*)bufPos));
-            }
-            uint32_t index = *((uint32_t*)bufPos);
-            uint32_t numHandles = (hdrFields.field[ALLJOYN_HDR_FIELD_HANDLES].typeId == ALLJOYN_INVALID) ? 0 : hdrFields.field[ALLJOYN_HDR_FIELD_HANDLES].v_uint32;
-            if (index >  numHandles) {
-                status = ER_BUS_NO_SUCH_HANDLE;
-            } else {
-                arg->typeId = typeId;
-                arg->v_handle.fd = handles[index];
-                bufPos += 4;
-            }
+    {
+        bufPos = AlignPtr(bufPos, 4);
+        if (endianSwap) {
+            EndianSwap32(*((uint32_t*)bufPos));
         }
-        break;
+        uint32_t index = *((uint32_t*)bufPos);
+        uint32_t numHandles = (hdrFields.field[ALLJOYN_HDR_FIELD_HANDLES].typeId == ALLJOYN_INVALID) ? 0 : hdrFields.field[ALLJOYN_HDR_FIELD_HANDLES].v_uint32;
+        if (index >  numHandles) {
+            status = ER_BUS_NO_SUCH_HANDLE;
+        } else {
+            arg->typeId = typeId;
+            arg->v_handle.fd = handles[index];
+            bufPos += 4;
+        }
+    }
+    break;
 
     default:
         status = ER_BUS_BAD_VALUE_TYPE;
@@ -778,7 +778,7 @@ QStatus _Message::HeaderChecks(bool pedantic)
             break;
         }
 
-        /* Falling through */
+    /* Falling through */
     case MESSAGE_METHOD_CALL:
         if (hdrFields.field[ALLJOYN_HDR_FIELD_PATH].typeId == ALLJOYN_INVALID) {
             status = ER_BUS_PATH_MISSING;
@@ -796,7 +796,7 @@ QStatus _Message::HeaderChecks(bool pedantic)
             break;
         }
 
-        /* Falling through */
+    /* Falling through */
     case MESSAGE_METHOD_RET:
         if (hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].typeId == ALLJOYN_INVALID) {
             status = ER_BUS_REPLY_SERIAL_MISSING;

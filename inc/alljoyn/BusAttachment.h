@@ -94,11 +94,11 @@ class BusAttachment : public MessageReceiver {
     /**
      * Initialize one more interface descriptions from an XML string in DBus introspection format.
      * The root tag of the XML can be a <node> or a standalone <interface> tag. To initialize more
-     * than one interface the interfaces need to be nested in a <node> tag. 
+     * than one interface the interfaces need to be nested in a <node> tag.
      *
      * Note that when this method fails during parsing, the return code will be set accordingly.
      * However, any interfaces which were successfully parsed prior to the failure may be registered
-     * with the bus. 
+     * with the bus.
      *
      * @param xml     An XML string in DBus introspection format.
      *

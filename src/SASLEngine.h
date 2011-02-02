@@ -51,14 +51,14 @@ class SASLEngine {
         ALLJOYN_WAIT_FOR_DATA,
         ALLJOYN_WAIT_FOR_OK,
         ALLJOYN_WAIT_FOR_REJECT,
-        ALLJOYN_WAIT_EXT_RESPONSE,///< Wait for a response to an extension command */
+        ALLJOYN_WAIT_EXT_RESPONSE, ///< Wait for a response to an extension command */
         ALLJOYN_AUTH_SUCCESS,     ///< Authentication was successful - conversation it over
         ALLJOYN_AUTH_FAILED       ///< Authentication failed - conversation it over
     } AuthState;
 
     /**
      * %ExtCommmandHandler is a class for implementing an entension command handler for commands
-     * that are outside of the normal SASL command set.  
+     * that are outside of the normal SASL command set.
      */
     class ExtensionHandler {
       public:
@@ -72,19 +72,19 @@ class SASLEngine {
          *
          * For a CHALLENGER the each call contains the responder's extension command and the return
          * value is the challenger's response. If the challenger responds with an empty string an
-         * ERROR will be sent to the responder. 
+         * ERROR will be sent to the responder.
          *
          * @param sasl    The sasl engine instance.
          * @param extCmd  The extension command string or an empty string.
          *
          * @return  A command/response string or an empty string.
          */
-        virtual qcc::String SASLCallout(SASLEngine &sasl, const qcc::String& extCmd) = 0;
+        virtual qcc::String SASLCallout(SASLEngine& sasl, const qcc::String& extCmd) = 0;
 
         /*
          * Destructor
          */
-        virtual ~ExtensionHandler() {}
+        virtual ~ExtensionHandler() { }
     };
 
     /**

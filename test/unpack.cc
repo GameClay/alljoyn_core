@@ -272,7 +272,7 @@ int main(int argc, char** argv)
         MsgArg arg;
         arg.Set("as", 0, NULL);
         vArg.Set("v", &arg);
-        MsgArg *variant;
+        MsgArg* variant;
         MsgArg* asArray;
         size_t las;
         status = vArg.Get("v", &variant);
@@ -329,7 +329,7 @@ int main(int argc, char** argv)
             status = dict.Get("a{iv}", &num, &entries);
             if (status == ER_OK) {
                 for (size_t i = 0; i < num; ++i) {
-                    MsgArg *val;
+                    MsgArg* val;
                     uint32_t key;
                     status = entries[i].Get("{iv}", &key, &val);
                     if (key != i) {

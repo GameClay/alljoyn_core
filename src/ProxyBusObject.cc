@@ -661,7 +661,7 @@ ProxyBusObject::~ProxyBusObject()
 }
 
 ProxyBusObject::ProxyBusObject(BusAttachment& bus, const char* service, const char* path) :
-bus(&bus),
+    bus(&bus),
     components(new Components),
     path(path),
     serviceName(service)

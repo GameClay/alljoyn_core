@@ -208,7 +208,7 @@ QStatus EndpointAuth::WaitHello()
 static const char NegotiateUnixFd[] = "NEGOTIATE_UNIX_FD";
 static const char AgreeUnixFd[] = "AGREE_UNIX_FD";
 
-qcc::String EndpointAuth::SASLCallout(SASLEngine &sasl, const qcc::String& extCmd)
+qcc::String EndpointAuth::SASLCallout(SASLEngine& sasl, const qcc::String& extCmd)
 {
     qcc::String rsp;
 

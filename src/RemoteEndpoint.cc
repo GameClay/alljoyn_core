@@ -186,7 +186,7 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
     RemoteEndpoint* ep = reinterpret_cast<RemoteEndpoint*>(arg);
 
     Router& router = bus.GetInternal().GetRouter();
-    qcc::Event& ev = ep->GetSource().GetSourceEvent(); 
+    qcc::Event& ev = ep->GetSource().GetSourceEvent();
     /* Receive messages until the socket is disconnected */
     while (!IsStopping() && (ER_OK == status)) {
         status = Event::Wait(ev);

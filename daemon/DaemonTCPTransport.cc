@@ -178,7 +178,7 @@ void* DaemonTCPEndpoint::AuthThread::Run(void* arg)
     }
 
     /* Initialized the features for this endpoint */
-    conn->GetFeatures().isBusToBus = false; 
+    conn->GetFeatures().isBusToBus = false;
     conn->GetFeatures().isBusToBus = false;
     conn->GetFeatures().handlePassing = false;
 
