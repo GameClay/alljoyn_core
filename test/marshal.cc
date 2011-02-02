@@ -42,6 +42,8 @@
 #include <SignatureUtils.h>
 #include <RemoteEndpoint.h>
 
+#define QCC_MODULE "ALLJOYN"
+
 using namespace qcc;
 using namespace std;
 using namespace ajn;
@@ -59,20 +61,36 @@ class TestPipe : public qcc::Pipe
 
     QStatus PullBytesAndFds(void* buf, size_t reqBytes, size_t& actualBytes, SocketFd* fdList, size_t& numFds, uint32_t timeout = Event::WAIT_FOREVER)
     {
+        QStatus status = ER_OK;
         numFds = std::min(numFds, fds.size());
         for (size_t i = 0; i < numFds; ++i) {
-            *fdList++ = fds.front();
+            status = qcc::SocketDup(fds.front(), *fdList++);
+            if (status != ER_OK) {
+                break;
+            }
             fds.pop();
         }
-        return PullBytes(buf, reqBytes, actualBytes);
+        if (status == ER_OK) {
+            status = PullBytes(buf, reqBytes, actualBytes);
+        } 
+        return status;
     }
 
     QStatus PushBytesAndFds(const void* buf, size_t numBytes, size_t& numSent, SocketFd* fdList, size_t numFds, uint32_t pid = -1)
     {
+        QStatus status = ER_OK;
         while (numFds--) {
-            fds.push(*fdList++);
+            qcc::SocketFd sock;
+            status = qcc::SocketDup(*fdList++, sock);
+            if (status != ER_OK) {
+                break;
+            }
+            fds.push(sock);
         }
-        return PushBytes(buf, numBytes, numSent);
+        if (status == ER_OK) {
+            status = PushBytes(buf, numBytes, numSent);
+        }
+        return status;
     }
 
     /** Destructor */
@@ -80,8 +98,8 @@ class TestPipe : public qcc::Pipe
 
   private:
 
-     /* OOB file descriptors */
-     std::queue<qcc::SocketFd>fds;
+    /* OOB file descriptors */
+    std::queue<qcc::SocketFd>fds;
 
 };
 
@@ -206,11 +224,11 @@ static void Fuzz(TestPipe& stream)
         /*
          * Toggle flag bits
          */
-    {
-        uint8_t bit = (1 << qcc::Rand8() % 8);
-        hdr->flags ^= bit;
-    }
-    break;
+        {
+            uint8_t bit = (1 << qcc::Rand8() % 8);
+            hdr->flags ^= bit;
+        }
+        break;
 
     case 4:
         /*
@@ -322,6 +340,8 @@ static QStatus TestMarshal(const MsgArg* argList, size_t numArgs, const char* ex
         if (!quiet) printf("outargList == inargList\n");
     } else if (exception && (StripWS(outargList) == StripWS(exception))) {
         if (!quiet) printf("outargList == exception\n%s\n", exception);
+    } else if ((strcmp(exception, "*") == 0) && (inSig == outSig)) {
+        if (!quiet) printf("Unmarshal: hand compare:\n%s\n%s\n", inargList.c_str(), outargList.c_str());
     } else {
         if (!quiet) printf("FAILED\n");
         if (!quiet) printf("Unmarshal: %u argList\n%s\n", static_cast<uint32_t>(numArgs), outargList.c_str());
@@ -379,6 +399,17 @@ static const char* ao[] = { "/org/one", "/org/two", "/org/three", "/org/four" };
 static const char* ag[] = { "s", "sss", "as", "a(iiiiuu)" };
 
 
+static qcc::SocketFd MakeHandle()
+{
+    qcc::SocketFd sock;
+    QStatus status = qcc::Socket(QCC_AF_INET, QCC_SOCK_STREAM, sock);
+    if (status != ER_OK) {
+        QCC_LogError(status, ("Failed to create socket"));
+        return qcc::INVALID_SOCKET_FD;
+    } else {
+        return sock;
+    }
+}
 
 
 QStatus MarshalTests()
@@ -626,7 +657,7 @@ QStatus MarshalTests()
      */
     if (fuzzing || (status == ER_OK)) {
         MsgArg argList;
-        status = argList.Set("(aiayadax)", 0, ai, 0, ay, 0, ad, 0, ax);
+        status = argList.Set("(aiayadax)", (size_t)0, ai, (size_t)0, ay, (size_t)0, ad, (size_t)0, ax);
         if (status == ER_OK) {
             status = TestMarshal(argList.v_struct.members, argList.v_struct.numMembers);
         }
@@ -636,7 +667,7 @@ QStatus MarshalTests()
      */
     if (fuzzing || (status == ER_OK)) {
         MsgArg arg;
-        status = arg.Set("a(ssiv)", 0, NULL);
+        status = arg.Set("a(ssiv)", (size_t)0, NULL);
         if (status == ER_OK) {
             status = TestMarshal(&arg, 1);
         }
@@ -847,43 +878,71 @@ QStatus MarshalTests()
         }
     }
     /*
-     * handles
+     * Handles
      */
     if (fuzzing || (status == ER_OK)) {
-        qcc::SocketFd handle = 0x3A4D1E;
+        qcc::SocketFd handle = MakeHandle();
         MsgArg arg("h", &handle);
-        status = TestMarshal(&arg, 1);
+        status = TestMarshal(&arg, 1, "*");
+        qcc::Close(handle);
     }
     if (fuzzing || (status == ER_OK)) {
-        qcc::SocketFd h1 = 0xABABAB;
-        qcc::SocketFd h2 = 0xCDCDCD;
-        qcc::SocketFd h3 = 0xEFEFEF;
+        qcc::SocketFd h1 = MakeHandle();
+        qcc::SocketFd h2 = MakeHandle();
+        qcc::SocketFd h3 = MakeHandle();
         MsgArg args[3];
         size_t numArgs = ArraySize(args);
         MsgArg::Set(args, numArgs, "hhh", &h1, &h2, &h3);
-        status = TestMarshal(args, ArraySize(args));
+        status = TestMarshal(args, ArraySize(args), "*");
+        qcc::Close(h1);
+        qcc::Close(h2);
+        qcc::Close(h3);
     }
     if (fuzzing || (status == ER_OK)) {
-        qcc::SocketFd h1 = 0xABABAB;
-        qcc::SocketFd h2 = 0xCDCDCD;
-        qcc::SocketFd h3 = 0xEFEFEF;
+        qcc::SocketFd h1 = MakeHandle();
+        qcc::SocketFd h2 = MakeHandle();
+        qcc::SocketFd h3 = MakeHandle();
         MsgArg arg("(shshsh)", "first handle", &h1, "second handle", &h2, "third handle", &h3);
-        status = TestMarshal(&arg, 1);
+        status = TestMarshal(&arg, 1, "*");
+        qcc::Close(h1);
+        qcc::Close(h2);
+        qcc::Close(h3);
     }
     if (fuzzing || (status == ER_OK)) {
+        qcc::SocketFd h[8];
         MsgArg handles[8];
         for (size_t i = 0; i < ArraySize(handles); ++i) {
-            qcc::SocketFd h = i * 2;;
+            h[i] = MakeHandle();
             handles[i].Set("h", &h);
         }
         MsgArg arg("ah", ArraySize(handles), handles);
-        status = TestMarshal(&arg, 1);
+        status = TestMarshal(&arg, 1, "*");
+        for (size_t i = 0; i < ArraySize(handles); ++i) {
+            qcc::Close(h[i]);
+        }
     }
     if (fuzzing || (status == ER_OK)) {
-        qcc::SocketFd handle = 0x3A4D1E;
+        qcc::SocketFd handle = MakeHandle();
         MsgArg h("h", &handle);
         MsgArg arg("(ivi)", 999, &h, 666);
-        status = TestMarshal(&arg, 1);
+        status = TestMarshal(&arg, 1, "*");
+        qcc::Close(handle);
+    }
+    /*
+     * Maximum array size 2^26 - last test case because it takes so long
+     */
+    if (fuzzing || (status == ER_OK)) {
+        bool wasQuiet = quiet;
+        quiet = true;
+        const size_t max_array_size = 1024 * 1024 * 64;
+        uint8_t* big = new uint8_t[max_array_size]; 
+        MsgArg arg;
+        status = arg.Set("ay", max_array_size, big);
+        if (status == ER_OK) {
+            status = TestMarshal(&arg, 1);
+        }
+        delete [] big;
+        quiet = wasQuiet;
     }
     return status;
 }
