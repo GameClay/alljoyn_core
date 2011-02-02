@@ -32,8 +32,9 @@
 #include <alljoyn/MsgArg.h>
 #include <Status.h>
 
-#define ALLJOYN_MAX_NAME_LEN  255     /*!<  The maximum length of certain bus names */
-
+#define ALLJOYN_MAX_NAME_LEN          255 /*!<  The maximum length of certain bus names */
+#define ALLJOYN_MAX_PACKET_LEN  134217728 /*!<  The maximum packet length (2^27) is defined by the specification */
+#define ALLJOYN_MAX_ARRAY_LEN    67108864 /*!<  The maximum array length (2^26) is defined by the specification */
 
 /** @name Endianess indicators */
 // @{

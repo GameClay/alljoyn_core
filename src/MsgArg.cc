@@ -28,6 +28,7 @@
 #include <qcc/String.h>
 #include <qcc/StringUtil.h>
 
+#include <alljoyn/Message.h>
 #include <alljoyn/MsgArg.h>
 
 #include "MsgArgUtils.h"
@@ -39,11 +40,6 @@ using namespace std;
 using namespace qcc;
 
 namespace ajn {
-
-/*
- * Maximum array length (2^26) is defined by the specification
- */
-#define MAX_ARRAY_LEN    67108864
 
 qcc::String MsgArg::ToString(size_t indent) const
 {
@@ -639,9 +635,10 @@ QStatus MsgArg::BuildArray(MsgArg* arry, const qcc::String elemSig, va_list* arg
     MsgArg* elements = NULL;
 
     /*
-     * Check that the number of elements makes sense
+     * Check that the number of elements makes sense.  This is a soft-check, the
+     * units of MAX_ARRAY_LEN is bytes which is unknown until marshalling.
      */
-    if (numElements > MAX_ARRAY_LEN) {
+    if (numElements > ALLJOYN_MAX_ARRAY_LEN) {
         status = ER_BUS_BAD_VALUE;
         QCC_LogError(status, ("Too many array elements - could be an address"));
         arry->typeId = ALLJOYN_INVALID;

@@ -731,9 +731,17 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
      */
     hdrLen = ComputeHeaderLen();
     /*
+     * Check that total packet size is within limits
+     */
+    if (hdrLen + argsLen > ALLJOYN_MAX_PACKET_LEN) {
+        status = ER_BUS_BAD_BODY_LEN;
+        QCC_LogError(status, ("Message size %d exceeds maximum size", hdrLen + argsLen));
+        goto ExitMarshalMessage;
+    }
+    /*
      * Allocate buffer for entire message.
      */
-    msgBuf = new uint64_t[hdrLen + (msgHeader.bodyLen + 7) / 8];
+    msgBuf = new uint64_t[(hdrLen + msgHeader.bodyLen + 7) / 8];
     /*
      * Initialize the buffer and copy in the message header
      */

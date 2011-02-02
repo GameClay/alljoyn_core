@@ -55,16 +55,6 @@ namespace ajn {
  */
 #define MAX_HEADER_LEN  1024 * 64
 
-/*
- * Maximum packet length (2^27) is defined by the specification
- */
-#define MAX_PACKET_LEN  134217728
-
-/*
- * Maximum array length (2^26) is defined by the specification
- */
-#define MAX_ARRAY_LEN    67108864
-
 /* Sized to avoid dynamic allocation for typical message calls */
 #define DEFAULT_BUFFER_SIZE  1024
 
@@ -102,7 +92,7 @@ QStatus _Message::ParseArray(MsgArg* arg,
      * Check array length is valid and in bounds.
      */
     bufPos += 4;
-    if ((len > MAX_ARRAY_LEN) || ((len + bufPos) > bufEOD)) {
+    if ((len > ALLJOYN_MAX_ARRAY_LEN) || ((len + bufPos) > bufEOD)) {
         status = ER_BUS_BAD_LENGTH;
         QCC_LogError(status, ("Array length %ld at pos:%ld is too big", len, bufPos - bodyPtr - 4));
         arg->typeId = ALLJOYN_INVALID;
@@ -450,7 +440,7 @@ QStatus _Message::ParseValue(MsgArg* arg, const char*& sigPtr)
             EndianSwap32(*((uint32_t*)bufPos));
         }
         arg->v_string.len = (size_t)(*((uint32_t*)bufPos));
-        if (arg->v_string.len > MAX_PACKET_LEN) {
+        if (arg->v_string.len > ALLJOYN_MAX_PACKET_LEN) {
             QCC_LogError(status, ("String length %ld at pos:%ld is too big", arg->v_string.len, bufPos - bodyPtr));
             status = ER_BUS_BAD_LENGTH;
             break;
@@ -912,7 +902,7 @@ QStatus _Message::Unmarshal(RemoteEndpoint& endpoint, bool checkSender, bool ped
      * Check we are not exceeding the maximum allowed packet length. Note pktSize calc can
      * wraparound so we need to check the body length too.
      */
-    if ((pktSize > MAX_PACKET_LEN) || (msgHeader.bodyLen > MAX_PACKET_LEN)) {
+    if ((pktSize > ALLJOYN_MAX_PACKET_LEN) || (msgHeader.bodyLen > ALLJOYN_MAX_PACKET_LEN)) {
         status = ER_BUS_BAD_BODY_LEN;
         QCC_LogError(status, ("Message body length %d is invalid", msgHeader.bodyLen));
         goto ExitUnmarshal;
