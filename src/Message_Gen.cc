@@ -446,7 +446,8 @@ QStatus _Message::Deliver(RemoteEndpoint& endpoint)
 {
     QStatus status = ER_OK;
     Sink& sink = endpoint.GetSink();
-    size_t len = bufEOD - (uint8_t*)msgBuf;
+    uint8_t *buf = reinterpret_cast<uint8_t*>(msgBuf);
+    size_t len = bufEOD - buf;
     size_t pushed;
 
     if (len == 0) {
@@ -473,17 +474,17 @@ QStatus _Message::Deliver(RemoteEndpoint& endpoint)
      * Push the message to the endpoint sink (only push handles in the first chunk)
      */
     if (handles) {
-        status = sink.PushBytesAndFds(msgBuf, len, pushed, handles, numHandles, endpoint.GetProcessId());
+        status = sink.PushBytesAndFds(buf, len, pushed, handles, numHandles, endpoint.GetProcessId());
     } else {
-        status = sink.PushBytes(msgBuf, len, pushed);
+        status = sink.PushBytes(buf, len, pushed);
     }
     /*
      * Continue pushing until we are done
      */
     while ((status == ER_OK) && (pushed != len)) {
         len -= pushed;
-        msgBuf += pushed;
-        status = sink.PushBytes(msgBuf, len, pushed);
+        buf += pushed;
+        status = sink.PushBytes(buf, len, pushed);
     }
     if (status == ER_OK) {
         QCC_DbgHLPrintf(("Deliver message %s", Description().c_str()));
