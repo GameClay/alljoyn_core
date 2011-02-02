@@ -568,7 +568,7 @@ QStatus MarshalTests()
         MsgArg struc;
         struc.Set("(yv)", 128, &var);
         MsgArg arg;
-        status = arg.Set("a(yv)", 1, &struc);
+        status = arg.Set("a(yv)", (size_t)1, &struc);
         if (status == ER_OK) {
             status = TestMarshal(&arg, 1);
         }
@@ -673,7 +673,7 @@ QStatus MarshalTests()
         }
     }
     if (fuzzing || (status == ER_OK)) {
-        MsgArg empty("a(ii)", 0, NULL);
+        MsgArg empty("a(ii)", (size_t)0, NULL);
         MsgArg var("v", &empty);
         MsgArg arg;
         status = arg.Set("av", 1, &var);
@@ -683,14 +683,14 @@ QStatus MarshalTests()
     }
     if (fuzzing || (status == ER_OK)) {
         MsgArg arg;
-        status = arg.Set("a{yy}", 0, NULL);
+        status = arg.Set("a{yy}", (size_t)0, NULL);
         if (status == ER_OK) {
             status = TestMarshal(&arg, 1);
         }
     }
     if (fuzzing || (status == ER_OK)) {
         MsgArg arg;
-        status = arg.Set("a{yy}", 0, NULL);
+        status = arg.Set("a{yy}", (size_t)0, NULL);
         if (status == ER_OK) {
             status = TestMarshal(&arg, 1);
         }
@@ -700,8 +700,8 @@ QStatus MarshalTests()
      */
     if (fuzzing || (status == ER_OK)) {
         MsgArg args[2];
-        args[0].Set("s", 0, NULL);
-        args[1].Set("g", 0, NULL);
+        args[0].Set("s", NULL);
+        args[1].Set("g", NULL);
         if (status == ER_OK) {
             status = TestMarshal(args, 2);
         }
@@ -779,7 +779,7 @@ QStatus MarshalTests()
             dict[i].Set("{s(ib)}", table[i].ord, table[i].num, table[i].even);
         }
         MsgArg arg;
-        status = arg.Set("a{s(ib)}", 3, dict);
+        status = arg.Set("a{s(ib)}", (size_t)3, dict);
         if (status == ER_OK) {
             status = TestMarshal(&arg, 1);
         }
@@ -793,8 +793,8 @@ QStatus MarshalTests()
             dict[i].SetOwnershipFlags(MsgArg::OwnsArgs, true);
         }
         MsgArg dicts[2];
-        dicts[0].Set("a{sv}", 3, dict);
-        dicts[1].Set("a{sv}", 2, dict);
+        dicts[0].Set("a{sv}", (size_t)3, dict);
+        dicts[1].Set("a{sv}", (size_t)2, dict);
         MsgArg arg;
         status = arg.Set("aa{sv}", ArraySize(dicts), dicts);
         if (status == ER_OK) {
@@ -837,7 +837,7 @@ QStatus MarshalTests()
      */
     if (fuzzing || (status == ER_OK)) {
         struct {
-            uint32_t num;
+            size_t num;
             const char* nom;
         } beasts[] = { { 1, "dog" }, { 2, "cat" }, { 3, "pig" }, { 4, "rat" }, { 5, "cow" } };
         MsgArg dict[ArraySize(beasts)];
@@ -863,7 +863,7 @@ QStatus MarshalTests()
         MsgArg dogs;
         dogs.Set("(sas)", "dogs", ArraySize(breeds), breeds);
         MsgArg arg;
-        status = arg.Set("a(sas)", 1, &dogs);
+        status = arg.Set("a(sas)", (size_t)1, &dogs);
         if (status == ER_OK) {
             status = TestMarshal(&arg, 1);
         }
@@ -872,7 +872,7 @@ QStatus MarshalTests()
         MsgArg dogs;
         dogs.Set("(sas)", "no dogs here", NULL);
         MsgArg arg;
-        status = arg.Set("a(sas)", 1, &dogs);
+        status = arg.Set("a(sas)", (size_t)1, &dogs);
         if (status == ER_OK) {
             status = TestMarshal(&arg, 1);
         }
