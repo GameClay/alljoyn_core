@@ -61,9 +61,12 @@ env.Install('$DISTDIR/bin', progs)
 progs = env.SConscript('$OBJDIR/samples/SConscript')
 env.Install('$DISTDIR/bin/samples', progs)
 
-# Release notes
+# Release notes and misc. legals
 env.Install('$DISTDIR', 'docs/ReleaseNotes.txt')
-env.Install('$DISTDIR', 'docs/README.TXT')
+env.InstallAs('$DISTDIR/README.txt', 'docs/README.android')
+
+env.Install('$DISTDIR', 'README.md')
+env.Install('$DISTDIR', 'NOTICE')
 
 # Build docs
 if env['DOCS'] == 'html':
