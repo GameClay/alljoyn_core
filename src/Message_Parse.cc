@@ -931,10 +931,6 @@ QStatus _Message::Unmarshal(RemoteEndpoint& endpoint, bool checkSender, bool ped
     if (status != ER_OK) {
         goto ExitUnmarshal;
     }
-    if (numHandles > 0) {
-        handles = new qcc::SocketFd[numHandles];
-        memcpy(handles, fdList, numHandles * sizeof(qcc::SocketFd));
-    }
     /*
      * Parse the received header fields - each header starts on an 8 byte boundary
      */
@@ -1098,22 +1094,52 @@ QStatus _Message::Unmarshal(RemoteEndpoint& endpoint, bool checkSender, bool ped
      */
     msgHeader.flags ^= ALLJOYN_FLAG_AUTO_START;
 
-    QCC_DbgHLPrintf(("Received %s from %s", Description().c_str(), endpointName.c_str()));
-    QCC_DbgPrintf(("\n%s", ToString().c_str()));
-
-    return ER_OK;
 
 ExitUnmarshal:
 
-    if (status == ER_BUS_CANNOT_EXPAND_MESSAGE) {
-        QCC_DbgHLPrintf(("Received compressed message of len %d (endpoint %s)\n%s", pktSize, endpointName.c_str(), ToString().c_str()));
-        return status;
+    /*
+     * If we unmarshaled handles we need to copy them into the message. Note we do this event if in
+     * the case of an unmarshal error so the handles will be closed.
+     */
+    if (numHandles > 0) {
+        handles = new qcc::SocketFd[numHandles];
+        memcpy(handles, fdList, numHandles * sizeof(qcc::SocketFd));
     }
-    if ((status != ER_BUS_TIME_TO_LIVE_EXPIRED) && (status != ER_BUS_INVALID_HEADER_SERIAL)) {
+    switch (status) {
+    case ER_OK:
+        QCC_DbgHLPrintf(("Received %s from %s", Description().c_str(), endpointName.c_str()));
+        QCC_DbgPrintf(("\n%s", ToString().c_str()));
+        break;
+    case ER_BUS_CANNOT_EXPAND_MESSAGE:
         /*
-         * Message is in an unknown state so clear it.
+         * A compressed message could not be expanded so return the message as received and leave it
+         * up to the upper-layer code to decide what to do. In most cases the upper-layer will queue
+         * the message while it calls to the sender to get the needed expansion information.
          */
-        memset(&msgHeader, 0, sizeof(MessageHeader));
+        QCC_DbgHLPrintf(("Received compressed message of len %d (endpoint %s)\n%s", pktSize, endpointName.c_str(), ToString().c_str()));
+        break;
+    case ER_BUS_TIME_TO_LIVE_EXPIRED:
+        /*
+         * The message was succesfully unmarshalled but was stale so let the upper-layer decide
+         * whether the error is recoverable or not. 
+         */
+        QCC_DbgHLPrintf(("Time to live expired for message (endpoint %s)\n%s", endpointName.c_str(), ToString().c_str()));
+        break;
+    case ER_BUS_INVALID_HEADER_SERIAL:
+        /*
+         * The message was succesfully unmarshalled but was out-of-order so let the upper-layer
+         * decide whether the error is recoverable or not. 
+         */
+        QCC_DbgHLPrintf(("Serial number was invalid for message (endpoint %s)\n%s", endpointName.c_str(), ToString().c_str()));
+        break;
+    default:
+        /*
+         * There was an unrecoverable failure while unmarshaling the message, cleanup before we return.
+         */
+        delete [] msgBuf;
+        msgBuf = NULL;
+        ClearHeader();
+        QCC_LogError(status, ("Failed to unmarshal message"));
     }
     return status;
 }
