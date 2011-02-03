@@ -1,32 +1,69 @@
-README.android
---------------
+AllJoyn version 1.8.0 README.TXT
+--------------------------------
 
-This file describes the contents of the Android (ARM) binary release package.
+What's inside:
+-------------
 
+ * alljoyn_1_8_0_dbg : AllJoyn SDK for Android (debug), version 1.8.0
+ * alljoyn_1_8_0_rel : AllJoyn SDK for Android (release), version 1.8.0
+    The above folders are identical, except for compilation options.
+    The file and folder structure inside them is described below. 
 
-Release Contents
-----------------
+ * AllJoyn_Android_NDK_Developer_Guide : PDF document.
+    Introduction to AllJoyn. How to use this SDK and the sample programs.
 
-The release package contains the following files and directories:
+ * NexusOneFiles : zip archive
+    How to update bluetoothd on the Nexus One to support AllJoyn.
 
-ReleaseNotes.txt   - Description of release including changes since last
-                     release and known issues.
-
-inc                - C++ header include directory.
-
-bin                - Directory containing bus daemon and C++ samples and 
-                     test progams.
-
-bin/bbdaemon       - Simplified bus daemon implementation 
-                     Does not require configuration files.
-                     Does not implement DBus policy rules.
-
-bin/alljoyn-daemon - Full-featured Bus daemon implementation.
-				     Requires configuration file.
-                     Implements DBus policy rules.
-
-bin/bbclient       - An example of a bus client.
-                  
+ * ReleaseNotes
+    New features, known issues, etc.
 
 
+Summary of NDK file and folder structure:
+----------------------------------------
+ * In each copy of the AllJoyn SDK for Android (debug or release), five of
+   the six top-level folders support C++ application development within the
+   Android NDK:
+
+    ./docs
+        AllJoyn C++ API (HTML documentation)
+
+    ./bin
+        Executable binaries (bus daemon, C++ samples, test programs)
+        ./bin/bbdaemon
+            Simplified bus daemon implementation:
+                Needs no configuration files.
+                Does not implement DBus policy rules.
+        ./bin/alljoyn-daemon
+            Full-featured bus daemon implementation:
+                Requires configuration file.
+                Implements DBus policy rules.
+        ./bin/bbclient
+            Bus client example.
+        ./bin/bbservice
+            Bus service example.
+
+    ./inc
+        AllJoyn C++ header files
+
+    ./lib/liballjoyn.a
+        Static library used to build AllJoyn capable applications.
+
+    ./samples
+        C++ sample programs for AllJoyn (see Developers Guide)
+
+ * The remaining top-level folder (java) contains a similar structure
+   underneath it, supporting the AllJoyn Java language binding:
+
+    ./java/docs
+        AllJoyn Java API (HTML documentation)
+
+    ./java/lib
+        liballjoyn_java.so
+
+    ./java/samples
+        Java sample programs for AllJoyn (see README)
+
+    ./java/jar
+        alljoyn.jar, alljoyn_test.jar
 

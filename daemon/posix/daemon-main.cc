@@ -178,7 +178,7 @@ OptParse::ParseResultCode OptParse::ParseResult()
         if (arg.compare("--version") == 0) {
             printf("AllJoyn Message Bus Daemon version: %s\n"
                    "Copyright (c) 2009-2011 Qualcomm Innovation Center, Inc.\n"
-                    "Licensed under Apache2.0: http://www.apache.org/licenses/LICENSE-2.0.html\n"
+                   "Licensed under Apache2.0: http://www.apache.org/licenses/LICENSE-2.0.html\n"
                    "\n"
                    "Build: %s\n", GetVersion(), GetBuildInfo());
             result = PR_EXIT_NO_ERROR;
