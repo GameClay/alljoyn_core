@@ -397,7 +397,7 @@ QStatus _Message::MarshalArgs(const MsgArg* arg, size_t numArgs)
                 break;
             }
 
-            // FALLTHROUGH
+        // FALLTHROUGH
         case ALLJOYN_STRING:
             MarshalPad4();
             if (arg->v_string.str) {
