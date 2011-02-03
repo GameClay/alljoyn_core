@@ -51,6 +51,7 @@ using namespace ajn;
 
 static BusAttachment* gBus;
 static bool fuzzing = false;
+static bool nobig = false;
 static bool quiet = false;
 
 
@@ -63,10 +64,7 @@ class TestPipe : public qcc::Pipe {
         QStatus status = ER_OK;
         numFds = std::min(numFds, fds.size());
         for (size_t i = 0; i < numFds; ++i) {
-            status = qcc::SocketDup(fds.front(), *fdList++);
-            if (status != ER_OK) {
-                break;
-            }
+            *fdList++ = fds.front();
             fds.pop();
         }
         if (status == ER_OK) {
@@ -339,7 +337,7 @@ static QStatus TestMarshal(const MsgArg* argList, size_t numArgs, const char* ex
         if (!quiet) printf("outargList == inargList\n");
     } else if (exception && (StripWS(outargList) == StripWS(exception))) {
         if (!quiet) printf("outargList == exception\n%s\n", exception);
-    } else if ((strcmp(exception, "*") == 0) && (inSig == outSig)) {
+    } else if (exception && (strcmp(exception, "*") == 0) && (inSig == outSig)) {
         if (!quiet) printf("Unmarshal: hand compare:\n%s\n%s\n", inargList.c_str(), outargList.c_str());
     } else {
         if (!quiet) printf("FAILED\n");
@@ -930,18 +928,21 @@ QStatus MarshalTests()
     /*
      * Maximum array size 2^26 - last test case because it takes so long
      */
-    if (fuzzing || (status == ER_OK)) {
-        bool wasQuiet = quiet;
-        quiet = true;
-        const size_t max_array_size = 1024 * 1024 * 64;
-        uint8_t* big = new uint8_t[max_array_size];
-        MsgArg arg;
-        status = arg.Set("ay", max_array_size, big);
-        if (status == ER_OK) {
-            status = TestMarshal(&arg, 1);
+    if (status == ER_OK) {
+        if (!nobig) {
+            /* Force quiet so we don't print 128MBytes of output data */
+            bool wasQuiet = quiet;
+            quiet = true;
+            const size_t max_array_size = 1024 * 1024 * 64;
+            uint8_t* big = new uint8_t[max_array_size];
+            MsgArg arg;
+            status = arg.Set("ay", max_array_size, big);
+            if (status == ER_OK) {
+                status = TestMarshal(&arg, 1);
+            }
+            delete [] big;
+            quiet = wasQuiet;
         }
-        delete [] big;
-        quiet = wasQuiet;
     }
     return status;
 }
@@ -997,6 +998,7 @@ static void usage(void)
     printf("Options:\n");
     printf("   -f         = fuzzing\n");
     printf("   -q         = Quiet\n");
+    printf("   -b         = Suppress big array test (which takes a long time)\n");
 }
 
 int main(int argc, char** argv)
@@ -1011,6 +1013,8 @@ int main(int argc, char** argv)
     for (int i = 1; i < argc; ++i) {
         if (0 == strcmp("-f", argv[i])) {
             fuzz = true;
+        } else if (0 == strcmp("-b", argv[i])) {
+            nobig = true;
         } else if (0 == strcmp("-q", argv[i])) {
             quiet = true;
         } else {
@@ -1175,6 +1179,7 @@ int main(int argc, char** argv)
 
     if (fuzz) {
         fuzzing = true;
+        nobig = true;
         for (size_t i = 0; i < 10000; ++i) {
             MarshalTests();
         }
