@@ -120,6 +120,18 @@ namespace ajn {
  */
 #define ROUNDUP4(n)  (((n) + 3) & ~3)
 
+static inline QStatus CheckedArraySize(size_t sz, uint32_t& len)
+{
+    if (sz > ALLJOYN_MAX_ARRAY_LEN) {
+        QStatus status = ER_BUS_BAD_LENGTH;
+        QCC_LogError(status, ("Array too big"));
+        return status;
+    } else {
+        len = (uint32_t)sz;
+        return ER_OK;
+    }
+}
+
 QStatus _Message::MarshalArgs(const MsgArg* arg, size_t numArgs)
 {
     QStatus status = ER_OK;
@@ -177,7 +189,13 @@ QStatus _Message::MarshalArgs(const MsgArg* arg, size_t numArgs)
                     }
                     uint8_t* elemPos = bufPos;
                     status = MarshalArgs(arg->v_array.elements, arg->v_array.numElements);
-                    len = (uint32_t)(bufPos - elemPos);
+                    if (status != ER_OK) {
+                        break;
+                    }
+                    status = CheckedArraySize(bufPos - elemPos, len);
+                    if (status != ER_OK) {
+                        break;
+                    }
                     /* Patch in length */
                     uint8_t* tmpPos = bufPos;
                     bufPos = lenPos;
@@ -197,7 +215,10 @@ QStatus _Message::MarshalArgs(const MsgArg* arg, size_t numArgs)
             break;
 
         case ALLJOYN_BOOLEAN_ARRAY:
-            len = (uint32_t)(4 * arg->v_scalarArray.numElements);
+            status = CheckedArraySize(4 * arg->v_scalarArray.numElements, len);
+            if (status != ER_OK) {
+                break;
+            }
             if (len && !arg->v_scalarArray.v_bool) {
                 status = ER_BUS_BAD_VALUE;
                 break;
@@ -220,7 +241,10 @@ QStatus _Message::MarshalArgs(const MsgArg* arg, size_t numArgs)
 
         case ALLJOYN_INT32_ARRAY:
         case ALLJOYN_UINT32_ARRAY:
-            len = (uint32_t)(4 * arg->v_scalarArray.numElements);
+            status = CheckedArraySize(4 * arg->v_scalarArray.numElements, len);
+            if (status != ER_OK) {
+                break;
+            }
             if (len && !arg->v_scalarArray.v_uint32) {
                 status = ER_BUS_BAD_VALUE;
                 break;
@@ -241,12 +265,15 @@ QStatus _Message::MarshalArgs(const MsgArg* arg, size_t numArgs)
         case ALLJOYN_UINT64_ARRAY:
         case ALLJOYN_INT64_ARRAY:
             MarshalPad4();
-            if (arg->v_scalarArray.numElements > 0) {
+            status = CheckedArraySize(8 * arg->v_scalarArray.numElements, len);
+            if (status != ER_OK) {
+                break;
+            }
+            if (len > 0) {
                 if (!arg->v_scalarArray.v_uint64) {
                     status = ER_BUS_BAD_VALUE;
                     break;
                 }
-                len = (uint32_t)(8 * arg->v_scalarArray.numElements);
                 if (endianSwap) {
                     MarshalReversed(&len, 4);
                     MarshalPad8();
@@ -259,6 +286,7 @@ QStatus _Message::MarshalArgs(const MsgArg* arg, size_t numArgs)
                     MarshalBytes(arg->v_scalarArray.v_uint64, len);
                 }
             } else {
+                /* Even empty arrays are padded to the element type alignment boundary */
                 Marshal4(0);
                 MarshalPad8();
             }
@@ -266,7 +294,10 @@ QStatus _Message::MarshalArgs(const MsgArg* arg, size_t numArgs)
 
         case ALLJOYN_INT16_ARRAY:
         case ALLJOYN_UINT16_ARRAY:
-            len = (uint32_t)(2 * arg->v_scalarArray.numElements);
+            status = CheckedArraySize(2 * arg->v_scalarArray.numElements, len);
+            if (status != ER_OK) {
+                break;
+            }
             if (len && !arg->v_scalarArray.v_uint16) {
                 status = ER_BUS_BAD_VALUE;
                 break;
@@ -284,7 +315,10 @@ QStatus _Message::MarshalArgs(const MsgArg* arg, size_t numArgs)
             break;
 
         case ALLJOYN_BYTE_ARRAY:
-            len = (uint32_t)(arg->v_scalarArray.numElements);
+            status = CheckedArraySize(arg->v_scalarArray.numElements, len);
+            if (status != ER_OK) {
+                break;
+            }
             if (len && !arg->v_scalarArray.v_byte) {
                 status = ER_BUS_BAD_VALUE;
                 break;
@@ -363,7 +397,7 @@ QStatus _Message::MarshalArgs(const MsgArg* arg, size_t numArgs)
                 break;
             }
 
-        // FALLTHROUGH
+            // FALLTHROUGH
         case ALLJOYN_STRING:
             MarshalPad4();
             if (arg->v_string.str) {
@@ -733,7 +767,7 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
     /*
      * Check that total packet size is within limits
      */
-    if (hdrLen + argsLen > ALLJOYN_MAX_PACKET_LEN) {
+    if ((hdrLen + argsLen) > ALLJOYN_MAX_PACKET_LEN) {
         status = ER_BUS_BAD_BODY_LEN;
         QCC_LogError(status, ("Message size %d exceeds maximum size", hdrLen + argsLen));
         goto ExitMarshalMessage;
