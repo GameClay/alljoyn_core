@@ -63,6 +63,7 @@ static const char defaultConfig[] =
     "<busconfig>"
     "  <type>alljoyn</type>"
     "  <listen>tcp:addr=127.0.0.1,port=9955</listen>"
+    //"  <listen>bluetooth:</listen>"
     "  <policy context=\"default\">"
     "    <!-- Allow everything to be sent -->"
     "    <allow send_destination=\"*\" eavesdrop=\"true\"/>"
@@ -102,7 +103,7 @@ class OptParse {
     };
 
     OptParse(int argc, char** argv) :
-        argc(argc), argv(argv), printAddress(false), verbosity(LOG_WARNING)
+        argc(argc), argv(argv), noBT(false), printAddress(false), verbosity(LOG_WARNING)
     { }
 
     ParseResultCode ParseResult();
@@ -110,12 +111,14 @@ class OptParse {
     qcc::String GetConfigFile() const { return configFile; }
     bool PrintAddress() const { return printAddress; }
     int GetVerbosity() const { return verbosity; }
+    bool GetNoBT() const { return noBT; }
 
   private:
     int argc;
     char** argv;
 
     qcc::String configFile;
+    bool noBT;
     bool printAddress;
     int verbosity;
 
@@ -125,11 +128,13 @@ class OptParse {
 
 void OptParse::PrintUsage()
 {
-    printf("%s [--config-file=FILE] [--print-address] [--verbosity=LEVEL] [--version]\n\n"
+    printf("%s [--config-file=FILE] [--print-address] [--verbosity=LEVEL] [--no-bt] [--version]\n\n"
            "    --config-file=FILE\n"
            "        Use the specified configuration file.\n\n"
            "    --print-address\n"
            "        Print the socket address to STDOUT\n\n"
+           "    --no-bt\n"
+           "        Disable the Bluetooth transport (override config file setting).\n\n"
            "    --verbosity=LEVEL\n"
            "        Set the logging level to LEVEL.\n\n"
            "    --version\n"
@@ -178,6 +183,8 @@ OptParse::ParseResultCode OptParse::ParseResult()
             configFile = arg.substr(sizeof("--config-file"));
         } else if (arg.compare("--print-address") == 0) {
             printAddress = true;
+        } else if (arg.compare("--no-bt") == 0) {
+            noBT = true;
         } else if (arg.substr(0, sizeof("--verbosity") - 1).compare("--verbosity") == 0) {
             verbosity = StringToI32(arg.substr(sizeof("--verbosity")));
         } else if ((arg.compare("--help") == 0) || (arg.compare("-h") == 0)) {
@@ -221,24 +228,30 @@ int daemon(OptParse& opts)
     const ConfigDB::ListenList& listenList = config->GetListen();
     ConfigDB::ListenList::const_iterator it = listenList.begin();
     qcc::String listenSpecs;
+    bool skip = false;
 
     while (it != listenList.end()) {
         qcc::String addrStr(*it);
         if (it->compare(0, sizeof("tcp:") - 1, "tcp:") == 0) {
             // No special processing needed for TCP.
         } else if (it->compare("bluetooth:") == 0) {
-            // No special processing needed for Bluetooth.
+            skip == GetNoBT();
         } else {
             Log(LOG_ERR, "Unsupported listen address: %s (ignoring)\n", it->c_str());
             ++it;
             continue;
         }
-        Log(LOG_INFO, "Setting up transport for address: %s\n", addrStr.c_str());
-        listenSpecs.append(addrStr);
-        ++it;
-        if (it != listenList.end()) {
-            listenSpecs.append(';');
+
+        if (skip) {
+            Log(LOG_INFO, "Skipping transport for address: %s\n", addrStr.c_str());
+        } else {
+            Log(LOG_INFO, "Setting up transport for address: %s\n", addrStr.c_str());
+            if (!listenSpecs.empty()) {
+                listenSpecs.append(';');
+            }
+            listenSpecs.append(addrStr);
         }
+        ++it;
     }
 
     if (listenSpecs.empty()) {

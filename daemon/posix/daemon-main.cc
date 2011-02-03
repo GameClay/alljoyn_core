@@ -128,8 +128,9 @@ class OptParse {
     };
 
     OptParse(int argc, char** argv) :
-        argc(argc), argv(argv), fork(false), noFork(false), printAddressFd(-1), printPidFd(-1),
-        session(false), system(false), verbosity(LOG_WARNING), internalConfig(false)
+        argc(argc), argv(argv), fork(false), noFork(false), noBT(false), noTCP(false),
+        printAddressFd(-1), printPidFd(-1),
+        session(false), system(false), internal(false), verbosity(LOG_WARNING)
     { }
 
     ParseResultCode ParseResult();
@@ -137,10 +138,12 @@ class OptParse {
     qcc::String GetConfigFile() const { return configFile; }
     bool GetFork() const { return fork; }
     bool GetNoFork() const { return noFork; }
+    bool GetNoBT() const { return noBT; }
+    bool GetNoTCP() const { return noTCP; }
     int GetPrintAddressFd() const { return printAddressFd; }
     int GetPrintPidFd() const { return printPidFd; }
     int GetVerbosity() const { return verbosity; }
-    bool GetInternalConfig() const { return internalConfig; }
+    bool GetInternalConfig() const { return internal; }
 
   private:
     int argc;
@@ -149,12 +152,14 @@ class OptParse {
     qcc::String configFile;
     bool fork;
     bool noFork;
+    bool noBT;
+    bool noTCP;
     int printAddressFd;
     int printPidFd;
     bool session;
     bool system;
+    bool internal;
     int verbosity;
-    bool internalConfig;
 
     void PrintUsage();
 };
@@ -168,7 +173,8 @@ void OptParse::PrintUsage()
     fprintf(stderr,
             "%s [--session | --system | --internal | --config-file=FILE]\n"
             "%*s [--print-address[=DESCRIPTOR]] [--print-pid[=DESCRIPTOR]]\n"
-            "%*s [--fork] [--nofork] [--verbosity=LEVEL] [--version]\n\n"
+            "%*s [--fork | --nofork] [--no-bt] [--no-tcp]\n"
+            "%*s [--verbosity=LEVEL] [--version]\n\n"
             "    --session\n"
             "        Use the standard configuration for the per-login-session message bus.\n\n"
             "    --system\n"
@@ -186,11 +192,16 @@ void OptParse::PrintUsage()
             "    --nofork\n"
             "        Force the daemon to only run in the foreground (override config file\n"
             "        setting).\n\n"
+            "    --no-bt\n"
+            "        Disable the Bluetooth transport (override config file setting).\n\n"
+            "    --no-tcp\n"
+            "        Disable the TCP transport (override config file setting).\n\n"
             "    --verbosity=LEVEL\n"
             "        Set the logging level to LEVEL.\n\n"
             "    --version\n"
             "        Print the version and copyright string, and exit.\n",
             cmd.c_str(),
+            static_cast<int>(cmd.size()), "",
             static_cast<int>(cmd.size()), "",
             static_cast<int>(cmd.size()), "");
 }
@@ -218,13 +229,13 @@ OptParse::ParseResultCode OptParse::ParseResult()
             result = PR_EXIT_NO_ERROR;
             goto exit;
         } else if (arg.compare("--session") == 0) {
-            if (!configFile.empty() || internalConfig) {
+            if (!configFile.empty() || internal) {
                 result = PR_OPTION_CONFLICT;
                 goto exit;
             }
             configFile = "/etc/dbus-1/session.conf";
         } else if (arg.compare("--system") == 0) {
-            if (!configFile.empty() || internalConfig) {
+            if (!configFile.empty() || internal) {
                 result = PR_OPTION_CONFLICT;
                 goto exit;
             }
@@ -234,9 +245,9 @@ OptParse::ParseResultCode OptParse::ParseResult()
                 result = PR_OPTION_CONFLICT;
                 goto exit;
             }
-            internalConfig = true;
+            internal = true;
         } else if (arg.compare("--config-file") == 0) {
-            if (!configFile.empty() || internalConfig) {
+            if (!configFile.empty() || internal) {
                 result = PR_OPTION_CONFLICT;
                 goto exit;
             }
@@ -247,7 +258,7 @@ OptParse::ParseResultCode OptParse::ParseResult()
             }
             configFile = argv[i];
         } else if (arg.compare(0, sizeof("--config-file") - 1, "--config-file") == 0) {
-            if (!configFile.empty() || internalConfig) {
+            if (!configFile.empty() || internal) {
                 result = PR_OPTION_CONFLICT;
                 goto exit;
             }
@@ -294,6 +305,10 @@ OptParse::ParseResultCode OptParse::ParseResult()
                 goto exit;
             }
             noFork = true;
+        } else if (arg.compare("--no-bt") == 0) {
+            noBT = true;
+        } else if (arg.compare("--no-tcp") == 0) {
+            noTCP = true;
         } else if (arg.substr(0, sizeof("--verbosity") - 1).compare("--verbosity") == 0) {
             verbosity = StringToI32(arg.substr(sizeof("--verbosity")));
         } else if ((arg.compare("--help") == 0) || (arg.compare("-h") == 0)) {
@@ -354,6 +369,7 @@ int daemon(OptParse& opts)
 
     while (it != listenList.end()) {
         qcc::String addrStr(*it);
+        bool skip = false;
         if (it->compare(0, sizeof("unix:") - 1, "unix:") == 0) {
             if (it->compare(sizeof("unix:") - 1, sizeof("tmpdir=") - 1, "tmpdir=") == 0) {
                 // Process tmpdir specially.
@@ -370,23 +386,27 @@ int daemon(OptParse& opts)
             }
 
         } else if (it->compare(0, sizeof("tcp:") - 1, "tcp:") == 0) {
-            // No special processing needed for TCP.
+            skip = opts.GetNoTCP();
 
         } else if (it->compare("bluetooth:") == 0) {
-            // No special processing needed for Bluetooth.
+            skip = opts.GetNoBT();
 
         } else {
             Log(LOG_ERR, "Unsupported listen address: %s (ignoring)\n", it->c_str());
             ++it;
             continue;
         }
-        Log(LOG_INFO, "Setting up transport for address: %s\n", addrStr.c_str());
 
-        listenSpecs.append(addrStr);
-        ++it;
-        if (it != listenList.end()) {
-            listenSpecs.append(';');
+        if (skip) {
+            Log(LOG_INFO, "Skipping transport for address: %s\n", addrStr.c_str());
+        } else {
+            Log(LOG_INFO, "Setting up transport for address: %s\n", addrStr.c_str());
+            if (!listenSpecs.empty()) {
+                listenSpecs.append(';');
+            }
+            listenSpecs.append(addrStr);
         }
+        ++it;
     }
 
     if (listenSpecs.empty()) {
