@@ -235,7 +235,7 @@ int daemon(OptParse& opts)
         if (it->compare(0, sizeof("tcp:") - 1, "tcp:") == 0) {
             // No special processing needed for TCP.
         } else if (it->compare("bluetooth:") == 0) {
-            skip == GetNoBT();
+            skip = opts.GetNoBT();
         } else {
             Log(LOG_ERR, "Unsupported listen address: %s (ignoring)\n", it->c_str());
             ++it;
