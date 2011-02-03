@@ -485,7 +485,7 @@ QStatus _Message::ParseValue(MsgArg* arg, const char*& sigPtr)
         }
         uint32_t index = *((uint32_t*)bufPos);
         uint32_t numHandles = (hdrFields.field[ALLJOYN_HDR_FIELD_HANDLES].typeId == ALLJOYN_INVALID) ? 0 : hdrFields.field[ALLJOYN_HDR_FIELD_HANDLES].v_uint32;
-        if (index >  numHandles) {
+        if (index >=  numHandles) {
             status = ER_BUS_NO_SUCH_HANDLE;
         } else {
             arg->typeId = typeId;
@@ -1110,6 +1110,7 @@ ExitUnmarshal:
         QCC_DbgHLPrintf(("Received %s from %s", Description().c_str(), endpointName.c_str()));
         QCC_DbgPrintf(("\n%s", ToString().c_str()));
         break;
+
     case ER_BUS_CANNOT_EXPAND_MESSAGE:
         /*
          * A compressed message could not be expanded so return the message as received and leave it
@@ -1118,20 +1119,23 @@ ExitUnmarshal:
          */
         QCC_DbgHLPrintf(("Received compressed message of len %d (endpoint %s)\n%s", pktSize, endpointName.c_str(), ToString().c_str()));
         break;
+
     case ER_BUS_TIME_TO_LIVE_EXPIRED:
         /*
          * The message was succesfully unmarshalled but was stale so let the upper-layer decide
-         * whether the error is recoverable or not. 
+         * whether the error is recoverable or not.
          */
         QCC_DbgHLPrintf(("Time to live expired for message (endpoint %s)\n%s", endpointName.c_str(), ToString().c_str()));
         break;
+
     case ER_BUS_INVALID_HEADER_SERIAL:
         /*
          * The message was succesfully unmarshalled but was out-of-order so let the upper-layer
-         * decide whether the error is recoverable or not. 
+         * decide whether the error is recoverable or not.
          */
         QCC_DbgHLPrintf(("Serial number was invalid for message (endpoint %s)\n%s", endpointName.c_str(), ToString().c_str()));
         break;
+
     default:
         /*
          * There was an unrecoverable failure while unmarshaling the message, cleanup before we return.
