@@ -682,7 +682,7 @@ ProxyBusObject::ProxyBusObject(BusAttachment& bus, const char* service, const ch
     AddInterface(org::freedesktop::DBus::Peer::InterfaceName);
 }
 
-ProxyBusObject::ProxyBusObject() : bus(NULL), components(NULL)
+ProxyBusObject::ProxyBusObject() : bus(NULL), components(NULL), sessionId(0)
 {
 }
 
@@ -692,6 +692,7 @@ ProxyBusObject::ProxyBusObject(const ProxyBusObject& other)
     bus = other.bus;
     path = other.path;
     serviceName = other.serviceName;
+    sessionId = other.sessionId;
     if (other.components) {
         *components = *other.components;
     }
@@ -703,6 +704,7 @@ ProxyBusObject& ProxyBusObject::operator=(const ProxyBusObject& other)
     bus = other.bus;
     path = other.path;
     serviceName = other.serviceName;
+    sessionId = other.sessionId;
     if (other.components) {
         *components = *other.components;
     }

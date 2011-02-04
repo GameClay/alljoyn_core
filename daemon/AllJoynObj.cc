@@ -626,6 +626,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
         status = ajObj.router.AddSessionRoute(msg->GetSender(), id, *sessionEp, b2bEp, b2bEp ? NULL : &qosIn);
         if (status != ER_OK) {
             replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+            QCC_LogError(status, ("AddSessionRoute failed"));
         }
     }
 

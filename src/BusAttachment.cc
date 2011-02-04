@@ -114,6 +114,7 @@ BusAttachment::Internal::~Internal()
     dispatcher.Join();
     transportList.Join();
     delete router;
+    router = NULL;
 }
 
 void BusAttachment::Internal::ThreadExit(qcc::Thread* thread)
