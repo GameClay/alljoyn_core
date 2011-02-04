@@ -731,7 +731,7 @@ class _Message {
 
     QStatus MarshalArgs(const MsgArg* arg, size_t numArgs);
     void MarshalHeaderFields();
-    uint32_t ComputeHeaderLen();
+    size_t ComputeHeaderLen();
 
     /**
      * Get string representation of the message

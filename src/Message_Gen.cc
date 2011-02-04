@@ -638,9 +638,9 @@ void _Message::MarshalHeaderFields()
 /*
  * Calculate space required for the header fields
  */
-uint32_t _Message::ComputeHeaderLen()
+size_t _Message::ComputeHeaderLen()
 {
-    uint32_t hdrLen = 0;
+    size_t hdrLen = 0;
     for (uint32_t fieldId = ALLJOYN_HDR_FIELD_PATH; fieldId < ArraySize(hdrFields.field); fieldId++) {
         if ((msgHeader.flags & ALLJOYN_FLAG_COMPRESSED) && HeaderFields::Compressible[fieldId]) {
             continue;
@@ -650,8 +650,8 @@ uint32_t _Message::ComputeHeaderLen()
             hdrLen = ROUNDUP8(hdrLen) + SignatureUtils::GetSize(field, 1, 4);
         }
     }
-    msgHeader.headerLen = hdrLen;
-    return (uint32_t)(ROUNDUP8(sizeof(msgHeader) + hdrLen));
+    msgHeader.headerLen = static_cast<uint32_t>(hdrLen);
+    return ROUNDUP8(sizeof(msgHeader) + hdrLen);
 }
 
 
@@ -664,8 +664,8 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
 {
     char signature[256];
     QStatus status = ER_OK;
-    uint32_t argsLen = (numArgs == 0) ? 0 : SignatureUtils::GetSize(args, numArgs);
-    uint32_t hdrLen = 0;
+    size_t argsLen = (numArgs == 0) ? 0 : SignatureUtils::GetSize(args, numArgs);
+    size_t hdrLen = 0;
 
     if (!bus.IsStarted()) {
         return ER_BUS_BUS_NOT_STARTED;
@@ -684,13 +684,14 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
     msgHeader.majorVersion = ALLJOYN_MAJOR_PROTOCOL_VERSION;
     msgHeader.serialNum = bus.GetInternal().NextSerial();
     /*
-     * Encryption will expand the size of the body
+     * Encryption will typically make the body length slightly larger because the encryption
+     * algorithm adds appends a MAC block to the end of the encrypted data.
      */
     if (flags & ALLJOYN_FLAG_ENCRYPTED) {
         QCC_DbgHLPrintf(("Encrypting messge to %s", destination.empty() ? "broadcast listeners" : destination.c_str()));
-        msgHeader.bodyLen = argsLen + ajn::Crypto::ExpansionBytes;
+        msgHeader.bodyLen = static_cast<uint32_t>(argsLen + ajn::Crypto::ExpansionBytes);
     } else {
-        msgHeader.bodyLen = argsLen;
+        msgHeader.bodyLen = static_cast<uint32_t>(argsLen);
     }
     /*
      * Keep the old message buffer around until we are done because some of the strings we are

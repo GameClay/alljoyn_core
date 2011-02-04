@@ -543,7 +543,7 @@ QStatus _Message::UnmarshalArgs(const qcc::String& expectedSignature, const char
     }
     if (msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED) {
         bool broadcast = (hdrFields.field[ALLJOYN_HDR_FIELD_DESTINATION].typeId == ALLJOYN_INVALID);
-        uint32_t hdrLen = (uint32_t)(bodyPtr - (uint8_t*)msgBuf);
+        size_t hdrLen = bodyPtr - (uint8_t*)msgBuf;
         PeerState peerState = bus.GetInternal().GetPeerStateTable()->GetPeerState(GetSender());
         KeyBlob key;
         KeyBlob nonce;
@@ -571,10 +571,16 @@ QStatus _Message::UnmarshalArgs(const qcc::String& expectedSignature, const char
             ajn::Crypto::HashHeaderFields(hdrFields, hdrHash);
             nonce ^= hdrHash;
         }
-        status = ajn::Crypto::Decrypt(key, (uint8_t*)msgBuf, hdrLen, msgHeader.bodyLen, nonce);
+        /*
+         * Decryption will typically make the body length slightly smaller because the encryption
+         * algorithm adds appends a MAC block to the end of the encrypted data.
+         */
+        size_t bodyLen = msgHeader.bodyLen;
+        status = ajn::Crypto::Decrypt(key, (uint8_t*)msgBuf, hdrLen, bodyLen, nonce);
         if (status != ER_OK) {
             goto ExitUnmarshalArgs;
         }
+        msgHeader.bodyLen = static_cast<uint32_t>(bodyLen);
         authMechanism = key.GetTag();
     }
     /*
@@ -1125,7 +1131,7 @@ ExitUnmarshal:
          * The message was succesfully unmarshalled but was stale so let the upper-layer decide
          * whether the error is recoverable or not.
          */
-        QCC_DbgHLPrintf(("Time to live expired for message (endpoint %s)\n%s", endpointName.c_str(), ToString().c_str()));
+        QCC_DbgHLPrintf(("Time to live expired for (endpoint %s) message:\n%s", endpointName.c_str(), ToString().c_str()));
         break;
 
     case ER_BUS_INVALID_HEADER_SERIAL:
@@ -1133,7 +1139,7 @@ ExitUnmarshal:
          * The message was succesfully unmarshalled but was out-of-order so let the upper-layer
          * decide whether the error is recoverable or not.
          */
-        QCC_DbgHLPrintf(("Serial number was invalid for message (endpoint %s)\n%s", endpointName.c_str(), ToString().c_str()));
+        QCC_DbgHLPrintf(("Serial number was invalid for (endpoint %s) message:\n%s", endpointName.c_str(), ToString().c_str()));
         break;
 
     default:

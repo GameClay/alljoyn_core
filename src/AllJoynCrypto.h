@@ -58,7 +58,7 @@ class Crypto {
      *         - ER_BUS_KEYBLOB_OP_INVALID if the key blob cannot be used for encryption.
      *         - Other errors if the arguments are invalid.
      */
-    static QStatus Encrypt(const qcc::KeyBlob& keyBlob, uint8_t* msg, uint32_t hdrLen, uint32_t& bodyLen, const qcc::KeyBlob& nonce);
+    static QStatus Encrypt(const qcc::KeyBlob& keyBlob, uint8_t* msg, size_t hdrLen, size_t& bodyLen, const qcc::KeyBlob& nonce);
 
     /**
      * Decrypt and authenticate marshaled message inplace using the key blob provided and the
@@ -75,7 +75,7 @@ class Crypto {
      *         - ER_BUS_KEYBLOB_OP_INVALID if the key blob cannot be used for decryption.
      *         - Other errors if the arguments are invalid.
      */
-    static QStatus Decrypt(const qcc::KeyBlob& keyBlob, uint8_t* msg, uint32_t hdrLen, uint32_t& bodyLen, const qcc::KeyBlob& nonce);
+    static QStatus Decrypt(const qcc::KeyBlob& keyBlob, uint8_t* msg, size_t hdrLen, size_t& bodyLen, const qcc::KeyBlob& nonce);
 
     /**
      * Compute a SHA1 hash over the header fields and return the result in a key blob.
@@ -90,12 +90,12 @@ class Crypto {
     /**
      * The number of bytes that encryption adds to the length of the message.
      */
-    static const uint8_t ExpansionBytes;
+    static const size_t ExpansionBytes;
 
     /**
      * Size of the nonce used for message encryption.
      */
-    static const uint8_t NonceBytes;
+    static const size_t NonceBytes;
 
 };
 

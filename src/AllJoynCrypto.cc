@@ -39,12 +39,12 @@ using namespace qcc;
 
 namespace ajn {
 
-const uint8_t Crypto::ExpansionBytes = 8;
+const size_t Crypto::ExpansionBytes = 8;
 
-const uint8_t Crypto::NonceBytes = 16;
+const size_t Crypto::NonceBytes = 16;
 
 
-QStatus Crypto::Encrypt(const KeyBlob& keyBlob, uint8_t* msg, uint32_t hdrLen, uint32_t& bodyLen, const KeyBlob& nonce)
+QStatus Crypto::Encrypt(const KeyBlob& keyBlob, uint8_t* msg, size_t hdrLen, size_t& bodyLen, const KeyBlob& nonce)
 {
     size_t msgLen = hdrLen + bodyLen;
     QStatus status;
@@ -72,7 +72,7 @@ QStatus Crypto::Encrypt(const KeyBlob& keyBlob, uint8_t* msg, uint32_t hdrLen, u
     return status;
 }
 
-QStatus Crypto::Decrypt(const KeyBlob& keyBlob, uint8_t* msg, uint32_t hdrLen, uint32_t& bodyLen, const KeyBlob& nonce)
+QStatus Crypto::Decrypt(const KeyBlob& keyBlob, uint8_t* msg, size_t hdrLen, size_t& bodyLen, const KeyBlob& nonce)
 {
     size_t msgLen = hdrLen + bodyLen;
     QStatus status;
