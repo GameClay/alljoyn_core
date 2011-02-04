@@ -65,7 +65,8 @@ AllJoynObj::AllJoynObj(Bus& bus) :
     guid(bus.GetInternal().GetGlobalGUID()),
     exchangeNamesSignal(NULL),
     detachSessionSignal(NULL),
-    nameMapReaper(this)
+    nameMapReaper(this),
+    isStopping(false)
 {
 }
 
@@ -80,6 +81,7 @@ AllJoynObj::~AllJoynObj()
 
     /* Wait for any outstanding JoinSessionThreads */
     joinSessionThreadsLock.Lock();
+    isStopping = true;
     vector<JoinSessionThread*>::iterator it = joinSessionThreads.begin();
     while (it != joinSessionThreads.end()) {
         (*it)->Stop();
@@ -650,14 +652,16 @@ void AllJoynObj::JoinSessionThread::ThreadExit(Thread* thread)
 {
     ajObj.joinSessionThreadsLock.Lock();
     vector<JoinSessionThread*>::iterator it = ajObj.joinSessionThreads.begin();
+    bool isFound = false;
     while (it != ajObj.joinSessionThreads.end()) {
         if (*it == thread) {
             ajObj.joinSessionThreads.erase(it);
+            isFound = true;
             break;
         }
         ++it;
     }
-    if (it == ajObj.joinSessionThreads.end()) {
+    if (!isFound) {
         QCC_LogError(ER_FAIL, ("Internal error: JoinSessionThread not found on list"));
     }
     ajObj.joinSessionThreadsLock.Unlock();
@@ -667,12 +671,14 @@ void AllJoynObj::JoinSession(const InterfaceDescription::Member* member, Message
 {
     /* Handle JoinSession on another thread since JoinThread can block waiting for NameOwnerChanged */
     joinSessionThreadsLock.Lock();
-    JoinSessionThread* jst = new JoinSessionThread(*this, msg);
-    QStatus status = jst->Start();
-    if (status == ER_OK) {
-        joinSessionThreads.push_back(jst);
-    } else {
-        QCC_LogError(status, ("Failed to start JoinSessionThred"));
+    if (!isStopping) {
+        JoinSessionThread* jst = new JoinSessionThread(*this, msg);
+        QStatus status = jst->Start(NULL, jst);
+        if (status == ER_OK) {
+            joinSessionThreads.push_back(jst);
+        } else {
+            QCC_LogError(status, ("Failed to start JoinSessionThread"));
+        }
     }
     joinSessionThreadsLock.Unlock();
 }

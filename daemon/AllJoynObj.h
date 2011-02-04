@@ -342,7 +342,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     NameMapReaperThread nameMapReaper;                   /**< Removes expired names from nameMap */
 
     /** JoinSessionThread handles a JoinSession request from a local client on a separate thread */
-    class JoinSessionThread : public qcc::Thread {
+    class JoinSessionThread : public qcc::Thread, public qcc::ThreadListener {
       public:
         JoinSessionThread(AllJoynObj& ajObj, const Message& msg) : Thread("JoinSessionThread"), ajObj(ajObj), msg(msg) { }
 
@@ -358,6 +358,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
 
     std::vector<JoinSessionThread*> joinSessionThreads;  /**< List of outstanding join session requests */
     qcc::Mutex joinSessionThreadsLock;                   /**< Lock that protects joinSessionThreads */
+    bool isStopping;                                     /**< True while waiting for threads to exit */
 
     /**
      * Utility function used to send a single FoundName signal.
