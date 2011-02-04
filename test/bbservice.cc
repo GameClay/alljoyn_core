@@ -332,7 +332,8 @@ class LocalTestObject : public BusObject {
         reportInterval(reportInterval),
         prop_str_val("hello world"),
         prop_ro_str("I cannot be written"),
-        prop_int_val(100)
+        prop_int_val(100),
+        sessionId(0)
     {
         QStatus status;
 
@@ -416,7 +417,9 @@ class LocalTestObject : public BusObject {
             size_t numArgs;
             const MsgArg* replyArgs;
             reply->GetArgs(numArgs, replyArgs);
-            if (replyArgs[0].v_uint32 != ALLJOYN_CREATESESSION_REPLY_SUCCESS) {
+            if (replyArgs[0].v_uint32 == ALLJOYN_CREATESESSION_REPLY_SUCCESS) {
+                sessionId = replyArgs[1].v_uint32;
+            } else {
                 status = ER_FAIL;
                 QCC_LogError(status, ("CreateSession(%s) returned failed status %d", g_wellKnownName.c_str(), replyArgs[0].v_uint32));
                 return;
@@ -509,7 +512,7 @@ class LocalTestObject : public BusObject {
             if (g_compress) {
                 flags |= ALLJOYN_FLAG_COMPRESSED;
             }
-            QStatus status = Signal(msg->GetSender(), *member, &arg, 1, 0, flags);
+            QStatus status = Signal(msg->GetSender(), sessionId, *member, &arg, 1, 0, flags);
             if (status != ER_OK) {
                 QCC_LogError(status, ("Failed to send Signal"));
             }
@@ -601,6 +604,8 @@ class LocalTestObject : public BusObject {
         return MethodReply(msg, args, argCount);
     }
 
+  private:
+
     map<qcc::String, size_t> rxCounts;
 
     unsigned long signalDelay;
@@ -609,6 +614,7 @@ class LocalTestObject : public BusObject {
     qcc::String prop_str_val;
     qcc::String prop_ro_str;
     int32_t prop_int_val;
+    SessionId sessionId;
 };
 
 
@@ -732,14 +738,12 @@ int main(int argc, char** argv)
         QCC_LogError(status, ("BusAttachment::Start failed"));
     }
 
-    /* Create a bus listener to be used to accept incoming session requests */
     if (ER_OK == status) {
+        /* Create a bus listener to be used to accept incoming session requests */
         BusListener* myBusListener = new MyBusListener();
         g_msgBus->RegisterBusListener(*myBusListener);
-    }
 
-    /* Register local objects and connect to the daemon */
-    if (ER_OK == status) {
+        /* Register local objects and connect to the daemon */
         LocalTestObject testObj(*g_msgBus, ::org::alljoyn::alljoyn_test::ObjectPath, reportInterval);
         g_msgBus->RegisterBusObject(testObj);
 

@@ -232,6 +232,15 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     void NameChangedSignalHandler(const InterfaceDescription::Member* member, const char* sourcePath, Message& msg);
 
     /**
+     * Process incoming SessionDetach signals from remote daemons.
+     *
+     * @param member        Interface member for signal
+     * @param sourcePath    object path sending the signal.
+     * @param msg           The signal message.
+     */
+    void DetachSessionSignalHandler(const InterfaceDescription::Member* member, const char* sourcePath, Message& msg);
+
+    /**
      * NameListener implementation called when a bus name changes ownership.
      *
      * @param alias     Well-known bus name now owned by listener.
@@ -299,22 +308,25 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     struct SessionMapEntry {
         qcc::String name;
         SessionId id;
+        qcc::String endpointName;
         QosInfo qos;
         bool isMulticast;
         std::vector<qcc::String> memberNames;
     };
-    std::map<qcc::StringMapKey, SessionMapEntry> sessionMap;
+    std::map<SessionId, SessionMapEntry> sessionMap;     /**< Map sessionId to session info (valid on session endpoints) */
+    qcc::Mutex sessionMapLock;                           /**< Protect sessionMap */
 
-    const qcc::GUID& guid;               /**< Global GUID of this daemon */
+    const qcc::GUID& guid;                               /**< Global GUID of this daemon */
 
-    const InterfaceDescription::Member* exchangeNamesSignal;   /**< org.alljoyn.Bus.ExchangeNames signal member */
+    const InterfaceDescription::Member* exchangeNamesSignal;   /**< org.alljoyn.Daemon.ExchangeNames signal member */
+    const InterfaceDescription::Member* detachSessionSignal;   /**< org.alljoyn.Daemon.DetachSession signal member */
 
     std::map<qcc::String, VirtualEndpoint*> virtualEndpoints;  /**< Map of endpoints that reside behind a connected AllJoyn daemon */
-    qcc::Mutex virtualEndpointsLock;     /**< Mutex that protects virtualEndpoints map */
+    qcc::Mutex virtualEndpointsLock;                     /**< Mutex that protects virtualEndpoints map */
 
     std::map<qcc::StringMapKey, RemoteEndpoint*> b2bEndpoints;    /**< Map of bus-to-bus endpoints that are connected to external daemons */
 
-    qcc::Mutex b2bEndpointsLock;         /**< Mutex that protects b2bEndpoints map */
+    qcc::Mutex b2bEndpointsLock;                         /**< Mutex that protects b2bEndpoints map */
 
     /** NameMapReaperThread removes expired names from the nameMap */
     class NameMapReaperThread : public qcc::Thread {
@@ -327,7 +339,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
         AllJoynObj* ajnObj;
     };
 
-    NameMapReaperThread nameMapReaper;           /**< Removes expired names from nameMap */
+    NameMapReaperThread nameMapReaper;                   /**< Removes expired names from nameMap */
 
     /** JoinSessionThread handles a JoinSession request from a local client on a separate thread */
     class JoinSessionThread : public qcc::Thread {

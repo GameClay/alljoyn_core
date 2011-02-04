@@ -407,6 +407,7 @@ QStatus BusObject::DoRegistration()
 }
 
 QStatus BusObject::Signal(const char* destination,
+                          SessionId sessionId,
                           const InterfaceDescription::Member& signalMember,
                           const MsgArg* args,
                           size_t numArgs,
@@ -432,6 +433,7 @@ QStatus BusObject::Signal(const char* destination,
 
     status = msg->SignalMsg(signalMember.signature,
                             destination,
+                            sessionId,
                             path,
                             signalMember.iface->GetName(),
                             signalMember.name,

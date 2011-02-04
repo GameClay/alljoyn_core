@@ -102,7 +102,7 @@ class BasicSampleObject : public BusObject {
         printf("Emiting Name Changed Signal.\n");
         assert(nameChangedMember);
         MsgArg arg("s", newName.c_str());
-        QStatus status = Signal(NULL, *nameChangedMember, &arg, 1, 0, ALLJOYN_FLAG_GLOBAL_BROADCAST);
+        QStatus status = Signal(NULL, 0, *nameChangedMember, &arg, 1, 0, ALLJOYN_FLAG_GLOBAL_BROADCAST);
         return status;
     }
 

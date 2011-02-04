@@ -219,7 +219,7 @@ QStatus XmlHelper::ParseNode(const XmlElement* root, ProxyBusObject* obj)
                     if (childObj) {
                         status = ParseNode(elem, childObj);
                     } else {
-                        ProxyBusObject newChild(*bus, obj->GetServiceName().c_str(), childObjPath.c_str());
+                        ProxyBusObject newChild(*bus, obj->GetServiceName().c_str(), childObjPath.c_str(), obj->sessionId);
                         status = ParseNode(elem, &newChild);
                         if (ER_OK == status) {
                             obj->AddChild(newChild);

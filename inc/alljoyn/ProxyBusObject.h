@@ -28,6 +28,7 @@
 #include <alljoyn/InterfaceDescription.h>
 #include <alljoyn/MessageReceiver.h>
 #include <alljoyn/MsgArg.h>
+#include <alljoyn/Session.h>
 
 #include <Status.h>
 
@@ -42,6 +43,7 @@ class BusAttachment;
  * remotely located DBus objects.
  */
 class ProxyBusObject : public MessageReceiver {
+    friend class XmlHelper;
 
   public:
 
@@ -84,11 +86,12 @@ class ProxyBusObject : public MessageReceiver {
      * object describes in its introspection data, call IntrospectRemoteObject() or
      * IntrospectRemoteObjectAsync().
      *
-     * @param bus      The bus.
-     * @param service  The remote service name (well-known or unique).
-     * @param path     The absolute (non-relative) object path for the remote object.
+     * @param bus        The bus.
+     * @param service    The remote service name (well-known or unique).
+     * @param path       The absolute (non-relative) object path for the remote object.
+     * @param sessionId  The session id the be used for communicating with remote object.
      */
-    ProxyBusObject(BusAttachment& bus, const char* service, const char* path);
+    ProxyBusObject(BusAttachment& bus, const char* service, const char* path, SessionId sessionId);
 
     /**
      *  %ProxyBusObject destructor.
@@ -649,7 +652,8 @@ class ProxyBusObject : public MessageReceiver {
     /** Object path of this object */
     qcc::String path;
 
-    qcc::String serviceName;
+    qcc::String serviceName;    /**< Remote destination */
+    SessionId sessionId;        /**< Session to use for communicating with remote object */
 
 };
 

@@ -57,7 +57,7 @@ class MyMessage : public _Message {
                        uint8_t flags = 0)
     {
         flags |= ALLJOYN_FLAG_COMPRESSED;
-        return CallMsg("", destination, objPath, interface, methodName, serial, NULL, 0, flags);
+        return CallMsg("", destination, 0, objPath, interface, methodName, serial, NULL, 0, flags);
     }
 
     QStatus Signal(const char* destination,
@@ -66,7 +66,7 @@ class MyMessage : public _Message {
                    const char* signalName,
                    uint16_t ttl)
     {
-        return SignalMsg("", destination, objPath, interface, signalName, NULL, 0, ALLJOYN_FLAG_COMPRESSED, ttl);
+        return SignalMsg("", destination, 0, objPath, interface, signalName, NULL, 0, ALLJOYN_FLAG_COMPRESSED, ttl);
     }
 
     QStatus Unmarshal(RemoteEndpoint& ep, const qcc::String& endpointName, bool pedantic = true)

@@ -29,7 +29,7 @@
 #include <alljoyn/InterfaceDescription.h>
 #include <alljoyn/MsgArg.h>
 #include <alljoyn/MessageReceiver.h>
-
+#include <alljoyn/Session.h>
 #include <Status.h>
 
 namespace ajn {
@@ -133,6 +133,7 @@ class BusObject : public MessageReceiver {
      * Send a signal.
      *
      * @param destination      The unique or well-known bus name or the signal recipient (NULL for broadcast signals)
+     * @param sessionId
      * @param signal           Interface member of signal being emitted.
      * @param args             The arguments for the signal (can be NULL)
      * @param numArgs          The number of arguments
@@ -149,6 +150,7 @@ class BusObject : public MessageReceiver {
      *      - An error status otherwise
      */
     QStatus Signal(const char* destination,
+                   SessionId sessionId,
                    const InterfaceDescription::Member& signal,
                    const MsgArg* args = NULL,
                    size_t numArgs = 0,

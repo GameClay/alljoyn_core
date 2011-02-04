@@ -135,6 +135,9 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
  * In params:
  *  sessionId    - Id of session to leave.
  */
+#define ALLJOYN_LEAVESESSION_REPLY_SUCCESS            1   /**< JoinSession reply: Success */
+#define ALLJOYN_LEAVESESSION_REPLY_NO_SESSION         2   /**< JoinSession reply: Session with given name does not exist */
+#define ALLJOYN_LEAVESESSION_REPLY_FAILED             3   /**< JoinSession reply: Failed for unspecified reason */
 
 /**
  * @name org.alljoyn.Bus.AdvertiseName

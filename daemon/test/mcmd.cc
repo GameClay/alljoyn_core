@@ -202,7 +202,7 @@ typedef map<qcc::String, qcc::String, BNComp> BusNameMap;
 static QStatus ListBusNames(BusAttachment& bus, BusNameMap& names)
 {
     QStatus status;
-    ProxyBusObject robj(bus, "org.freedesktop.DBus", "/org/freedesktop/DBus");
+    ProxyBusObject robj(bus, "org.freedesktop.DBus", "/org/freedesktop/DBus", 0);
     const InterfaceDescription* ifc = bus.GetInterface(org::freedesktop::DBus::InterfaceName);
     const InterfaceDescription::Member* listNames = ifc->GetMember("ListNames");
     const InterfaceDescription::Member* getNameOwner = ifc->GetMember("GetNameOwner");
@@ -662,7 +662,7 @@ static void ParseMethodCallArgs(qcc::String signature, MsgArg* argList)
 static QStatus MethodCall(BusAttachment& bus, bool introspect)
 {
     QStatus status;
-    ProxyBusObject robj(bus, dest.c_str(), objPath.c_str());
+    ProxyBusObject robj(bus, dest.c_str(), objPath.c_str(), 0);
     const InterfaceDescription* ifc = NULL;
     const InterfaceDescription::Member* member;
     Message rsp(bus);
@@ -839,7 +839,7 @@ static QStatus ListAll(BusAttachment& bus)
 
 static QStatus ListObjects(BusAttachment& bus)
 {
-    ProxyBusObject robj(bus, dest.c_str(), "/");
+    ProxyBusObject robj(bus, dest.c_str(), "/", 0);
     return ListObjectPaths(bus, robj);
 }
 
@@ -847,7 +847,7 @@ static QStatus ListObjects(BusAttachment& bus)
 static QStatus Introspect(BusAttachment& bus)
 {
     QStatus status;
-    ProxyBusObject robj(bus, dest.c_str(), objPath.c_str());
+    ProxyBusObject robj(bus, dest.c_str(), objPath.c_str(), 0);
     Message rsp(bus);
 
     status = robj.IntrospectRemoteObject();

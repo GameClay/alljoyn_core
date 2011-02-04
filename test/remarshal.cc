@@ -63,7 +63,7 @@ class MyMessage : public _Message {
     {
         qcc::String sig = MsgArg::Signature(argList, numArgs);
         printf("Signature = \"%s\"\n", sig.c_str());
-        return CallMsg(sig, destination, objPath, interface, methodName, serial, argList, numArgs, flags);
+        return CallMsg(sig, destination, 0, objPath, interface, methodName, serial, argList, numArgs, flags);
     }
 
     QStatus Signal(const char* destination,
@@ -75,7 +75,7 @@ class MyMessage : public _Message {
     {
         qcc::String sig = MsgArg::Signature(argList, numArgs);
         printf("Signature = \"%s\"\n", sig.c_str());
-        return SignalMsg(sig, destination, objPath, interface, signalName, argList, numArgs, 0, 0);
+        return SignalMsg(sig, destination, 0, objPath, interface, signalName, argList, numArgs, 0, 0);
     }
 
     QStatus UnmarshalBody() { return UnmarshalArgs("*"); }

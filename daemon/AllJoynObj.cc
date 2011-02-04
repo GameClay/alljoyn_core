@@ -63,6 +63,8 @@ AllJoynObj::AllJoynObj(Bus& bus) :
     lostAdvNameSignal(NULL),
     busConnLostSignal(NULL),
     guid(bus.GetInternal().GetGlobalGUID()),
+    exchangeNamesSignal(NULL),
+    detachSessionSignal(NULL),
     nameMapReaper(this)
 {
 }
@@ -144,6 +146,8 @@ QStatus AllJoynObj::Init()
 
     exchangeNamesSignal = daemonIface->GetMember("ExchangeNames");
     assert(exchangeNamesSignal);
+    detachSessionSignal = daemonIface->GetMember("DetachSession");
+    assert(detachSessionSignal);
 
     /* Register a signal handler for ExchangeNames */
     if (ER_OK == status) {
@@ -163,6 +167,16 @@ QStatus AllJoynObj::Init()
                                            NULL);
     } else {
         QCC_LogError(status, ("Failed to register NameChangedSignalHandler"));
+    }
+
+    /* Register a signal handler for DetachSession bus-to-bus signal */
+    if (ER_OK == status) {
+        status = bus.RegisterSignalHandler(this,
+                                           static_cast<MessageReceiver::SignalHandler>(&AllJoynObj::DetachSessionSignalHandler),
+                                           daemonIface->GetMember("DetachSession"),
+                                           NULL);
+    } else {
+        QCC_LogError(status, ("Failed to register DetachSessionSignalHandler"));
     }
 
     /* Register a name table listener */
@@ -403,7 +417,10 @@ void AllJoynObj::CreateSession(const InterfaceDescription::Member* member, Messa
         val.GenerateRandomValue(8 * sizeof(SessionId));
         val.RenderBinary(reinterpret_cast<uint8_t*>(&id), sizeof(SessionId));
         entry.id = id;
-        sessionMap[sessionName] = entry;
+        entry.endpointName = msg->GetSender();
+        sessionMapLock.Lock();
+        sessionMap[id] = entry;
+        sessionMapLock.Unlock();
     }
 
     /* Reply to request */
@@ -543,7 +560,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
         attachArgs[2].Set("s", sessionEp->GetUniqueName().c_str());
         attachArgs[3].Set("s", b2bEp->GetUniqueName().c_str());
         attachArgs[4].Set("(qqq)", qosIn.proximity, qosIn.traffic, qosIn.transports);
-        ProxyBusObject controllerObj(ajObj.bus, endControllerName.c_str(), org::alljoyn::Daemon::ObjectPath);
+        ProxyBusObject controllerObj(ajObj.bus, endControllerName.c_str(), org::alljoyn::Daemon::ObjectPath, 0);
         controllerObj.AddInterface(*ajObj.daemonIface);
         QCC_DbgPrintf(("Sending AttachSession(%s, %s, %s, %s, <%x, %x, %x>) to %s",
                        attachArgs[0].v_string.str,
@@ -624,7 +641,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
 
     /* Log error if reply could not be sent */
     if (ER_OK != status) {
-        QCC_LogError(status, ("Failed to respond to org.alljoyn.Daemon.JoinSession"));
+        QCC_LogError(status, ("Failed to respond to org.alljoyn.Bus.JoinSession"));
     }
     return 0;
 }
@@ -662,6 +679,52 @@ void AllJoynObj::JoinSession(const InterfaceDescription::Member* member, Message
 
 void AllJoynObj::LeaveSession(const InterfaceDescription::Member* member, Message& msg)
 {
+    uint32_t replyCode = ALLJOYN_LEAVESESSION_REPLY_FAILED;
+
+    size_t numArgs;
+    const MsgArg* args;
+
+    /* Parse the message args */
+    msg->GetArgs(numArgs, args);
+    assert(numArgs == 1);
+    SessionId id = static_cast<SessionId>(args[0].v_uint32);
+
+    QCC_DbgTrace(("AllJoynObj::LeaveSession(%d)", id));
+
+    /* Find the session with that id */
+    sessionMapLock.Lock();
+    map<SessionId, SessionMapEntry>::iterator it = sessionMap.find(id);
+    if ((it == sessionMap.end()) || (it->second.endpointName != msg->GetSender())) {
+        sessionMapLock.Unlock();
+        replyCode = ALLJOYN_LEAVESESSION_REPLY_NO_SESSION;
+    } else {
+        /* Remove entry from sessionMap */
+        sessionMap.erase(it);
+        sessionMapLock.Unlock();
+
+        /* Send DetachSession signal */
+        MsgArg detachSessionArgs[2];
+        detachSessionArgs[0].Set("u", id);
+        detachSessionArgs[1].Set("s", msg->GetSender());
+        QStatus status = Signal(NULL, id, *detachSessionSignal, detachSessionArgs, ArraySize(detachSessionArgs));
+        if (status != ER_OK) {
+            QCC_LogError(status, ("Error sending org.alljoyn.Daemon.DetachSession signal"));
+        }
+
+        /* Decrement local ref counts */
+        // TODO
+    }
+
+    /* Reply to request */
+    MsgArg replyArgs[1];
+    replyArgs[0].Set("u", replyCode);
+    QStatus status = MethodReply(msg, replyArgs, ArraySize(replyArgs));
+    QCC_DbgPrintf(("AllJoynObj::LeaveSession(%d) returned (%u) (status=%s)", id, replyCode, QCC_StatusText(status)));
+
+    /* Log error if reply could not be sent */
+    if (ER_OK != status) {
+        QCC_LogError(status, ("Failed to respond to org.alljoyn.Bus.LeaveSession"));
+    }
 }
 
 void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Message& msg)
@@ -704,7 +767,12 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
         /* This daemon serves dest directly */
 
         /* Check for a session in the session map */
-        map<StringMapKey, SessionMapEntry>::const_iterator sit = sessionMap.find(sessionName);
+        map<SessionId, SessionMapEntry>::const_iterator sit = sessionMap.begin();
+        while (sit != sessionMap.end()) {
+            if (sit->second.name == sessionName) {
+                break;
+            }
+        }
         if (sit == sessionMap.end()) {
             /* No such session */
             replyCode = ALLJOYN_JOINSESSION_REPLY_NO_SESSION;
@@ -719,7 +787,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
             acceptArgs[1].Set("s", src);
             acceptArgs[2].Set("s", dest);
             acceptArgs[3].Set("(qqq)", inQos.proximity, inQos.traffic, inQos.transports);
-            ProxyBusObject peerObj(bus, dest, org::alljoyn::Bus::Peer::ObjectPath);
+            ProxyBusObject peerObj(bus, dest, org::alljoyn::Bus::Peer::ObjectPath, 0);
             const InterfaceDescription* sessionIntf = bus.GetInterface(org::alljoyn::Bus::Peer::Session::InterfaceName);
             assert(sessionIntf);
             peerObj.AddInterface(*sessionIntf);
@@ -753,7 +821,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                     id = sit->second.id;
                     qosOut = sit->second.qos;
                     replyCode = ALLJOYN_JOINSESSION_REPLY_SUCCESS;
-                    sessionMap[sessionName].memberNames.push_back(src);
+                    sessionMap[id].memberNames.push_back(src);
                     router.AddSessionRoute(dest, id, *srcEp, srcB2BEp);
                 } else {
                     replyCode = (srcB2BEp && srcEp) ? ALLJOYN_JOINSESSION_REPLY_REJECTED : ALLJOYN_JOINSESSION_REPLY_FAILED;
@@ -782,7 +850,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
             attachArgs[2].Set("s", dest);
             attachArgs[3].Set("s", destB2B->GetUniqueName().c_str());
             attachArgs[4].Set("(qqq)", inQos.proximity, inQos.traffic, inQos.transports);
-            ProxyBusObject controllerObj(bus, endControllerName.c_str(), org::alljoyn::Daemon::ObjectPath);
+            ProxyBusObject controllerObj(bus, endControllerName.c_str(), org::alljoyn::Daemon::ObjectPath, 0);
             controllerObj.AddInterface(*daemonIface);
             QCC_DbgPrintf(("Forwarding AttachSession(%s, %s, %s, %s, <%x, %x, %x>) to %s",
                            attachArgs[0].v_string.str,
@@ -850,6 +918,10 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     if (ER_OK != status) {
         QCC_LogError(status, ("Failed to respond to org.alljoyn.Daemon.AttachSession"));
     }
+}
+
+void AllJoynObj::DetachSessionSignalHandler(const InterfaceDescription::Member* member, const char* sourcePath, Message& msg)
+{
 }
 
 void AllJoynObj::AdvertiseName(const InterfaceDescription::Member* member, Message& msg)
@@ -1227,6 +1299,7 @@ void AllJoynObj::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
 
                     QStatus status = sigMsg->SignalMsg("sss",
                                                        org::alljoyn::Daemon::WellKnownName,
+                                                       0,
                                                        org::alljoyn::Daemon::ObjectPath,
                                                        org::alljoyn::Daemon::InterfaceName,
                                                        "NameChanged",
@@ -1306,6 +1379,7 @@ QStatus AllJoynObj::ExchangeNames(RemoteEndpoint& endpoint)
         Message exchangeMsg(bus);
         status = exchangeMsg->SignalMsg("a(sas)",
                                         org::alljoyn::Daemon::WellKnownName,
+                                        0,
                                         org::alljoyn::Daemon::ObjectPath,
                                         org::alljoyn::Daemon::InterfaceName,
                                         "ExchangeNames",
@@ -1606,6 +1680,7 @@ void AllJoynObj::NameOwnerChanged(const qcc::String& alias, const qcc::String* o
 
             status = sigMsg->SignalMsg("sss",
                                        org::alljoyn::Daemon::WellKnownName,
+                                       0,
                                        org::alljoyn::Daemon::ObjectPath,
                                        org::alljoyn::Daemon::InterfaceName,
                                        "NameChanged",
@@ -1797,7 +1872,7 @@ QStatus AllJoynObj::SendFoundAdvertisedName(const String& dest,
     args[0].Set("s", name.c_str());
     args[1].Set("(qqq)", qos.proximity, qos.traffic, qos.transports);
     args[2].Set("s", namePrefix.c_str());
-    return Signal(dest.c_str(), *foundNameSignal, args, ArraySize(args));
+    return Signal(dest.c_str(), 0, *foundNameSignal, args, ArraySize(args));
 }
 
 QStatus AllJoynObj::SendLostAdvertisedName(const String& name,
@@ -1824,7 +1899,7 @@ QStatus AllJoynObj::SendLostAdvertisedName(const String& name,
                 args[2].Set("s", dit->first.c_str());
                 match = true;
                 QCC_DbgPrintf(("Sending LostAdvertisedName(%s, <>, %s) to %s", name.c_str(), dit->first.c_str(), dit->second.c_str()));
-                QStatus tStatus = Signal(dit->second.c_str(), *lostAdvNameSignal, args, ArraySize(args));
+                QStatus tStatus = Signal(dit->second.c_str(), 0, *lostAdvNameSignal, args, ArraySize(args));
                 if (ER_OK != tStatus) {
                     status = (ER_OK == status) ? tStatus : status;
                     QCC_LogError(tStatus, ("Failed to send LostAdvertisedName to %s (name=%s)", dit->second.c_str(), name.c_str()));
@@ -1898,7 +1973,7 @@ void AllJoynObj::BusConnectionLost(const qcc::String& busAddr)
     if (foundName && busConnLostSignal) {
         MsgArg arg;
         arg.Set("s", busAddr.c_str());
-        QStatus status = Signal(NULL, *busConnLostSignal, &arg, 1);
+        QStatus status = Signal(NULL, 0, *busConnLostSignal, &arg, 1);
         if (ER_OK != status) {
             QCC_LogError(status, ("Failed to send BusConnectionLost signal"));
         }

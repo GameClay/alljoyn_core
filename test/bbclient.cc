@@ -71,6 +71,9 @@ static String g_wellKnownName = ::org::alljoyn::alljoyn_test::DefaultWellKnownNa
 /** AllJoynListener receives discovery events from AllJoyn */
 class MyBusListener : public BusListener {
   public:
+
+    MyBusListener() : BusListener(), sessionId(0) { }
+
     void FoundAdvertisedName(const char* name, const QosInfo& qos, const char* namePrefix)
     {
         QCC_SyncPrintf("FoundAdvertisedName(name=%s, prefix=%s)\n", name, namePrefix);
@@ -78,7 +81,6 @@ class MyBusListener : public BusListener {
         if (0 == strcmp(name, g_wellKnownName.c_str())) {
             /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
             uint32_t disposition = 0;
-            SessionId sessionId;
             QosInfo qosIn = qos;
             QStatus status = g_msgBus->JoinSession(name, disposition, sessionId, qosIn);
             if ((ER_OK == status) && (ALLJOYN_JOINSESSION_REPLY_SUCCESS == disposition)) {
@@ -107,6 +109,11 @@ class MyBusListener : public BusListener {
             //g_discoverEvent.SetEvent();
         }
     }
+
+    SessionId GetSessionId() const { return sessionId; }
+
+  private:
+    SessionId sessionId;
 };
 
 /** Static bus listener */
@@ -550,10 +557,8 @@ int main(int argc, char** argv)
          */
         if (discoverRemote && (ER_OK == status)) {
             status = Event::Wait(g_discoverEvent);
-        }
-
-        /* If bbservice's well-known name is not currently on the bus yet, then wait for it to appear */
-        if (waitForService && (ER_OK == status)) {
+        } else if (waitForService && (ER_OK == status)) {
+            /* If bbservice's well-known name is not currently on the bus yet, then wait for it to appear */
             bool hasOwner = false;
             g_discoverEvent.ResetEvent();
             status = g_msgBus->NameHasOwner(g_wellKnownName.c_str(), hasOwner);
@@ -570,7 +575,7 @@ int main(int argc, char** argv)
             /* Create the remote object that will be called */
             ProxyBusObject remoteObj;
             if (ER_OK == status) {
-                remoteObj = ProxyBusObject(*g_msgBus, g_wellKnownName.c_str(), ::org::alljoyn::alljoyn_test::ObjectPath);
+                remoteObj = ProxyBusObject(*g_msgBus, g_wellKnownName.c_str(), ::org::alljoyn::alljoyn_test::ObjectPath, g_busListener.GetSessionId());
                 if (useIntrospection) {
                     status = remoteObj.IntrospectRemoteObject();
                     if (ER_OK != status) {

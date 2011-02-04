@@ -88,6 +88,7 @@ QStatus org::alljoyn::CreateInterfaces(BusAttachment& bus)
             return status;
         }
         ifc->AddMethod("AttachSession",  "ssss(qqq)", "uu(qqq)", "name,joiner,creator,b2b,qosIn,status,id,qosOut", 0);
+        ifc->AddSignal("DetachSession",  "us",        "sessionId,joiner",                                          0);
         ifc->AddSignal("ExchangeNames",  "a(sas)",    "uniqueName,aliases",                                        0);
         ifc->AddSignal("NameChanged",    "sss",       "name,oldOwner,newOwner",                                    0);
         ifc->Activate();

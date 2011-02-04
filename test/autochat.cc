@@ -83,7 +83,7 @@ class ChatObject : public BusObject {
 
         uint8_t flags = 0;
         flags |= ALLJOYN_FLAG_GLOBAL_BROADCAST;
-        return Signal(NULL, *chatSignalMember, &chatArg, 1, 0, flags);
+        return Signal(NULL, 0, *chatSignalMember, &chatArg, 1, 0, flags);
     }
 
     /** Receive a signal from another Chat client */
@@ -195,7 +195,6 @@ class MyBusListener : public BusListener {
 
         /* We found a remote bus that is advertising autochat's well-known name so connect to it */
         uint32_t disposition;
-        SessionId sessionId;
         QosInfo qos = advQos;
         QStatus status = s_bus->JoinSession(name, disposition, sessionId, qos);
         if ((ER_OK == status) && (ALLJOYN_JOINSESSION_REPLY_SUCCESS == disposition)) {
@@ -221,6 +220,10 @@ class MyBusListener : public BusListener {
             }
         }
     }
+    SessionId GetSessionId() const { return sessionId; }
+
+  private:
+    SessionId sessionId;
 };
 
 
@@ -311,14 +314,6 @@ int main(int argc, char** argv)
     if (ER_OK == status) {
         s_busListener = new MyBusListener();
         s_bus->RegisterBusListener(*s_busListener);
-    }
-
-    /* Connect to the daemon */
-    if (ER_OK == status) {
-        status = bus->Connect(daemonAddr.c_str());
-        if (ER_OK != status) {
-            printf("BusAttachment::Connect(\"%s\") failed (%s)\n", daemonAddr.c_str(), QCC_StatusText(status));
-        }
     }
 
     /* Add a rule to allow org.codeaurora.samples.chat.Chat signals to be routed here */

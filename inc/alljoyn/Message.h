@@ -30,6 +30,7 @@
 #include <qcc/ManagedObj.h>
 
 #include <alljoyn/MsgArg.h>
+#include <alljoyn/Session.h>
 #include <Status.h>
 
 #define ALLJOYN_MAX_NAME_LEN          255 /*!<  The maximum length of certain bus names */
@@ -514,6 +515,7 @@ class _Message {
      *
      * @param signature   The signature (checked against the args)
      * @param destination The destination for this message
+     * @param sessionId   The sessionId to use for this method call or 0 for any
      * @param objPath     The object the method call is being sent to
      * @param iface       The interface for the method (can be NULL)
      * @param methodName  The name of the method to call
@@ -527,6 +529,7 @@ class _Message {
      */
     QStatus CallMsg(const qcc::String& signature,
                     const qcc::String& destination,
+                    SessionId sessionId,
                     const qcc::String& objPath,
                     const qcc::String& iface,
                     const qcc::String& methodName,
@@ -541,6 +544,7 @@ class _Message {
      *
      * @param signature   The signature (checked against the args)
      * @param destination The destination for this message
+     * @param sessionId   The sessionId to use for this signal msg or 0 for any
      * @param objPath     The object sending the signal
      * @param iface       The interface for the method (can be NULL)
      * @param signalName  The name of the signal being sent
@@ -555,6 +559,7 @@ class _Message {
      */
     QStatus SignalMsg(const qcc::String& signature,
                       const char* destination,
+                      SessionId sessionId,
                       const qcc::String& objPath,
                       const qcc::String& iface,
                       const qcc::String& signalName,

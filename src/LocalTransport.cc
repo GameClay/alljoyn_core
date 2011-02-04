@@ -139,7 +139,7 @@ QStatus LocalEndpoint::Start()
         /* Register well known org.freedesktop.DBus remote object */
         const InterfaceDescription* intf = bus.GetInterface(org::freedesktop::DBus::InterfaceName);
         if (intf) {
-            dbusObj = new ProxyBusObject(bus, org::freedesktop::DBus::WellKnownName, org::freedesktop::DBus::ObjectPath);
+            dbusObj = new ProxyBusObject(bus, org::freedesktop::DBus::WellKnownName, org::freedesktop::DBus::ObjectPath, 0);
             dbusObj->AddInterface(*intf);
         } else {
             status = ER_BUS_NO_SUCH_INTERFACE;
@@ -150,7 +150,7 @@ QStatus LocalEndpoint::Start()
         /* Register well known org.alljoyn.Bus remote object */
         const InterfaceDescription* mintf = bus.GetInterface(org::alljoyn::Bus::InterfaceName);
         if (mintf) {
-            alljoynObj = new ProxyBusObject(bus, org::alljoyn::Bus::WellKnownName, org::alljoyn::Bus::ObjectPath);
+            alljoynObj = new ProxyBusObject(bus, org::alljoyn::Bus::WellKnownName, org::alljoyn::Bus::ObjectPath, 0);
             alljoynObj->AddInterface(*mintf);
         } else {
             status = ER_BUS_NO_SUCH_INTERFACE;

@@ -291,6 +291,9 @@ class DaemonRouter : public Router {
     std::vector<RemoteEndpoint*> m_b2bEndpoints;  /**< Collection of Bus-to-bus endpoints */
     qcc::Mutex m_b2bEndpointsLock;       /**< Lock that protects m_b2bEndpoints */
 
+    /** Session multicast destination map */
+    std::multimap<std::pair<SessionId, qcc::StringMapKey>, BusEndpoint*> sessionCastMap;
+    qcc::Mutex sessionCastMapLock;      /**< Lock that protects sessionCastMap */
 };
 
 }

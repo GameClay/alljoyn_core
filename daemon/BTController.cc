@@ -202,7 +202,7 @@ QStatus BTController::SendSetState(const qcc::String& busName)
     vector<MsgArg> array;
     MsgArg args[2];
     Message reply(bus);
-    ProxyBusObject* newMaster = new ProxyBusObject(bus, busName.c_str(), bluetoothObjPath);
+    ProxyBusObject* newMaster = new ProxyBusObject(bus, busName.c_str(), bluetoothObjPath, 0);
 
     args[0].Set("y", directMinions);
 
@@ -354,7 +354,7 @@ QStatus BTController::ProcessFoundDevice(const BDAddress& adBdAddr, uint32_t uui
 
         MsgArg::Set(args, numArgs, "su", adBdAddr.ToString().c_str(), uuidRev);
 
-        status = Signal(find.resultDest.c_str(), *org.alljoyn.Bus.BTController.FoundDevice, args, numArgs);
+        status = Signal(find.resultDest.c_str(), 0, *org.alljoyn.Bus.BTController.FoundDevice, args, numArgs);
     }
 
 exit:
@@ -549,7 +549,7 @@ QStatus BTController::SendFoundBus(const BDAddress& bdAddr,
 
     EncodeAdInfo(adInfo, args[4]);
 
-    return Signal(dest, *org.alljoyn.Bus.BTController.FoundBus, args, ArraySize(args));
+    return Signal(dest, 0, *org.alljoyn.Bus.BTController.FoundBus, args, ArraySize(args));
 }
 
 
@@ -571,7 +571,7 @@ QStatus BTController::SendFoundDevice(const BDAddress& bdAddr,
         MsgArg::Set(args, argsSize, "su", bdAddr.ToString().c_str(), uuidRev);
         assert(argsSize == ArraySize(args));
 
-        status = Signal(dest, *org.alljoyn.Bus.BTController.FoundDevice, args, ArraySize(args));
+        status = Signal(dest, 0, *org.alljoyn.Bus.BTController.FoundDevice, args, ArraySize(args));
     }
 
     return status;
@@ -612,7 +612,7 @@ QStatus BTController::DoNameOp(const qcc::String& name,
         qcc::String busName = bus.GetUniqueName();
         args[0].Set("s", busName.c_str());
         args[1].Set("s", name.c_str());
-        status = Signal(master->GetServiceName().c_str(), signal, args, ArraySize(args));
+        status = Signal(master->GetServiceName().c_str(), 0, signal, args, ArraySize(args));
     }
     nodeStateLock.Unlock();
 
@@ -662,7 +662,7 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
             const MsgArg* args;
             size_t numArgs;
             msg->GetArgs(numArgs, args);
-            Signal(master->GetServiceName().c_str(), *member, args, numArgs);
+            Signal(master->GetServiceName().c_str(), 0, *member, args, numArgs);
         }
     }
 
@@ -684,7 +684,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     msg->GetArg(0)->Get("y", &numConnections);
     if (numConnections > directMinions) {
         // We are now a minion (or a drone if we have more than one direct connection)
-        master = new ProxyBusObject(bus, msg->GetSender(), bluetoothObjPath);
+        master = new ProxyBusObject(bus, msg->GetSender(), bluetoothObjPath, 0);
         MsgArg* array = new MsgArg[nodeStates.size()];
         NodeStateMap::const_iterator it;
         size_t cnt;
@@ -786,7 +786,7 @@ void BTController::HandleDelegateFind(const InterfaceDescription::Member* member
         // Pick a minion to do the work for us.
         NextDirectMinion(find.minion);
 
-        Signal(find.minion->first.c_str(), *org.alljoyn.Bus.BTController.DelegateFind, args, numArgs);
+        Signal(find.minion->first.c_str(), 0, *org.alljoyn.Bus.BTController.DelegateFind, args, numArgs);
     }
 }
 
@@ -833,7 +833,7 @@ void BTController::HandleDelegateAdvertise(const InterfaceDescription::Member* m
         // Pick a minion to do the work for us.
         NextDirectMinion(advertise.minion);
 
-        Signal(advertise.minion->first.c_str(), *org.alljoyn.Bus.BTController.DelegateAdvertise, args, numArgs);
+        Signal(advertise.minion->first.c_str(), 0, *org.alljoyn.Bus.BTController.DelegateAdvertise, args, numArgs);
     }
 }
 
@@ -1055,7 +1055,7 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo, bool allow)
                 bt.StopFind();
             }
         } else {
-            Signal(nameInfo.minion->first.c_str(), *nameInfo.delegateSignal,
+            Signal(nameInfo.minion->first.c_str(), 0, *nameInfo.delegateSignal,
                    nameInfo.args, nameInfo.argsSize);
         }
     }
@@ -1137,10 +1137,10 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
         nodeStateLock.Lock();
         if (alarm == find.alarm) {
             NextDirectMinion(find.minion);
-            Signal(find.minion->first.c_str(), *org.alljoyn.Bus.BTController.DelegateFind, find.args, ArraySize(find.args));
+            Signal(find.minion->first.c_str(), 0, *org.alljoyn.Bus.BTController.DelegateFind, find.args, ArraySize(find.args));
         } else { // (alarm == advertise.alarm)
             NextDirectMinion(advertise.minion);
-            Signal(advertise.minion->first.c_str(), *org.alljoyn.Bus.BTController.DelegateAdvertise, advertise.args, ArraySize(advertise.args));
+            Signal(advertise.minion->first.c_str(), 0, *org.alljoyn.Bus.BTController.DelegateAdvertise, advertise.args, ArraySize(advertise.args));
         }
         nodeStateLock.Unlock();
     }

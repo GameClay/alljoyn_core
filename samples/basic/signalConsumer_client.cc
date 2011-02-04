@@ -74,6 +74,9 @@ static void SigIntHandler(int sig)
 /** AllJoynListener receives discovery events from AllJoyn */
 class MyBusListener : public BusListener {
   public:
+
+    MyBusListener() : BusListener(), sessionId(0) { }
+
     void FoundName(const char* name, const char* guid, const char* namePrefix, const char* busAddress)
     {
         if (0 == strcmp(name, SERVICE_NAME)) {
@@ -98,6 +101,11 @@ class MyBusListener : public BusListener {
                    newOwner ? newOwner : "null");
         }
     }
+
+    SessionId GetSessionId() const { return sessionId; }
+
+  private:
+    SessionId sessionId;
 };
 
 /** Static bus listener */
@@ -138,7 +146,7 @@ class SignalListeningObject : public BusObject {
 
         ProxyBusObject remoteObj;
         if (ER_OK == status) {
-            remoteObj = ProxyBusObject(bus, SERVICE_NAME, SERVICE_PATH);
+            remoteObj = ProxyBusObject(bus, SERVICE_NAME, SERVICE_PATH, g_busListener.GetSessionId());
             status = remoteObj.IntrospectRemoteObject();
             if (ER_OK != status) {
                 printf("Introspection of %s (path=%s) failed\n", SERVICE_NAME, SERVICE_PATH);

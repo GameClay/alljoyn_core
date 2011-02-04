@@ -60,6 +60,17 @@ class VirtualEndpoint : public BusEndpoint {
     QStatus PushMessage(Message& msg);
 
     /**
+     * Send an outgoing message over a specific session.
+     *
+     * @param msg   Message to be sent.
+     * @param id    SessionId to use for outgoing message.
+     * @return
+     *      - ER_OK if successful.
+     *      - An error status otherwise
+     */
+    QStatus PushMessage(Message& msg, SessionId id);
+
+    /**
      * Get unique bus name.
      *
      * @return

@@ -991,6 +991,7 @@ QStatus _Message::HelloReply(bool isBusToBus, const qcc::String& uniqueName)
 
 QStatus _Message::CallMsg(const qcc::String& signature,
                           const qcc::String& destination,
+                          SessionId sessionId,
                           const qcc::String& objPath,
                           const qcc::String& iface,
                           const qcc::String& methodName,
@@ -1000,6 +1001,7 @@ QStatus _Message::CallMsg(const qcc::String& signature,
                           uint8_t flags)
 {
     QStatus status;
+    String destStr = destination;
 
     /*
      * Validate flags
@@ -1042,10 +1044,16 @@ QStatus _Message::CallMsg(const qcc::String& signature,
         status = ER_BUS_BAD_BUS_NAME;
         goto ExitCallMsg;
     }
+    /* Add sessionId to destination */
+    if (sessionId != 0) {
+        destStr.append('@');
+        destStr.append(U32ToString(sessionId));
+    }
+
     /*
      * Build method call message
      */
-    status = MarshalMessage(signature, destination, MESSAGE_METHOD_CALL, args, numArgs, flags);
+    status = MarshalMessage(signature, destStr, MESSAGE_METHOD_CALL, args, numArgs, flags);
     if (status == ER_OK) {
         /*
          * Return the serial number for this message
@@ -1060,6 +1068,7 @@ ExitCallMsg:
 
 QStatus _Message::SignalMsg(const qcc::String& signature,
                             const char* destination,
+                            SessionId sessionId,
                             const qcc::String& objPath,
                             const qcc::String& iface,
                             const qcc::String& signalName,
@@ -1069,6 +1078,7 @@ QStatus _Message::SignalMsg(const qcc::String& signature,
                             uint16_t timeToLive)
 {
     QStatus status;
+    String destStr = destination ? destination : "";
 
     /*
      * Validate flags - ENCRYPTED and COMPRESSED are the only flag applicable to signals
@@ -1087,12 +1097,13 @@ QStatus _Message::SignalMsg(const qcc::String& signature,
         status = ER_BUS_BAD_OBJ_PATH;
         goto ExitSignalMsg;
     }
-    /*
-     * Destination is optional
-     */
-    if (!destination) {
-        destination = "";
+
+    /* Append sessionId */
+    if (sessionId != 0) {
+        destStr.append('@');
+        destStr.append(U32ToString(sessionId));
     }
+
     /*
      * If signal has a ttl timestamp the message and set the ttl and timestamp headers.
      */
@@ -1120,7 +1131,7 @@ QStatus _Message::SignalMsg(const qcc::String& signature,
     /*
      * Build signal message
      */
-    status = MarshalMessage(signature, destination, MESSAGE_SIGNAL, args, numArgs, flags);
+    status = MarshalMessage(signature, destStr.c_str(), MESSAGE_SIGNAL, args, numArgs, flags);
 
 ExitSignalMsg:
     return status;
@@ -1137,6 +1148,13 @@ QStatus _Message::ReplyMsg(const MsgArg* args,
     qcc::String destination = hdrFields.field[ALLJOYN_HDR_FIELD_SENDER].v_string.str;
 
     assert(msgHeader.msgType == MESSAGE_METHOD_CALL);
+
+    /* Reuse session from original destination */
+    qcc::String origDest = hdrFields.field[ALLJOYN_HDR_FIELD_DESTINATION].v_string.str;
+    size_t atOff = origDest.find_first_of('@');
+    if (atOff != String::npos) {
+        destination.append(origDest.substr(atOff));
+    }
 
     /*
      * Clear any stale header fields

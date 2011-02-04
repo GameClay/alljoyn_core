@@ -180,7 +180,7 @@ BTTransport::BTAccessor::BTAccessor(BTTransport* transport,
     size_t tableIndex, member;
 
     // Must be initialized after 'bzBus' is initialized!
-    bzManagerObj = ProxyBusObject(bzBus, bzBusName, bzMgrObjPath);
+    bzManagerObj = ProxyBusObject(bzBus, bzBusName, bzMgrObjPath, 0);
 
     for (tableIndex = 0; tableIndex < ifcTableSize; ++tableIndex) {
         InterfaceDescription* ifc;
@@ -1292,7 +1292,7 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
         Message rsp(bzBus);
         MsgArg arg("s", "");
 
-        ProxyBusObject dev(bzBus, bzBusName, devObjPath.c_str());
+        ProxyBusObject dev(bzBus, bzBusName, devObjPath.c_str(), 0);
         dev.AddInterface(*org.bluez.Device.interface);
 
         QCC_DbgPrintf(("Getting service info for AllJoyn service"));

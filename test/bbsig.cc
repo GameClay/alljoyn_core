@@ -180,7 +180,7 @@ class LocalTestObject : public BusObject {
         if (encryption) {
             flags |= ALLJOYN_FLAG_ENCRYPTED;
         }
-        return Signal(NULL, *my_signal_member, &arg, 1, timeToLive, flags);
+        return Signal(NULL, 0, *my_signal_member, &arg, 1, timeToLive, flags);
     }
 
     void SignalHandler(const InterfaceDescription::Member* member,

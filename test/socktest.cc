@@ -320,7 +320,7 @@ int main(int argc, char** argv)
     if (client) {
 
         /* Create the proxy object */
-        ProxyBusObject remoteObj(bus, ::org::alljoyn::sock_test::Service, ::org::alljoyn::sock_test::Path);
+        ProxyBusObject remoteObj(bus, ::org::alljoyn::sock_test::Service, ::org::alljoyn::sock_test::Path, 0);
         status = remoteObj.ParseXml(ifcXML, "sock_test");
         if (status != ER_OK) {
             QCC_LogError(status, ("Failed to parse XML"));

@@ -61,13 +61,15 @@ static void SigIntHandler(int sig)
 /** AllJoynListener receives discovery events from AllJoyn */
 class MyBusListener : public BusListener {
   public:
+
+    MyBusListener() : BusListener(), sessionId(0) { }
+
     void FoundAdvertisedName(const char* name, const char* namePrefix)
     {
         if (0 == strcmp(name, SERVICE_NAME)) {
             printf("FoundName(name=%s, prefix=%s)\n", name, namePrefix);
             /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
             uint32_t disposition;
-            SessionId sessionId;
             QosInfo qos;
             QStatus status = g_msgBus->JoinSession(name, disposition, sessionId, qos);
             if ((ER_OK != status) || (ALLJOYN_JOINSESSION_REPLY_SUCCESS != disposition)) {
@@ -85,6 +87,11 @@ class MyBusListener : public BusListener {
                    newOwner ? newOwner : "null");
         }
     }
+
+    SessionId GetSessionId() const { return sessionId; }
+
+  private:
+    SessionId sessionId;
 };
 
 /** Static bus listener */
@@ -156,9 +163,11 @@ int main(int argc, char** argv, char** envArg)
         }
     }
 
+    /* TODO: YOU MUST WAIT FOR DISCOVERY or NameOwnerChanged here. The next step will always fail */
+
     ProxyBusObject remoteObj;
     if (ER_OK == status) {
-        remoteObj = ProxyBusObject(*g_msgBus, SERVICE_NAME, SERVICE_PATH);
+        remoteObj = ProxyBusObject(*g_msgBus, SERVICE_NAME, SERVICE_PATH, g_busListener.GetSessionId());
         status = remoteObj.IntrospectRemoteObject();
         if (ER_OK != status) {
             printf("Introspection of %s (path=%s) failed\n", SERVICE_NAME, SERVICE_PATH);

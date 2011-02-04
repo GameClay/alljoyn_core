@@ -173,7 +173,7 @@ void AllJoynPeerObj::ExpandHeader(Message& msg, const qcc::String& receivedFrom)
         /*
          * The endpoint the message was received on knows the expansion rule for the token we just received.
          */
-        ProxyBusObject remotePeerObj(bus, receivedFrom.c_str(), org::alljoyn::Bus::Peer::ObjectPath);
+        ProxyBusObject remotePeerObj(bus, receivedFrom.c_str(), org::alljoyn::Bus::Peer::ObjectPath, 0);
         const InterfaceDescription* ifc = bus.GetInterface(org::alljoyn::Bus::Peer::HeaderCompression::InterfaceName);
         remotePeerObj.AddInterface(*ifc);
         status = remotePeerObj.MethodCall(*(ifc->GetMember("GetExpansion")), &arg, 1, replyMsg, EXPANSION_TIMEOUT);
@@ -515,7 +515,7 @@ QStatus AllJoynPeerObj::SecurePeerConnection(const qcc::String& busName, bool fo
         return ER_BUS_NO_AUTHENTICATION_MECHANISM;
     }
 
-    ProxyBusObject remotePeerObj(bus, busName.c_str(), org::alljoyn::Bus::Peer::ObjectPath);
+    ProxyBusObject remotePeerObj(bus, busName.c_str(), org::alljoyn::Bus::Peer::ObjectPath, 0);
     remotePeerObj.AddInterface(*ifc);
 
     /*
