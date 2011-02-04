@@ -138,7 +138,7 @@ static void usage(void)
     printf("   -t                    = Call delayed_ping with <delay> and repeat at <interval> if -c given\n");
     printf("   -ta                   = Like -t except calls asynchronously\n");
     printf("   -rt                   = Round trip timer\n");
-    printf("   -w                    = Wait for service\n");
+    printf("   -w                    = Don't wait for service\n");
     printf("\n");
 }
 
