@@ -75,7 +75,6 @@ BusAttachment::Internal::Internal(const char* appName, BusAttachment& bus, Trans
     globalGuid(qcc::GUID()),
     msgSerial(qcc::Rand32()),
     router(router ? router : new ClientRouter),
-    peerStateTable(NULL),
     localEndpoint(transportList.GetLocalTransport()->GetLocalEndpoint()),
     timer("timer"),
     dispatcher("dispatcher"),
@@ -108,6 +107,12 @@ BusAttachment::Internal::Internal(const char* appName, BusAttachment& bus, Trans
 
 BusAttachment::Internal::~Internal()
 {
+    /*
+     * Make sure that all threads that might possibly access this object have been joined.
+     */
+    timer.Join();
+    dispatcher.Join();
+    transportList.Join();
     delete router;
 }
 
@@ -126,6 +131,7 @@ class LocalTransportFactoryContainer : public TransportFactoryContainer {
 
 BusAttachment::BusAttachment(const char* applicationName, bool allowRemoteMessages) :
     isStarted(false),
+    isStopping(false),
     busInternal(new Internal(applicationName, *this, localTransportsContainer, NULL, allowRemoteMessages, NULL))
 {
     QCC_DbgTrace(("BusAttachment client constructor (%p)", this));
@@ -133,6 +139,7 @@ BusAttachment::BusAttachment(const char* applicationName, bool allowRemoteMessag
 
 BusAttachment::BusAttachment(Internal* busInternal) :
     isStarted(false),
+    isStopping(false),
     busInternal(busInternal)
 {
     QCC_DbgTrace(("BusAttachment daemon constructor"));
@@ -144,7 +151,10 @@ BusAttachment::~BusAttachment(void)
 
     Stop(true);
 
-    /* Wait for ALL callers of BusAttachment::Stop() to exit before deleting the object */
+    /*
+     * Other threads may be attempting to stop the bus. We need to wait for
+     * ALL callers of BusAttachment::Stop() to exit before deleting the object
+     */
     while (busInternal->stopCount) {
         qcc::Sleep(50);
     }
@@ -162,23 +172,25 @@ QStatus BusAttachment::Start()
     if (isStarted) {
         status = ER_BUS_BUS_ALREADY_STARTED;
         QCC_LogError(status, ("BusAttachment::Start already started"));
+    } else if (isStopping) {
+        status = ER_BUS_STOPPING;
+        QCC_LogError(status, ("BusAttachment::Start bus is stopping call WaitStop() before calling Start()"));
     } else {
+        isStarted = true;
         /* Start the timer */
         status = busInternal->timer.Start();
         if (ER_OK == status) {
-            busInternal->peerStateTable = new PeerStateTable;
             /* Start the transports */
             status = busInternal->transportList.Start(busInternal->GetListenAddresses());
         }
         if (ER_OK == status) {
-            isStarted = true;
-        } else {
-            delete busInternal->peerStateTable;
-            busInternal->peerStateTable = NULL;
+            /* Start the alljoyn signal dispatcher */
+            status = busInternal->dispatcher.Start();
         }
-
-        /* Start the alljoyn signal dispatcher */
-        busInternal->dispatcher.Start();
+        if (status != ER_OK) {
+            QCC_LogError(status, ("BusAttachment::Start failed to start"));
+            Stop(true);
+        }
     }
     return status;
 }
@@ -190,6 +202,9 @@ QStatus BusAttachment::Connect(const char* connectSpec, RemoteEndpoint** newep)
 
     if (!isStarted) {
         status = ER_BUS_BUS_NOT_STARTED;
+    } else if (isStopping) {
+        status = ER_BUS_STOPPING;
+        QCC_LogError(status, ("BusAttachment::Connect cannot connect while bus is stopping"));
     } else if (IsConnected() && !isDaemon) {
         status = ER_BUS_ALREADY_CONNECTED;
     } else {
@@ -262,6 +277,9 @@ QStatus BusAttachment::Disconnect(const char* connectSpec)
 
     if (!isStarted) {
         status = ER_BUS_BUS_NOT_STARTED;
+    } else if (isStopping) {
+        status = ER_BUS_STOPPING;
+        QCC_LogError(status, ("BusAttachment::Diconnect cannot disconnect while bus is stopping"));
     } else if (!isDaemon && !IsConnected()) {
         status = ER_BUS_NOT_CONNECTED;
     } else {
@@ -313,54 +331,62 @@ QStatus BusAttachment::Disconnect(const char* connectSpec)
 
 QStatus BusAttachment::Stop(bool blockUntilStopped)
 {
-    QStatus status = ER_OK;
-    QCC_DbgTrace(("BusAttachment::Stop"));
+    QCC_DbgTrace(("BusAttachment::Stop(%s)", blockUntilStopped ? "true" : "false"));
 
     /* Get the lock that ensures that Stop is only executed once */
     IncrementAndFetch(&busInternal->stopCount);
     busInternal->stopLock.Lock();
 
-    if (isStarted) {
-
-        /* Stop all of the transports and the bus timer */
+    /*
+     * Stop is idempotent
+     */
+    if (isStarted && !isStopping) {
+        /* Stop all of the transports */
         QStatus status = busInternal->transportList.Stop();
         if (ER_OK != status) {
             QCC_LogError(status, ("TransportList::Stop() failed"));
         }
+        /* Stop the timer thread */
         status = busInternal->timer.Stop();
         if (ER_OK != status) {
             QCC_LogError(status, ("Timer::Stop() failed"));
         }
+        /* Stop the dispatcher thread */
         status = busInternal->dispatcher.Stop();
         if (ER_OK != status) {
             QCC_LogError(status, ("Dispatcher::Stop() failed"));
         }
 
+        /* Clear peer state */
+        busInternal->peerStateTable.Clear();
+
         /* Persist keystore */
         busInternal->keyStore.Store();
 
-        if (blockUntilStopped) {
-            WaitStop();
-        }
-        isStarted = false;
+        isStopping = true;
+    }
+    /*
+     * WaitStop() will clear the isStarted and isStopping flags after the bus has stopped.
+     */
+    if (blockUntilStopped) {
+        WaitStop();
     }
 
     busInternal->stopLock.Unlock();
     DecrementAndFetch(&busInternal->stopCount);
 
-    return status;
+    return ER_OK;
 }
 
 void BusAttachment::WaitStop()
 {
-    busInternal->timer.Join();
-    busInternal->dispatcher.Join();
-    busInternal->transportList.Join();
-
-    /* Now the bus has stopped we can cleanup the peer state */
-    /* TODO: busInternal should clean and deallocate its members by itself. This is dangerous. */
-    delete busInternal->peerStateTable;
-    busInternal->peerStateTable = NULL;
+    if (isStarted) {
+        busInternal->timer.Join();
+        busInternal->dispatcher.Join();
+        busInternal->transportList.Join();
+        isStarted = false;
+        isStopping = false;
+    }
 }
 
 QStatus BusAttachment::CreateInterface(const char* name, InterfaceDescription*& iface, bool secure)

@@ -88,7 +88,7 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
      *
      * @return  The peer state table.
      */
-    PeerStateTable* GetPeerStateTable() { return peerStateTable; }
+    PeerStateTable* GetPeerStateTable() { return &peerStateTable; }
 
     /**
      * Get the global GUID for this bus.
@@ -193,7 +193,7 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
     qcc::GUID globalGuid;                 /* Global GUID for this BusAttachment */
     int32_t msgSerial;                    /* Serial number is updated for every message sent by this bus */
     Router* router;                       /* Message bus router */
-    PeerStateTable* peerStateTable;       /* Table that maintains state information about remote peers */
+    PeerStateTable peerStateTable;        /* Table that maintains state information about remote peers */
     LocalEndpoint& localEndpoint;         /* The local endpoint */
     CompressionRules compressionRules;    /* Rules for compresssing headers */
     std::map<qcc::StringMapKey, InterfaceDescription> ifaceDescriptions;

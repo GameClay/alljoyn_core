@@ -449,6 +449,7 @@ class BusAttachment : public MessageReceiver {
     BusAttachment(const BusAttachment& other) { }
 
     bool isStarted;           /**< Indicates if the bus has been started */
+    bool isStopping;          /**< Indicates Stop has been called */
     Internal* busInternal;    /**< Internal state information */
 };
 
