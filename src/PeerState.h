@@ -180,11 +180,7 @@ class _PeerState {
      *
      * @return Size of the serial number validation window.
      */
-#if 0
-    size_t SerialWindowSize() { return window.size(); }
-#else
     size_t SerialWindowSize() { return sizeof(window) / sizeof(window[0]); }
-#endif
 
   private:
 
@@ -238,11 +234,7 @@ class _PeerState {
      * Serial number window. Used by IsValidSerial() to detect replay attacks. The size of the
      * window defines that largest tolerable gap between consecutive serial numbers.
      */
-#if 0
-    std::bitset<256> window;
-#else
     uint32_t window[128];
-#endif
 
 };
 
@@ -302,6 +294,11 @@ class PeerStateTable {
      * @param nonce [out]Returns the nonce.
      */
     void GetGroupKeyAndNonce(qcc::KeyBlob& key, qcc::KeyBlob& nonce);
+
+    /**
+     * Clear all peer state.
+     */
+    void Clear();
 
   private:
 

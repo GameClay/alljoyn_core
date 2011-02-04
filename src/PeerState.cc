@@ -65,82 +65,19 @@ uint32_t _PeerState::EstimateTimestamp(uint32_t remote)
 
 bool _PeerState::IsValidSerial(uint32_t serial, bool secure, bool unreliable)
 {
+    bool ret = false;
     /*
      * Serial 0 is always invalid.
      */
-    if (serial == 0) {
-        return false;
-    }
-
-#if 0
-    /*
-     * Check for first time through.
-     */
-    if (expectedSerial == 0) {
-        expectedSerial = serial;
-    }
-
-    /*
-     * If the gap is +ve advance expectedSerial otherwise check serial is within the window.
-     */
-    int32_t gap = 1 + (int32_t)serial - (int32_t)expectedSerial;
-    if (gap > 0) {
-        /*
-         * Allow gaps that much larger than the window size but not so large that a clever
-         * attacker can do a replay attack by causing the window to wrap around.
-         */
-        if (secure && gap >= 50000) {
-            QCC_DbgHLPrintf(("Invalid serial %u: advanced too far", serial));
-            return false;
+    if (serial != 0) {
+        const size_t winSize = sizeof(window) / sizeof(window[0]);
+        uint32_t* entry = window + (serial % winSize);
+        if (*entry != serial) {
+            *entry = serial;
+            ret = true;
         }
-        /*
-         * Serial 0 is invalid so we never expect it.
-         */
-        expectedSerial = (serial + 1) ? (serial + 1) : 1;
-        /*
-         * Unset bits for serials that are now allowed.
-         */
-        if (gap >= (int32_t)window.size()) {
-            window.reset();
-        } else {
-            uint32_t i = serial;
-            while (gap--) {
-                window[++i % window.size()] = 0;
-            }
-            gap = 0;
-        }
-    } else if (gap < -((int32_t)window.size())) {
-        /*
-         * We hold secure messages to a higher standard
-         */
-        if (secure) {
-            QCC_DbgHLPrintf(("Invalid serial %u: outside window %d", serial, gap));
-            return false;
-        }
-    } else if (window[serial % window.size()]) {
-        QCC_DbgHLPrintf(("Invalid serial %u: in window %s", serial, window.to_string<char, char_traits<char>, allocator<char> >().c_str()));
-        return false;
-    }
-    window[serial % window.size()] = 1;
-    // QCC_DbgPrintf(("Window %s", window.to_string< char,char_traits<char>,allocator<char> >().c_str()));
-    /*
-     * Unreliable messages are only valid when received in order.
-     */
-    if (unreliable && (gap < 0)) {
-        return false;
-    } else {
-        return true;
-    }
-#else
-    bool ret = false;
-    const size_t winSize = sizeof(window) / sizeof(window[0]);
-    uint32_t* entry = window + (serial % winSize);
-    if (*entry != serial) {
-        *entry = serial;
-        ret = true;
     }
     return ret;
-#endif
 
 }
 
@@ -208,6 +145,15 @@ void PeerStateTable::GetGroupKeyAndNonce(qcc::KeyBlob& key, qcc::KeyBlob& nonce)
     }
     key = groupKey;
     nonce = groupNonce;
+}
+
+void PeerStateTable::Clear()
+{
+    lock.Lock();
+    groupKey.Erase();
+    groupNonce.Erase();
+    peerMap.clear();
+    lock.Unlock();
 }
 
 }
