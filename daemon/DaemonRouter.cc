@@ -95,16 +95,14 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
     BusEndpoint* sender = &origSender;
 
     const char* destination = msg->GetDestination();
-    const char* atOff = ::strchr(msg->GetDestination(), '@');
-    String destStr = atOff ? String(destination, atOff - destination) : destination;
-    SessionId sessionId = atOff ? qcc::StringToU32(String(atOff + 1)) : 0;
+    SessionId sessionId = msg->GetSessionId();
 
     if (sender != localEndpoint) {
         ALLJOYN_POLICY_DEBUG(Log(LOG_DEBUG, "Checking if OK for %s to send %s.%s to %s...\n",
                                  msg->GetSender(),
                                  msg->GetInterface(),
                                  msg->GetMemberName() ? msg->GetMemberName() : msg->GetErrorName(),
-                                 destStr.c_str()));
+                                 destination));
         bool allow = policydb->OKToSend(nmh, sender->GetUserId(), sender->GetGroupId());
         ALLJOYN_POLICY_DEBUG(Log(LOG_INFO, "%s %s (uid:%d gid:%d) %s %s.%s %s message to %s.\n",
                                  allow ? "Allowing" : "Denying",
@@ -114,7 +112,7 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
                                  (msg->GetType() == MESSAGE_SIGNAL ? "signal" :
                                   (msg->GetType() == MESSAGE_METHOD_CALL ? "method call" :
                                    (msg->GetType() == MESSAGE_METHOD_RET ? "method reply" : "error reply"))),
-                                 (destStr.empty() ? "<all>" : destStr.c_str())));
+                                 (destination[0] == '\0' ? "<all>" : destination)));
 
         if (!allow) {
             // TODO - Should eavesdroppers be allowed to see a message that
@@ -124,8 +122,8 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
     }
 
 
-    bool destinationEmpty = destStr.empty();
-    BusEndpoint* destEndpoint = destinationEmpty ? NULL : nameTable.FindEndpoint(destStr.c_str());
+    bool destinationEmpty = destination[0] == '\0';
+    BusEndpoint* destEndpoint = destinationEmpty ? NULL : nameTable.FindEndpoint(destination);
 
     if (!destinationEmpty) {
         if (destEndpoint) {
@@ -183,15 +181,15 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
                 Bus& bus(reinterpret_cast<Bus&>(msg->bus));
                 DeferredMsg* dm(new DeferredMsg(msg, sender->GetUniqueName(), *this));
                 ServiceDB serviceDB(configDB->GetServiceDB());
-                status = serviceDB->BusStartService(destStr.c_str(), dm, &bus);
+                status = serviceDB->BusStartService(destination, dm, &bus);
 
             } else if ((msg->GetType() == MESSAGE_METHOD_CALL) && ((msg->GetFlags() & ALLJOYN_FLAG_NO_REPLY_EXPECTED) == 0)) {
-                QCC_LogError(ER_BUS_NO_ROUTE, ("Returning error %s no route to %s", msg->Description().c_str(), destStr.c_str()));
+                QCC_LogError(ER_BUS_NO_ROUTE, ("Returning error %s no route to %s", msg->Description().c_str(), destination));
 
                 // Need to let the sender know its reply message cannot be passed on.
                 destEndpoint = nameTable.FindEndpoint(msg->GetSender());
                 qcc::String description("Unknown bus name: ");
-                description += destStr;
+                description += destination;
                 msg->ErrorMsg("org.freedesktop.DBus.Error.ServiceUnknown", description.c_str());
                 if ((sessionId != 0) && (destEndpoint->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
                     status = static_cast<VirtualEndpoint*>(destEndpoint)->PushMessage(msg, sessionId);
@@ -199,7 +197,7 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
                     status = destEndpoint->PushMessage(msg);
                 }
             } else {
-                QCC_LogError(ER_BUS_NO_ROUTE, ("Discarding %s no route to %s:%d", msg->Description().c_str(), destStr.c_str(), sessionId));
+                QCC_LogError(ER_BUS_NO_ROUTE, ("Discarding %s no route to %s:%d", msg->Description().c_str(), destination, sessionId));
             }
         }
     }
@@ -282,9 +280,9 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
     }
 
     /* Send session multicast messages */
-    if ((destStr.empty()) && (sessionId != 0)) {
+    if (destinationEmpty && (sessionId != 0)) {
         sessionCastMapLock.Lock();
-        pair<SessionId, StringMapKey> key(sessionId, destStr);
+        pair<SessionId, StringMapKey> key(sessionId, destination);
         multimap<pair<SessionId, StringMapKey>, BusEndpoint*>::iterator sit = sessionCastMap.find(key);
         while ((sit != sessionCastMap.end()) && (sit->first == key)) {
             QStatus tStatus = sit->second->PushMessage(msg);

@@ -105,6 +105,7 @@ typedef enum {
     ALLJOYN_HDR_FIELD_TIMESTAMP,                ///< time stamp header field type
     ALLJOYN_HDR_FIELD_TIME_TO_LIVE,             ///< messages time-to-live header field type
     ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN,        ///< message compression token header field type
+    ALLJOYN_HDR_FIELD_SESSION_ID,               ///< Session id field type
     ALLJOYN_HDR_FIELD_UNKNOWN                   ///< unknown header field type also used as maximum number of header field types.
 } AllJoynFieldType;
 
@@ -394,6 +395,21 @@ class _Message {
     uint32_t GetCompressionToken() const {
         if (hdrFields.field[ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN].typeId == ALLJOYN_UINT32) {
             return hdrFields.field[ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN].v_uint32;
+        } else {
+            return 0;
+        }
+    }
+
+    /**
+     * Accessor function to get the session id for the message.
+     *
+     * @return
+     *      - Session id for the message
+     *      - 0 'zero' if sender did not specify a session
+     */
+    uint32_t GetSessionId() const {
+        if (hdrFields.field[ALLJOYN_HDR_FIELD_SESSION_ID].typeId == ALLJOYN_UINT32) {
+            return hdrFields.field[ALLJOYN_HDR_FIELD_SESSION_ID].v_uint32;
         } else {
             return 0;
         }
@@ -747,7 +763,8 @@ class _Message {
                            AllJoynMessageType msgType,
                            const MsgArg* args,
                            uint8_t numArgs,
-                           uint8_t flags);
+                           uint8_t flags,
+                           SessionId sessionId);
 
     QStatus MarshalArgs(const MsgArg* arg, size_t numArgs);
     void MarshalHeaderFields();

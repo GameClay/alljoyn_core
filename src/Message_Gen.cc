@@ -546,7 +546,8 @@ static const uint8_t FieldTypeMapping[] = {
     9,  /* ALLJOYN_HDR_FIELD_HANDLES           */
     16, /* ALLJOYN_HDR_FIELD_TIMESTAMP         */
     17, /* ALLJOYN_HDR_FIELD_TIME_TO_LIVE      */
-    18  /* ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN */
+    18, /* ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN */
+    19  /* ALLJOYN_HDR_FIELD_SESSION_ID        */
 };
 
 /*
@@ -660,7 +661,8 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
                                  AllJoynMessageType msgType,
                                  const MsgArg* args,
                                  uint8_t numArgs,
-                                 uint8_t flags)
+                                 uint8_t flags,
+                                 uint32_t sessionId)
 {
     char signature[256];
     QStatus status = ER_OK;
@@ -760,6 +762,13 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
         hdrFields.field[ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN].typeId = ALLJOYN_UINT32;
     } else {
         hdrFields.field[ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN].typeId = ALLJOYN_INVALID;
+    }
+    /* Check if we are adding a session id */
+    if (sessionId != 0) {
+        hdrFields.field[ALLJOYN_HDR_FIELD_SESSION_ID].v_uint32 = sessionId;
+        hdrFields.field[ALLJOYN_HDR_FIELD_SESSION_ID].typeId = ALLJOYN_UINT32;
+    } else {
+        hdrFields.field[ALLJOYN_HDR_FIELD_SESSION_ID].typeId = ALLJOYN_INVALID;
     }
     /*
      * Calculate space required for the header fields
@@ -923,7 +932,8 @@ QStatus _Message::HelloMessage(bool isBusToBus, bool allowRemote, uint32_t& seri
                                 MESSAGE_METHOD_CALL,
                                 args,
                                 ArraySize(args),
-                                ALLJOYN_FLAG_AUTO_START | (allowRemote ? ALLJOYN_FLAG_ALLOW_REMOTE_MSG : 0));
+                                ALLJOYN_FLAG_AUTO_START | (allowRemote ? ALLJOYN_FLAG_ALLOW_REMOTE_MSG : 0),
+                                0);
     } else {
         /* Standard org.freedesktop.DBus.Hello */
         hdrFields.field[ALLJOYN_HDR_FIELD_PATH].typeId = ALLJOYN_OBJECT_PATH;
@@ -943,7 +953,8 @@ QStatus _Message::HelloMessage(bool isBusToBus, bool allowRemote, uint32_t& seri
                                 MESSAGE_METHOD_CALL,
                                 NULL,
                                 0,
-                                ALLJOYN_FLAG_AUTO_START | (allowRemote ? ALLJOYN_FLAG_ALLOW_REMOTE_MSG : 0));
+                                ALLJOYN_FLAG_AUTO_START | (allowRemote ? ALLJOYN_FLAG_ALLOW_REMOTE_MSG : 0),
+                                0);
     }
 
     /*
@@ -977,12 +988,12 @@ QStatus _Message::HelloReply(bool isBusToBus, const qcc::String& uniqueName)
         args[0].Set("s", uniqueName.c_str());
         args[1].Set("s", guidStr.c_str());
         args[2].Set("u", ALLJOYN_PROTOCOL_VERSION);
-        status = MarshalMessage("ssu", uniqueName, MESSAGE_METHOD_RET, args, ArraySize(args), 0);
+        status = MarshalMessage("ssu", uniqueName, MESSAGE_METHOD_RET, args, ArraySize(args), 0, 0);
         QCC_DbgPrintf(("\n%s", ToString(args, 2).c_str()));
     } else {
         /* Destination and argument are both the unique name passed in. */
         MsgArg arg("s", uniqueName.c_str());
-        status = MarshalMessage("s", uniqueName, MESSAGE_METHOD_RET, &arg, 1, 0);
+        status = MarshalMessage("s", uniqueName, MESSAGE_METHOD_RET, &arg, 1, 0, 0);
         QCC_DbgPrintf(("\n%s", ToString(&arg, 1).c_str()));
     }
     return status;
@@ -1001,7 +1012,6 @@ QStatus _Message::CallMsg(const qcc::String& signature,
                           uint8_t flags)
 {
     QStatus status;
-    String destStr = destination;
 
     /*
      * Validate flags
@@ -1044,16 +1054,10 @@ QStatus _Message::CallMsg(const qcc::String& signature,
         status = ER_BUS_BAD_BUS_NAME;
         goto ExitCallMsg;
     }
-    /* Add sessionId to destination */
-    if (sessionId != 0) {
-        destStr.append('@');
-        destStr.append(U32ToString(sessionId));
-    }
-
     /*
      * Build method call message
      */
-    status = MarshalMessage(signature, destStr, MESSAGE_METHOD_CALL, args, numArgs, flags);
+    status = MarshalMessage(signature, destination, MESSAGE_METHOD_CALL, args, numArgs, flags, sessionId);
     if (status == ER_OK) {
         /*
          * Return the serial number for this message
@@ -1078,7 +1082,6 @@ QStatus _Message::SignalMsg(const qcc::String& signature,
                             uint16_t timeToLive)
 {
     QStatus status;
-    String destStr = destination ? destination : "";
 
     /*
      * Validate flags - ENCRYPTED and COMPRESSED are the only flag applicable to signals
@@ -1098,10 +1101,9 @@ QStatus _Message::SignalMsg(const qcc::String& signature,
         goto ExitSignalMsg;
     }
 
-    /* Append sessionId */
-    if (sessionId != 0) {
-        destStr.append('@');
-        destStr.append(U32ToString(sessionId));
+    /* NULL destination is allowed */
+    if (!destination) {
+        destination = "";
     }
 
     /*
@@ -1131,7 +1133,7 @@ QStatus _Message::SignalMsg(const qcc::String& signature,
     /*
      * Build signal message
      */
-    status = MarshalMessage(signature, destStr.c_str(), MESSAGE_SIGNAL, args, numArgs, flags);
+    status = MarshalMessage(signature, destination, MESSAGE_SIGNAL, args, numArgs, flags, sessionId);
 
 ExitSignalMsg:
     return status;
@@ -1142,19 +1144,14 @@ QStatus _Message::ReplyMsg(const MsgArg* args,
                            size_t numArgs)
 {
     QStatus status;
+    SessionId sessionId = GetSessionId();
+
     /*
      * Destination is sender of method call
      */
     qcc::String destination = hdrFields.field[ALLJOYN_HDR_FIELD_SENDER].v_string.str;
 
     assert(msgHeader.msgType == MESSAGE_METHOD_CALL);
-
-    /* Reuse session from original destination */
-    qcc::String origDest = hdrFields.field[ALLJOYN_HDR_FIELD_DESTINATION].v_string.str;
-    size_t atOff = origDest.find_first_of('@');
-    if (atOff != String::npos) {
-        destination.append(origDest.substr(atOff));
-    }
 
     /*
      * Clear any stale header fields
@@ -1168,7 +1165,8 @@ QStatus _Message::ReplyMsg(const MsgArg* args,
     /*
      * Build method return message (encrypted if the method call was encrypted)
      */
-    status = MarshalMessage(replySignature, destination, MESSAGE_METHOD_RET, args, numArgs, msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED);
+    status = MarshalMessage(replySignature, destination, MESSAGE_METHOD_RET, args,
+                            numArgs, msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED, sessionId);
     return status;
 }
 
@@ -1178,8 +1176,10 @@ QStatus _Message::ErrorMsg(const char* errorName,
 {
     QStatus status;
     qcc::String destination = hdrFields.field[ALLJOYN_HDR_FIELD_SENDER].v_string.str;
+    SessionId sessionId = GetSessionId();
 
     assert(msgHeader.msgType == MESSAGE_METHOD_CALL);
+
     /*
      * Clear any stale header fields
      */
@@ -1203,10 +1203,10 @@ QStatus _Message::ErrorMsg(const char* errorName,
      * Build error message
      */
     if ('\0' == description[0]) {
-        status = MarshalMessage("", destination, MESSAGE_ERROR, NULL, 0, msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED);
+        status = MarshalMessage("", destination, MESSAGE_ERROR, NULL, 0, msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED, sessionId);
     } else {
         MsgArg arg("s", description);
-        status = MarshalMessage("s", destination, MESSAGE_ERROR, &arg, 1, msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED);
+        status = MarshalMessage("s", destination, MESSAGE_ERROR, &arg, 1, msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED, sessionId);
     }
 
 ExitErrorMsg:
@@ -1242,13 +1242,14 @@ QStatus _Message::ErrorMsg(QStatus status)
     MsgArg args[2];
     size_t numArgs = 2;
     MsgArg::Set(args, numArgs, "sq", msg.c_str(), msgStatus);
-    return MarshalMessage("sq", destination, MESSAGE_ERROR, args, numArgs, msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED);
+    return MarshalMessage("sq", destination, MESSAGE_ERROR, args, numArgs, msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED, GetSessionId());
 }
 
 
 void _Message::ErrorMsg(const char* errorName,
                         uint32_t replySerial)
 {
+    SessionId sessionId = GetSessionId();
     /*
      * Clear any stale header fields
      */
@@ -1270,7 +1271,7 @@ void _Message::ErrorMsg(const char* errorName,
     /*
      * Build error message
      */
-    MarshalMessage("", "", MESSAGE_ERROR, NULL, 0, 0);
+    MarshalMessage("", "", MESSAGE_ERROR, NULL, 0, 0, sessionId);
 }
 
 void _Message::ErrorMsg(QStatus status,
@@ -1278,6 +1279,8 @@ void _Message::ErrorMsg(QStatus status,
 {
     qcc::String msg = QCC_StatusText(status);
     uint16_t msgStatus = status;
+    SessionId sessionId = GetSessionId();
+
     /*
      * Clear any stale header fields
      */
@@ -1293,7 +1296,7 @@ void _Message::ErrorMsg(QStatus status,
     MsgArg args[2];
     size_t numArgs = 2;
     MsgArg::Set(args, numArgs, "sq", msg.c_str(), msgStatus);
-    MarshalMessage("sq", "", MESSAGE_ERROR, args, numArgs, 0);
+    MarshalMessage("sq", "", MESSAGE_ERROR, args, numArgs, 0, sessionId);
 }
 
 QStatus _Message::GetExpansion(uint32_t token, MsgArg& replyArg)
