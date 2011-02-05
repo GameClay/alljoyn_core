@@ -298,7 +298,7 @@ QStatus DaemonTCPTransport::Stop(void)
      * on the authenticator thread.  An endpoint is either on the authenticating
      * list or on the endpoint list, so we need to delete them here.
      */
-    for (list<DaemonTCPEndpoint*>::iterator i = m_authList.begin(); i != m_authList.end(); ) {
+    for (list<DaemonTCPEndpoint*>::iterator i = m_authList.begin(); i != m_authList.end();) {
         DaemonTCPEndpoint* ep = *i;
         m_authList.erase(i++);
         ep->Abort();
@@ -506,7 +506,7 @@ void* DaemonTCPTransport::Run(void* arg)
                  * will never touch the endpoint object so it is safe to delete.
                  * Note the use of Meyers' idiom to erase while iterating.
                  */
-                for (list<DaemonTCPEndpoint*>::iterator j = m_authList.begin(); j != m_authList.end(); ) {
+                for (list<DaemonTCPEndpoint*>::iterator j = m_authList.begin(); j != m_authList.end();) {
                     if ((*j)->IsFailed()) {
                         delete *j;
                         m_authList.erase(j++);

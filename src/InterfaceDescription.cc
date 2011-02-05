@@ -126,11 +126,11 @@ qcc::String InterfaceDescription::Introspect(size_t indent) const
         xml += in + "  <" + mtype + " name=\"" + member.name + close;
 
         /* Iterate over IN arguments */
-        for (const char* sig = member.signature.c_str(); *sig; ) {
+        for (const char* sig = member.signature.c_str(); *sig;) {
             xml += NextArg(sig, argNames, true, indent + 4);
         }
         /* Iterate over OUT arguments */
-        for (const char* sig = member.returnSignature.c_str(); *sig; ) {
+        for (const char* sig = member.returnSignature.c_str(); *sig;) {
             xml += NextArg(sig, argNames, false, indent + 4);
         }
         /*

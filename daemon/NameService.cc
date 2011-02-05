@@ -1057,7 +1057,7 @@ QStatus NameService::CloseInterface(const qcc::String& name)
     // socket in this call, we just remove the request and the lazy updator will
     // just not use it when it re-evaluates what to do (called immediately below).
     //
-    for (vector<InterfaceSpecifier>::iterator i = m_requestedInterfaces.begin(); i != m_requestedInterfaces.end(); ) {
+    for (vector<InterfaceSpecifier>::iterator i = m_requestedInterfaces.begin(); i != m_requestedInterfaces.end();) {
         if ((*i).m_interfaceName == name) {
             m_requestedInterfaces.erase(i++);
         } else {
@@ -1110,7 +1110,7 @@ QStatus NameService::CloseInterface(const qcc::IPAddress& addr)
     // socket in this call, we just remove the request and the lazy updator will
     // just not use it when it re-evaluates what to do (called immediately below).
     //
-    for (vector<InterfaceSpecifier>::iterator i = m_requestedInterfaces.begin(); i != m_requestedInterfaces.end(); ) {
+    for (vector<InterfaceSpecifier>::iterator i = m_requestedInterfaces.begin(); i != m_requestedInterfaces.end();) {
         if ((*i).m_interfaceAddr == addr) {
             m_requestedInterfaces.erase(i++);
         } else {
@@ -2373,7 +2373,7 @@ void NameService::Retry(void)
     //
     // use Meyers' idiom to keep iterators sane.
     //
-    for (list<Header>::iterator i = m_retry.begin(); i != m_retry.end(); ) {
+    for (list<Header>::iterator i = m_retry.begin(); i != m_retry.end();) {
         uint32_t retryTick = (*i).GetRetryTick();
 
         //
