@@ -140,14 +140,14 @@ class MethodTable {
         /** Calculate hash for Key k  */
         size_t operator()(const Key& k) const {
             size_t hash = 37;
-            for (const char* p = k.methodName; * p; ++p) {
+            for (const char* p = k.methodName; *p; ++p) {
                 hash = *p + hash * 11;
             }
-            for (const char* p = k.objPath; * p; ++p) {
+            for (const char* p = k.objPath; *p; ++p) {
                 hash = *p + hash * 5;
             }
             if (k.iface) {
-                for (const char* p = k.iface; * p; ++p) {
+                for (const char* p = k.iface; *p; ++p) {
                     hash += *p * 7;
                 }
             }

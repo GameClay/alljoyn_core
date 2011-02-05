@@ -106,10 +106,10 @@ class SignalTable {
         size_t operator()(const Key& k) const {
             /* source path cannot factor into hash because a key with no sourcepath is considered equal to one that does */
             size_t hash = 0;
-            for (const char* p = k.signalName.c_str(); * p; ++p) {
+            for (const char* p = k.signalName.c_str(); *p; ++p) {
                 hash = *p + hash * 11;
             }
-            for (const char* p = k.iface.c_str(); * p; ++p) {
+            for (const char* p = k.iface.c_str(); *p; ++p) {
                 hash += *p * 7;
             }
             return hash;

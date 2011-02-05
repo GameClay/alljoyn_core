@@ -366,7 +366,7 @@ static void usage(void)
 #if defined(DAEMON_LIB)
 extern "C" int DaemonMain(int argc, char** argv)
 #else
-int main(int argc, char* * argv)
+int main(int argc, char** argv)
 #endif
 {
 #if defined(NDEBUG) && defined(QCC_OS_ANDROID)
