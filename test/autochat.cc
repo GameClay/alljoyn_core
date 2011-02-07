@@ -241,12 +241,12 @@ int main(int argc, char** argv)
 {
     int n = 0;
     QStatus status = ER_OK;
-    qcc::String daemonAddr = "unix:abstract=bluebus";
+    qcc::String daemonAddr = "unix:abstract=alljoyn";
     qcc::String myName;
 // #ifdef _WIN32
 //    daemonAddr = env->Find("BUS_ADDRESS", "tcp:addr=127.0.0.1,port=9955");
 // #else
-//    daemonAddr = env->Find("BUS_ADDRESS", "unix:abstract=bluebus");
+//    daemonAddr = env->Find("BUS_ADDRESS", "unix:abstract=alljoyn");
 // #endif
 
     /* Parse command line args */

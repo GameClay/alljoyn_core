@@ -1086,7 +1086,7 @@ int main(int argc, char** argv)
     /* Get env vars */
     if (busAddr.empty()) {
         env = Environ::GetAppEnviron();
-        busAddr = env->Find("DBUS_SESSION_BUS_ADDRESS", "unix:abstract=bluebus");
+        busAddr = env->Find("DBUS_SESSION_BUS_ADDRESS", "unix:abstract=alljoyn");
     }
 
     /* Start the msg bus */

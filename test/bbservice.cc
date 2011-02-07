@@ -697,7 +697,7 @@ int main(int argc, char** argv)
 #ifdef _WIN32
         clientArgs = env->Find("BUS_ADDRESS", "tcp:addr=127.0.0.1,port=9955");
 #else
-        clientArgs = env->Find("BUS_ADDRESS", "unix:abstract=bluebus");
+        clientArgs = env->Find("BUS_ADDRESS", "unix:abstract=alljoyn");
 #endif
     }
 

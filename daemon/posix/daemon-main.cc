@@ -79,7 +79,7 @@ static volatile sig_atomic_t quit;
 static const char internalConfig[] =
     "<busconfig>"
     "  <type>alljoyn</type>"
-    "  <listen>unix:abstract=bluebus</listen>"
+    "  <listen>unix:abstract=alljoyn</listen>"
     "  <listen>bluetooth:</listen>"
     "  <listen>tcp:addr=0.0.0.0,port=9955</listen>"
     "  <policy context=\"default\">"

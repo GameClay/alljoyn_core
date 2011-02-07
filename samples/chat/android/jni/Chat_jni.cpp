@@ -255,7 +255,7 @@ extern "C" {
 JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_chat_Chat_jniOnCreate(JNIEnv* env, jobject jobj)
 {
     QStatus status = ER_OK;
-    const char* daemonAddr = "unix:abstract=bluebus";
+    const char* daemonAddr = "unix:abstract=alljoyn";
 
     /* Set AllJoyn logging */
     QCC_SetLogLevels("ALLJOYN=7;ALL=1");

@@ -101,7 +101,7 @@ int main(int argc, char** argv)
 
     Environ* env = Environ::GetAppEnviron();
     qcc::String clientArgs = env->Find("BUS_ADDRESS", "unix:path=/var/run/dbus/system_bus_socket");
-    // qcc::String clientArgs = env->Find("BUS_ADDRESS", "unix:abstract=bluebus");
+    // qcc::String clientArgs = env->Find("BUS_ADDRESS", "unix:abstract=alljoyn");
 
     /* Start the msg bus */
     status = g_msgBus->Start();

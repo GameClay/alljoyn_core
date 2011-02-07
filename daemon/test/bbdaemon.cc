@@ -419,9 +419,9 @@ int main(int argc, char** argv)
      * to be relaxed to 666 to make this work for everyday apps.  We also let
      * the tcp listen spec default to listening and multicasting on all
      * adapters. */
-    serverArgs = env->Find("BUS_SERVER_ADDRESSES", "unix:abstract=bluebus;tcp:");
+    serverArgs = env->Find("BUS_SERVER_ADDRESSES", "unix:abstract=alljoyn;tcp:");
 #else
-    serverArgs = env->Find("BUS_SERVER_ADDRESSES", "unix:abstract=bluebus;tcp:;bluetooth:");
+    serverArgs = env->Find("BUS_SERVER_ADDRESSES", "unix:abstract=alljoyn;tcp:;bluetooth:");
 #endif /* DAEMON_LIB */
 
 #endif /* !QCC_OS_WINDOWS */
