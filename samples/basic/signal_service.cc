@@ -220,7 +220,7 @@ int main(int argc, char** argv, char** envArg) {
 #ifdef _WIN32
     qcc::String connectArgs = "tcp:addr=127.0.0.1,port=9955";
 #else
-    qcc::String connectArgs = "unix:abstract=alljoyn";
+    qcc::String connectArgs = "unix:abstract=bluebus";
 #endif
 
     /* Start the msg bus */
