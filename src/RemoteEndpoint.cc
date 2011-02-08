@@ -180,10 +180,22 @@ void RemoteEndpoint::ThreadExit(Thread* thread)
     }
 }
 
+static bool IsHelloMessage(Message& msg)
+{
+    if ((strcmp("Hello", msg->GetMemberName()) == 0) && (strcmp("org.freedesktop.DBus", msg->GetInterface()) == 0)) {
+        return true;
+    }
+    if ((strcmp("HelloBus", msg->GetMemberName()) == 0) && (strcmp("org.alljoyn.Bus", msg->GetInterface()) == 0)) {
+        return true;
+    }
+    return false;
+}
+
 void* RemoteEndpoint::RxThread::Run(void* arg)
 {
     QStatus status = ER_OK;
     RemoteEndpoint* ep = reinterpret_cast<RemoteEndpoint*>(arg);
+    const bool bus2bus = BusEndpoint::ENDPOINT_TYPE_BUS2BUS == ep->GetEndpointType();
 
     Router& router = bus.GetInternal().GetRouter();
     qcc::Event& ev = ep->GetSource().GetSourceEvent();
@@ -192,13 +204,23 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
         status = Event::Wait(ev);
         if (ER_OK == status) {
             Message msg(bus);
-            status = msg->Unmarshal(*ep, (validateSender && BusEndpoint::ENDPOINT_TYPE_BUS2BUS != ep->GetEndpointType()));
+            status = msg->Unmarshal(*ep, (validateSender && !bus2bus));
             switch (status) {
             case ER_OK :
                 status = router.PushMessage(msg, *ep);
-                if ((status == ER_BUS_SIGNATURE_MISMATCH) || (status == ER_BUS_UNMATCHED_REPLY_SERIAL)) {
-                    QCC_LogError(status, ("Discarding %s", msg->Description().c_str()));
-                    status = ER_OK;
+                if (status != ER_OK) {
+                    /*
+                     * There are three cases where a failure to push a message to the router is ok:
+                     *
+                     * 1) The message received did not match the expected signature.
+                     * 2) The message was a method reply that did not match up to a method call.
+                     * 3) A daemon is pushing the message to a connected client or service.
+                     *
+                     */
+                    if ((router.IsDaemon() && !bus2bus) || (status == ER_BUS_SIGNATURE_MISMATCH) || (status == ER_BUS_UNMATCHED_REPLY_SERIAL)) {
+                        QCC_LogError(status, ("Discarding %s", msg->Description().c_str()));
+                        status = ER_OK;
+                    }
                 }
                 break;
 
@@ -208,6 +230,10 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
                  * rule from the endpoint that sent it.
                  */
                 status = bus.GetInternal().GetLocalEndpoint().GetPeerObj()->RequestHeaderExpansion(msg, ep);
+                if (router.IsDaemon()) {
+                    QCC_LogError(status, ("Discarding %s", msg->Description().c_str()));
+                    status = ER_OK;
+                }
                 break;
 
             case ER_BUS_TIME_TO_LIVE_EXPIRED:
@@ -224,16 +250,11 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
                  * Also, Hello/BusHello messages are considered out of sequence since they specify org.freedesktop.DBus
                  * as the sender which is a name whose PeerState is already in use at the time of the message.
                  */
-                if (msg->IsUnreliable() ||
-                    ((ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS) && (*(msg->GetDestination()) == '\0')) ||
-                    (strcmp("org.freedesktop.DBus", msg->GetInterface()) == 0) ||
-                    (strcmp("org.alljoyn.Bus", msg->GetInterface()) == 0)) {
-                    QCC_DbgHLPrintf(("Invalid serial (%u) number from %s (%s,%s). discarding", msg->GetCallSerial(),
-                                     ep->GetUniqueName().c_str(), msg->GetInterface(), msg->GetMemberName()));
+                if (msg->IsUnreliable() || (bus2bus && msg->IsBroadcastSignal()) || IsHelloMessage(msg)) {
+                    QCC_DbgHLPrintf(("Invalid serial discarding %s", msg->Description().c_str()));
                     status = ER_OK;
                 } else {
-                    QCC_LogError(ER_FAIL, ("ER_BUS_INVALID_HEADER_SERIAL (%u) with iface=%s, member=%s",
-                                           msg->GetCallSerial(), msg->GetInterface(), msg->GetMemberName()));
+                    QCC_LogError(status, ("Invalid serial %s", msg->Description().c_str()));
                 }
                 break;
 
