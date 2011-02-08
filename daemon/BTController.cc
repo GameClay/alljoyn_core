@@ -169,7 +169,8 @@ BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
 
 BTController::~BTController()
 {
-    static_cast<DaemonRouter&>(bus.GetInternal().GetRouter()).RemoveBusNameListener(this);
+    // Don't need to remove our bus name change listener from the router (name
+    // table) since the router is already destroyed at this point in time.
 
     bus.DeregisterBusObject(*this);
     if (master) {
@@ -733,6 +734,8 @@ QStatus BTController::DoNameOp(const qcc::String& name,
         nameArgInfo.RemoveName(name);
     }
 
+    nameArgInfo.dirty = true;
+
     if (IsMaster()) {
         QCC_DbgPrintf(("Handling %s locally (we're the master)", signal.name.c_str()));
         if (!advertise.Empty() && !listening && (directMinions < maxConnections)) {
@@ -740,7 +743,6 @@ QStatus BTController::DoNameOp(const qcc::String& name,
             listening = (status == ER_OK);
             if (listening) {
                 find.ignoreAddr = advertise.bdAddr;
-                find.dirty = true;
             }
         }
 
@@ -1265,7 +1267,7 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo, bool allow)
                 MsgArg arg("a{sas}", advertise.adInfoArgs.size(), &advertise.adInfoArgs.front());
                 ExtractAdInfo(arg, adInfo);
                 advertise.uuidRev = masterUUIDRev;
-                QCC_DbgPrintf(("Starting advertise..."));
+                QCC_DbgPrintf(("%starting advertise...", restart ? "Res" : "S"));
                 bt.StartAdvertise(advertise.uuidRev, advertise.bdAddr, advertise.channel, advertise.psm, adInfo);
             } else {
                 QCC_DbgPrintf(("Stopping advertise..."));
@@ -1273,7 +1275,7 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo, bool allow)
             }
         } else if (UseLocalFind()) {
             if (nameInfo.active) {
-                QCC_DbgPrintf(("Starting find..."));
+                QCC_DbgPrintf(("%starting find...", restart ? "Res" : "S"));
                 bt.StartFind(find.ignoreUUID);
             } else {
                 QCC_DbgPrintf(("Stopping find..."));
