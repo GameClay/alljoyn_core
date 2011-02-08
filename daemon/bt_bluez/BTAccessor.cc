@@ -1567,10 +1567,12 @@ QStatus BTTransport::BTAccessor::GetDeviceObjPath(const BDAddress& bdAddr,
             status = (*it)->MethodCall(*org.bluez.Adapter.FindDevice, &arg, 1, rsp, BT_DEFAULT_TO);
             if (status == ER_OK) {
                 adapter = (*it);
+#ifndef NDEBUG
             } else {
                 qcc::String errMsg;
                 const char* errName = rsp->GetErrorName(&errMsg);
                 QCC_DbgPrintf(("GetDeviceObjPath(): FindDevice method call: %s - %s", errName, errMsg.c_str()));
+#endif
             }
         }
     }
@@ -1580,11 +1582,13 @@ QStatus BTTransport::BTAccessor::GetDeviceObjPath(const BDAddress& bdAddr,
         adapter = GetDefaultAdapterObject();
         if (adapter->IsValid()) {
             status = adapter->MethodCall(*org.bluez.Adapter.CreateDevice, &arg, 1, rsp, BT_CREATE_DEV_TO);
+#ifndef NDEBUG
             if (status != ER_OK) {
                 qcc::String errMsg;
                 const char* errName = rsp->GetErrorName(&errMsg);
                 QCC_DbgPrintf(("GetDeviceObjPath(): CreateDevice method call: %s - %s", errName, errMsg.c_str()));
             }
+#endif
         }
     }
 

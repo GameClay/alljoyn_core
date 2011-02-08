@@ -364,27 +364,30 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
                           const qcc::String* newOwner);
 
   private:
+    static const uint32_t DELEGATE_TIME = 30;   /**< Delegate ad/find operations to minion for 30 seconds. */
 
-    struct NameArgInfo {
+    struct NameArgInfo : public AlarmListener {
         BTController& bto;
         NodeStateMap::const_iterator minion;
         MsgArg* args;
         const size_t argsSize;
         const InterfaceDescription::Member* delegateSignal;
+        qcc::Timer& dispatcher;
         qcc::Alarm alarm;
         bool active;
         bool dirty;
-        NameArgInfo(BTController& bto, size_t size) :
-            bto(bto), argsSize(size), active(false)
+        NameArgInfo(BTController& bto, size_t size, qcc::Timer& dispatcher) :
+            bto(bto), argsSize(size), dispatcher(dispatcher), active(false)
         {
             args = new MsgArg[size];
+            minion = bto.nodeStates.end();
         }
         virtual ~NameArgInfo() { delete[] args; }
         virtual void SetArgs() = 0;
         virtual void ClearArgs() = 0;
         virtual void AddName(const qcc::String& name, NodeStateMap::iterator it) = 0;
         virtual void RemoveName(const qcc::String& name, NodeStateMap::iterator it) = 0;
-        virtual size_t Count() const = 0;
+        virtual size_t Empty() const = 0;
         bool Changed() const { return dirty; }
         void AddName(const qcc::String& name)
         {
@@ -394,6 +397,14 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
         {
             RemoveName(name, bto.nodeStates.find(bto.bus.GetUniqueName()));
         }
+        void StartAlarm()
+        {
+            alarm = qcc::Alarm(BTController::DELEGATE_TIME * 1000, this, 0, this);
+            dispatcher.AddAlarm(alarm);
+        }
+        void StopAlarm() { dispatcher.RemoveAlarm(alarm); }
+      private:
+        void AlarmTriggered(const qcc::Alarm& alarm, QStatus reason);
     };
 
     struct AdvertiseNameArgInfo : public NameArgInfo {
@@ -403,14 +414,15 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
         uint16_t psm;
         std::vector<MsgArg> adInfoArgs;
         size_t count;
-        AdvertiseNameArgInfo(BTController& bto) :
-            NameArgInfo(bto, 6), count(0)
+        AdvertiseNameArgInfo(BTController& bto, qcc::Timer& dispatcher) :
+            NameArgInfo(bto, 6, dispatcher), count(0)
         { }
         void AddName(const qcc::String& name, NodeStateMap::iterator it);
         void RemoveName(const qcc::String& name, NodeStateMap::iterator it);
-        size_t Count() const { return count; }
+        size_t Empty() const { return count == 0; }
         void SetArgs();
         void ClearArgs();
+        void SetEmptyArgs();
     };
 
     struct FindNameArgInfo : public NameArgInfo {
@@ -418,12 +430,12 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
         uint32_t ignoreUUID;
         BDAddress ignoreAddr;
         std::set<qcc::String> names;
-        FindNameArgInfo(BTController& bto) :
-            NameArgInfo(bto, 4)
+        FindNameArgInfo(BTController& bto, qcc::Timer& dispatcher) :
+            NameArgInfo(bto, 4, dispatcher)
         { }
         void AddName(const qcc::String& name, NodeStateMap::iterator it);
         void RemoveName(const qcc::String& name, NodeStateMap::iterator it);
-        size_t Count() const { return names.size(); }
+        size_t Empty() const { return names.empty(); }
         void SetArgs();
         void ClearArgs();
     };
@@ -664,17 +676,20 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     void NextDirectMinion(NodeStateMap::const_iterator& minion)
     {
         assert(!nodeStates.empty());
+        NodeStateMap::const_iterator& skip = minion == find.minion ? advertise.minion : find.minion;
+        NodeStateMap::const_iterator& next = minion;
         do {
-            ++minion;
-            if (minion == nodeStates.end()) {
-                minion = nodeStates.begin();
+            ++next;
+            if (next == nodeStates.end()) {
+                next = nodeStates.begin();
             }
-        } while (!minion->second.direct ||
-                 (master && (master->GetServiceName() == minion->first.c_str())));
+        } while ((!next->second.direct || (minion == skip)) && next != minion);
+        minion = next;
     }
 
     bool UseLocalFind() { return directMinions == 0; }
     bool UseLocalAdvertise() { return directMinions <= 1; }
+    bool RotateMinions() { return directMinions > 2; }
 
     BusAttachment& bus;
     BluetoothDeviceInterface& bt;
@@ -694,7 +709,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     AdvertiseNameArgInfo advertise;
     FindNameArgInfo find;
 
-    //qcc::Timer delegationTimer;
+    qcc::Alarm stopAd;
 
     UUIDRevCacheMap uuidRevCache;
     std::list<uint32_t> uuidRevCacheAging;

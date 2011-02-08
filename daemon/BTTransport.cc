@@ -138,7 +138,7 @@ void* BTTransport::Run(void* arg)
         return (void*)ER_BUS_TRANSPORT_NOT_AVAILABLE;
     }
 
-    QStatus status;
+    QStatus status = ER_OK;
     vector<Event*> signaledEvents;
     vector<Event*> checkEvents;
 
@@ -531,6 +531,7 @@ QStatus BTTransport::StartListen(BDAddress& addr,
     QStatus status;
     status = btAccessor->StartConnectable(addr, channel, psm);
     if (status == ER_OK) {
+        QCC_DbgHLPrintf(("Listening on addr: %s  channel = %d  psm = %04x", addr.ToString().c_str(), channel, psm));
         Thread::Start();
     }
     return status;

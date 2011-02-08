@@ -46,7 +46,6 @@ using namespace qcc;
 static const uint32_t ABSOLUTE_MAX_CONNECTIONS = 7; /* BT can't have more than 7 direct connections */
 static const uint32_t DEFAULT_MAX_CONNECTIONS =  6; /* Gotta allow 1 connection for car-kit/headset/headphones */
 
-static const uint32_t DELEGATE_TIME = 30;   /* Delegate ad/find operations to minion for 30 seconds. */
 
 namespace ajn {
 
@@ -127,8 +126,8 @@ BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
     maxConnections(min(StringToU32(Environ::GetAppEnviron()->Find("ALLJOYN_MAX_BT_CONNECTIONS"), 0, DEFAULT_MAX_CONNECTIONS),
                        ABSOLUTE_MAX_CONNECTIONS)),
     listening(false),
-    advertise(*this),
-    find(*this)
+    advertise(*this, bus.GetInternal().GetDispatcher()),
+    find(*this, bus.GetInternal().GetDispatcher())
 {
     while (masterUUIDRev == INVALID_UUIDREV) {
         masterUUIDRev = qcc::Rand32();
@@ -162,12 +161,7 @@ BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
     }
 
     advertise.delegateSignal = org.alljoyn.Bus.BTController.DelegateAdvertise;
-    advertise.alarm = Alarm(DELEGATE_TIME * 1000, this, DELEGATE_TIME * 1000, NULL);
-    advertise.minion = nodeStates.end();
-
     find.delegateSignal = org.alljoyn.Bus.BTController.DelegateFind;
-    find.alarm = Alarm(DELEGATE_TIME * 1000, this, DELEGATE_TIME * 1000, NULL);
-    find.minion = nodeStates.end();
 
     static_cast<DaemonRouter&>(bus.GetInternal().GetRouter()).AddBusNameListener(this);
 }
@@ -533,6 +527,7 @@ QStatus BTController::ProxyDisconnect(const BDAddress& bdAddr)
 
 void BTController::BTDevicePower(bool on)
 {
+    QCC_DbgPrintf(("BTController::BTDevicePower(<%s>)", on ? "on" : "off"));
     if (IsMaster()) {
         if (on) {
             QStatus status = bt.StartListen(advertise.bdAddr, advertise.channel, advertise.psm);
@@ -553,7 +548,7 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                                     const qcc::String* newOwner)
 {
     if (oldOwner && (alias == *oldOwner)) {
-        // Endpoint disappeared.
+        // An endpoint left the bus.
 
         if (master && (master->GetServiceName() == alias)) {
             QCC_DbgPrintf(("Our master left us: %s", master->GetServiceName().c_str()));
@@ -570,6 +565,7 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                     advertise.active = false;
                 }
             }
+
             delete master;
             master = NULL;
 
@@ -593,26 +589,72 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
 
             if (minion != nodeStates.end()) {
                 QCC_DbgPrintf(("One of our minions left us: %s", minion->first.c_str()));
-                if (find.minion == minion) {
-                    NextDirectMinion(find.minion);
-                }
-                if (advertise.minion == minion) {
-                    NextDirectMinion(advertise.minion);
-                }
-                if (minion->second.direct) {
-                    --directMinions;
-                }
 
+                bool wasAdvertiseMinion = minion == advertise.minion;
+                bool wasFindMinion = minion == find.minion;
+                bool wasDirect = minion->second.direct;
+
+                // Advertise minion and find minion should never be the same.
+                assert(!(wasAdvertiseMinion && wasFindMinion));
+
+                // Indicate name list has changed.
                 advertise.dirty = !minion->second.advertiseNames.empty();
-
                 find.dirty = !minion->second.findNames.empty();
 
+                // Remove find names for the lost minion.
                 while (minion->second.findNames.begin() != minion->second.findNames.end()) {
                     find.names.erase(*minion->second.findNames.begin());
                     minion->second.findNames.erase(minion->second.findNames.begin());
                 }
 
+                // Remove the minion's state information.
                 nodeStates.erase(minion);
+
+                if (wasDirect) {
+                    --directMinions;
+
+                    if (wasFindMinion) {
+                        find.active = false;
+                        if (directMinions == 0) {
+                            // Our only minion was finding for us.  We'll have to
+                            // find for ourself now.
+                            find.minion = nodeStates.end();
+                        } else if (directMinions == 1) {
+                            // We had 2 minions.  The one that was finding for
+                            // us left, so now we must advertise and tell our
+                            // remaining minion to find.
+                            advertise.active = false;
+                            advertise.ClearArgs();
+                            Signal(advertise.minion->first.c_str(), 0, *advertise.delegateSignal, advertise.args, advertise.argsSize);
+                            advertise.minion = nodeStates.end();
+                            find.minion = nodeStates.begin();
+                        } else {
+                            // We had more than 2 minions, so at least one is
+                            // idle.  Select the next available minion to do
+                            // the finding for us.
+                            NextDirectMinion(find.minion);
+                        }
+
+                    }
+
+                    if (wasAdvertiseMinion) {
+                        assert(directMinions != 0);
+                        advertise.active = false;
+
+                        if (directMinions == 1) {
+                            // We had 2 minions. The one that was advertising
+                            // for us left, so now we must advertise for
+                            // ourself.
+                            advertise.active = false;
+                            advertise.minion = nodeStates.end();
+                        } else {
+                            // We had more than 2 minions, so at least one is
+                            // idle.  Select the next available minion and to
+                            // do the advertising for us.
+                            NextDirectMinion(advertise.minion);
+                        }
+                    }
+                }
 
                 UpdateDelegations(advertise, listening);
                 UpdateDelegations(find);
@@ -693,7 +735,7 @@ QStatus BTController::DoNameOp(const qcc::String& name,
 
     if (IsMaster()) {
         QCC_DbgPrintf(("Handling %s locally (we're the master)", signal.name.c_str()));
-        if ((advertise.Count() > 0) && !listening && (directMinions < maxConnections)) {
+        if (!advertise.Empty() && !listening && (directMinions < maxConnections)) {
             status = bt.StartListen(advertise.bdAddr, advertise.channel, advertise.psm);
             listening = (status == ER_OK);
             if (listening) {
@@ -705,7 +747,7 @@ QStatus BTController::DoNameOp(const qcc::String& name,
         UpdateDelegations(advertise, listening);
         UpdateDelegations(find);
 
-        if ((advertise.Count() == 0) && listening) {
+        if (advertise.Empty() && listening) {
             bt.StopListen();
             listening = false;
         }
@@ -911,7 +953,7 @@ void BTController::HandleDelegateFind(const InterfaceDescription::Member* member
         // Pick a minion to do the work for us.
         NextDirectMinion(find.minion);
 
-        Signal(find.minion->first.c_str(), 0, *org.alljoyn.Bus.BTController.DelegateFind, args, numArgs);
+        Signal(find.minion->first.c_str(), 0, *find.delegateSignal, args, numArgs);
     }
 }
 
@@ -975,7 +1017,7 @@ void BTController::HandleDelegateAdvertise(const InterfaceDescription::Member* m
         // Pick a minion to do the work for us.
         NextDirectMinion(advertise.minion);
 
-        Signal(advertise.minion->first.c_str(), 0, *org.alljoyn.Bus.BTController.DelegateAdvertise, args, numArgs);
+        Signal(advertise.minion->first.c_str(), 0, *advertise.delegateSignal, args, numArgs);
     }
 }
 
@@ -1153,64 +1195,68 @@ void BTController::ImportState(size_t num, MsgArg* entries, const qcc::String& n
         for (uint8_t i = directMinions / 2; i > 0; --i) {
             NextDirectMinion(advertise.minion);
         }
+
+        // advertise.minion must never be the same as find.minion.
+        assert(advertise.minion != find.minion);
     }
 }
 
 
 void BTController::UpdateDelegations(NameArgInfo& nameInfo, bool allow)
 {
-    const bool allowConn = allow && IsMaster() && (directMinions < maxConnections);
-    const bool changed = nameInfo.Changed();
-    const bool empty = nameInfo.Count() == 0;
-    const bool active = nameInfo.active;
     const bool advertiseOp = (&nameInfo == &advertise);
-
-    const bool start = (!active && !empty && allowConn) || (!empty && changed && allowConn);
-    const bool stop = active && (changed || empty || !allowConn);
-    const bool sendSignal = stop || start;
-
-    const bool deferredClearArgs = stop && !start && advertiseOp;
 
     QCC_DbgTrace(("BTController::UpdateDelegations(nameInfo = <%s>, allow = %s)",
                   advertiseOp ? "advertise" : "find", allow ? "true" : "false"));
 
-    if (stop) {
-        if (!start) {
-            if (advertiseOp) {
-                // Advertise empty list for a while so others detect lost name quickly.
-                nameInfo.SetArgs();
-            } else {
-                // Gotta stop finding so clear the args.
-                nameInfo.ClearArgs();
-            }
-        }
+    const bool allowConn = allow && IsMaster() && (directMinions < maxConnections);
+    const bool changed = nameInfo.Changed();
+    const bool empty = nameInfo.Empty();
+    const bool active = nameInfo.active;
 
-        // Either stopping or updating so remove the old alarm.
-        bus.GetInternal().GetDispatcher().RemoveAlarm(nameInfo.alarm);
-    }
+    const bool start = !active && !empty && allowConn;
+    const bool stop = active && (empty || !allowConn);
+    const bool restart = active && changed && !empty && allowConn;
 
-    if (start) {
-        // Either starting or updating so start a new alarm.
-        nameInfo.SetArgs();
-
-        if (directMinions > 1) {
-            bus.GetInternal().GetDispatcher().AddAlarm(nameInfo.alarm);
-        }
-    }
-
-
-    assert(!(!active && stop));  // assert that we are not "stopping" an operation that is already stopped.
-    assert(!(active && start && !stop));  // assert that we are not "starting" an operatoin that is already running.
-
-    nameInfo.active = (active && !stop) || (active && start) || (start && !stop);
+    const bool sendSignal = stop || start || restart;
+    const bool deferredClearArgs = stop && advertiseOp;
 
     QCC_DbgPrintf(("%s %s operation because conn is %s, name list %s%s, and op is %s.",
-                   start ? (stop ? "Updating" : "Starting") : (stop ? "Stopping" : "Skipping"),
+                   start ? "Starting" : (restart ? "Updating" : (stop ? "Stopping" : "Skipping")),
                    advertiseOp ? "advertise" : "find",
                    allowConn ? "allowed" : "not allowed",
                    changed ? "changed" : "didn't change",
                    empty ? " to empty" : "",
                    active ? "active" : "not active"));
+
+    assert(!(!active && stop));     // assert that we are not "stopping" an operation that is already stopped.
+    assert(!(active && start));     // assert that we are not "starting" an operation that is already running.
+    assert(!(!active && restart));  // assert that we are not "restarting" an operation that is stopped.
+    assert(!(start && stop));
+    assert(!(start && restart));
+    assert(!(restart && stop));
+
+    if (start) {
+        // Set the advertise/find arguments.
+        nameInfo.SetArgs();
+        nameInfo.active = true;
+
+    } else if (restart) {
+        // Update the advertise/find arguments.
+        nameInfo.SetArgs();
+        assert(nameInfo.active);
+
+    } else if (stop) {
+        if (deferredClearArgs) {
+            // Advertise an empty name list for a while so that other devices
+            // can detect a "name lost".
+            static_cast<AdvertiseNameArgInfo&>(nameInfo).SetEmptyArgs();
+        } else {
+            // Clear out the find arguments.
+            nameInfo.ClearArgs();
+        }
+        nameInfo.active = false;
+    }
 
     if (sendSignal) {
         if (advertiseOp && UseLocalAdvertise()) {
@@ -1239,10 +1285,24 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo, bool allow)
             assert(bus.GetUniqueName() != nameInfo.minion->first.c_str());
             Signal(nameInfo.minion->first.c_str(), 0, *nameInfo.delegateSignal,
                    nameInfo.args, nameInfo.argsSize);
+            if (RotateMinions()) {
+                if (stop || restart) {
+                    nameInfo.StopAlarm();
+                }
+
+                if (start || restart) {
+                    nameInfo.StartAlarm();
+                }
+            }
         }
     }
 
     if (deferredClearArgs) {
+        // Advertise empty list for a while so others detect lost name quickly.
+        stopAd = Alarm(DELEGATE_TIME * 1000, this);
+        bus.GetInternal().GetDispatcher().AddAlarm(stopAd);
+
+        // Clear out the advertise arguments.
         nameInfo.ClearArgs();
     }
 }
@@ -1318,15 +1378,30 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
 
     if (reason == ER_OK) {
         nodeStateLock.Lock();
-        if (alarm == find.alarm) {
-            NextDirectMinion(find.minion);
-            Signal(find.minion->first.c_str(), 0, *org.alljoyn.Bus.BTController.DelegateFind,
-                   find.args, find.argsSize);
-        } else {  // (alarm == advertise.alarm)
-            NextDirectMinion(advertise.minion);
-            Signal(advertise.minion->first.c_str(), 0, *org.alljoyn.Bus.BTController.DelegateAdvertise,
-                   advertise.args, advertise.argsSize);
+        if (advertise.Empty()) {
+            if (UseLocalAdvertise()) {
+                QCC_DbgPrintf(("Stopping advertise..."));
+                bt.StopAdvertise();
+            } else {
+                // Tell the minion to stop advertising (presumably the empty list).
+                Signal(advertise.minion->first.c_str(), 0, *advertise.delegateSignal, advertise.args, advertise.argsSize);
+            }
         }
+        nodeStateLock.Unlock();
+    }
+}
+
+
+void BTController::NameArgInfo::AlarmTriggered(const Alarm& alarm, QStatus reason)
+{
+    if (reason == ER_OK) {
+        bto.nodeStateLock.Lock();
+        bto.NextDirectMinion(minion);
+        bto.Signal(minion->first.c_str(), 0, *delegateSignal, args, argsSize);
+        bto.nodeStateLock.Unlock();
+
+        // Manually re-arm alarm since automatically recurring alarms cannot be stopped.
+        StartAlarm();
     }
 }
 
@@ -1392,7 +1467,7 @@ void BTController::AdvertiseNameArgInfo::SetArgs()
                 channel,
                 psm,
                 adInfoArgs.size(), &adInfoArgs.front(),
-                (bto.directMinions > 1) ? DELEGATE_TIME : (uint32_t)0);
+                bto.RotateMinions() ? DELEGATE_TIME : (uint32_t)0);
     assert(argsSize == this->argsSize);
 
     dirty = false;
@@ -1415,6 +1490,22 @@ void BTController::AdvertiseNameArgInfo::ClearArgs()
 }
 
 
+void BTController::AdvertiseNameArgInfo::SetEmptyArgs()
+{
+    QCC_DbgTrace(("BTController::AdvertiseNameArgInfo::SetEmptyArgs()"));
+    size_t argsSize = this->argsSize;
+
+    MsgArg::Set(args, argsSize, SIG_DELEGATE_AD,
+                uuidRev,
+                bdAddr.ToString().c_str(),
+                channel,
+                psm,
+                (size_t)0, NULL,
+                (uint32_t)0);
+    assert(argsSize == this->argsSize);
+}
+
+
 void BTController::FindNameArgInfo::SetArgs()
 {
     QCC_DbgTrace(("BTController::FindNameArgInfo::SetArgs()"));
@@ -1425,7 +1516,7 @@ void BTController::FindNameArgInfo::SetArgs()
                 rdest,
                 ignoreUUID,
                 ignoreAddr.ToString().c_str(),
-                (bto.directMinions > 1) ? DELEGATE_TIME : (uint32_t)0);
+                bto.RotateMinions() ? DELEGATE_TIME : (uint32_t)0);
     assert(argsSize == this->argsSize);
 
     dirty = false;
