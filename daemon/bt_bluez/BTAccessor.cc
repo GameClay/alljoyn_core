@@ -268,7 +268,7 @@ BTTransport::BTAccessor::~BTAccessor()
 
 QStatus BTTransport::BTAccessor::Start()
 {
-    QCC_DbgTrace(("BTTransport::BTAccessor::SetupControlBus()"));
+    QCC_DbgTrace(("BTTransport::BTAccessor::Start()"));
 
     QStatus status;
 
@@ -353,6 +353,8 @@ exit:
 
 void BTTransport::BTAccessor::Stop()
 {
+    QCC_DbgTrace(("BTTransport::BTAccessor::Stop()"));
+    QCC_DbgHLPrintf(("BTTransport::BTAccessor::Stop()"));
     DisconnectBlueZ();
     bzBus.Stop();
     bzBus.WaitStop();
@@ -1102,17 +1104,17 @@ void BTTransport::BTAccessor::AlarmTriggered(const Alarm& alarm, QStatus reason)
     if (reason == ER_OK) {
         switch (op->operation) {
         case DispatchInfo::CONNECT_BLUEZ:
-            QCC_DbgPrintf(("Connecting BlueZ"));
+            QCC_DbgHLPrintf(("Connecting BlueZ"));
             ConnectBlueZ();
             break;
 
         case DispatchInfo::DISCONNECT_BLUEZ:
-            QCC_DbgPrintf(("Disconnecting BlueZ"));
+            QCC_DbgHLPrintf(("Disconnecting BlueZ"));
             DisconnectBlueZ();
             break;
 
         case DispatchInfo::RESTART_BLUEZ:
-            QCC_DbgPrintf(("Restarting BlueZ"));
+            QCC_DbgHLPrintf(("Restarting BlueZ"));
             DisconnectBlueZ();
             ConnectBlueZ();
             break;
@@ -1180,8 +1182,8 @@ void BTTransport::BTAccessor::NameOwnerChangedSignalHandler(const InterfaceDescr
      * We only care about changes to org.bluez
      */
     if (strcmp(msg->GetArg(0)->v_string.str, bzBusName) == 0) {
-        QCC_DbgPrintf(("BlueZ has changed owners \"%s\" -> \"%s\"",
-                       msg->GetArg(1)->v_string.str, msg->GetArg(2)->v_string.str));
+        QCC_DbgHLPrintf(("BlueZ has changed owners \"%s\" -> \"%s\"",
+                         msg->GetArg(1)->v_string.str, msg->GetArg(2)->v_string.str));
         DispatchInfo::DispatchTypes op;
         if (msg->GetArg(2)->v_string.len > 0) {
             op = (msg->GetArg(1)->v_string.len > 0) ? DispatchInfo::RESTART_BLUEZ : DispatchInfo::CONNECT_BLUEZ;

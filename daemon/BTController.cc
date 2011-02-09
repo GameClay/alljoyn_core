@@ -294,6 +294,7 @@ QStatus BTController::SendSetState(const qcc::String& busName)
         }
 
         if (!IsMaster()) {
+            bus.GetInternal().GetDispatcher().RemoveAlarm(stopAd);
             bt.StopListen();
             listening = false;
         }
@@ -316,9 +317,9 @@ QStatus BTController::ProcessFoundDevice(const BDAddress& adBdAddr, uint32_t uui
     QStatus status = ER_OK;
 
     if (IsMaster()) {
-        UUIDRevCacheInfo& ci = uuidRevCache[uuidRev];
+        UUIDRevCacheInfo* ci = &uuidRevCache[uuidRev];
 
-        if (ci.uuidRev == INVALID_UUIDREV) {
+        if (ci->uuidRev == INVALID_UUIDREV) {
             nodeStateLock.Lock();
             if (UseLocalFind()) {
                 QCC_DbgPrintf(("Stopping find..."));
@@ -327,7 +328,7 @@ QStatus BTController::ProcessFoundDevice(const BDAddress& adBdAddr, uint32_t uui
                 find.active = false;
             }
 
-            status = bt.GetDeviceInfo(adBdAddr, ci.connAddr, ci.uuidRev, ci.channel, ci.psm, ci.adInfo);
+            status = bt.GetDeviceInfo(adBdAddr, ci->connAddr, ci->uuidRev, ci->channel, ci->psm, ci->adInfo);
 
             if (UseLocalFind()) {
                 QCC_DbgPrintf(("Starting find..."));
@@ -336,7 +337,6 @@ QStatus BTController::ProcessFoundDevice(const BDAddress& adBdAddr, uint32_t uui
             }
             nodeStateLock.Unlock();
 
-
             if (status != ER_OK) {
                 uuidRevCache.erase(uuidRev);
                 goto exit;
@@ -344,7 +344,7 @@ QStatus BTController::ProcessFoundDevice(const BDAddress& adBdAddr, uint32_t uui
         } else {
             // Pop the existing entry from the aging list so that it can be
             // added to the end (implments LRU cache policy).
-            uuidRevCacheAging.erase(ci.position);
+            uuidRevCacheAging.erase(ci->position);
         }
 
         while (uuidRevCacheAging.size() > MAX_CACHE_SIZE) {
@@ -354,33 +354,38 @@ QStatus BTController::ProcessFoundDevice(const BDAddress& adBdAddr, uint32_t uui
             uuidRevCacheAging.pop_front();
         }
 
-        uuidRevCacheAging.push_back(ci.uuidRev);
-        ci.position = uuidRevCacheAging.end();
-        if (ci.position != uuidRevCacheAging.begin()) {
-            ++ci.position;
-        }
+        uuidRevCacheAging.push_back(ci->uuidRev);
+        ci->position = uuidRevCacheAging.end();
+        --ci->position;
 
-        if (ci.uuidRev != uuidRev) {
+        if (ci->uuidRev != uuidRev) {
             // Somehow the UUID revision was updated between the time the EIR
             // was sent and we performed an SDP query.  Thus we need to move
             // the cache information to the UUID rev from the SDP record since
             // we will be getting that the next time ProcessFoundDevice is
             // called for this remote bus.
-            uuidRevCache[ci.uuidRev] = ci;
+            uuidRevCache[ci->uuidRev] = *ci;
             uuidRevCache.erase(uuidRev);
+            ci = &uuidRevCache[ci->uuidRev];
         }
 
         for (NodeStateMap::iterator it = nodeStates.begin(); it != nodeStates.end(); ++it) {
             if (it->first == bus.GetUniqueName()) {
                 BluetoothDeviceInterface::AdvertiseInfo::const_iterator aiit;
                 // Tell ourself about the names
-                for (aiit = ci.adInfo.begin(); aiit != ci.adInfo.end(); ++aiit) {
-                    bt.FoundBus(ci.connAddr, aiit->first, aiit->second, ci.channel, ci.psm);
+#ifndef NDEBUG
+                int i = 0;
+#endif
+                for (aiit = ci->adInfo.begin(); aiit != ci->adInfo.end(); ++aiit) {
+                    QCC_DbgPrintf(("Processing %d  addr: %s   guid: %s   names: %u (size)   channel: %u   psm: %04x",
+                                   ++i, ci->connAddr.ToString().c_str(), aiit->first.c_str(), aiit->second.size(), ci->channel, ci->psm));
+
+                    bt.FoundBus(ci->connAddr, aiit->first, aiit->second, ci->channel, ci->psm);
                 }
             } else {
                 // Send Found Bus information to the node(s) that is
                 // interested in it.
-                status = SendFoundBus(ci.connAddr, ci.channel, ci.psm, ci.adInfo, it->first.c_str());
+                status = SendFoundBus(ci->connAddr, ci->channel, ci->psm, ci->adInfo, it->first.c_str());
             }
         }
     } else {
@@ -620,6 +625,7 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                             // Our only minion was finding for us.  We'll have to
                             // find for ourself now.
                             find.minion = nodeStates.end();
+                            QCC_DbgPrintf(("Selected ourself as find minion.", find.minion->first.c_str()));
                         } else if (directMinions == 1) {
                             // We had 2 minions.  The one that was finding for
                             // us left, so now we must advertise and tell our
@@ -629,13 +635,14 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                             Signal(advertise.minion->first.c_str(), 0, *advertise.delegateSignal, advertise.args, advertise.argsSize);
                             advertise.minion = nodeStates.end();
                             find.minion = nodeStates.begin();
+                            QCC_DbgPrintf(("Selected %s as our find minion.", find.minion->first.c_str()));
                         } else {
                             // We had more than 2 minions, so at least one is
                             // idle.  Select the next available minion to do
                             // the finding for us.
                             NextDirectMinion(find.minion);
+                            QCC_DbgPrintf(("Selected %s as our find minion.", find.minion->first.c_str()));
                         }
-
                     }
 
                     if (wasAdvertiseMinion) {
@@ -648,11 +655,13 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                             // ourself.
                             advertise.active = false;
                             advertise.minion = nodeStates.end();
+                            QCC_DbgPrintf(("Selected ourself as advertise minion.", advertise.minion->first.c_str()));
                         } else {
                             // We had more than 2 minions, so at least one is
                             // idle.  Select the next available minion and to
                             // do the advertising for us.
                             NextDirectMinion(advertise.minion);
+                            QCC_DbgPrintf(("Selected %s as our advertise minion.", advertise.minion->first.c_str()));
                         }
                     }
                 }
@@ -791,6 +800,12 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
 
     msg->GetArgs("ss", &busName, &name);
 
+    QCC_DbgPrintf(("%s %s to the list of %s names for %s.",
+                   addName ? "Adding" : "Removing",
+                   name,
+                   (fn || cfn) ? "find" : "advertise",
+                   busName));
+
     nodeStateLock.Lock();
     NodeStateMap::iterator it = nodeStates.find(busName);
 
@@ -897,6 +912,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     nodeStateLock.Unlock();
 
     if (!IsMaster()) {
+        bus.GetInternal().GetDispatcher().RemoveAlarm(stopAd);
         bt.StopListen();
         listening = false;
     }
@@ -954,6 +970,7 @@ void BTController::HandleDelegateFind(const InterfaceDescription::Member* member
 
         // Pick a minion to do the work for us.
         NextDirectMinion(find.minion);
+        QCC_DbgPrintf(("Selected %s as our find minion.", find.minion->first.c_str()));
 
         Signal(find.minion->first.c_str(), 0, *find.delegateSignal, args, numArgs);
     }
@@ -1018,6 +1035,7 @@ void BTController::HandleDelegateAdvertise(const InterfaceDescription::Member* m
 
         // Pick a minion to do the work for us.
         NextDirectMinion(advertise.minion);
+        QCC_DbgPrintf(("Selected %s as our advertise minion.", advertise.minion->first.c_str()));
 
         Signal(advertise.minion->first.c_str(), 0, *advertise.delegateSignal, args, numArgs);
     }
@@ -1179,24 +1197,65 @@ void BTController::ImportState(size_t num, MsgArg* entries, const qcc::String& n
         advertise.uuidRev = masterUUIDRev;
     }
 
+    bool adEnd = advertise.minion == nodeStates.end();
+    bool findEnd = find.minion == nodeStates.end();
+    qcc::String adNode;
+    qcc::String findNode;
+    if (!adEnd) {
+        adNode = advertise.minion->first;
+    }
+    if (!findEnd) {
+        findNode = find.minion->first;
+    }
+
+
     nodeStates[newNode].direct = true;
     ++directMinions;
 
-    if (find.minion == nodeStates.end()) {
+#ifndef NDEBUG
+    if (true) {
+        NodeStateMap::const_iterator node;
+        QCC_DbgPrintf(("Node State Table (local = %s):", bus.GetUniqueName().c_str()));
+        for (node = nodeStates.begin(); node != nodeStates.end(); ++node) {
+            std::set<qcc::String>:: const_iterator name;
+            QCC_DbgPrintf(("    %s:", node->first.c_str()));
+            QCC_DbgPrintf(("         Advertise names:"));
+            for (name = node->second.advertiseNames.begin(); name != node->second.advertiseNames.end(); ++name) {
+                QCC_DbgPrintf(("            %s", name->c_str()));
+            }
+            QCC_DbgPrintf(("         Find names:"));
+            for (name = node->second.findNames.begin(); name != node->second.findNames.end(); ++name) {
+                QCC_DbgPrintf(("            %s", name->c_str()));
+            }
+        }
+    }
+#endif
+
+    if (findEnd) {
         find.minion = nodeStates.begin();
         while (!find.minion->second.direct || find.minion->first == bus.GetUniqueName()) {
             ++find.minion;
             assert(find.minion != nodeStates.end());
         }
+        QCC_DbgPrintf(("Selected %s as our find minion.", find.minion->first.c_str()));
+    } else {
+        find.minion = nodeStates.find(findNode);
     }
 
-    if (advertise.minion == nodeStates.end() || advertise.minion == find.minion) {
-        if (advertise.minion == nodeStates.end()) {
-            advertise.minion = nodeStates.begin();
-        }
+
+
+    if (adEnd) {
+        advertise.minion = UseLocalAdvertise() ? nodeStates.end() : nodeStates.begin();
+    } else {
+        advertise.minion = nodeStates.find(adNode);
+    }
+
+    if (advertise.minion == find.minion) {
         for (uint8_t i = directMinions / 2; i > 0; --i) {
             NextDirectMinion(advertise.minion);
         }
+
+        QCC_DbgPrintf(("Selected %s as our advertise minion.", advertise.minion->first.c_str()));
 
         // advertise.minion must never be the same as find.minion.
         assert(advertise.minion != find.minion);
@@ -1321,7 +1380,10 @@ void BTController::EncodeAdInfo(const BluetoothDeviceInterface::AdvertiseInfo& a
 
         MsgArg* nameList = new MsgArg[names.size()];
 
+        QCC_DbgPrintf(("Encoding %u advertise names for %s:", names.size(), guid.c_str()));
+
         for (size_t j = 0; i < names.size(); ++i) {
+            QCC_DbgPrintf(("    %s", names[j].c_str()));
             nameList[j].Set(SIG_NAME, names[j].c_str());
         }
 
@@ -1359,10 +1421,12 @@ QStatus BTController::ExtractAdInfo(const MsgArg& arg, BluetoothDeviceInterface:
                 nameList.clear();
                 nameList.reserve(numNames);
 
+                QCC_DbgPrintf(("Extracting %u advertise names for %s:", numNames, node));
                 for (size_t j = 0; j < numNames; ++j) {
                     char* name;
                     status = names[j].Get(SIG_NAME, &name);
                     if (status == ER_OK) {
+                        QCC_DbgPrintf(("    %s", name));
                         nameList.push_back(name);
                     }
                 }
@@ -1375,7 +1439,7 @@ QStatus BTController::ExtractAdInfo(const MsgArg& arg, BluetoothDeviceInterface:
 
 void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
 {
-    QCC_DbgTrace(("BTController::AlarmTriggered(alarm = <%s>)", alarm == find.alarm ? "find" : "advertise"));
+    QCC_DbgTrace(("BTController::AlarmTriggered(alarm = <>, reasons = %s)", QCC_StatusText(reason)));
     assert(IsMaster());
 
     if (reason == ER_OK) {
@@ -1396,9 +1460,15 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
 
 void BTController::NameArgInfo::AlarmTriggered(const Alarm& alarm, QStatus reason)
 {
+    QCC_DbgTrace(("BTController::NameArgInfo::AlarmTriggered(alarm = <%s>, reason = %s)",
+                  alarm == bto.find.alarm ? "find" : "advertise", QCC_StatusText(reason)));
+
     if (reason == ER_OK) {
         bto.nodeStateLock.Lock();
         bto.NextDirectMinion(minion);
+        QCC_DbgPrintf(("Selected %s as our %s minion.",
+                       minion->first.c_str(),
+                       (minion == bto.find.minion) ? "find" : "advertise"));
         bto.Signal(minion->first.c_str(), 0, *delegateSignal, args, argsSize);
         bto.nodeStateLock.Unlock();
 
@@ -1456,6 +1526,7 @@ void BTController::AdvertiseNameArgInfo::SetArgs()
     size_t i;
     for (i = 0, nodeit = bto.nodeStates.begin(); nodeit != bto.nodeStates.end(); ++nodeit, ++i) {
         assert(i < adInfoArgs.capacity());
+        names.clear();
         names.reserve(nodeit->second.advertiseNames.size());
         for (nameit = nodeit->second.advertiseNames.begin(); nameit != nodeit->second.advertiseNames.end(); ++nameit) {
             names.push_back(nameit->c_str());

@@ -121,7 +121,7 @@ QStatus ConfigureInquiryScan(uint16_t deviceId, uint16_t window, uint16_t interv
     hciFd = (SocketFd)socket(AF_BLUETOOTH, QCC_SOCK_RAW, 1);
     if (!hciFd) {
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Failed to create socket (errno %d)\n", errno));
+        QCC_LogError(status, ("Failed to create socket (errno %d)", errno));
         return status;
     }
 
@@ -129,7 +129,7 @@ QStatus ConfigureInquiryScan(uint16_t deviceId, uint16_t window, uint16_t interv
     addr.dev = deviceId;
     if (bind(hciFd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Failed to bind to BT device id %d socket (errno %d)\n", deviceId, errno));
+        QCC_LogError(status, ("Failed to bind to BT device id %d socket (errno %d)", deviceId, errno));
         goto Exit;
     }
 
@@ -147,7 +147,7 @@ QStatus ConfigureInquiryScan(uint16_t deviceId, uint16_t window, uint16_t interv
 
     status = Send(hciFd, cmd, sizeof(hciSetInquiryParams), sent);
     if (status != ER_OK) {
-        QCC_LogError(status, ("Failed to send SetInquiryParams HCI command (errno %d)\n", errno));
+        QCC_LogError(status, ("Failed to send SetInquiryParams HCI command (errno %d)", errno));
         goto Exit;
     }
 
@@ -156,7 +156,7 @@ QStatus ConfigureInquiryScan(uint16_t deviceId, uint16_t window, uint16_t interv
 
     status = Send(hciFd, cmd, sizeof(hciSetInquiryInterlaced), sent);
     if (status != ER_OK) {
-        QCC_LogError(status, ("Failed to send SetInquiryInterlaced HCI command (errno %d)\n", errno));
+        QCC_LogError(status, ("Failed to send SetInquiryInterlaced HCI command (errno %d)", errno));
         goto Exit;
     }
 
@@ -165,7 +165,7 @@ QStatus ConfigureInquiryScan(uint16_t deviceId, uint16_t window, uint16_t interv
 
     status = Send(hciFd, cmd, sizeof(hciSetInquiryTxPower), sent);
     if (status != ER_OK) {
-        QCC_LogError(status, ("Failed to send SetInquiryTxPower HCI command (errno %d)\n", errno));
+        QCC_LogError(status, ("Failed to send SetInquiryTxPower HCI command (errno %d)", errno));
         goto Exit;
     }
 
@@ -221,7 +221,7 @@ QStatus ConfigurePeriodicInquiry(uint16_t deviceId, uint16_t minPeriod, uint16_t
     hciFd = (SocketFd)socket(AF_BLUETOOTH, QCC_SOCK_RAW, 1);
     if (!hciFd) {
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Failed to create socket (errno %d)\n", errno));
+        QCC_LogError(status, ("Failed to create socket (errno %d)", errno));
         return status;
     }
 
@@ -229,7 +229,7 @@ QStatus ConfigurePeriodicInquiry(uint16_t deviceId, uint16_t minPeriod, uint16_t
     addr.dev = deviceId;
     if (bind(hciFd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Failed to bind to BT device id %d socket (errno %d)\n", deviceId, errno));
+        QCC_LogError(status, ("Failed to bind to BT device id %d socket (errno %d)", deviceId, errno));
         goto Exit;
     }
 
@@ -239,7 +239,7 @@ QStatus ConfigurePeriodicInquiry(uint16_t deviceId, uint16_t minPeriod, uint16_t
     memcpy(cmd, hciExitPeriodicInquiry, sizeof(hciExitPeriodicInquiry));
     status = Send(hciFd, cmd, sizeof(hciExitPeriodicInquiry), sent);
     if (status != ER_OK) {
-        QCC_LogError(status, ("Failed to send HciExitPeriodicInquiry HCI command (errno %d)\n", errno));
+        QCC_LogError(status, ("Failed to send HciExitPeriodicInquiry HCI command (errno %d)", errno));
         goto Exit;
     }
 
@@ -257,7 +257,7 @@ QStatus ConfigurePeriodicInquiry(uint16_t deviceId, uint16_t minPeriod, uint16_t
 
         status = Send(hciFd, cmd, sizeof(hciStartPeriodicInquiry), sent);
         if (status != ER_OK) {
-            QCC_LogError(status, ("Failed to send HciStartPeriodicInquiry HCI command (errno %d)\n", errno));
+            QCC_LogError(status, ("Failed to send HciStartPeriodicInquiry HCI command (errno %d)", errno));
             goto Exit;
         }
     }
@@ -283,7 +283,7 @@ QStatus ConfigureSimplePairingDebugMode(uint16_t deviceId, bool enable)
     hciFd = (SocketFd)socket(AF_BLUETOOTH, QCC_SOCK_RAW, 1);
     if (!hciFd) {
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Failed to create socket (errno %d)\n", errno));
+        QCC_LogError(status, ("Failed to create socket (errno %d)", errno));
         return status;
     }
 
@@ -291,7 +291,7 @@ QStatus ConfigureSimplePairingDebugMode(uint16_t deviceId, bool enable)
     addr.dev = deviceId;
     if (bind(hciFd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("Failed to bind to BT device id %d socket (errno %d)\n", deviceId, errno));
+        QCC_LogError(status, ("Failed to bind to BT device id %d socket (errno %d)", deviceId, errno));
         goto Exit;
     }
 
@@ -299,7 +299,7 @@ QStatus ConfigureSimplePairingDebugMode(uint16_t deviceId, bool enable)
     cmd[4] = enable ? 1 : 0;
     status = Send(hciFd, cmd, sizeof(hciSimplePairingDebugMode), sent);
     if (status != ER_OK) {
-        QCC_LogError(status, ("Failed to send HciSimplePairingDebugMode HCI command (errno %d)\n", errno));
+        QCC_LogError(status, ("Failed to send HciSimplePairingDebugMode HCI command (errno %d)", errno));
         goto Exit;
     }
 

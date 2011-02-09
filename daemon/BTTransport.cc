@@ -194,8 +194,9 @@ void* BTTransport::Run(void* arg)
                     EndpointExit(conn);
                     conn = NULL;
                 }
+            } else {
+                (*it)->ResetEvent();
             }
-            (*it)->ResetEvent();
         }
         signaledEvents.clear();
         checkEvents.clear();
@@ -541,7 +542,9 @@ QStatus BTTransport::StartListen(BDAddress& addr,
 void BTTransport::StopListen()
 {
     Thread::Stop();
+    Thread::Join();
     btAccessor->StopConnectable();
+    QCC_DbgHLPrintf(("Stopped listening"));
 }
 
 QStatus BTTransport::GetDeviceInfo(const BDAddress& addr,

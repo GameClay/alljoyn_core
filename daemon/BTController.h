@@ -29,7 +29,6 @@
 #include <vector>
 
 #include <qcc/String.h>
-#include <qcc/StringMapKey.h>
 #include <qcc/Timer.h>
 
 #include <alljoyn/BusObject.h>
@@ -200,7 +199,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
         NodeState() : direct(false) { }
     };
 
-    typedef std::map<qcc::StringMapKey, NodeState> NodeStateMap;  // key: unique bus name
+    typedef std::map<qcc::String, NodeState> NodeStateMap;  // key: unique bus name
 
     /**
      * Constructor
@@ -676,14 +675,14 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     void NextDirectMinion(NodeStateMap::const_iterator& minion)
     {
         assert(!nodeStates.empty());
-        NodeStateMap::const_iterator& skip = minion == find.minion ? advertise.minion : find.minion;
-        NodeStateMap::const_iterator& next = minion;
+        NodeStateMap::const_iterator& skip = (&minion == &find.minion) ? advertise.minion : find.minion;
+        NodeStateMap::const_iterator next = minion;
         do {
             ++next;
             if (next == nodeStates.end()) {
                 next = nodeStates.begin();
             }
-        } while ((!next->second.direct || (minion == skip)) && next != minion);
+        } while ((!next->second.direct || (next == skip)) && (next != minion));
         minion = next;
     }
 
