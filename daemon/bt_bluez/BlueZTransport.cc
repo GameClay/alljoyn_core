@@ -811,7 +811,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public ProxyBusObject::L
     /**
      * Function called when an alarm is triggered.
      */
-    void AlarmTriggered(const qcc::Alarm& alarm);
+    void AlarmTriggered(const qcc::Alarm& alarm, QStatus reason);
 
 
     // TODO: Change listenFd to use a mechanism similar to TCPTransport.
@@ -1012,7 +1012,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public ProxyBusObject::L
     set<qcc::String> advertiseNames;
 };
 
-void BTTransport::BTAccessor::AlarmTriggered(const Alarm& alarm)
+void BTTransport::BTAccessor::AlarmTriggered(const Alarm& alarm, QStatus reason)
 {
     AlarmContext* ctx = reinterpret_cast<AlarmContext*>(alarm.GetContext());
     switch (ctx->cmd) {

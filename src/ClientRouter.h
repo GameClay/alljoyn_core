@@ -136,7 +136,7 @@ class ClientRouter : public Router, public qcc::AlarmListener {
     /*
      * Used to report connection is up.
      */
-    void AlarmTriggered(const qcc::Alarm& alarm);
+    void AlarmTriggered(const qcc::Alarm& alarm, QStatus reason);
 
 };
 

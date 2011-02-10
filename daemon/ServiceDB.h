@@ -200,7 +200,7 @@ class _ServiceDB : public ajn::NameListener, public qcc::AlarmListener {
      *
      * @param alarm  The alarm object for the timeout that expired.
      */
-    void AlarmTriggered(const qcc::Alarm& alarm);
+    void AlarmTriggered(const qcc::Alarm& alarm, QStatus reason);
 
 
     ServiceMap serviceMap;  /**< Service map storage. */

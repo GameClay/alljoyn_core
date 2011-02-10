@@ -242,7 +242,7 @@ void _ServiceDB::NameOwnerChanged(const qcc::String& alias,
 }
 
 
-void _ServiceDB::AlarmTriggered(const Alarm& alarm)
+void _ServiceDB::AlarmTriggered(const Alarm& alarm, QStatus reason)
 {
     qcc::String* serviceName(reinterpret_cast<qcc::String*>(alarm.GetContext()));
 

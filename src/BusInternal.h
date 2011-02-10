@@ -165,7 +165,7 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
     /**
      * Function called when an alarm is triggered.
      */
-    void AlarmTriggered(const qcc::Alarm& alarm);
+    void AlarmTriggered(const qcc::Alarm& alarm, QStatus reason);
 
     /**
      * Indicate whether endpoints of this attachment are allowed to receive messages

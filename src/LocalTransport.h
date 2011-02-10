@@ -393,7 +393,7 @@ class LocalEndpoint : public BusEndpoint, public qcc::AlarmListener, public Mess
     /**
      *   Process a timeout on a METHOD_REPLY message
      */
-    void AlarmTriggered(const qcc::Alarm& alarm);
+    void AlarmTriggered(const qcc::Alarm& alarm, QStatus reason);
 
     /**
      * Inner utility method used bo RegisterBusObject.

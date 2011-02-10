@@ -183,11 +183,15 @@ QStatus LocalEndpoint::Start()
 
 QStatus LocalEndpoint::Stop(void)
 {
+    QCC_DbgTrace(("LocalEndpoint::Stop"));
+
     /* Local endpoint not longer running */
     running = false;
 
     IncrementAndFetch(&refCount);
-
+    /*
+     * Deregister all registered bus objects
+     */
     objectsLock.Lock();
     hash_map<const char*, BusObject*, hash<const char*>, PathEq>::iterator it = localObjects.begin();
     while (it != localObjects.end()) {
@@ -201,7 +205,6 @@ QStatus LocalEndpoint::Stop(void)
         peerObj->Stop();
     }
     objectsLock.Unlock();
-
     DecrementAndFetch(&refCount);
 
     return ER_OK;
@@ -448,24 +451,28 @@ QStatus LocalEndpoint::RegisterReplyHandler(MessageReceiver* receiver,
                                             uint32_t timeout)
 {
     QStatus status = ER_OK;
-    ReplyContext reply = {
-        receiver,
-        replyHandler,
-        &method,
-        secure,
-        context,
-        Alarm(timeout, this, 0, (void*)serial)
-    };
-    QCC_DbgPrintf(("LocalEndpoint::RegisterReplyHandler - Adding serial=%u", serial));
-    replyMapLock.Lock();
-    replyMap.insert(pair<uint32_t, ReplyContext>(serial, reply));
-    replyMapLock.Unlock();
+    if (!running) {
+        status = ER_BUS_STOPPING;
+        QCC_LogError(status, ("Local transport not running"));
+    } else {
+        ReplyContext reply = {
+            receiver,
+            replyHandler,
+            &method,
+            secure,
+            context,
+            Alarm(timeout, this, 0, (void*)serial)
+        };
+        QCC_DbgPrintf(("LocalEndpoint::RegisterReplyHandler - Adding serial=%u", serial));
+        replyMapLock.Lock();
+        replyMap.insert(pair<uint32_t, ReplyContext>(serial, reply));
+        replyMapLock.Unlock();
 
-    /* Set a timeout */
-    if (Alarm::WAIT_FOREVER != timeout) {
-        bus.GetInternal().GetTimer().AddAlarm(reply.alarm);
+        /* Set a timeout */
+        if (Alarm::WAIT_FOREVER != timeout) {
+            bus.GetInternal().GetTimer().AddAlarm(reply.alarm);
+        }
     }
-
     return status;
 }
 
@@ -522,13 +529,17 @@ QStatus LocalEndpoint::UnRegisterSignalHandler(MessageReceiver* receiver,
     return ER_OK;
 }
 
-void LocalEndpoint::AlarmTriggered(const Alarm& alarm)
+void LocalEndpoint::AlarmTriggered(const Alarm& alarm, QStatus reason)
 {
     uint32_t serial = reinterpret_cast<uintptr_t>(alarm.GetContext());
     Message msg(bus);
     QCC_DbgPrintf(("Timed out waiting for METHOD_REPLY with serial %d", serial));
 
-    msg->ErrorMsg("org.alljoyn.Bus.Timeout", serial);
+    if (reason == ER_TIMER_EXITING) {
+        msg->ErrorMsg("org.alljoyn.Bus.Exiting", serial);
+    } else {
+        msg->ErrorMsg("org.alljoyn.Bus.Timeout", serial);
+    }
     HandleMethodReply(msg);
 }
 

@@ -76,8 +76,8 @@ BusAttachment::Internal::Internal(const char* appName, BusAttachment& bus, Trans
     msgSerial(qcc::Rand32()),
     router(router ? router : new ClientRouter),
     localEndpoint(transportList.GetLocalTransport()->GetLocalEndpoint()),
-    timer("timer"),
-    dispatcher("dispatcher"),
+    timer("BusTimer", true),
+    dispatcher("BusDispatcher", true),
     allowRemoteMessages(allowRemoteMessages),
     listenAddresses(listenAddresses ? listenAddresses : ""),
     stopLock(),
@@ -156,7 +156,7 @@ BusAttachment::~BusAttachment(void)
      * ALL callers of BusAttachment::Stop() to exit before deleting the object
      */
     while (busInternal->stopCount) {
-        qcc::Sleep(50);
+        qcc::Sleep(5);
     }
 
     delete busInternal;
@@ -627,46 +627,49 @@ void BusAttachment::Internal::AllJoynSignalHandler(const InterfaceDescription::M
     dispatcher.AddAlarm(alarm);
 }
 
-void BusAttachment::Internal::AlarmTriggered(const Alarm& alarm)
+void BusAttachment::Internal::AlarmTriggered(const Alarm& alarm, QStatus reason)
 {
     /* Dispatch thread for BusListener callbacks */
     Message& msg = *(reinterpret_cast<Message*>(alarm.GetContext()));
-    size_t numArgs;
-    const MsgArg* args;
-    msg->GetArgs(numArgs, args);
 
-    if (0 == strcmp("FoundName", msg->GetMemberName())) {
-        listenersLock.Lock();
-        list<BusListener*>::iterator it = listeners.begin();
-        while (it != listeners.end()) {
-            (*it++)->FoundName(args[0].v_string.str, args[1].v_string.str, args[2].v_string.str, args[3].v_string.str);
+    if (reason == ER_OK) {
+        size_t numArgs;
+        const MsgArg* args;
+        msg->GetArgs(numArgs, args);
+
+        if (0 == strcmp("FoundName", msg->GetMemberName())) {
+            listenersLock.Lock();
+            list<BusListener*>::iterator it = listeners.begin();
+            while (it != listeners.end()) {
+                (*it++)->FoundName(args[0].v_string.str, args[1].v_string.str, args[2].v_string.str, args[3].v_string.str);
+            }
+            listenersLock.Unlock();
+        } else if (0 == strcmp("LostAdvertisedName", msg->GetMemberName())) {
+            listenersLock.Lock();
+            list<BusListener*>::iterator it = listeners.begin();
+            while (it != listeners.end()) {
+                (*it++)->LostAdvertisedName(args[0].v_string.str, args[1].v_string.str, args[2].v_string.str, args[3].v_string.str);
+            }
+            listenersLock.Unlock();
+        } else if (0 == strcmp("BusConnectionLost", msg->GetMemberName())) {
+            listenersLock.Lock();
+            list<BusListener*>::iterator it = listeners.begin();
+            while (it != listeners.end()) {
+                (*it++)->BusConnectionLost(args[0].v_string.str);
+            }
+            listenersLock.Unlock();
+        } else if (0 == strcmp("NameOwnerChanged", msg->GetMemberName())) {
+            listenersLock.Lock();
+            list<BusListener*>::iterator it = listeners.begin();
+            while (it != listeners.end()) {
+                (*it++)->NameOwnerChanged(args[0].v_string.str,
+                                          (0 < args[1].v_string.len) ? args[1].v_string.str : NULL,
+                                          (0 < args[2].v_string.len) ? args[2].v_string.str : NULL);
+            }
+            listenersLock.Unlock();
+        } else {
+            QCC_LogError(ER_FAIL, ("Unrecognized signal \"%s.%s\" received", msg->GetInterface(), msg->GetMemberName()));
         }
-        listenersLock.Unlock();
-    } else if (0 == strcmp("LostAdvertisedName", msg->GetMemberName())) {
-        listenersLock.Lock();
-        list<BusListener*>::iterator it = listeners.begin();
-        while (it != listeners.end()) {
-            (*it++)->LostAdvertisedName(args[0].v_string.str, args[1].v_string.str, args[2].v_string.str, args[3].v_string.str);
-        }
-        listenersLock.Unlock();
-    } else if (0 == strcmp("BusConnectionLost", msg->GetMemberName())) {
-        listenersLock.Lock();
-        list<BusListener*>::iterator it = listeners.begin();
-        while (it != listeners.end()) {
-            (*it++)->BusConnectionLost(args[0].v_string.str);
-        }
-        listenersLock.Unlock();
-    } else if (0 == strcmp("NameOwnerChanged", msg->GetMemberName())) {
-        listenersLock.Lock();
-        list<BusListener*>::iterator it = listeners.begin();
-        while (it != listeners.end()) {
-            (*it++)->NameOwnerChanged(args[0].v_string.str,
-                                      (0 < args[1].v_string.len) ? args[1].v_string.str : NULL,
-                                      (0 < args[2].v_string.len) ? args[2].v_string.str : NULL);
-        }
-        listenersLock.Unlock();
-    } else {
-        QCC_LogError(ER_FAIL, ("Unrecognized signal \"%s.%s\" received", msg->GetInterface(), msg->GetMemberName()));
     }
     delete &msg;
 }
