@@ -236,160 +236,6 @@ void AllJoynObj::ObjectRegistered(void)
     }
 }
 
-#if 0
-void AllJoynObj::Connect(const InterfaceDescription::Member* member, Message& msg)
-{
-    QStatus status;
-    uint32_t replyCode;
-    size_t numArgs;
-    const MsgArg* args;
-    qcc::String normSpec;
-    map<qcc::String, qcc::String> argMap;
-
-    /* Normalize the connect string */
-    msg->GetArgs(numArgs, args);
-    assert((numArgs == 1) && (args[0].typeId == ALLJOYN_STRING));
-    qcc::String origSpec = args[0].v_string.str;
-    status = NormalizeTransportSpec(origSpec.c_str(), normSpec, argMap);
-
-    if (ER_OK == status) {
-        /* Connect */
-        status = ProcConnect(msg->GetSender(), normSpec);
-        replyCode = (status == ER_OK) ? ALLJOYN_CONNECT_REPLY_SUCCESS : ALLJOYN_CONNECT_REPLY_FAILED;
-    } else {
-        /* invalid connect spec */
-        replyCode = ALLJOYN_CONNECT_REPLY_INVALID_SPEC;
-    }
-
-    /* Reply to request */
-    MsgArg replyArg("u", replyCode);
-    status = MethodReply(msg, &replyArg, 1);
-    QCC_DbgPrintf(("AllJoynObj::Connect(%s) returned %d (status=%s)", origSpec.c_str(), replyCode, QCC_StatusText(status)));
-
-    /* Log error if reply could not be sent */
-    if (ER_OK != status) {
-        QCC_LogError(status, ("Failed to respond to org.alljoyn.Bus.Connect"));
-    }
-}
-
-QStatus AllJoynObj::ProcConnect(const qcc::String& uniqueName, const qcc::String& normConnectSpec)
-{
-    QCC_DbgTrace(("AllJoynObj::ProcConnect(uniqueName = \"%s\", normConnectSpec = \"%s\")",
-                  uniqueName.c_str(), normConnectSpec.c_str()));
-
-    /* Check to see if this connection already exists */
-    connectMapLock.Lock();
-    multimap<qcc::String, qcc::String>::const_iterator it = connectMap.find(normConnectSpec);
-    bool doConnect = (it == connectMap.end());
-
-    /* Add to connect map */
-    connectMap.insert(pair<qcc::String, qcc::String>(normConnectSpec, uniqueName));
-    connectMapLock.Unlock();
-
-    QStatus status(ER_OK);
-    if (doConnect) {
-        /* Attempt to connect to external bus */
-        status =  bus.Connect(normConnectSpec.c_str());
-
-        /* If the connect failed, remove entry from connectMap */
-        if (ER_OK != status) {
-            connectMapLock.Lock();
-            multimap<qcc::String, qcc::String>::iterator it = connectMap.find(normConnectSpec);
-            while ((it != connectMap.end()) && (it->first == normConnectSpec)) {
-                if (it->second == uniqueName) {
-                    connectMap.erase(it);
-                    break;
-                }
-                ++it;
-            }
-            connectMapLock.Unlock();
-        }
-    } else {
-        QCC_DbgPrintf(("Found \"%s\" in connectMap", normConnectSpec.c_str()));
-    }
-
-    return status;
-}
-
-void AllJoynObj::Disconnect(const InterfaceDescription::Member* member, Message& msg)
-{
-    QStatus status;
-    uint32_t replyCode = ALLJOYN_DISCONNECT_REPLY_FAILED;
-    size_t numArgs;
-    const MsgArg* args;
-    qcc::String normSpec;
-    map<qcc::String, qcc::String> argMap;
-
-    /* Normalize the disconnect string */
-    msg->GetArgs(numArgs, args);
-    assert((numArgs == 1) && (args[0].typeId == ALLJOYN_STRING));
-    qcc::String origSpec = args[0].v_string.str;
-    status = NormalizeTransportSpec(origSpec.c_str(), normSpec, argMap);
-
-    if (ER_OK == status) {
-        /* Disconnect */
-        status = ProcDisconnect(msg->GetSender(), normSpec);
-
-        /* Set reply code */
-        replyCode = (ER_OK == status) ? ALLJOYN_DISCONNECT_REPLY_SUCCESS : ALLJOYN_DISCONNECT_REPLY_FAILED;
-    }
-    if (ER_OK != status) {
-        QCC_LogError(status, ("AllJoynObj::Disconnect (spec=%s) failed", origSpec.c_str()));
-    }
-
-    /* Reply to request */
-    MsgArg replyArg("u", replyCode);
-    status = MethodReply(msg, &replyArg, 1);
-    QCC_DbgPrintf(("AllJoynObj::Disconnect(%s) returned %d (status=%s)", origSpec.c_str(), replyCode, QCC_StatusText(status)));
-
-    /* Log error if reply could not be sent */
-    if (ER_OK != status) {
-        QCC_LogError(status, ("Failed to respond to org.alljoyn.Bus.Disconnect"));
-    }
-}
-
-QStatus AllJoynObj::ProcDisconnect(const qcc::String& sender, const qcc::String& normConnectSpec)
-{
-    QCC_DbgTrace(("AllJoynObj::ProcDisconnect(sender = \"%s\", normConnectSpec = \"%s\")",
-                  sender.c_str(), normConnectSpec.c_str()));
-    QStatus status;
-
-    /* Check to see if this connection exists */
-    bool foundConn = false;
-    bool connHasRefs = false;
-
-    connectMapLock.Lock();
-    pair<multimap<qcc::String, qcc::String>::iterator,
-         multimap<qcc::String, qcc::String>::iterator> range = connectMap.equal_range(normConnectSpec);
-
-    /* Find the first entry in the connectMap and delete it */
-    multimap<qcc::String, qcc::String>::iterator it = range.first;
-    while (it != range.second) {
-        if (!foundConn && it->second == sender) {
-            multimap<qcc::String, qcc::String>::iterator lastIt = it++;
-            connectMap.erase(lastIt);
-            foundConn = true;
-        } else {
-            connHasRefs = true;
-            ++it;
-        }
-    }
-    connectMapLock.Unlock();
-
-    /* Disconnect connection if no other refs exist */
-    if (foundConn && !connHasRefs) {
-        status =  bus.Disconnect(normConnectSpec.c_str());
-    } else if (foundConn) {
-        status = ER_OK;
-    } else {
-        status = ER_FAIL;
-    }
-
-    return status;
-}
-
-#endif
-
 void AllJoynObj::CreateSession(const InterfaceDescription::Member* member, Message& msg)
 {
     uint32_t replyCode = ALLJOYN_CREATESESSION_REPLY_SUCCESS;
@@ -397,6 +243,7 @@ void AllJoynObj::CreateSession(const InterfaceDescription::Member* member, Messa
     size_t numArgs;
     const MsgArg* args;
     MsgArg replyArgs[2];
+    QStatus status;
 
     msg->GetArgs(numArgs, args);
     assert(numArgs == 2);
@@ -407,7 +254,8 @@ void AllJoynObj::CreateSession(const InterfaceDescription::Member* member, Messa
     String sender = msg->GetSender();
 
     /* Check to make sure session name has been successfully requested from the bus and owned by the sender */
-    if (router.FindEndpoint(sessionName) != router.FindEndpoint(sender)) {
+    BusEndpoint* ep = router.FindEndpoint(sender);
+    if (!ep || (router.FindEndpoint(sessionName) != ep)) {
         replyCode = ALLJOYN_CREATESESSION_REPLY_NOT_OWNER;
     } else {
         /* Assign a session id and store the session information */
@@ -428,7 +276,7 @@ void AllJoynObj::CreateSession(const InterfaceDescription::Member* member, Messa
     /* Reply to request */
     replyArgs[0].Set("u", replyCode);
     replyArgs[1].Set("u", id);
-    QStatus status = MethodReply(msg, replyArgs, ArraySize(replyArgs));
+    status = MethodReply(msg, replyArgs, ArraySize(replyArgs));
     QCC_DbgPrintf(("AllJoynObj::CreateSession(%s) returned (%d,%u) (status=%s)", sessionName.c_str(), replyCode, id, QCC_StatusText(status)));
 
     /* Log error if reply could not be sent */
@@ -616,18 +464,30 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
         }
     }
 
+    /* If session was successful, Add two-way sessions to the table */
+    if (b2bEp && (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS)) {
+        BusEndpoint* joinerEp = ajObj.router.FindEndpoint(msg->GetSender());
+        if (joinerEp) {
+            status = ajObj.router.AddSessionRoute(msg->GetSender(), id, *sessionEp, b2bEp, b2bEp ? NULL : &qosIn);
+            if (status != ER_OK) {
+                replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+                QCC_LogError(status, ("AddSessionRoute %s->%s failed", msg->GetSender(), sessionEp->GetUniqueName().c_str()));
+            }
+            RemoteEndpoint* tEp = NULL;
+            status = ajObj.router.AddSessionRoute(sessionEp->GetUniqueName().c_str(), id, *joinerEp, tEp);
+            if (status != ER_OK) {
+                replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+                QCC_LogError(status, ("AddSessionRoute %s->%s failed", sessionEp->GetUniqueName().c_str(), joinerEp->GetUniqueName().c_str()));
+            }
+        } else {
+            replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+            QCC_LogError(ER_BUS_NO_ENDPOINT, ("Cannot find joiner endpoint %s", msg->GetSender()));
+        }
+    }
+
     /* If session was unsuccessful, we need to cleanup any b2b ep that was created */
     if (b2bEp && !reusedB2b && (replyCode != ALLJOYN_JOINSESSION_REPLY_SUCCESS)) {
         b2bEp->DecrementRef();
-    }
-
-    /* If session was successful, Add a session to the table */
-    if (b2bEp && (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS)) {
-        status = ajObj.router.AddSessionRoute(msg->GetSender(), id, *sessionEp, b2bEp, b2bEp ? NULL : &qosIn);
-        if (status != ER_OK) {
-            replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-            QCC_LogError(status, ("AddSessionRoute failed"));
-        }
     }
 
     ajObj.virtualEndpointsLock.Unlock();
@@ -829,7 +689,17 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                     qosOut = sit->second.qos;
                     replyCode = ALLJOYN_JOINSESSION_REPLY_SUCCESS;
                     sessionMap[id].memberNames.push_back(src);
-                    router.AddSessionRoute(dest, id, *srcEp, srcB2BEp);
+                    status = router.AddSessionRoute(dest, id, *srcEp, srcB2BEp);
+                    if (ER_OK != status) {
+                        QCC_LogError(status, ("AddSessionRoute %s->%s failed", dest, srcEp->GetUniqueName().c_str()));
+                    }
+                    if (ER_OK == status) {
+                        RemoteEndpoint* tEp = NULL;
+                        status = router.AddSessionRoute(src, id, *destEp, tEp);
+                        if (ER_OK != status) {
+                            QCC_LogError(status, ("AddSessionRoute %s->%s failed", src, destEp->GetUniqueName().c_str()));
+                        }
+                    }
                 } else {
                     replyCode = (srcB2BEp && srcEp) ? ALLJOYN_JOINSESSION_REPLY_REJECTED : ALLJOYN_JOINSESSION_REPLY_FAILED;
                 }
@@ -1065,49 +935,6 @@ QStatus AllJoynObj::ProcCancelAdvertise(const qcc::String& sender, const qcc::St
     advertiseMapLock.Unlock();
     return status;
 }
-
-#if 0
-void AllJoynObj::ListAdvertisedNames(const InterfaceDescription::Member* member, Message& msg)
-{
-    QCC_DbgTrace(("AllJoynObj::ListAdvertisedNames()"));
-    QStatus status;
-
-    advertiseMapLock.Lock();
-
-    MsgArg* names(new MsgArg[advertiseMap.size()]);
-    size_t count(0);
-    multimap<qcc::String, qcc::String>::const_iterator it(advertiseMap.begin());
-
-    while (it != advertiseMap.end()) {
-        const qcc::String& name(it->first);
-        QCC_DbgPrintf(("AllJoynObj::ListAdvertisedNames - Name[%u] = %s", count, name.c_str()));
-        names[count++].Set("s", name.c_str());
-
-        // skip to next name
-        it = advertiseMap.upper_bound(name);
-    }
-
-    advertiseMapLock.Unlock();
-
-    MsgArg replyArg;
-
-    if (count > 0) {
-        replyArg.Set("a*", count, names);
-        replyArg.SetOwnershipFlags(MsgArg::OwnsArgs);
-    } else {
-        replyArg.Set("as", 0);
-    }
-
-    status = MethodReply(msg, &replyArg, 1);
-    QCC_DbgPrintf(("AllJoynObj::ListAdvertisedNames() returned %u names (status=%s)",
-                   count, QCC_StatusText(status)));
-
-    /* Log error if reply could not be sent */
-    if (status != ER_OK) {
-        QCC_LogError(status, ("Failed to respond to org.alljoyn.Bus.ListAdvertisedNames"));
-    }
-}
-#endif
 
 void AllJoynObj::GetAdvertisedNames(std::vector<qcc::String>& names)
 {

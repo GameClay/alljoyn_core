@@ -21,14 +21,14 @@
 #include <alljoyn/DBusStd.h>
 #include <alljoyn/AllJoynStd.h>
 #include <qcc/Log.h>
-// #include <qcc/Environ.h>
 #include <qcc/String.h>
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 /* constants */
 static const char* CHAT_SERVICE_INTERFACE_NAME = "org.alljoyn.bus.samples.chat";
-static const char* NAME_PREFIX = "org.alljoyn.bus.samples.chat";
+static const char* NAME_PREFIX = "org.alljoyn.bus.samples.chat.";
 static const char* CHAT_SERVICE_OBJECT_PATH = "/chatService";
 
 using namespace ajn;
@@ -41,7 +41,10 @@ class MyBusListener;
 static ajn::BusAttachment* s_bus = NULL;
 static ChatObject* s_chatObj = NULL;
 static MyBusListener* s_busListener = NULL;
-static qcc::String s_advertisedname;
+static qcc::String s_advertisedName;
+static qcc::String s_joinName;
+static SessionId s_sessionId = 0;
+static bool s_joinComplete = false;
 
 
 /* Bus object */
@@ -74,11 +77,13 @@ class ChatObject : public BusObject {
 
     /** Send a Chat signal */
     QStatus SendChatSignal(const char* msg) {
-        MsgArg chatArg("s", msg);
 
+        MsgArg chatArg("s", msg);
         uint8_t flags = 0;
-        flags |= ALLJOYN_FLAG_GLOBAL_BROADCAST;
-        return Signal(NULL, *chatSignalMember, &chatArg, 1, 0, flags);
+        if (0 == s_sessionId) {
+            printf("Sending Chat signal without a session id\n");
+        }
+        return Signal(NULL, s_sessionId, *chatSignalMember, &chatArg, 1, 0, flags);
     }
 
     /** Receive a signal from another Chat client */
@@ -87,119 +92,38 @@ class ChatObject : public BusObject {
         printf("%s: %s\n", msg->GetSender(), msg->GetArg(0)->v_string.str);
     }
 
-    void NameAcquiredCB(Message& msg, void* context)
-    {
-        /* Check name acquired result */
-        size_t numArgs;
-        const MsgArg* args;
-        msg->GetArgs(numArgs, args);
-
-        if (args[0].v_uint32 == DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
-            /* Begin Advertising the well known name to remote busses */
-            const ProxyBusObject& alljoynObj = s_bus->GetAllJoynProxyObj();
-            MsgArg arg("s", s_advertisedname.c_str());
-            QStatus status = alljoynObj.MethodCallAsync(org::alljoyn::Bus::InterfaceName,
-                                                        "AdvertiseName",
-                                                        this,
-                                                        static_cast<MessageReceiver::ReplyHandler>(&ChatObject::AdvertiseRequestCB),
-                                                        &arg,
-                                                        1);
-            if (ER_OK != status) {
-                printf("Sending org.alljoyn.bus.Advertise failed\n");
-            } else {
-                printf("Advertising name %s\n", s_advertisedname.c_str());
-            }
-        } else {
-            printf("Failed to obtain name \"%s\". RequestName returned %d\n", s_advertisedname.c_str(), args[0].v_uint32);
-        }
-
-
-
-    }
-
-
-    void AdvertiseRequestCB(Message& msg, void* context)
-    {
-        /* Make sure request was processed */
-        size_t numArgs;
-        const MsgArg* args;
-        msg->GetArgs(numArgs, args);
-
-        if ((MESSAGE_METHOD_RET != msg->GetType()) || (ALLJOYN_ADVERTISENAME_REPLY_SUCCESS != args[0].v_uint32)) {
-            printf("Failed to advertise name \"%s\". org.alljoyn.bus.Advertise returned %d\n", s_advertisedname.c_str(), args[0].v_uint32);
-        }
-
-    }
-
-
-    void ObjectRegistered(void) {
-
-        BusObject::ObjectRegistered();
-
-        /* Request a well-known name */
-        /* Note that you cannot make a blocking method call here */
-        const ProxyBusObject& dbusObj = s_bus->GetDBusProxyObj();
-        MsgArg args[2];
-        args[0].Set("s", s_advertisedname.c_str());
-        args[1].Set("u", 6);
-        QStatus status = dbusObj.MethodCallAsync(org::freedesktop::DBus::InterfaceName,
-                                                 "RequestName",
-                                                 s_chatObj,
-                                                 static_cast<MessageReceiver::ReplyHandler>(&ChatObject::NameAcquiredCB),
-                                                 args,
-                                                 2);
-        if (ER_OK != status) {
-            printf("Failed to request name %s \n", s_advertisedname.c_str());
-        } else {
-            printf("Requested name %s\n", s_advertisedname.c_str());
-        }
-    }
-
-    /** Release the well-known name if it was acquired */
-    void ReleaseName() {
-        if (s_bus) {
-            uint32_t disposition = 0;
-
-            const ProxyBusObject& dbusObj = s_bus->GetDBusProxyObj();
-            Message reply(*s_bus);
-            MsgArg arg;
-            arg.Set("s", s_advertisedname.c_str());
-            QStatus status = dbusObj.MethodCall(org::freedesktop::DBus::InterfaceName,
-                                                "ReleaseName",
-                                                &arg,
-                                                1,
-                                                reply,
-                                                5000);
-            if (ER_OK == status) {
-                disposition = reply->GetArg(0)->v_uint32;
-            }
-            if ((ER_OK != status) || (disposition != DBUS_RELEASE_NAME_REPLY_RELEASED)) {
-                printf("Failed to release name %s (%s, disposition=%d)\n", s_advertisedname.c_str(), QCC_StatusText(status), disposition);
-            }
-        }
-    }
-
   private:
     const InterfaceDescription::Member* chatSignalMember;
 };
 
 class MyBusListener : public BusListener {
-    void FoundName(const char* name, const char* guid, const char* namePrefix, const char* busAddress)
+    void FoundAdvertisedName(const char* name, const QosInfo& advQos, const char* namePrefix)
     {
-        printf("FoundName signal received from %s\n", busAddress);
+        const char* convName = name + strlen(NAME_PREFIX);
+        printf("Discovered chat conversation: \"%s\"\n", convName);
 
-        /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
+        /* Join the conversation */
         uint32_t disposition;
-        QStatus status = s_bus->ConnectToRemoteBus(busAddress, disposition);
-        if ((ER_OK == status) && (ALLJOYN_CONNECT_REPLY_SUCCESS == disposition)) {
-            printf("Connected to bus %s having well known name %s\n", busAddress, name);
+        QosInfo qos = advQos;
+        QStatus status = s_bus->JoinSession(name, disposition, s_sessionId, qos);
+        if ((ER_OK == status) && (ALLJOYN_JOINSESSION_REPLY_SUCCESS == disposition)) {
+            printf("Joined conversation \"%s\"\n", convName);
         } else {
-            printf("ConnectToRemoteBus failed (status=%s, disposition=%d)\n", QCC_StatusText(status), disposition);
+            if (ER_OK == status) { status = ER_FAIL; }
+            printf("JoinSession failed (status=%s, disposition=%d)\n", QCC_StatusText(status), disposition);
         }
-
+        s_joinComplete = true;
     }
     void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner)
     {
+        printf("NameOwnerChanged: name=%s, oldOwner=%s, newOwner=%s\n", busName, previousOwner ? previousOwner : "<none>",
+               newOwner ? newOwner : "<none>");
+    }
+    bool AcceptSession(const char* sessionName, const char* joiner, const QosInfo& qos)
+    {
+        printf("Accepting join session request from %s (qos.proximity=%x, qos.traffic=%x, qos.transports=%x)\n",
+               joiner, qos.proximity, qos.traffic, qos.transports);
+        return true;
     }
 };
 
@@ -210,42 +134,47 @@ extern "C" {
 
 static void usage()
 {
-    printf("Usage: chat [-h] [-n <name>] [-d <daemon_bus_address>\n");
+    printf("Usage: chat [-h] [-s <name>] | [-j <name>]\n");
     exit(1);
 }
 
 int main(int argc, char** argv)
 {
     QStatus status = ER_OK;
-    qcc::String daemonAddr = "unix:abstract=alljoyn";
 
     /* Parse command line args */
     for (int i = 1; i < argc; ++i) {
-        if (0 == ::strcmp("-n", argv[i])) {
-            if (++i < argc) {
-                s_advertisedname = NAME_PREFIX;
-                s_advertisedname += ".";
-                s_advertisedname += argv[i];
-                continue;
+        if (0 == ::strcmp("-s", argv[i])) {
+            if ((++i < argc) && (argv[i][0] != '-')) {
+                s_advertisedName = NAME_PREFIX;
+                s_advertisedName += argv[i];
             } else {
-                printf("Missing parameter for \"-n\" option\n");
+                printf("Missing parameter for \"-s\" option\n");
                 usage();
             }
-        } else if (0 == ::strcmp("-d", argv[i])) {
-            if (++i < argc) {
-                daemonAddr = static_cast<qcc::String>(argv[i]);
-                continue;
+        } else if (0 == ::strcmp("-j", argv[i])) {
+            if ((++i < argc) && (argv[i][0] != '-')) {
+                s_joinName = NAME_PREFIX;
+                s_joinName += argv[i];
             } else {
-                printf("Missing parameter for \"-d\" option\n");
+                printf("Missing parameter for \"-j\" option\n");
                 usage();
             }
         } else if (0 == ::strcmp("-h", argv[i])) {
             usage();
-            continue;
         } else {
             printf("Unknown argument \"%s\"\n", argv[i]);
             usage();
         }
+    }
+
+    /* Validate command line */
+    if (s_advertisedName.empty() && s_joinName.empty()) {
+        printf("Must specify either -s or -j\n");
+        usage();
+    } else if (!s_advertisedName.empty() && !s_joinName.empty()) {
+        printf("Cannot specify both -s  and -j\n");
+        usage();
     }
 
     /* Create message bus */
@@ -262,7 +191,7 @@ int main(int argc, char** argv)
         printf("Failed to create interface \"%s\" (%s)\n", CHAT_SERVICE_INTERFACE_NAME, QCC_StatusText(status));
     }
 
-    /* Create and register the bus object that will be used to send out signals */
+    /* Create and register the bus object that will be used to send and receive signals */
     ChatObject chatObj(*bus, CHAT_SERVICE_OBJECT_PATH);
     bus->RegisterBusObject(chatObj);
     s_chatObj = &chatObj;
@@ -275,54 +204,109 @@ int main(int argc, char** argv)
         }
     }
 
-    /* Register a bus listener in order to get discovery indications */
+    /* Register a bus listener */
     if (ER_OK == status) {
         s_busListener = new MyBusListener();
         s_bus->RegisterBusListener(*s_busListener);
     }
 
-    /* Connect to the daemon */
+    /* Get env vars */
+    const char* connectSpec = getenv("BUS_ADDRESS");
+    if (!connectSpec) {
+        //connectSpec = "unix:path=/var/run/dbus/system_bus_socket";
+        connectSpec = "unix:abstract=alljoyn";
+    }
+
+    /* Connect to the local daemon */
     if (ER_OK == status) {
-        status = bus->Connect(daemonAddr.c_str());
+        status = s_bus->Connect(connectSpec);
         if (ER_OK != status) {
-            printf("BusAttachment::Connect(\"%s\") failed (%s)\n", daemonAddr.c_str(), QCC_StatusText(status));
+            printf("BusAttachment::Connect(%s) failed (%s)\n", connectSpec, QCC_StatusText(status));
         }
     }
 
-    /* Add a rule to allow org.codeaurora.samples.chat.Chat signals to be routed here */
-    if (ER_OK == status) {
-        MsgArg arg("s", "type='signal',interface='org.alljoyn.bus.samples.chat',member='Chat'");
-        Message reply(*bus);
-        const ProxyBusObject& dbusObj = bus->GetDBusProxyObj();
-        status = dbusObj.MethodCall(org::freedesktop::DBus::InterfaceName,
-                                    "AddMatch",
-                                    &arg,
-                                    1,
-                                    reply);
-        if (status != ER_OK) {
-            printf("Failed to register Match rule for 'org.alljoyn.bus.samples.chat.Chat': %s\n", QCC_StatusText(status));
+    const ProxyBusObject& dbusObj = s_bus->GetDBusProxyObj();
+    const ProxyBusObject& ajObj = bus->GetAllJoynProxyObj();
+
+    /* Advertise or discover based on command line options */
+    if (!s_advertisedName.empty()) {
+        /* Request name */
+        MsgArg args[2];
+        args[0].Set("s", s_advertisedName.c_str());
+        args[1].Set("u", DBUS_NAME_FLAG_DO_NOT_QUEUE);
+        Message reply(*s_bus);
+        QStatus status = dbusObj.MethodCall(org::freedesktop::DBus::InterfaceName,
+                                            "RequestName",
+                                            args,
+                                            2,
+                                            reply);
+        if (ER_OK == status) {
+            size_t na;
+            const MsgArg* replyArgs;
+            reply->GetArgs(na, replyArgs);
+            if (replyArgs[0].v_uint32 != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
+                status = ER_FAIL;
+                printf("org.freedesktop.DBus.ReplyName failed response=%u\n", replyArgs[0].v_uint32);
+            }
+        } else {
+            printf("Failed to request name %s (%s)\n", s_advertisedName.c_str(), QCC_StatusText(status));
         }
-    }
 
-    Message reply(*bus);
-    const ProxyBusObject& alljoynObj = bus->GetAllJoynProxyObj();
+        /* Create session */
+        if (ER_OK == status) {
+            uint32_t disposition = 0;
+            QosInfo qos;
+            qos.proximity = QosInfo::PROXIMITY_ANY;
+            qos.traffic = QosInfo::TRAFFIC_ANY;
+            qos.transports = QosInfo::TRANSPORT_ANY;
+            status = s_bus->CreateSession(s_advertisedName.c_str(), qos, disposition, s_sessionId);
+            if (ER_OK != status) {
+                printf("CreateSession failed (%s)\n", QCC_StatusText(status));
+            } else if (disposition != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
+                status = ER_FAIL;
+                printf("CreateSession returned failed disposition (%u)\n", disposition);
+            }
+        }
 
-    // Look for the prefix
-    MsgArg serviceName("s", NAME_PREFIX);
-    status = alljoynObj.MethodCall(::org::alljoyn::Bus::InterfaceName,
-                                   "FindName",
-                                   &serviceName,
-                                   1,
-                                   reply,
-                                   5000);
-    if (ER_OK == status) {
-        if (reply->GetType() != MESSAGE_METHOD_RET) {
-            status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
-        } else if (reply->GetArg(0)->v_uint32 != ALLJOYN_FINDNAME_REPLY_SUCCESS) {
-            status = ER_FAIL;
+        /* Advertise name */
+        if (ER_OK == status) {
+            MsgArg arg("s", s_advertisedName.c_str());
+            status = ajObj.MethodCall(org::alljoyn::Bus::InterfaceName, "AdvertiseName", &arg, 1, reply);
+            if (ER_OK == status) {
+                size_t na;
+                const MsgArg* replyArgs;
+                reply->GetArgs(na, replyArgs);
+                if (replyArgs[0].v_uint32 != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS) {
+                    status = ER_FAIL;
+                    printf("org.alljoyn.Bus.AdvertiseName failed response=%u\n", replyArgs[0].v_uint32);
+                }
+            } else {
+                printf("Failed to advertise name %s (%s)\n", s_advertisedName.c_str(), QCC_StatusText(status));
+            }
         }
     } else {
-        printf("%s.FindName failed\n", org::alljoyn::Bus::InterfaceName);
+        /* Discover name */
+        MsgArg serviceName("s", s_joinName.c_str());
+        Message reply(*bus);
+        status = ajObj.MethodCall(::org::alljoyn::Bus::InterfaceName,
+                                  "FindAdvertisedName",
+                                  &serviceName,
+                                  1,
+                                  reply);
+        if (ER_OK == status) {
+            if (reply->GetType() != MESSAGE_METHOD_RET) {
+                status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
+            } else if (reply->GetArg(0)->v_uint32 != ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS) {
+                status = ER_FAIL;
+            }
+        } else {
+            printf("org.alljoyn.Bus.FindAdvertisedName failed (%s)\n", QCC_StatusText(status));
+        }
+
+        /* Wait for join session to complete */
+        while (!s_joinComplete) {
+            sleep(1);
+        }
     }
 
     /* Take input from stdin and send it as a chat messages */
@@ -337,23 +321,15 @@ int main(int argc, char** argv)
         delete buf;
     }
 
-    /* Deregister the ServiceObject. */
-    chatObj.ReleaseName();
-    bus->DeregisterBusObject(chatObj);
-    if (s_chatObj) {
-        s_chatObj = NULL;
-    }
-
-    if (NULL != s_busListener) {
-        delete s_busListener;
-        s_busListener = NULL;
-    }
-
     /* Cleanup */
     if (bus) {
         delete bus;
         bus = NULL;
         s_bus = NULL;
+    }
+    if (NULL != s_busListener) {
+        delete s_busListener;
+        s_busListener = NULL;
     }
 
     return (int) status;

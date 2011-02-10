@@ -282,7 +282,7 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
     /* Send session multicast messages */
     if (destinationEmpty && (sessionId != 0)) {
         sessionCastMapLock.Lock();
-        pair<SessionId, StringMapKey> key(sessionId, destination);
+        pair<SessionId, StringMapKey> key(sessionId, msg->GetSender());
         multimap<pair<SessionId, StringMapKey>, BusEndpoint*>::iterator sit = sessionCastMap.find(key);
         while ((sit != sessionCastMap.end()) && (sit->first == key)) {
             QStatus tStatus = sit->second->PushMessage(msg);
@@ -388,13 +388,15 @@ void DaemonRouter::UnregisterEndpoint(BusEndpoint& endpoint)
     }
 }
 
-QStatus DaemonRouter::AddSessionRoute(const char* src, SessionId id, VirtualEndpoint& destEp, RemoteEndpoint*& b2bEp, QosInfo* qosHint)
+QStatus DaemonRouter::AddSessionRoute(const char* src, SessionId id, BusEndpoint& destEp, RemoteEndpoint*& b2bEp, QosInfo* qosHint)
 {
-    QStatus status = ER_FAIL;
-    if (b2bEp) {
-        status = destEp.AddSessionRef(id, *b2bEp);
-    } else if (qosHint) {
-        status = destEp.AddSessionRef(id, qosHint, b2bEp);
+    QStatus status = ER_OK;
+    if (destEp.GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL) {
+        if (b2bEp) {
+            status = static_cast<VirtualEndpoint&>(destEp).AddSessionRef(id, *b2bEp);
+        } else if (qosHint) {
+            status = static_cast<VirtualEndpoint&>(destEp).AddSessionRef(id, qosHint, b2bEp);
+        }
     }
 
     if (status == ER_OK) {
