@@ -17,115 +17,114 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
 <status_block xmlns:xi="http://www.w3.org/2001/XInclude">
   <xi:include href="../common/src/Status.xml"/>
 
-  <offset>0x9000</offset>
-  <status name="ER_BUS_ERRORS" comment="Error code block for ALLJOYN wire protocol"/>
-  <status name="ER_BUS_READ_ERROR" comment="Error attempting to read"/>
-  <status name="ER_BUS_WRITE_ERROR" comment="Error attempting to write"/>
-  <status name="ER_BUS_BAD_VALUE_TYPE" comment="Read an invalid value type"/>
-  <status name="ER_BUS_BAD_HEADER_FIELD" comment="Read an invalid header field"/>
-  <status name="ER_BUS_BAD_SIGNATURE" comment="Signature was badly formed"/>
-  <status name="ER_BUS_BAD_OBJ_PATH" comment="Object path contained an illegal character"/>
-  <status name="ER_BUS_BAD_MEMBER_NAME" comment="A member name contained an illegal character"/>
-  <status name="ER_BUS_BAD_INTERFACE_NAME" comment="An interface name contained an illegal character"/>
-  <status name="ER_BUS_BAD_ERROR_NAME" comment="An error name contained an illegal character"/>
-  <status name="ER_BUS_BAD_BUS_NAME" comment="A bus name contained an illegal character"/>
-  <status name="ER_BUS_NAME_TOO_LONG" comment="A name exceeded the permitted length"/>
-  <status name="ER_BUS_BAD_LENGTH" comment="Length of an array was not a multiple of the array element size"/>
-  <status name="ER_BUS_BAD_VALUE" comment="Parsed value in a message was invalid (e.g. boolean > 1) "/>
-  <status name="ER_BUS_BAD_HDR_FLAGS" comment="Uknown header flags"/>
-  <status name="ER_BUS_BAD_BODY_LEN" comment="Body length was to long or too short"/>
-  <status name="ER_BUS_BAD_HEADER_LEN" comment="Header length was to long or too short"/>
-  <status name="ER_BUS_UNKNOWN_SERIAL" comment="Serial number in a method response was unknown"/>
-  <status name="ER_BUS_UNKNOWN_PATH" comment="Path in a method call or signal was unknown"/>
-  <status name="ER_BUS_UNKNOWN_INTERFACE" comment="Interface in a method call or signal was unknown"/>
-  <status name="ER_BUS_ESTABLISH_FAILED" comment="Failed to establish a connection"/>
-  <status name="ER_BUS_UNEXPECTED_SIGNATURE" comment="Signature in message was not what was expected"/>
-  <status name="ER_BUS_INTERFACE_MISSING" comment="Interface header field is missing"/>
-  <status name="ER_BUS_PATH_MISSING" comment="Object path header field is missing"/>
-  <status name="ER_BUS_MEMBER_MISSING" comment="Member header field is missing"/>
-  <status name="ER_BUS_REPLY_SERIAL_MISSING" comment="Reply-Serial header field is missing"/>
-  <status name="ER_BUS_ERROR_NAME_MISSING" comment="Error Name header field is missing"/>
-  <status name="ER_BUS_INTERFACE_NO_SUCH_MEMBER" comment="Interface does not have the requested member"/>
-  <status name="ER_BUS_NO_SUCH_OBJECT" comment="Object does not exist"/>
-  <status name="ER_BUS_OBJECT_NO_SUCH_MEMBER" comment="Object does not have the requested member (on any interface)"/>
-  <status name="ER_BUS_OBJECT_NO_SUCH_INTERFACE" comment="Object does not have the requested interface"/>
-  <status name="ER_BUS_NO_SUCH_INTERFACE" comment="Requested interface does not exist"/>
-  <status name="ER_BUS_MEMBER_NO_SUCH_SIGNATURE" comment="Member exists but does not have the requested signature"/>
-  <status name="ER_BUS_NOT_NUL_TERMINATED" comment="A string or signature was not NUL terminated"/>
-  <status name="ER_BUS_NO_SUCH_PROPERTY" comment="No such property for a GET or SET operation "/>
-  <status name="ER_BUS_SET_WRONG_SIGNATURE" comment="Attempt to set a property value with the wrong signature"/>
-  <status name="ER_BUS_PROPERTY_VALUE_NOT_SET" comment="Attempt to get a property whose value has not been set"/>
-  <status name="ER_BUS_PROPERTY_ACCESS_DENIED" comment="Attempt to set or get a property failed due to access rights"/>
-  <status name="ER_BUS_NO_TRANSPORTS" comment="No physical message transports were specified"/>
-  <status name="ER_BUS_BAD_TRANSPORT_ARGS" comment="Missing or badly formatted transports args specified"/>
-  <status name="ER_BUS_NO_ROUTE" comment="Message cannot be routed to destination"/>
-  <status name="ER_BUS_NO_ENDPOINT" comment="An endpoint with given name cannot be found"/>
-  <status name="ER_BUS_BAD_SEND_PARAMETER" comment="Bad parameter in send message call"/>
-  <status name="ER_BUS_UNMATCHED_REPLY_SERIAL" comment="Serial number in method call reply message did not match any method calls"/>
-  <status name="ER_BUS_BAD_SENDER_ID" comment="Sender identifier is invalid"/>
-  <status name="ER_BUS_TRANSPORT_NOT_STARTED" comment="Attempt to send on a transport that has not been started"/>
-  <status name="ER_BUS_EMPTY_MESSAGE" comment="Attempt to deliver an empty message"/>
-  <status name="ER_BUS_NOT_OWNER" comment="A bus name operation was not permitted because sender does not own name"/>
-  <status name="ER_BUS_SET_PROPERTY_REJECTED" comment="Application rejected a request to set a property"/>
-  <status name="ER_BUS_CONNECT_FAILED" comment="Connection failed"/>
-  <status name="ER_BUS_REPLY_IS_ERROR_MESSAGE" comment="Response from a method call was an ERROR message"/>
-  <status name="ER_BUS_NOT_AUTHENTICATING" comment="Not in an authentication conversation"/>
-  <status name="ER_BUS_NO_LISTENER" comment="A listener is required to implement the requested function"/>
-  <status name="ER_BUS_BT_TRANSPORT_ERROR" comment="The Bluetooth transport reported an error"/>
-  <status name="ER_BUS_NOT_ALLOWED" comment="The operation attempted is not allowed"/>
-  <status name="ER_BUS_WRITE_QUEUE_FULL" comment="Write failed because write queue is full"/>
-  <status name="ER_BUS_ENDPOINT_CLOSING" comment="Operation not permitted on endpoint in process of closing"/>
-  <status name="ER_BUS_INTERFACE_MISMATCH" comment="Received two conflicting definitions for the same interface"/>
-  <status name="ER_BUS_MEMBER_ALREADY_EXISTS" comment="Attempt to add a member to an interface that already exists"/>
-  <status name="ER_BUS_PROPERTY_ALREADY_EXISTS" comment="Attempt to add a property to an interface that already exists"/>
-  <status name="ER_BUS_IFACE_ALREADY_EXISTS" comment="Attempt to add an interface to an object that already exists"/>
-  <status name="ER_BUS_ERROR_RESPONSE" comment="Received an error response to a method call"/>
-  <status name="ER_BUS_BAD_XML" comment="XML data is improperly formatted"/>
-  <status name="ER_BUS_BAD_CHILD_PATH" comment="The path of a child object is incorrect given it's parent's path"/>
-  <status name="ER_BUS_OBJ_ALREADY_EXISTS" comment="Attempt to add a RemoteObject child that already exists"/>
-  <status name="ER_BUS_OBJ_NOT_FOUND" comment="Object with given path does not exist"/>
-  <status name="ER_BUS_CANNOT_EXPAND_MESSAGE" comment="Expansion information for a compressed message is not available"/>
-  <status name="ER_BUS_NOT_COMPRESSED" comment="Attempt to expand a message that is not compressed"/>
-  <status name="ER_BUS_ALREADY_CONNECTED" comment="Attempt to connect to a bus which is already connected"/>
-  <status name="ER_BUS_NOT_CONNECTED" comment="Attempt to use a bus attachment that is not connected to a bus daemon"/>
-  <status name="ER_BUS_ALREADY_LISTENING" comment="Attempt to listen on a bus address which is already being listened on"/>
-  <status name="ER_BUS_KEY_UNAVAILABLE" comment="The request key is not available"/>
-  <status name="ER_BUS_TRUNCATED" comment="Insufficient memory to copy data"/>
-  <status name="ER_BUS_KEY_STORE_NOT_LOADED" comment="Accessing the key store before it is loaded"/>
-  <status name="ER_BUS_NO_AUTHENTICATION_MECHANISM" comment="There is no authentication mechanism"/>
-  <status name="ER_BUS_BUS_ALREADY_STARTED" comment="Bus has already been started"/>
-  <status name="ER_BUS_BUS_NOT_STARTED" comment="Bus has not yet been started"/>
-  <status name="ER_BUS_KEYBLOB_OP_INVALID" comment="The operation requested cannot be performed using this key blob"/>
-  <status name="ER_BUS_INVALID_HEADER_CHECKSUM" comment="Invalid header checksum in an encrypted message"/>
-  <status name="ER_BUS_MESSAGE_NOT_ENCRYPTED" comment="Security policy requires the message to be encrypted"/>
-  <status name="ER_BUS_INVALID_HEADER_SERIAL" comment="Serial number in message header is invalid"/>
-  <status name="ER_BUS_TIME_TO_LIVE_EXPIRED" comment="Message time-to-live has expired"/>
-  <status name="ER_BUS_HDR_EXPANSION_INVALID" comment="Something is wrong with a header expansion"/>
-  <status name="ER_BUS_MISSING_COMPRESSION_TOKEN" comment="Compressed headers require a compression token"/>
-  <status name="ER_BUS_NO_PEER_GUID" comment="There is no GUID for this peer"/>
-  <status name="ER_BUS_MESSAGE_DECRYPTION_FAILED" comment="Message decryption failed"/>
-  <status name="ER_BUS_SECURITY_FATAL" comment="A fatal security failure"/>
-  <status name="ER_BUS_KEY_EXPIRED" comment="An encryption key has expired"/>
-  <status name="ER_BUS_CORRUPT_KEYSTORE" comment="Key store is corrupt"/>
-  <status name="ER_BUS_NO_CALL_FOR_REPLY" comment="A reply only allowed in response to a method call"/>
-  <status name="ER_BUS_NOT_A_COMPLETE_TYPE" comment="Signature must be a single complete type"/>
-  <status name="ER_BUS_POLICY_VIOLATION" comment="Message does not meet policy restrictions"/>
-  <status name="ER_BUS_NO_SUCH_SERVICE" comment="Service name is unknown"/>
-  <status name="ER_BUS_TRANSPORT_NOT_AVAILABLE" comment="Transport cannot be used due to underlying mechanism disabled by OS"/>
-  <status name="ER_BUS_INVALID_AUTH_MECHANISM" comment="Authentication mechanism is not valid"/>
-  <status name="ER_BUS_KEYSTORE_VERSION_MISMATCH" comment="Key store has wrong version number"/>
-  <status name="ER_BUS_BLOCKING_CALL_NOT_ALLOWED" comment="A synchronous method call from within handler is not permitted."/>
-  <status name="ER_BUS_SIGNATURE_MISMATCH" comment="MsgArg(s) do not match signature."/>
-  <status name="ER_BUS_STOPPING" comment="The bus is stopping."/>
-  <status name="ER_BUS_METHOD_CALL_ABORTED" comment="The method call was aborted."/>
-  <status name="ER_BUS_CANNOT_ADD_INTERFACE" comment="An interface cannot be added to an object that is already registered."/>
-  <status name="ER_BUS_CANNOT_ADD_HANDLER" comment="A method handler cannot be added to an object that is already registered."/>
-  <status name="ER_BUS_KEYSTORE_NOT_LOADED" comment="Key store has not been loaded"/>
-  <status name="ER_BUS_MEDIA_STREAM_NOT_FOUND" comment="Media stream was not found"/>
-  <status name="ER_BUS_MEDIA_STREAM_OPEN" comment="Media stream is open"/>
-  <status name="ER_BUS_MEDIA_STREAM_CLOSED" comment="Media stream is closed"/>
-  <status name="ER_BUS_MEDIA_STREAM_EXISTS" comment="Media stream is already added"/>
-  <status name="ER_BUS_NO_SUCH_HANDLE" comment="Handle is not in the handle table"/>
-  <status name="ER_BUS_HANDLES_NOT_ENABLED" comment="Passing of handles is not enabled for this connection"/>
-  <status name="ER_BUS_HANDLES_MISMATCH" comment="Message had more handles than expected"/>
+  <status name="ER_BUS_ERRORS" value="0x9000" comment="Error code block for ALLJOYN wire protocol"/>
+  <status name="ER_BUS_READ_ERROR" value="0x9001" comment="Error attempting to read"/>
+  <status name="ER_BUS_WRITE_ERROR" value="0x9002" comment="Error attempting to write"/>
+  <status name="ER_BUS_BAD_VALUE_TYPE" value="0x9003" comment="Read an invalid value type"/>
+  <status name="ER_BUS_BAD_HEADER_FIELD" value="0x9004" comment="Read an invalid header field"/>
+  <status name="ER_BUS_BAD_SIGNATURE" value="0x9005" comment="Signature was badly formed"/>
+  <status name="ER_BUS_BAD_OBJ_PATH" value="0x9006" comment="Object path contained an illegal character"/>
+  <status name="ER_BUS_BAD_MEMBER_NAME" value="0x9007" comment="A member name contained an illegal character"/>
+  <status name="ER_BUS_BAD_INTERFACE_NAME" value="0x9008" comment="An interface name contained an illegal character"/>
+  <status name="ER_BUS_BAD_ERROR_NAME" value="0x9009" comment="An error name contained an illegal character"/>
+  <status name="ER_BUS_BAD_BUS_NAME" value="0x900a" comment="A bus name contained an illegal character"/>
+  <status name="ER_BUS_NAME_TOO_LONG" value="0x900b" comment="A name exceeded the permitted length"/>
+  <status name="ER_BUS_BAD_LENGTH" value="0x900c" comment="Length of an array was not a multiple of the array element size"/>
+  <status name="ER_BUS_BAD_VALUE" value="0x900d" comment="Parsed value in a message was invalid (e.g. boolean > 1) "/>
+  <status name="ER_BUS_BAD_HDR_FLAGS" value="0x900e" comment="Uknown header flags"/>
+  <status name="ER_BUS_BAD_BODY_LEN" value="0x900f" comment="Body length was to long or too short"/>
+  <status name="ER_BUS_BAD_HEADER_LEN" value="0x9010" comment="Header length was to long or too short"/>
+  <status name="ER_BUS_UNKNOWN_SERIAL" value="0x9011" comment="Serial number in a method response was unknown"/>
+  <status name="ER_BUS_UNKNOWN_PATH" value="0x9012" comment="Path in a method call or signal was unknown"/>
+  <status name="ER_BUS_UNKNOWN_INTERFACE" value="0x9013" comment="Interface in a method call or signal was unknown"/>
+  <status name="ER_BUS_ESTABLISH_FAILED" value="0x9014" comment="Failed to establish a connection"/>
+  <status name="ER_BUS_UNEXPECTED_SIGNATURE" value="0x9015" comment="Signature in message was not what was expected"/>
+  <status name="ER_BUS_INTERFACE_MISSING" value="0x9016" comment="Interface header field is missing"/>
+  <status name="ER_BUS_PATH_MISSING" value="0x9017" comment="Object path header field is missing"/>
+  <status name="ER_BUS_MEMBER_MISSING" value="0x9018" comment="Member header field is missing"/>
+  <status name="ER_BUS_REPLY_SERIAL_MISSING" value="0x9019" comment="Reply-Serial header field is missing"/>
+  <status name="ER_BUS_ERROR_NAME_MISSING" value="0x901a" comment="Error Name header field is missing"/>
+  <status name="ER_BUS_INTERFACE_NO_SUCH_MEMBER" value="0x901b" comment="Interface does not have the requested member"/>
+  <status name="ER_BUS_NO_SUCH_OBJECT" value="0x901c" comment="Object does not exist"/>
+  <status name="ER_BUS_OBJECT_NO_SUCH_MEMBER" value="0x901d" comment="Object does not have the requested member (on any interface)"/>
+  <status name="ER_BUS_OBJECT_NO_SUCH_INTERFACE" value="0x901e" comment="Object does not have the requested interface"/>
+  <status name="ER_BUS_NO_SUCH_INTERFACE" value="0x901f" comment="Requested interface does not exist"/>
+  <status name="ER_BUS_MEMBER_NO_SUCH_SIGNATURE" value="0x9020" comment="Member exists but does not have the requested signature"/>
+  <status name="ER_BUS_NOT_NUL_TERMINATED" value="0x9021" comment="A string or signature was not NUL terminated"/>
+  <status name="ER_BUS_NO_SUCH_PROPERTY" value="0x9022" comment="No such property for a GET or SET operation "/>
+  <status name="ER_BUS_SET_WRONG_SIGNATURE" value="0x9023" comment="Attempt to set a property value with the wrong signature"/>
+  <status name="ER_BUS_PROPERTY_VALUE_NOT_SET" value="0x9024" comment="Attempt to get a property whose value has not been set"/>
+  <status name="ER_BUS_PROPERTY_ACCESS_DENIED" value="0x9025" comment="Attempt to set or get a property failed due to access rights"/>
+  <status name="ER_BUS_NO_TRANSPORTS" value="0x9026" comment="No physical message transports were specified"/>
+  <status name="ER_BUS_BAD_TRANSPORT_ARGS" value="0x9027" comment="Missing or badly formatted transports args specified"/>
+  <status name="ER_BUS_NO_ROUTE" value="0x9028" comment="Message cannot be routed to destination"/>
+  <status name="ER_BUS_NO_ENDPOINT" value="0x9029" comment="An endpoint with given name cannot be found"/>
+  <status name="ER_BUS_BAD_SEND_PARAMETER" value="0x902a" comment="Bad parameter in send message call"/>
+  <status name="ER_BUS_UNMATCHED_REPLY_SERIAL" value="0x902b" comment="Serial number in method call reply message did not match any method calls"/>
+  <status name="ER_BUS_BAD_SENDER_ID" value="0x902c" comment="Sender identifier is invalid"/>
+  <status name="ER_BUS_TRANSPORT_NOT_STARTED" value="0x902d" comment="Attempt to send on a transport that has not been started"/>
+  <status name="ER_BUS_EMPTY_MESSAGE" value="0x902e" comment="Attempt to deliver an empty message"/>
+  <status name="ER_BUS_NOT_OWNER" value="0x902f" comment="A bus name operation was not permitted because sender does not own name"/>
+  <status name="ER_BUS_SET_PROPERTY_REJECTED" value="0x9030" comment="Application rejected a request to set a property"/>
+  <status name="ER_BUS_CONNECT_FAILED" value="0x9031" comment="Connection failed"/>
+  <status name="ER_BUS_REPLY_IS_ERROR_MESSAGE" value="0x9032" comment="Response from a method call was an ERROR message"/>
+  <status name="ER_BUS_NOT_AUTHENTICATING" value="0x9033" comment="Not in an authentication conversation"/>
+  <status name="ER_BUS_NO_LISTENER" value="0x9034" comment="A listener is required to implement the requested function"/>
+  <status name="ER_BUS_BT_TRANSPORT_ERROR" value="0x9035" comment="The Bluetooth transport reported an error"/>
+  <status name="ER_BUS_NOT_ALLOWED" value="0x9036" comment="The operation attempted is not allowed"/>
+  <status name="ER_BUS_WRITE_QUEUE_FULL" value="0x9037" comment="Write failed because write queue is full"/>
+  <status name="ER_BUS_ENDPOINT_CLOSING" value="0x9038" comment="Operation not permitted on endpoint in process of closing"/>
+  <status name="ER_BUS_INTERFACE_MISMATCH" value="0x9039" comment="Received two conflicting definitions for the same interface"/>
+  <status name="ER_BUS_MEMBER_ALREADY_EXISTS" value="0x903a" comment="Attempt to add a member to an interface that already exists"/>
+  <status name="ER_BUS_PROPERTY_ALREADY_EXISTS" value="0x903b" comment="Attempt to add a property to an interface that already exists"/>
+  <status name="ER_BUS_IFACE_ALREADY_EXISTS" value="0x903c" comment="Attempt to add an interface to an object that already exists"/>
+  <status name="ER_BUS_ERROR_RESPONSE" value="0x903d" comment="Received an error response to a method call"/>
+  <status name="ER_BUS_BAD_XML" value="0x903e" comment="XML data is improperly formatted"/>
+  <status name="ER_BUS_BAD_CHILD_PATH" value="0x903f" comment="The path of a child object is incorrect given it's parent's path"/>
+  <status name="ER_BUS_OBJ_ALREADY_EXISTS" value="0x9040" comment="Attempt to add a RemoteObject child that already exists"/>
+  <status name="ER_BUS_OBJ_NOT_FOUND" value="0x9041" comment="Object with given path does not exist"/>
+  <status name="ER_BUS_CANNOT_EXPAND_MESSAGE" value="0x9042" comment="Expansion information for a compressed message is not available"/>
+  <status name="ER_BUS_NOT_COMPRESSED" value="0x9043" comment="Attempt to expand a message that is not compressed"/>
+  <status name="ER_BUS_ALREADY_CONNECTED" value="0x9044" comment="Attempt to connect to a bus which is already connected"/>
+  <status name="ER_BUS_NOT_CONNECTED" value="0x9045" comment="Attempt to use a bus attachment that is not connected to a bus daemon"/>
+  <status name="ER_BUS_ALREADY_LISTENING" value="0x9046" comment="Attempt to listen on a bus address which is already being listened on"/>
+  <status name="ER_BUS_KEY_UNAVAILABLE" value="0x9047" comment="The request key is not available"/>
+  <status name="ER_BUS_TRUNCATED" value="0x9048" comment="Insufficient memory to copy data"/>
+  <status name="ER_BUS_KEY_STORE_NOT_LOADED" value="0x9049" comment="Accessing the key store before it is loaded"/>
+  <status name="ER_BUS_NO_AUTHENTICATION_MECHANISM" value="0x904a" comment="There is no authentication mechanism"/>
+  <status name="ER_BUS_BUS_ALREADY_STARTED" value="0x904b" comment="Bus has already been started"/>
+  <status name="ER_BUS_BUS_NOT_STARTED" value="0x904c" comment="Bus has not yet been started"/>
+  <status name="ER_BUS_KEYBLOB_OP_INVALID" value="0x904d" comment="The operation requested cannot be performed using this key blob"/>
+  <status name="ER_BUS_INVALID_HEADER_CHECKSUM" value="0x904e" comment="Invalid header checksum in an encrypted message"/>
+  <status name="ER_BUS_MESSAGE_NOT_ENCRYPTED" value="0x904f" comment="Security policy requires the message to be encrypted"/>
+  <status name="ER_BUS_INVALID_HEADER_SERIAL" value="0x9050" comment="Serial number in message header is invalid"/>
+  <status name="ER_BUS_TIME_TO_LIVE_EXPIRED" value="0x9051" comment="Message time-to-live has expired"/>
+  <status name="ER_BUS_HDR_EXPANSION_INVALID" value="0x9052" comment="Something is wrong with a header expansion"/>
+  <status name="ER_BUS_MISSING_COMPRESSION_TOKEN" value="0x9053" comment="Compressed headers require a compression token"/>
+  <status name="ER_BUS_NO_PEER_GUID" value="0x9054" comment="There is no GUID for this peer"/>
+  <status name="ER_BUS_MESSAGE_DECRYPTION_FAILED" value="0x9055" comment="Message decryption failed"/>
+  <status name="ER_BUS_SECURITY_FATAL" value="0x9056" comment="A fatal security failure"/>
+  <status name="ER_BUS_KEY_EXPIRED" value="0x9057" comment="An encryption key has expired"/>
+  <status name="ER_BUS_CORRUPT_KEYSTORE" value="0x9058" comment="Key store is corrupt"/>
+  <status name="ER_BUS_NO_CALL_FOR_REPLY" value="0x9059" comment="A reply only allowed in response to a method call"/>
+  <status name="ER_BUS_NOT_A_COMPLETE_TYPE" value="0x905a" comment="Signature must be a single complete type"/>
+  <status name="ER_BUS_POLICY_VIOLATION" value="0x905b" comment="Message does not meet policy restrictions"/>
+  <status name="ER_BUS_NO_SUCH_SERVICE" value="0x905c" comment="Service name is unknown"/>
+  <status name="ER_BUS_TRANSPORT_NOT_AVAILABLE" value="0x905d" comment="Transport cannot be used due to underlying mechanism disabled by OS"/>
+  <status name="ER_BUS_INVALID_AUTH_MECHANISM" value="0x905e" comment="Authentication mechanism is not valid"/>
+  <status name="ER_BUS_KEYSTORE_VERSION_MISMATCH" value="0x905f" comment="Key store has wrong version number"/>
+  <status name="ER_BUS_BLOCKING_CALL_NOT_ALLOWED" value="0x9060" comment="A synchronous method call from within handler is not permitted."/>
+  <status name="ER_BUS_SIGNATURE_MISMATCH" value="0x9061" comment="MsgArg(s) do not match signature."/>
+  <status name="ER_BUS_STOPPING" value="0x9062" comment="The bus is stopping."/>
+  <status name="ER_BUS_METHOD_CALL_ABORTED" value="0x9063" comment="The method call was aborted."/>
+  <status name="ER_BUS_CANNOT_ADD_INTERFACE" value="0x9064" comment="An interface cannot be added to an object that is already registered."/>
+  <status name="ER_BUS_CANNOT_ADD_HANDLER" value="0x9065" comment="A method handler cannot be added to an object that is already registered."/>
+  <status name="ER_BUS_KEYSTORE_NOT_LOADED" value="0x9066" comment="Key store has not been loaded"/>
+  <status name="ER_BUS_MEDIA_STREAM_NOT_FOUND" value="0x9067" comment="Media stream was not found"/>
+  <status name="ER_BUS_MEDIA_STREAM_OPEN" value="0x9068" comment="Media stream is open"/>
+  <status name="ER_BUS_MEDIA_STREAM_CLOSED" value="0x9069" comment="Media stream is closed"/>
+  <status name="ER_BUS_MEDIA_STREAM_EXISTS" value="0x906a" comment="Media stream is already added"/>
+  <status name="ER_BUS_NO_SUCH_HANDLE" value="0x906b" comment="Handle is not in the handle table"/>
+  <status name="ER_BUS_HANDLES_NOT_ENABLED" value="0x906c" comment="Passing of handles is not enabled for this connection"/>
+  <status name="ER_BUS_HANDLES_MISMATCH" value="0x906d" comment="Message had more handles than expected"/>
 </status_block>
