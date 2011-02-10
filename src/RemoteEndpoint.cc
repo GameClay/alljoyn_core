@@ -157,7 +157,11 @@ QStatus RemoteEndpoint::Join(void)
         (*it++)->Join();
     }
     txQueueLock.Unlock();
-
+    /*
+     * Note that we don't join txThread and rxThread, rather we let the thread destructors handle
+     * this when the RemoteEndpoint destructor is called. The reason for this is tied up in the
+     * ThreadExit logic that coordinates the stopping of both rx and tx threads.
+     */
     return ER_OK;
 }
 
