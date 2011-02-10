@@ -331,6 +331,9 @@ QStatus UnixTransport::Connect(const char* connectArgs, RemoteEndpoint** newep)
         return ER_OS_ERROR;
     }
 
+    /*
+     * Compose a header that includes the local user credentials and a single NUL byte.
+     */
     ssize_t ret;
     char nulbuf = 0;
     struct cmsghdr* cmsg;
