@@ -52,7 +52,22 @@ namespace ajn {
 
 /**
  * @class InterfaceDescription
- * Class for describing message bus interfaces
+ * Class for describing message bus interfaces. %InterfaceDescription objects describe the methods,
+ * signals and properties of a %BusObject or %ProxyBusObject.
+ *
+ * Calling %ProxyBusObject::AddInterface() adds the AllJoyn interface described by an
+ * %InterfaceDescription to a %ProxyBusObject instance. After an  %InterfaceDescription has been
+ * added, the methods described in the interface can be called. Similarly calling
+ * %BusObject::AddInterface adds the interface and it methods, properties, and signal to a
+ * BusObject. After an interface has been added method handlers for the methods described in the
+ * interface can be added by calling %BusObject::AddMethodHandler or %BusObject::AddMethodHandlers.
+ *
+ * An InterfaceDescription can be constructed piecemeal by calling InterfaceDescription::AddMethod,
+ * InterfaceDescription::AddMember(), and InterfaceDescription::AddProperty(). Alternatively,
+ * calling %ProxyBusObjec::ParseXml will create the InterfaceDescription instances for that proxy
+ * object directly from an XML string. Calling %ProxyBusObject::Introspect also creates the
+ * InterfaceDescription instances from XML but in this case the XML is obtained by making a remote
+ * Introspect method call an bus object.
  */
 
 class InterfaceDescription {
@@ -297,7 +312,8 @@ class InterfaceDescription {
     qcc::String Introspect(size_t indent = 0) const;
 
     /**
-     * Activate this interface.
+     * Activate this interface. An interface must be activated before it can be used. Activating an
+     * interface locks the interface so that is can no longer be modified.
      */
     void Activate() { isActivated = true; }
 
