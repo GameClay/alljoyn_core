@@ -185,7 +185,7 @@ QStatus BusAttachment::Start()
         QCC_LogError(status, ("BusAttachment::Start bus is stopping call WaitStop() before calling Start()"));
     } else {
         isStarted = true;
-        /* 
+        /*
          * Start the alljoyn signal dispatcher first because the dispatcher thread is responsible,
          * via the Internal::ThreadListener, for stopping the timer thread and the transports.
          */
@@ -198,9 +198,16 @@ QStatus BusAttachment::Start()
             /* Start the transports */
             status = busInternal->transportList.Start(busInternal->GetListenAddresses());
         }
+        if ((status == ER_OK) && isStopping) {
+            status = ER_BUS_STOPPING;
+            QCC_LogError(status, ("BusAttachment::Start bus was stopped while starting"));
+        }
         if (status != ER_OK) {
             QCC_LogError(status, ("BusAttachment::Start failed to start"));
-            Stop(true);
+            busInternal->dispatcher.Stop();
+            busInternal->timer.Stop();
+            busInternal->transportList.Stop();
+            WaitStop();
         }
 
     }
@@ -355,7 +362,7 @@ QStatus BusAttachment::Stop(bool blockUntilStopped)
         if (ER_OK != status) {
             QCC_LogError(status, ("Timer::Stop() failed"));
         }
-        /* 
+        /*
          * When the dispatcher thread exits BusAttachment::Internal::ThreadExit() will
          * be called which will finish the stop operation.
          */
@@ -374,7 +381,7 @@ void BusAttachment::WaitStop()
 {
     QCC_DbgTrace(("BusAttachment::WaitStop"));
     if (isStarted) {
-        /* 
+        /*
          * We use a combination of a mutex and a counter to ensure that all threads that are
          * blocked waiting for the bus attachment to stop are actually blocked.
          */
