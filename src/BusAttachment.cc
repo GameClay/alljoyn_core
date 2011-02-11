@@ -116,6 +116,14 @@ BusAttachment::Internal::~Internal()
     delete router;
 }
 
+void BusAttachment::Internal::ThreadExit(qcc::Thread* thread)
+{
+    QStatus status = transportList.Stop();
+    if (ER_OK != status) {
+        QCC_LogError(status, ("TransportList::Stop() failed"));
+    }
+}
+
 class LocalTransportFactoryContainer : public TransportFactoryContainer {
   public:
     LocalTransportFactoryContainer()
@@ -177,20 +185,24 @@ QStatus BusAttachment::Start()
         QCC_LogError(status, ("BusAttachment::Start bus is stopping call WaitStop() before calling Start()"));
     } else {
         isStarted = true;
-        /* Start the timer */
-        status = busInternal->timer.Start();
+        /* 
+         * Start the alljoyn signal dispatcher first because the dispatcher thread is responsible,
+         * via the Internal::ThreadListener, for stopping the timer thread and the transports.
+         */
+        status = busInternal->dispatcher.Start(NULL, busInternal);
+        if (ER_OK == status) {
+            /* Start the timer */
+            status = busInternal->timer.Start();
+        }
         if (ER_OK == status) {
             /* Start the transports */
             status = busInternal->transportList.Start(busInternal->GetListenAddresses());
-        }
-        if (ER_OK == status) {
-            /* Start the alljoyn signal dispatcher */
-            status = busInternal->dispatcher.Start();
         }
         if (status != ER_OK) {
             QCC_LogError(status, ("BusAttachment::Start failed to start"));
             Stop(true);
         }
+
     }
     return status;
 }
@@ -329,63 +341,67 @@ QStatus BusAttachment::Disconnect(const char* connectSpec)
     return status;
 }
 
+/*
+ * Note if called with blockUntilStopped == false this function must not do anything that might block.
+ * Because we don't know what kind of cleanup various transports may do on Stop() the transports are
+ * stopped on the ThreadExit callback for the dispatch thread.
+ */
 QStatus BusAttachment::Stop(bool blockUntilStopped)
 {
-    QCC_DbgTrace(("BusAttachment::Stop(%s)", blockUntilStopped ? "true" : "false"));
-
-    /* Get the lock that ensures that Stop is only executed once */
-    IncrementAndFetch(&busInternal->stopCount);
-    busInternal->stopLock.Lock();
-
-    /*
-     * Stop is idempotent
-     */
-    if (isStarted && !isStopping) {
-        /* Stop all of the transports */
-        QStatus status = busInternal->transportList.Stop();
-        if (ER_OK != status) {
-            QCC_LogError(status, ("TransportList::Stop() failed"));
-        }
-        /* Stop the timer thread */
+    QStatus status = ER_OK;
+    if (isStarted) {
+        isStopping = true;
         status = busInternal->timer.Stop();
         if (ER_OK != status) {
             QCC_LogError(status, ("Timer::Stop() failed"));
         }
-        /* Stop the dispatcher thread */
+        /* 
+         * When the dispatcher thread exits BusAttachment::Internal::ThreadExit() will
+         * be called which will finish the stop operation.
+         */
         status = busInternal->dispatcher.Stop();
         if (ER_OK != status) {
             QCC_LogError(status, ("Dispatcher::Stop() failed"));
         }
-
-        /* Clear peer state */
-        busInternal->peerStateTable.Clear();
-
-        /* Persist keystore */
-        busInternal->keyStore.Store();
-
-        isStopping = true;
+        if ((status == ER_OK) && blockUntilStopped) {
+            WaitStop();
+        }
     }
-    /*
-     * WaitStop() will clear the isStarted and isStopping flags after the bus has stopped.
-     */
-    if (blockUntilStopped) {
-        WaitStop();
-    }
-
-    busInternal->stopLock.Unlock();
-    DecrementAndFetch(&busInternal->stopCount);
-
-    return ER_OK;
+    return status;
 }
 
 void BusAttachment::WaitStop()
 {
+    QCC_DbgTrace(("BusAttachment::WaitStop"));
     if (isStarted) {
-        busInternal->timer.Join();
-        busInternal->dispatcher.Join();
-        busInternal->transportList.Join();
-        isStarted = false;
-        isStopping = false;
+        /* 
+         * We use a combination of a mutex and a counter to ensure that all threads that are
+         * blocked waiting for the bus attachment to stop are actually blocked.
+         */
+        IncrementAndFetch(&busInternal->stopCount);
+        busInternal->stopLock.Lock();
+
+        /*
+         * In the case where more than one thread has called WaitStop() the first thread in will
+         * clear the isStarted flag.
+         */
+        if (isStarted) {
+            busInternal->timer.Join();
+            busInternal->dispatcher.Join();
+            busInternal->transportList.Join();
+
+            /* Clear peer state */
+            busInternal->peerStateTable.Clear();
+
+            /* Persist keystore */
+            busInternal->keyStore.Store();
+
+            isStarted = false;
+            isStopping = false;
+        }
+
+        busInternal->stopLock.Unlock();
+        DecrementAndFetch(&busInternal->stopCount);
     }
 }
 

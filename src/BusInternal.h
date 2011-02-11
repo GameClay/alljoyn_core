@@ -47,7 +47,7 @@
 
 namespace ajn {
 
-class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListener {
+class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListener, public qcc::ThreadListener {
     friend class BusAttachment;
 
   public:
@@ -182,6 +182,8 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
     const qcc::String& GetListenAddresses() const { return listenAddresses; }
 
   private:
+
+    void ThreadExit(qcc::Thread* thread);
 
     qcc::String application;              /* Name of the that owns the BusAttachment application */
     BusAttachment& bus;                   /* Reference back to the bus attachment that owns this state */

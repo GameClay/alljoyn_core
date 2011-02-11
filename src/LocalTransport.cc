@@ -168,14 +168,10 @@ QStatus LocalEndpoint::Start()
         status = peerObj->Start();
     }
 
-    /* Register with router */
-    if (ER_OK == status) {
-        bus.GetInternal().GetRouter().RegisterEndpoint(*this, true);
-    }
-
-    /* Local endpoint is up and running */
+    /* Local endpoint is up and running, register with router */
     if (ER_OK == status) {
         running = true;
+        bus.GetInternal().GetRouter().RegisterEndpoint(*this, true);
     }
 
     return status;
@@ -267,9 +263,10 @@ QStatus LocalEndpoint::PeerInterface(Message& message)
 
 QStatus LocalEndpoint::PushMessage(Message& message)
 {
-    QStatus status = ER_BUS_STOPPING;
+    QStatus status = ER_OK;
 
     if (!running) {
+        status = ER_BUS_STOPPING;
         QCC_LogError(status, ("Local transport not running discarding %s", message->Description().c_str()));
     } else {
         if (IncrementAndFetch(&refCount) > 1) {
@@ -469,8 +466,9 @@ QStatus LocalEndpoint::RegisterReplyHandler(MessageReceiver* receiver,
         replyMapLock.Unlock();
 
         /* Set a timeout */
-        if (Alarm::WAIT_FOREVER != timeout) {
-            bus.GetInternal().GetTimer().AddAlarm(reply.alarm);
+        status = bus.GetInternal().GetTimer().AddAlarm(reply.alarm);
+        if (status != ER_OK) {
+            UnRegisterReplyHandler(serial);
         }
     }
     return status;
@@ -485,9 +483,7 @@ void LocalEndpoint::UnRegisterReplyHandler(uint32_t serial)
         ReplyContext rc = iter->second;
         replyMap.erase(iter);
         replyMapLock.Unlock();
-        if (rc.alarm.GetAlarmTime() != END_OF_TIME) {
-            bus.GetInternal().GetTimer().RemoveAlarm(rc.alarm);
-        }
+        bus.GetInternal().GetTimer().RemoveAlarm(rc.alarm);
     } else {
         replyMapLock.Unlock();
     }
@@ -675,9 +671,7 @@ QStatus LocalEndpoint::HandleMethodReply(Message& message)
         ReplyContext rc = iter->second;
         replyMap.erase(iter);
         replyMapLock.Unlock();
-        if (rc.alarm.GetAlarmTime() != END_OF_TIME) {
-            bus.GetInternal().GetTimer().RemoveAlarm(rc.alarm);
-        }
+        bus.GetInternal().GetTimer().RemoveAlarm(rc.alarm);
         if (rc.secure && !message->IsEncrypted()) {
             /*
              * If the reply was not encrypted but should have been return an error to the caller.
