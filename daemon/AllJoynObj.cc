@@ -569,17 +569,17 @@ void AllJoynObj::LeaveSession(const InterfaceDescription::Member* member, Messag
         sessionMap.erase(it);
         sessionMapLock.Unlock();
 
-        /* Send DetachSession signal */
+        /* Send DetachSession signal to all daemons */
         MsgArg detachSessionArgs[2];
         detachSessionArgs[0].Set("u", id);
         detachSessionArgs[1].Set("s", msg->GetSender());
-        QStatus status = Signal(NULL, id, *detachSessionSignal, detachSessionArgs, ArraySize(detachSessionArgs));
+        QStatus status = Signal(NULL, 0, *detachSessionSignal, detachSessionArgs, ArraySize(detachSessionArgs));
         if (status != ER_OK) {
             QCC_LogError(status, ("Error sending org.alljoyn.Daemon.DetachSession signal"));
         }
 
-        /* Decrement local ref counts */
-        // TODO
+        /* Remove session route */
+        router.RemoveSessionRoute(msg->GetSender(), id);
     }
 
     /* Reply to request */
@@ -799,6 +799,16 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
 
 void AllJoynObj::DetachSessionSignalHandler(const InterfaceDescription::Member* member, const char* sourcePath, Message& msg)
 {
+    size_t numArgs;
+    const MsgArg* args;
+
+    /* Parse message args */
+    msg->GetArgs(numArgs, args);
+    SessionId id = args[0].v_uint32;
+    const char* src = args[1].v_string.str;
+
+    /* Remove session info */
+    router.RemoveSessionRoute(src, id);
 }
 
 void AllJoynObj::AdvertiseName(const InterfaceDescription::Member* member, Message& msg)

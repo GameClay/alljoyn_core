@@ -277,10 +277,9 @@ class DaemonRouter : public Router {
      * Remove an existing session route.
      *
      * @param  src     Unique name of route source.
-     * @param  id      Session Id.
-     * @param  destEp  VirtualEndpoint of route destination
+     * @param  id      Session id or 0 to indicate "all sessions".
      */
-    QStatus RemoveSessionRoute(const char* src, SessionId id, VirtualEndpoint& destEp);
+    void RemoveSessionRoute(const char* src, SessionId id);
 
   private:
     LocalEndpoint* localEndpoint;   /**< The local endpoint */

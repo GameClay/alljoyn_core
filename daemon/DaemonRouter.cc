@@ -380,6 +380,9 @@ void DaemonRouter::UnregisterEndpoint(BusEndpoint& endpoint)
         qcc::String uniqueName = endpoint.GetUniqueName();
         nameTable.RemoveUniqueName(uniqueName);
         RemoveAllRules(endpoint);
+
+        /* Remove any session routes */
+        RemoveSessionRoute(uniqueName.c_str(), 0);
     }
 
     /* Unregister static endpoints */
@@ -409,19 +412,27 @@ QStatus DaemonRouter::AddSessionRoute(const char* src, SessionId id, BusEndpoint
     return status;
 }
 
-QStatus DaemonRouter::RemoveSessionRoute(const char* src, SessionId id, VirtualEndpoint& destEp)
+void DaemonRouter::RemoveSessionRoute(const char* src, SessionId id)
 {
-    destEp.RemoveSessionRef(id);
+    BusEndpoint* ep = FindEndpoint(src);
+    if (!ep) {
+        QCC_LogError(ER_BUS_NO_ENDPOINT, ("Cannot find %s", src));
+    }
 
     sessionCastMapLock.Lock();
     pair<SessionId, StringMapKey> key(id, src);
-    multimap<pair<SessionId, StringMapKey>, BusEndpoint*>::iterator it = sessionCastMap.lower_bound(key);
-    while ((it != sessionCastMap.end()) && it->first == key) {
-        sessionCastMap.erase(it++);
+    multimap<pair<SessionId, StringMapKey>, BusEndpoint*>::iterator it = sessionCastMap.begin();
+    while (it != sessionCastMap.end()) {
+        if ((key == it->first) || (((id == 0) || (id == it->first.first)) && (ep == it->second))) {
+            if (it->second->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL) {
+                static_cast<VirtualEndpoint*>(it->second)->RemoveSessionRef(id);
+            }
+            sessionCastMap.erase(it++);
+        } else {
+            ++it;
+        }
     }
     sessionCastMapLock.Unlock();
-
-    return ER_OK;
 }
 
 }
