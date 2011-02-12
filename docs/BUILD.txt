@@ -74,7 +74,7 @@ Building for Ubuntu 10.10 (x86 target)
 Building for Ubuntu 10.10 (x86-64 target)
 -----------------------------------------
         $ cd <workspace>
-        $ scons OS=linux CPU=x86-x64
+        $ scons OS=linux CPU=x86-64
 
 Building for Android Froyo (2.2)
 --------------------------------
