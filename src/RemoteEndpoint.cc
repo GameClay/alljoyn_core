@@ -184,12 +184,12 @@ void RemoteEndpoint::ThreadExit(Thread* thread)
     }
 }
 
-static bool IsHelloMessage(Message& msg)
+static inline bool IsControlMessage(Message& msg)
 {
-    if ((strcmp("Hello", msg->GetMemberName()) == 0) && (strcmp("org.freedesktop.DBus", msg->GetInterface()) == 0)) {
+    if (strcmp("org.freedesktop.DBus", msg->GetInterface()) == 0) {
         return true;
     }
-    if ((strcmp("HelloBus", msg->GetMemberName()) == 0) && (strcmp("org.alljoyn.Bus", msg->GetInterface()) == 0)) {
+    if (strcmp("org.alljoyn.Bus", msg->GetInterface()) == 0) {
         return true;
     }
     return false;
@@ -247,14 +247,15 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
 
             case ER_BUS_INVALID_HEADER_SERIAL:
                 /*
-                 * Ignore invalid serial numbers for unreliable messages or for broadcast messages that come from
-                 * bus2bus endpoints because these can be delivered out-of-order or multiple times.
-                 * In all other cases an invalid serial number cause the connection to be dropped.
+                 * Ignore invalid serial numbers for unreliable messages or broadcast messages that come from
+                 * bus2bus endpoints as these can be delivered out-of-order or repeated.
                  *
-                 * Also, Hello/BusHello messages are considered out of sequence since they specify org.freedesktop.DBus
-                 * as the sender which is a name whose PeerState is already in use at the time of the message.
+                 * Ignore control messages (i.e. messages targeted at the bus controller)
+                 * TODO - need explanation why this is neccessary.
+                 *
+                 * In all other cases an invalid serial number cause the connection to be dropped.
                  */
-                if (msg->IsUnreliable() || (bus2bus && msg->IsBroadcastSignal()) || IsHelloMessage(msg)) {
+                if (msg->IsUnreliable() || (bus2bus && msg->IsBroadcastSignal()) || IsControlMessage(msg)) {
                     QCC_DbgHLPrintf(("Invalid serial discarding %s", msg->Description().c_str()));
                     status = ER_OK;
                 } else {
