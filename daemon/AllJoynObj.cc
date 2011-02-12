@@ -579,7 +579,7 @@ void AllJoynObj::LeaveSession(const InterfaceDescription::Member* member, Messag
         }
 
         /* Remove session route */
-        router.RemoveSessionRoute(msg->GetSender(), id);
+        router.RemoveSessionRoutes(msg->GetSender(), id);
     }
 
     /* Reply to request */
@@ -808,7 +808,7 @@ void AllJoynObj::DetachSessionSignalHandler(const InterfaceDescription::Member* 
     const char* src = args[1].v_string.str;
 
     /* Remove session info */
-    router.RemoveSessionRoute(src, id);
+    router.RemoveSessionRoutes(src, id);
 }
 
 void AllJoynObj::AdvertiseName(const InterfaceDescription::Member* member, Message& msg)

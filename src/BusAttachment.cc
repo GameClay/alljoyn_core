@@ -751,6 +751,9 @@ void BusAttachment::Internal::AlarmTriggered(const Alarm& alarm, QStatus reason)
                                           (0 < args[1].v_string.len) ? args[1].v_string.str : NULL,
                                           (0 < args[2].v_string.len) ? args[2].v_string.str : NULL);
             }
+            listenersLock.Unlock();
+        } else {
+            QCC_LogError(ER_FAIL, ("Unrecognized signal \"%s.%s\" received", msg->GetInterface(), msg->GetMemberName()));
         }
     }
     delete &msg;
