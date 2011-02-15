@@ -194,9 +194,9 @@ class BTTransport :
      * Function for the BT Accessor to inform a change in the
      * power/availablity of the Bluetooth device.
      *
-     * @param on    true if BT device is powered on and available, false otherwise.
+     * @param avail    true if BT device is powered on and available, false otherwise.
      */
-    void BTDevicePower(bool on) { btController->BTDevicePower(on); }
+    void BTDeviceAvailable(bool avail) { btController->BTDeviceAvailable(avail); }
 
     /**
      * Callback for BTEndpoint thead exit.

@@ -225,6 +225,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     QStatus EnumerateAdapters();
     void AdapterAdded(const char* adapterObjPath);
     void AdapterRemoved(const char* adapterObjPath);
+    void DefaultAdapterChanged(const char* adapterObjPath);
 
     /* Adapter management signal handlers */
     void AdapterAddedSignalHandler(const InterfaceDescription::Member* member,
@@ -236,9 +237,6 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     void DefaultAdapterChangedSignalHandler(const InterfaceDescription::Member* member,
                                             const char* sourcePath,
                                             Message& msg);
-    void NameOwnerChangedSignalHandler(const InterfaceDescription::Member* member,
-                                       const char* sourcePath,
-                                       Message& msg);
     void AdapterPropertyChangedSignalHandler(const InterfaceDescription::Member* member,
                                              const char* sourcePath,
                                              Message& msg);
@@ -250,7 +248,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
                                   Message& msg);
 
     /* support */
-    QStatus GetDefaultAdapterAddress(BDAddress& addr);
+    QStatus FillAdapterAddress(bluez::AdapterObject& adapter);
     QStatus AddRecord(const char* recordXml,
                       uint32_t& newHandle);
     void RemoveRecord();
@@ -273,6 +271,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     bluez::AdapterObject GetAdapterObject(const qcc::String& adapterObjPath) const
     {
         bluez::AdapterObject adapter;
+        assert(!adapter->IsValid());
         adapterLock.Lock();
         AdapterMap::const_iterator it(adapterMap.find(adapterObjPath));
         if (it != adapterMap.end()) {
@@ -323,12 +322,11 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
 
     struct DispatchInfo {
         typedef enum {
-            CONNECT_BLUEZ,
-            DISCONNECT_BLUEZ,
-            RESTART_BLUEZ,
             STOP_DISCOVERY,
             STOP_DISCOVERABILITY,
             ADAPTER_ADDED,
+            ADAPTER_REMOVED,
+            DEFAULT_ADAPTER_CHANGED,
             DEVICE_FOUND
         } DispatchTypes;
         DispatchTypes operation;

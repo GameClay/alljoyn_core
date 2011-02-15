@@ -355,7 +355,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      *
      * @param on    true if BT device is powered on and available, false otherwise.
      */
-    void BTDevicePower(bool on);
+    void BTDeviceAvailable(bool on);
 
 
     void NameOwnerChanged(const qcc::String& alias,

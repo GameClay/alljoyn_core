@@ -295,8 +295,10 @@ QStatus BTController::SendSetState(const qcc::String& busName)
 
         if (!IsMaster()) {
             bus.GetInternal().GetDispatcher().RemoveAlarm(stopAd);
-            bt.StopListen();
-            listening = false;
+            if (listening) {
+                bt.StopListen();
+                listening = false;
+            }
         }
 
         if (IsDrone()) {
@@ -531,19 +533,41 @@ QStatus BTController::ProxyDisconnect(const BDAddress& bdAddr)
 }
 
 
-void BTController::BTDevicePower(bool on)
+void BTController::BTDeviceAvailable(bool on)
 {
     QCC_DbgPrintf(("BTController::BTDevicePower(<%s>)", on ? "on" : "off"));
     if (IsMaster()) {
         if (on) {
-            QStatus status = bt.StartListen(advertise.bdAddr, advertise.channel, advertise.psm);
-            listening = (status == ER_OK);
-            if (listening) {
-                find.ignoreAddr = advertise.bdAddr;
-                find.dirty = true;
+            if (!advertise.Empty()) {
+                QStatus status = bt.StartListen(advertise.bdAddr, advertise.channel, advertise.psm);
+                listening = (status == ER_OK);
+                if (listening) {
+                    find.ignoreAddr = advertise.bdAddr;
+                    find.dirty = true;
+                }
+
+                nodeStateLock.Lock();
+                UpdateDelegations(advertise, listening);
+                UpdateDelegations(find);
+                nodeStateLock.Unlock();
             }
         } else {
-            listening = false;
+            if (advertise.active) {
+                if (UseLocalAdvertise()) {
+                    bt.StopAdvertise();
+                }
+                advertise.active = false;
+            }
+            if (find.active) {
+                if (UseLocalFind()) {
+                    bt.StopFind();
+                }
+                find.active = false;
+            }
+            if (listening) {
+                bt.StopListen();
+                listening = false;
+            }
         }
     }
 }
@@ -575,11 +599,13 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
             delete master;
             master = NULL;
 
-            QStatus status = bt.StartListen(advertise.bdAddr, advertise.channel, advertise.psm);
-            listening = (status == ER_OK);
-            if (listening) {
-                find.ignoreAddr = advertise.bdAddr;
-                find.dirty = true;
+            if (!advertise.Empty()) {
+                QStatus status = bt.StartListen(advertise.bdAddr, advertise.channel, advertise.psm);
+                listening = (status == ER_OK);
+                if (listening) {
+                    find.ignoreAddr = advertise.bdAddr;
+                    find.dirty = true;
+                }
             }
             find.resultDest.clear();
 
@@ -913,8 +939,10 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
 
     if (!IsMaster()) {
         bus.GetInternal().GetDispatcher().RemoveAlarm(stopAd);
-        bt.StopListen();
-        listening = false;
+        if (listening) {
+            bt.StopListen();
+            listening = false;
+        }
     }
 }
 

@@ -318,10 +318,6 @@ QStatus BTTransport::BTAccessor::Start()
             goto exit;
         }
 
-        bzBus.RegisterSignalHandler(this,
-                                    SignalHandler(&BTTransport::BTAccessor::NameOwnerChangedSignalHandler),
-                                    nameOwnerChanged, NULL);
-
         /* Add Match rules */
         for (size_t i = 0; (status == ER_OK) && (i < ArraySize(rules)); ++i) {
             arg.Set("s", rules[i].c_str());
@@ -371,7 +367,7 @@ void BTTransport::BTAccessor::ConnectBlueZ()
      */
     if (!bluetoothAvailable && (EnumerateAdapters() == ER_OK)) {
         bluetoothAvailable = true;
-        transport->BTDevicePower(true);
+        transport->BTDeviceAvailable(true);
     }
 }
 
@@ -381,6 +377,8 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
     QCC_DbgTrace(("BTTransport::BTAccessor::DisconnectBlueZ()"));
 
     bluetoothAvailable = false;
+    transport->BTDeviceAvailable(false);
+
     /*
      * Deregister any registered services
      */
@@ -388,6 +386,7 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
         QCC_DbgPrintf(("Removing record handle %x", recordHandle));
         RemoveRecord();
     }
+
     /*
      * Shut down all endpoints
      */
@@ -397,6 +396,12 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
         (*eit)->Stop();
     }
     transport->threadListLock.Unlock();
+
+    /*
+     * Close down the listen file descriptors
+     */
+    StopConnectable();
+
     /*
      * Invalidate the adapters.
      */
@@ -405,8 +410,6 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
     defaultAdapterObj = AdapterObject();
     anyAdapterObj = AdapterObject();
     adapterLock.Unlock();
-
-    transport->BTDevicePower(false);
 }
 
 
@@ -534,11 +537,7 @@ QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
     RFCOMM_SOCKADDR rfcommAddr;
     int ret;
 
-    status = GetDefaultAdapterAddress(addr);
-    if (status != ER_OK) {
-        QCC_LogError(status, ("Failed to get the default adapter device address"));
-        goto exit;
-    }
+    addr = GetDefaultAdapterObject()->address;
 
     rfcommLFd = socket(AF_BLUETOOTH, SOCK_STREAM, RFCOMM_PROTOCOL_ID);
     if (rfcommLFd == -1) {
@@ -675,9 +674,8 @@ void BTTransport::BTAccessor::StopConnectable()
 }
 
 
-QStatus BTTransport::BTAccessor::GetDefaultAdapterAddress(BDAddress& addr)
+QStatus BTTransport::BTAccessor::FillAdapterAddress(AdapterObject& adapter)
 {
-    AdapterObject adapter = GetDefaultAdapterObject();
     QStatus status = ER_FAIL;
 
     if (adapter->IsValid()) {
@@ -688,6 +686,11 @@ QStatus BTTransport::BTAccessor::GetDefaultAdapterAddress(BDAddress& addr)
 
         status = adapter->MethodCall(*org.bluez.Adapter.GetProperties, NULL, 0, rsp, BT_DEFAULT_TO);
         if (status != ER_OK) {
+            qcc::String errMsg;
+            const char* errName = rsp->GetErrorName(&errMsg);
+            QCC_LogError(status, ("Failed to get the adapter device address for %s: %s - %s",
+                                  adapter->GetPath().c_str(),
+                                  errName, errMsg.c_str()));
             goto exit;
         }
 
@@ -709,8 +712,7 @@ QStatus BTTransport::BTAccessor::GetDefaultAdapterAddress(BDAddress& addr)
                 if (status != ER_OK) {
                     goto exit;
                 }
-                status = addr.FromString(bdAddrStr);
-                //status = addr.FromString(value->v_string.str);
+                status = adapter->address.FromString(bdAddrStr);
                 if (status != ER_OK) {
                     goto exit;
                 }
@@ -1032,22 +1034,17 @@ void BTTransport::BTAccessor::AdapterAdded(const char* adapterObjPath)
         newAdapterObj->AddInterface(*org.bluez.Adapter.interface);
     }
 
+    QStatus status = FillAdapterAddress(newAdapterObj);
+    if (status != ER_OK) {
+        return;
+    }
+
     adapterLock.Lock();
     adapterMap[newAdapterObj->GetPath()] = newAdapterObj;
 
     bzBus.RegisterSignalHandler(this,
                                 SignalHandler(&BTTransport::BTAccessor::DeviceFoundSignalHandler),
                                 org.bluez.Adapter.DeviceFound, adapterObjPath);
-
-#if 0
-    bzBus.RegisterSignalHandler(this,
-                                SignalHandler(&BTTransport::BTAccessor::DeviceCreatedSignalHandler),
-                                org.bluez.Adapter.DeviceCreated, adapterObjPath);
-
-    bzBus.RegisterSignalHandler(this,
-                                SignalHandler(&BTTransport::BTAccessor::DeviceRemovedSignalHandler),
-                                org.bluez.Adapter.DeviceRemoved, adapterObjPath);
-#endif
 
     bzBus.RegisterSignalHandler(this,
                                 SignalHandler(&BTTransport::BTAccessor::AdapterPropertyChangedSignalHandler),
@@ -1074,16 +1071,6 @@ void BTTransport::BTAccessor::AdapterRemoved(const char* adapterObjPath)
                                   SignalHandler(&BTTransport::BTAccessor::DeviceFoundSignalHandler),
                                   org.bluez.Adapter.DeviceFound, adapterObjPath);
 
-#if 0
-    bzBus.UnRegisterSignalHandler(this,
-                                  SignalHandler(&BTTransport::BTAccessor::DeviceCreatedSignalHandler),
-                                  org.bluez.Adapter.DeviceCreated, adapterObjPath);
-
-    bzBus.UnRegisterSignalHandler(this,
-                                  SignalHandler(&BTTransport::BTAccessor::DeviceRemovedSignalHandler),
-                                  org.bluez.Adapter.DeviceRemoved, adapterObjPath);
-#endif
-
     bzBus.UnRegisterSignalHandler(this,
                                   SignalHandler(&BTTransport::BTAccessor::AdapterPropertyChangedSignalHandler),
                                   org.bluez.Adapter.PropertyChanged, adapterObjPath);
@@ -1091,7 +1078,34 @@ void BTTransport::BTAccessor::AdapterRemoved(const char* adapterObjPath)
     adapterLock.Lock();
     AdapterMap::iterator ait(adapterMap.find(adapterObjPath));
     if (ait != adapterMap.end()) {
+        if (ait->second == defaultAdapterObj) {
+            defaultAdapterObj = AdapterObject();
+            bluetoothAvailable = false;
+            transport->BTDeviceAvailable(false);
+        }
         adapterMap.erase(ait);
+    }
+    adapterLock.Unlock();
+}
+
+
+void BTTransport::BTAccessor::DefaultAdapterChanged(const char* adapterObjPath)
+{
+    QCC_DbgTrace(("BTTransport::BTAccessor::DefaultAdapterChanged(adapterObjPath = \"%s\")", adapterObjPath));
+
+    adapterLock.Lock();
+    defaultAdapterObj = GetAdapterObject(adapterObjPath);
+    if (defaultAdapterObj->IsValid()) {
+        qcc::String defaultAdapterObjPath(adapterObjPath);
+        size_t pos = defaultAdapterObjPath.find_last_of('/');
+        if (pos != qcc::String::npos) {
+            qcc::String anyAdapterObjPath(defaultAdapterObjPath.substr(0, pos + 1) + "any");
+            anyAdapterObj = AdapterObject(bzBus, anyAdapterObjPath);
+            anyAdapterObj->AddInterface(*org.bluez.Service.interface);
+        }
+
+        bluetoothAvailable = true;
+        transport->BTDeviceAvailable(true);
     }
     adapterLock.Unlock();
 }
@@ -1103,22 +1117,6 @@ void BTTransport::BTAccessor::AlarmTriggered(const Alarm& alarm, QStatus reason)
 
     if (reason == ER_OK) {
         switch (op->operation) {
-        case DispatchInfo::CONNECT_BLUEZ:
-            QCC_DbgHLPrintf(("Connecting BlueZ"));
-            ConnectBlueZ();
-            break;
-
-        case DispatchInfo::DISCONNECT_BLUEZ:
-            QCC_DbgHLPrintf(("Disconnecting BlueZ"));
-            DisconnectBlueZ();
-            break;
-
-        case DispatchInfo::RESTART_BLUEZ:
-            QCC_DbgHLPrintf(("Restarting BlueZ"));
-            DisconnectBlueZ();
-            ConnectBlueZ();
-            break;
-
         case DispatchInfo::STOP_DISCOVERY:
             QCC_DbgPrintf(("Stopping Discovery"));
             StopDiscovery();
@@ -1131,6 +1129,14 @@ void BTTransport::BTAccessor::AlarmTriggered(const Alarm& alarm, QStatus reason)
 
         case DispatchInfo::ADAPTER_ADDED:
             AdapterAdded(op->adapterPath.c_str());
+            break;
+
+        case DispatchInfo::ADAPTER_REMOVED:
+            AdapterRemoved(op->adapterPath.c_str());
+            break;
+
+        case DispatchInfo::DEFAULT_ADAPTER_CHANGED:
+            DefaultAdapterChanged(op->adapterPath.c_str());
             break;
 
         case DispatchInfo::DEVICE_FOUND:
@@ -1157,7 +1163,7 @@ void BTTransport::BTAccessor::AdapterRemovedSignalHandler(const InterfaceDescrip
                                                           Message& msg)
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::AdapterRemovedSignalHandler - signal from \"%s\"", sourcePath));
-    AdapterRemoved(msg->GetArg(0)->v_objPath.str);
+    DispatchOperation(new DispatchInfo(DispatchInfo::ADAPTER_REMOVED, msg->GetArg(0)->v_objPath.str));
 }
 
 
@@ -1169,29 +1175,7 @@ void BTTransport::BTAccessor::DefaultAdapterChangedSignalHandler(const Interface
     /*
      * We are in a signal handler so kick off the restart in a new thread.
      */
-    DispatchOperation(new DispatchInfo(DispatchInfo::RESTART_BLUEZ), 2 * 1000);
-}
-
-
-void BTTransport::BTAccessor::NameOwnerChangedSignalHandler(const InterfaceDescription::Member* member,
-                                                            const char* sourcePath,
-                                                            Message& msg)
-{
-    //QCC_DbgTrace(("BTTransport::BTAccessor::NameOwnerChangedSignalHandler - %s", msg->GetArg(0)->v_string.str));
-    /*
-     * We only care about changes to org.bluez
-     */
-    if (strcmp(msg->GetArg(0)->v_string.str, bzBusName) == 0) {
-        QCC_DbgHLPrintf(("BlueZ has changed owners \"%s\" -> \"%s\"",
-                         msg->GetArg(1)->v_string.str, msg->GetArg(2)->v_string.str));
-        DispatchInfo::DispatchTypes op;
-        if (msg->GetArg(2)->v_string.len > 0) {
-            op = (msg->GetArg(1)->v_string.len > 0) ? DispatchInfo::RESTART_BLUEZ : DispatchInfo::CONNECT_BLUEZ;
-        } else {
-            op = DispatchInfo::DISCONNECT_BLUEZ;
-        }
-        DispatchOperation(new DispatchInfo(op), 2 * 1000);
-    }
+    DispatchOperation(new DispatchInfo(DispatchInfo::DEFAULT_ADAPTER_CHANGED, msg->GetArg(0)->v_objPath.str));
 }
 
 

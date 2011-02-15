@@ -47,6 +47,7 @@ typedef qcc::ManagedObj<std::vector<qcc::String> > AdvertisedNamesList;
 class _AdapterObject : public ProxyBusObject {
   public:
     int id;
+    BDAddress address;
 
     _AdapterObject() { }
     _AdapterObject(BusAttachment& bus,
