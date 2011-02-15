@@ -119,7 +119,7 @@ class MyBusListener : public BusListener {
         printf("NameOwnerChanged: name=%s, oldOwner=%s, newOwner=%s\n", busName, previousOwner ? previousOwner : "<none>",
                newOwner ? newOwner : "<none>");
     }
-    bool AcceptSession(const char* sessionName, const char* joiner, const QosInfo& qos)
+    bool AcceptSession(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
     {
         printf("Accepting join session request from %s (qos.proximity=%x, qos.traffic=%x, qos.transports=%x)\n",
                joiner, qos.proximity, qos.traffic, qos.transports);
@@ -255,10 +255,7 @@ int main(int argc, char** argv)
         /* Create session */
         if (ER_OK == status) {
             uint32_t disposition = 0;
-            QosInfo qos;
-            qos.proximity = QosInfo::PROXIMITY_ANY;
-            qos.traffic = QosInfo::TRAFFIC_ANY;
-            qos.transports = QosInfo::TRANSPORT_ANY;
+            QosInfo qos(QosInfo::TRAFFIC_MESSAGES, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
             status = s_bus->CreateSession(s_advertisedName.c_str(), qos, disposition, s_sessionId);
             if (ER_OK != status) {
                 printf("CreateSession failed (%s)\n", QCC_StatusText(status));

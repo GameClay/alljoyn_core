@@ -29,6 +29,7 @@
 #include <qcc/StringMapKey.h>
 #include <qcc/Thread.h>
 #include <qcc/time.h>
+#include <qcc/SocketTypes.h>
 
 #include <alljoyn/BusObject.h>
 #include <alljoyn/Message.h>
@@ -180,6 +181,20 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     void CancelFindAdvertisedName(const InterfaceDescription::Member* member, Message& msg);
 
     /**
+     * Respond to a bus request to get a (streaming) file descritor for an existing session.
+     *
+     * The input Message (METHOD_CALL) is expected to contain the following parameters:
+     *   sessionId   uint32    A session id that identifies an existing streaming session.
+     *
+     * The output Message (METHOD_REPLY) contains the following parameters:
+     *   sessionFd   handle    The socket file descriptor for session.
+     *
+     * @param member  Member.
+     * @param msg     The incoming message.
+     */
+    void GetSessionFd(const InterfaceDescription::Member* member, Message& msg);
+
+    /**
      * Add a new Bus-to-bus endpoint.
      *
      * @param endpoint  Bus-to-bus endpoint to add.
@@ -311,6 +326,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
         qcc::String endpointName;
         QosInfo qos;
         bool isMulticast;
+        qcc::SocketFd fd;
         std::vector<qcc::String> memberNames;
     };
     std::map<SessionId, SessionMapEntry> sessionMap;     /**< Map sessionId to session info (valid on session endpoints) */

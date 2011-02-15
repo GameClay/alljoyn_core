@@ -215,6 +215,20 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
 #define ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_SUCCESS          1   /**< CancelFindAdvertisedName reply: Success */
 #define ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_FAILED           2   /**< CancelFindAdvertisedName reply: Failed */
 // @}
+
+/**
+ * @name org.alljoyn.Bus.GetSessionFd
+ *  Interface: org.alljoyn.Bus
+ *  Method: Handle GetSessionFd(uint32_t sessionId)
+ *
+ *  sessionId - Existing sessionId for a streaming (non-message based) session.
+ *
+ *  Get the socket descriptor for an existing session that was created or joined with
+ *  traffic type equal to QosInfo::TRAFFIC_STREAMING_UNRELIABLE or
+ *  QosInfo::TRAFFIC_STREAMING_RELIABLE.
+ *
+ *  Returns the socket descriptor request or an error response
+ */
 }
 
 #undef QCC_MODULE

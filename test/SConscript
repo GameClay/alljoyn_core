@@ -17,22 +17,24 @@ Import('env')
 
 # Test Programs
 progs = [
-    env.Program('socktest',   ['socktest.cc']),
-    env.Program('autochat',   ['autochat.cc']),
-    env.Program('remarshal',  ['remarshal.cc']),
-    env.Program('unpack',     ['unpack.cc']),
-    env.Program('rsa',        ['rsa.cc']),
-    env.Program('srp',        ['srp.cc']),
-    env.Program('aes_ccm',    ['aes_ccm.cc']),
-    env.Program('keystore',   ['keystore.cc']),
-    env.Program('bbservice',  ['bbservice.cc']),
-    env.Program('bbdisco',    ['bbdisco.cc']),
-    env.Program('bbsig',      ['bbsig.cc']),
-    env.Program('bbclient',   ['bbclient.cc']),
-    env.Program('marshal',    ['marshal.cc']),
-    env.Program('names',      ['names.cc']),
-    env.Program('compression',['compression.cc']),
-    env.Program('bbcodisco',  ['bb_codisco.cc'])
+    env.Program('socktest',      ['socktest.cc']),
+    env.Program('autochat',      ['autochat.cc']),
+    env.Program('remarshal',     ['remarshal.cc']),
+    env.Program('unpack',        ['unpack.cc']),
+    env.Program('rsa',           ['rsa.cc']),
+    env.Program('srp',           ['srp.cc']),
+    env.Program('aes_ccm',       ['aes_ccm.cc']),
+    env.Program('keystore',      ['keystore.cc']),
+    env.Program('bbservice',     ['bbservice.cc']),
+    env.Program('bbdisco',       ['bbdisco.cc']),
+    env.Program('bbsig',         ['bbsig.cc']),
+    env.Program('bbclient',      ['bbclient.cc']),
+    env.Program('marshal',       ['marshal.cc']),
+    env.Program('names',         ['names.cc']),
+    env.Program('compression',   ['compression.cc']),
+    env.Program('bbcodisco',     ['bb_codisco.cc']),
+    env.Program('streamclient',  ['streamclient.cc']),
+    env.Program('streamservice', ['streamservice.cc'])
     ]
 
 if env['OS'] == 'linux' or env['OS'] == 'android':

@@ -93,14 +93,16 @@ class RemoteEndpoint : public BusEndpoint, public qcc::ThreadListener {
      *
      * @param bus            Message bus associated with transport.
      * @param connectSpec    AllJoyn connection specification for this endpoint.
-     * @param stream         Stream used to communicate with media.
+     * @param stream         Socket Stream used to communicate with media.
      * @param type           Base name for thread.
+     * @param isSocket       true iff stream is actually a socketStream.
      */
     RemoteEndpoint(BusAttachment& bus,
                    bool incoming,
                    const qcc::String& connectSpec,
                    qcc::Stream& stream,
-                   const char* type = "endpoint");
+                   const char* type = "endpoint",
+                   bool isSocket = true);
 
     /**
      * Destructor
@@ -252,6 +254,13 @@ class RemoteEndpoint : public BusEndpoint, public qcc::ThreadListener {
     qcc::Sink& GetSink() { return stream; };
 
     /**
+     * Get the SocketFd fro thsi endpoint.
+     *
+     * @return Underlying socket file descriptor for this endpoint.
+     */
+    qcc::SocketFd GetSocketFd();
+
+    /**
      * Return the features for this BusEndpoint
      *
      * @return   Returns the features for this BusEndpoint.
@@ -345,6 +354,7 @@ class RemoteEndpoint : public BusEndpoint, public qcc::ThreadListener {
     Features features;                       /**< Requested and negotiated features of this endpoint */
     uint32_t processId;                      /**< Process id of the process at the remote end of this endpoint */
     int32_t refCount;                        /**< Number of active users of this remote endpoint */
+    bool isSocket;                           /**< True iff this endpoint contains a SockStream as its 'stream' member */
 };
 
 }

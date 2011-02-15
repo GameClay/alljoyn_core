@@ -611,7 +611,7 @@ QStatus BusAttachment::CreateSession(const char* sessionName, const QosInfo& qos
     MsgArg args[2];
 
     args[0].Set("s", sessionName);
-    args[1].Set("(qqq)", qos.proximity, qos.traffic, qos.transports);
+    args[1].Set(QOSINFO_SIG, qos.traffic, qos.proximity, qos.transports);
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
     QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "CreateSession", args, ArraySize(args), reply);
     if (ER_OK == status) {
@@ -645,7 +645,7 @@ QStatus BusAttachment::JoinSession(const char* sessionName, uint32_t& dispositio
     MsgArg args[2];
 
     args[0].Set("s", sessionName);
-    args[1].Set("(qqq)", qos.proximity, qos.traffic, qos.transports);
+    args[1].Set(QOSINFO_SIG, qos.traffic, qos.proximity, qos.transports);
 
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
     QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "JoinSession", args, ArraySize(args), reply);
@@ -654,7 +654,7 @@ QStatus BusAttachment::JoinSession(const char* sessionName, uint32_t& dispositio
             disposition = reply->GetArg(0)->v_uint32;
             if (disposition == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
                 sessionId = reply->GetArg(1)->v_uint32;
-                status = reply->GetArg(2)->Get("(qqq)", &qos.proximity, &qos.traffic, &qos.transports);
+                status = reply->GetArg(2)->Get(QOSINFO_SIG, &qos.traffic, &qos.proximity, &qos.transports);
             }
         } else if (reply->GetType() == MESSAGE_ERROR) {
             status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
@@ -721,7 +721,7 @@ void BusAttachment::Internal::AlarmTriggered(const Alarm& alarm, QStatus reason)
     if (reason == ER_OK) {
         if (0 == strcmp("FoundAdvertisedName", msg->GetMemberName())) {
             QosInfo qos;
-            msg->GetArg(1)->Get("(qqq)", &qos.proximity, &qos.traffic, &qos.transports);
+            msg->GetArg(1)->Get(QOSINFO_SIG, &qos.traffic, &qos.proximity, &qos.transports);
             listenersLock.Lock();
             list<BusListener*>::iterator it = listeners.begin();
             while (it != listeners.end()) {
@@ -778,14 +778,14 @@ QStatus BusAttachment::CreateInterfacesFromXml(const char* xml)
     return status;
 }
 
-bool BusAttachment::Internal::CallAcceptListeners(const char* sessionName, const char* joiner, const QosInfo& qos)
+bool BusAttachment::Internal::CallAcceptListeners(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
 {
     /* Call all listeners. Any positive response means accept the joinSession request */
     listenersLock.Lock();
     list<BusListener*>::iterator it = listeners.begin();
     bool isAccepted = false;
     while (it != listeners.end()) {
-        bool answer = (*it)->AcceptSession(sessionName, joiner, qos);
+        bool answer = (*it)->AcceptSession(sessionName, id, joiner, qos);
         if (answer) {
             isAccepted = true;
         }

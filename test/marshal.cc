@@ -292,7 +292,7 @@ static QStatus TestMarshal(const MsgArg* argList, size_t numArgs, const char* ex
     TestPipe stream;
     MyMessage msg;
     uint32_t serial;
-    RemoteEndpoint ep(*gBus, false, "", stream, "dummy");
+    RemoteEndpoint ep(*gBus, false, "", stream, "dummy", false);
     ep.GetFeatures().handlePassing = true;
 
     if (numArgs == 0) {
@@ -957,7 +957,7 @@ QStatus TestMsgUnpack()
     size_t numArgs = ArraySize(args);
     uint32_t serial;
     double d = 0.9;
-    RemoteEndpoint ep(*gBus, false, "", stream, "dummy");
+    RemoteEndpoint ep(*gBus, false, "", stream, "dummy", false);
     ep.GetFeatures().handlePassing = true;
 
     MsgArg::Set(args, numArgs, "usyd", 4, "hello", 8, &d);

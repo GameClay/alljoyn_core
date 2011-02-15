@@ -91,7 +91,7 @@ int main(int argc, char** argv)
     uint32_t serial;
     MyMessage msg(bus);
     Pipe stream;
-    RemoteEndpoint ep(bus, false, "", stream, "dummy");
+    RemoteEndpoint ep(bus, false, "", stream, "dummy", false);
 
     printf("AllJoyn Library version: %s\n", ajn::GetVersion());
     printf("AllJoyn Library build info: %s\n", ajn::GetBuildInfo());

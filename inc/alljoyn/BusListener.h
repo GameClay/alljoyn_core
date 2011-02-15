@@ -80,11 +80,15 @@ class BusListener {
      * Accept or reject an incoming JoinSession request.
      *
      * @param sessionName    Name of session.
+     * @param id             Id of session.
      * @param joiner         Unique name of potential joiner.
      * @param qos            Incoming quality of service.
      * @return   Return true if JoinSession request is accepted. false if rejected.
      */
-    virtual bool AcceptSession(const char* sessionName, const char* joiner, const QosInfo& qos) { return false; }
+    virtual bool AcceptSession(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
+    {
+        return false;
+    }
 };
 
 }

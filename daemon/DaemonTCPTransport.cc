@@ -702,19 +702,6 @@ QStatus DaemonTCPTransport::Connect(const char* connectSpec, RemoteEndpoint** ne
     uint16_t port = StringToU32(argMap["port"]);   // Guaranteed to be there.
 
     /*
-     * Check to see if we are already connected to a remote endpoint identified
-     * by the address and port.  If we are, we never duplicate the connection.
-     */
-    m_endpointListLock.Lock();
-    for (list<DaemonTCPEndpoint*>::const_iterator i = m_endpointList.begin(); i != m_endpointList.end(); ++i) {
-        if ((port == (*i)->GetPort()) && (((*i)->GetIPAddress() == ipAddr))) {
-            m_endpointListLock.Unlock();
-            return ER_BUS_ALREADY_CONNECTED;
-        }
-    }
-    m_endpointListLock.Unlock();
-
-    /*
      * This is a new not previously satisfied connection request, so attempt
      * to connect to the remote TCP address and port specified in the connectSpec.
      */
@@ -1196,8 +1183,8 @@ void DaemonTCPTransport::FoundCallback::Found(const qcc::String& busAddr, const 
     // TODO: Qos for TCP is currenlty fixed (hardcoded). However, this may change once tcp transport
     //       can be used for both local and global (Internet-wide) connections
     QosInfo qos;
+    qos.traffic = QosInfo::TRAFFIC_MESSAGES;
     qos.proximity = QosInfo::PROXIMITY_ANY;
-    qos.traffic = QosInfo::TRAFFIC_RELIABLE;
     qos.transports = QosInfo::TRANSPORT_WLAN;
 
     if (m_listener) {

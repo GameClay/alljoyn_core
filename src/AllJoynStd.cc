@@ -62,17 +62,18 @@ QStatus org::alljoyn::CreateInterfaces(BusAttachment& bus)
             QCC_LogError(status, ("Failed to create interface \"%s\"", org::alljoyn::Bus::InterfaceName));
             return status;
         }
-        ifc->AddMethod("BusHello",                 "su",           "ssu",     "GUIDC,protoVerC,GUIDS,uniqueName,protoVerS",   0);
-        ifc->AddMethod("CreateSession",            "s(qqq)",       "uu",      "sessionName,qos,disposition,sessionId",        0);
-        ifc->AddMethod("JoinSession",              "s(qqq)",       "uu(qqq)", "sName,qos,disp,sessionId,qos",                 0);
-        ifc->AddMethod("LeaveSession",             "u",            "u",       "sessionId,disposition",                        0);
-        ifc->AddMethod("AdvertiseName",            "s",            "u",       "name,disposition",                             0);
-        ifc->AddMethod("CancelAdvertiseName",      "s",            "u",       "name,disposition",                             0);
-        ifc->AddMethod("FindAdvertisedName",       "s",            "u",       "name,disposition",                             0);
-        ifc->AddMethod("CancelFindAdvertisedName", "s",            "u",       "name,disposition",                             0);
+        ifc->AddMethod("BusHello",                 "su",           "ssu",           "GUIDC,protoVerC,GUIDS,uniqueName,protoVerS", 0);
+        ifc->AddMethod("CreateSession",            "s"QOSINFO_SIG, "uu",            "sessionName,qos,disposition,sessionId",      0);
+        ifc->AddMethod("JoinSession",              "s"QOSINFO_SIG, "uu"QOSINFO_SIG, "sName,qos,disp,sessionId,qos",               0);
+        ifc->AddMethod("LeaveSession",             "u",            "u",             "sessionId,disposition",                      0);
+        ifc->AddMethod("AdvertiseName",            "s",            "u",             "name,disposition",                           0);
+        ifc->AddMethod("CancelAdvertiseName",      "s",            "u",             "name,disposition",                           0);
+        ifc->AddMethod("FindAdvertisedName",       "s",            "u",             "name,disposition",                           0);
+        ifc->AddMethod("CancelFindAdvertisedName", "s",            "u",             "name,disposition",                           0);
+        ifc->AddMethod("GetSessionFd",             "u",            "h",             "sessionId,handle",                           0);
 
-        ifc->AddSignal("FoundAdvertisedName",      "s(qqq)s",                 "name,qos,prefix",                              0);
-        ifc->AddSignal("LostAdvertisedName",       "s(qqq)s",                 "name,qos,prefix",                              0);
+        ifc->AddSignal("FoundAdvertisedName",      "s"QOSINFO_SIG"s",         "name,qos,prefix",                              0);
+        ifc->AddSignal("LostAdvertisedName",       "s"QOSINFO_SIG"s",         "name,qos,prefix",                              0);
         ifc->AddSignal("BusConnectionLost",        "s",                       "busName",                                      0);
 
         ifc->Activate();
@@ -87,7 +88,7 @@ QStatus org::alljoyn::CreateInterfaces(BusAttachment& bus)
             QCC_LogError(status, ("Failed to create interface \"%s\"", org::alljoyn::Daemon::InterfaceName));
             return status;
         }
-        ifc->AddMethod("AttachSession",  "ssss(qqq)", "uu(qqq)", "name,joiner,creator,b2b,qosIn,status,id,qosOut", 0);
+        ifc->AddMethod("AttachSession",  "ssss"QOSINFO_SIG, "uu"QOSINFO_SIG, "name,joiner,creator,b2b,qosIn,status,id,qosOut", 0);
         ifc->AddSignal("DetachSession",  "us",        "sessionId,joiner",                                          0);
         ifc->AddSignal("ExchangeNames",  "a(sas)",    "uniqueName,aliases",                                        0);
         ifc->AddSignal("NameChanged",    "sss",       "name,oldOwner,newOwner",                                    0);
@@ -127,7 +128,7 @@ QStatus org::alljoyn::CreateInterfaces(BusAttachment& bus)
             QCC_LogError(status, ("Failed to create %s interface", org::alljoyn::Bus::Peer::Session::InterfaceName));
             return status;
         }
-        ifc->AddMethod("AcceptSession",     "sss(qqq)", "b",  "name,src,dest,qos,accepted");
+        ifc->AddMethod("AcceptSession",     "suss"QOSINFO_SIG, "b",  "name,id,src,dest,qos,accepted");
         ifc->Activate();
     }
     return status;

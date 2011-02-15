@@ -185,11 +185,12 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
      * Inform BusListeners of incoming JoinSession attempt.
      *
      * @param sessionName    Name of session.
+     * @param id             Session id.
      * @param joiner         Unique name of potential joiner.
      * @param qos            Incoming quality of service.
      * @return   Return true if JoinSession request is accepted. false if rejected.
      */
-    bool CallAcceptListeners(const char* sessionName, const char* joiner, const QosInfo& qos);
+    bool CallAcceptListeners(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos);
 
   private:
 

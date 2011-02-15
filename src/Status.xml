@@ -128,4 +128,5 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
   <status name="ER_BUS_HANDLES_NOT_ENABLED" value="0x906c" comment="Passing of handles is not enabled for this connection"/>
   <status name="ER_BUS_HANDLES_MISMATCH" value="0x906d" comment="Message had more handles than expected"/>
   <status name="ER_BT_MAX_CONNECTIONS_USED" value="0x906e" comment="Maximum Bluetooth connections already in use"/>
+  <status name="ER_BUS_NO_SESSION" value="0x906f" comment="Session id is not valid"/>
 </status_block>

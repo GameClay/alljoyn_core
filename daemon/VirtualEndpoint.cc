@@ -44,14 +44,7 @@ VirtualEndpoint::VirtualEndpoint(const char* uniqueName, RemoteEndpoint& b2bEp)
 
 QStatus VirtualEndpoint::PushMessage(Message& msg)
 {
-    String destStr = msg->GetDestination();
-    size_t atOff = destStr.find_first_of('@');
-    SessionId id = 0;
-
-    if (atOff != String::npos) {
-        id = static_cast<SessionId>(qcc::StringToU32(destStr.substr(atOff + 1)));
-    }
-    return PushMessage(msg, id);
+    return PushMessage(msg, msg->GetSessionId());
 }
 
 QStatus VirtualEndpoint::PushMessage(Message& msg, SessionId id)
@@ -59,9 +52,12 @@ QStatus VirtualEndpoint::PushMessage(Message& msg, SessionId id)
     QStatus status = ER_BUS_NO_ROUTE;
 
     m_b2bEndpointsLock.Lock();
-    multimap<SessionId, RemoteEndpoint*>::iterator it = (id == 0) ? m_b2bEndpoints.begin() : m_b2bEndpoints.find(id);
-    if (it != m_b2bEndpoints.end()) {
-        status = it->second->PushMessage(msg);
+    multimap<SessionId, RemoteEndpoint*>::iterator it = (id == 0) ? m_b2bEndpoints.begin() : m_b2bEndpoints.lower_bound(id);
+    while ((it != m_b2bEndpoints.end()) && (id == it->first)) {
+        status = it++->second->PushMessage(msg);
+        if (status != ER_BUS_ENDPOINT_CLOSING) {
+            break;
+        }
     }
     m_b2bEndpointsLock.Unlock();
 

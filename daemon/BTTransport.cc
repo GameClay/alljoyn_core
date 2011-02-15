@@ -68,7 +68,7 @@ BTTransport::BTTransport(BusAttachment& bus) :
     btmActive(false)
 {
     btQos.proximity = QosInfo::PROXIMITY_PHYSICAL;
-    btQos.traffic = QosInfo::TRAFFIC_RELIABLE;
+    btQos.traffic = QosInfo::TRAFFIC_MESSAGES;
     btQos.transports = QosInfo::TRANSPORT_BLUETOOTH;
 
     btController = new BTController(bus, *this);

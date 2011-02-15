@@ -23,6 +23,9 @@
 
 #include <qcc/platform.h>
 
+/** DBus signature of QosInfo */
+#define QOSINFO_SIG "(yyq)"
+
 namespace ajn {
 
 /**
@@ -30,26 +33,51 @@ namespace ajn {
  */
 struct QosInfo {
 
-    /** Proximity constraint */
-    static const uint16_t PROXIMITY_ANY = 0xFFFF;
-    static const uint16_t PROXIMITY_PHYSICAL = 0x0001;
-    static const uint16_t PROXIMITY_NETWORK = 0x0002;
-    uint16_t proximity;
-
     /** Traffic type */
-    static const uint16_t TRAFFIC_ANY = 0xFFFF;
-    static const uint16_t TRAFFIC_RELIABLE = 0x0001;
-    static const uint16_t TRAFFIC_UNRELIABLE = 0x0002;
-    uint16_t traffic;
-
-    /** Transport types */
-    // @{
-    static const uint16_t TRANSPORT_ANY = 0xFFFF;
-    static const uint16_t TRANSPORT_BLUETOOTH = 0x0001;
-    static const uint16_t TRANSPORT_WLAN = 0x0002;
-    static const uint16_t TRANSPORT_WWAN = 0x0004;
-    uint16_t transports;
+    // {@
+    typedef uint8_t TrafficType;
+    static const TrafficType TRAFFIC_MESSAGES          = 0x01;
+    static const TrafficType TRAFFIC_STREAM_UNRELIABLE = 0x02;
+    static const TrafficType TRAFFIC_STREAM_RELIABLE   = 0x04;
+    TrafficType traffic;
     // @}
+
+    /** Proximity */
+    // {@
+    typedef uint8_t Proximity;
+    static const Proximity PROXIMITY_ANY      = 0xFF;
+    static const Proximity PROXIMITY_PHYSICAL = 0x01;
+    static const Proximity PROXIMITY_NETWORK  = 0x02;
+    Proximity proximity;
+    // @}
+
+    /** Transport  */
+    // @{
+    typedef uint16_t Transport;
+    static const Transport TRANSPORT_ANY       = 0xFFFF;
+    static const Transport TRANSPORT_BLUETOOTH = 0x0001;
+    static const Transport TRANSPORT_WLAN      = 0x0002;
+    static const Transport TRANSPORT_WWAN      = 0x0004;
+    Transport transports;
+    // @}
+
+    /**
+     * Construct a QosInfo with specific parameters.
+     *
+     * @param traffic       Type of traffic.
+     * @param proximity     Proximity constraint bitmask.
+     * @param transports    Allowed transport types bitmask.
+     */
+    QosInfo(QosInfo::TrafficType traffic, QosInfo::Proximity proximity, QosInfo::Transport transports) :
+        traffic(traffic),
+        proximity(proximity),
+        transports(transports) 
+    { }
+
+    /**
+     * Construct a default QosInfo.
+     */
+    QosInfo() : traffic(TRAFFIC_MESSAGES), proximity(PROXIMITY_ANY), transports(TRANSPORT_ANY) { }
 
     /**
      * Determine whether this QoS is compatible with the QoS offered by otherQos

@@ -25,6 +25,7 @@
 #include <qcc/String.h>
 #include <qcc/atomic.h>
 #include <qcc/Thread.h>
+#include <qcc/SocketStream.h>
 
 #include <alljoyn/BusAttachment.h>
 
@@ -53,7 +54,8 @@ RemoteEndpoint::RemoteEndpoint(BusAttachment& bus,
                                bool incoming,
                                const qcc::String& connectSpec,
                                Stream& stream,
-                               const char* threadName) :
+                               const char* threadName,
+                               bool isSocket) :
     BusEndpoint(BusEndpoint::ENDPOINT_TYPE_REMOTE),
     bus(bus),
     stream(stream),
@@ -67,7 +69,8 @@ RemoteEndpoint::RemoteEndpoint(BusAttachment& bus,
     connSpec(connectSpec),
     incoming(incoming),
     processId(-1),
-    refCount(0)
+    refCount(0),
+    isSocket(isSocket)
 {
 }
 
@@ -461,6 +464,11 @@ void RemoteEndpoint::DecrementRef()
     if (refs <= 0) {
         Stop();
     }
+}
+
+SocketFd RemoteEndpoint::GetSocketFd()
+{
+    return isSocket ? static_cast<SocketStream&>(stream).GetSocketFd() : -1;
 }
 
 }
