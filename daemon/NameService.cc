@@ -367,13 +367,25 @@ static std::list<IfEntry> NetlinkGetInterfaces(void)
 {
     std::list<IfEntry> entries;
 
-    char buffer[8192];
+    //
+    // Like many interfaces that do similar things, there's no clean way to
+    // figure out beforehand how big of a buffer we are going to eventually
+    // need.  Typically user code just picks buffers that are "big enough."
+    // for example, iproute2 just picks a 16K buffer and fails if its not
+    // "big enough."  Experimentally, we see that an 8K buffer holds 19
+    // interfaces (because we have overflowed that for some devices).  Instead
+    // of trying to dynamically resize the buffer as we go along, we do what
+    // everyone else does and just allocate a  "big enough' buffer.  We choose
+    // 64K which should handle about 150 interfaces.
+    //
+    const uint32_t BUFSIZE = 65536;
+    char *buffer = new char[BUFSIZE];
     uint32_t len;
 
-    int sockFd = NetlinkRouteSocket(sizeof(buffer));
+    int sockFd = NetlinkRouteSocket(BUFSIZE);
 
     NetlinkSend(sockFd, 0, RTM_GETLINK, 0);
-    len = NetlinkRecv(sockFd, buffer, sizeof(buffer));
+    len = NetlinkRecv(sockFd, buffer, BUFSIZE);
 
     for (struct nlmsghdr* nh = (struct nlmsghdr*)buffer; NLMSG_OK(nh, len); nh = NLMSG_NEXT(nh, len)) {
         switch (nh->nlmsg_type) {
@@ -409,6 +421,7 @@ static std::list<IfEntry> NetlinkGetInterfaces(void)
         }
     }
 
+    delete [] buffer;
     close(sockFd);
 
     return entries;
@@ -432,13 +445,25 @@ static std::list<AddrEntry> NetlinkGetAddresses(uint32_t family)
 {
     std::list<AddrEntry> entries;
 
-    char buffer[8192];
+    //
+    // Like many interfaces that do similar things, there's no clean way to
+    // figure out beforehand how big of a buffer we are going to eventually
+    // need.  Typically user code just picks buffers that are "big enough."
+    // for example, iproute2 just picks a 16K buffer and fails if its not
+    // "big enough."  Experimentally, we see that an 8K buffer holds 19
+    // interfaces (because we have overflowed that for some devices).  Instead
+    // of trying to dynamically resize the buffer as we go along, we do what
+    // everyone else does and just allocate a  "big enough' buffer.  We choose
+    // 64K which should handle about 150 interfaces.
+    //
+    const uint32_t BUFSIZE = 65536;
+    char *buffer = new char[BUFSIZE];
     uint32_t len;
 
-    int sockFd = NetlinkRouteSocket(sizeof(buffer));
+    int sockFd = NetlinkRouteSocket(BUFSIZE);
 
     NetlinkSend(sockFd, 0, RTM_GETADDR, family);
-    len = NetlinkRecv(sockFd, buffer, sizeof(buffer));
+    len = NetlinkRecv(sockFd, buffer, BUFSIZE);
 
     for (struct nlmsghdr* nh = (struct nlmsghdr*)buffer; NLMSG_OK(nh, len); nh = NLMSG_NEXT(nh, len)) {
         switch (nh->nlmsg_type) {
@@ -495,6 +520,7 @@ static std::list<AddrEntry> NetlinkGetAddresses(uint32_t family)
         }
     }
 
+    delete [] buffer;
     close(sockFd);
 
     return entries;
