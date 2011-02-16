@@ -1124,6 +1124,8 @@ BTTransport::BTAccessor::BTAccessor(BTTransport* transport, const qcc::String& b
             }
         }
     }
+
+    bzManagerObj->AddInterface(*org.bluez.Manager.interface);
 }
 
 
@@ -1902,8 +1904,8 @@ QStatus BTTransport::BTAccessor::EnumerateAdapters()
                 status = ER_FAIL;
             } else {
                 qcc::String anyAdapterObjPath(defaultAdapterObjPath.substr(0, pos + 1) + "any");
-                anyAdapterObj = new AdapterObject(bzBus, anyAdapterObjPath.c_str());
                 adapterLock.Lock();
+                anyAdapterObj = new AdapterObject(bzBus, anyAdapterObjPath.c_str());
                 anyAdapterObj->AddInterface(*org.bluez.Service.interface);
                 adapterLock.Unlock();
             }
@@ -1933,6 +1935,7 @@ void BTTransport::BTAccessor::AdapterAdded(const char* adapterObjPath, bool sync
 
     if (newAdapterObj->GetInterface(bzServiceIfc) == NULL) {
         newAdapterObj->AddInterface(*org.bluez.Service.interface);
+        newAdapterObj->AddInterface(*org.bluez.Adapter.interface);
     }
 
     adapterLock.Lock();
