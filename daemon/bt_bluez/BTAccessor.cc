@@ -1128,19 +1128,26 @@ void BTTransport::BTAccessor::AlarmTriggered(const Alarm& alarm, QStatus reason)
             break;
 
         case DispatchInfo::ADAPTER_ADDED:
-            AdapterAdded(op->adapterPath.c_str());
+            AdapterAdded(static_cast<AdapterDispatchInfo*>(op)->adapterPath.c_str());
             break;
 
         case DispatchInfo::ADAPTER_REMOVED:
-            AdapterRemoved(op->adapterPath.c_str());
+            AdapterRemoved(static_cast<AdapterDispatchInfo*>(op)->adapterPath.c_str());
             break;
 
         case DispatchInfo::DEFAULT_ADAPTER_CHANGED:
-            DefaultAdapterChanged(op->adapterPath.c_str());
+            DefaultAdapterChanged(static_cast<AdapterDispatchInfo*>(op)->adapterPath.c_str());
             break;
 
         case DispatchInfo::DEVICE_FOUND:
-            transport->FoundDevice(op->addr, op->uuidRev);
+            transport->FoundDevice(static_cast<DeviceDispatchInfo*>(op)->addr,
+                                   static_cast<DeviceDispatchInfo*>(op)->uuidRev);
+            break;
+
+        case DispatchInfo::ADD_RECORD:
+            break;
+
+        case DispatchInfo::REMOVE_RECORD:
             break;
         }
     }
@@ -1154,7 +1161,7 @@ void BTTransport::BTAccessor::AdapterAddedSignalHandler(const InterfaceDescripti
                                                         Message& msg)
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::AdapterAddedSignalHandler - signal from \"%s\"", sourcePath));
-    DispatchOperation(new DispatchInfo(DispatchInfo::ADAPTER_ADDED, msg->GetArg(0)->v_objPath.str));
+    DispatchOperation(new AdapterDispatchInfo(DispatchInfo::ADAPTER_ADDED, msg->GetArg(0)->v_objPath.str));
 }
 
 
@@ -1163,7 +1170,7 @@ void BTTransport::BTAccessor::AdapterRemovedSignalHandler(const InterfaceDescrip
                                                           Message& msg)
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::AdapterRemovedSignalHandler - signal from \"%s\"", sourcePath));
-    DispatchOperation(new DispatchInfo(DispatchInfo::ADAPTER_REMOVED, msg->GetArg(0)->v_objPath.str));
+    DispatchOperation(new AdapterDispatchInfo(DispatchInfo::ADAPTER_REMOVED, msg->GetArg(0)->v_objPath.str));
 }
 
 
@@ -1175,7 +1182,7 @@ void BTTransport::BTAccessor::DefaultAdapterChangedSignalHandler(const Interface
     /*
      * We are in a signal handler so kick off the restart in a new thread.
      */
-    DispatchOperation(new DispatchInfo(DispatchInfo::DEFAULT_ADAPTER_CHANGED, msg->GetArg(0)->v_objPath.str));
+    DispatchOperation(new AdapterDispatchInfo(DispatchInfo::DEFAULT_ADAPTER_CHANGED, msg->GetArg(0)->v_objPath.str));
 }
 
 
@@ -1225,7 +1232,7 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
                         foundInfo.uuidRev = uuidRev;
                         foundInfo.timestamp = now;
 
-                        DispatchOperation(new DispatchInfo(DispatchInfo::DEVICE_FOUND, addr, uuidRev));
+                        DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_FOUND, addr, uuidRev));
                     }
                     deviceLock.Unlock();
                 }

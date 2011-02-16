@@ -327,17 +327,37 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
             ADAPTER_ADDED,
             ADAPTER_REMOVED,
             DEFAULT_ADAPTER_CHANGED,
-            DEVICE_FOUND
+            DEVICE_FOUND,
+            ADD_RECORD,
+            REMOVE_RECORD
         } DispatchTypes;
         DispatchTypes operation;
 
+        DispatchInfo(DispatchTypes operation) : operation(operation) { }
+        virtual ~DispatchInfo() { }
+    };
+
+    struct AdapterDispatchInfo : public DispatchInfo {
         qcc::String adapterPath;
+
+        AdapterDispatchInfo(DispatchTypes operation, const char* adapterPath) :
+            DispatchInfo(operation), adapterPath(adapterPath) { }
+    };
+
+    struct DeviceDispatchInfo : public DispatchInfo {
         BDAddress addr;
         uint32_t uuidRev;
 
-        DispatchInfo(DispatchTypes operation) : operation(operation) { }
-        DispatchInfo(DispatchTypes operation, const char* adapterPath) : operation(operation), adapterPath(adapterPath) { }
-        DispatchInfo(DispatchTypes operation, const BDAddress& addr, uint32_t uuidRev) : operation(operation), addr(addr), uuidRev(uuidRev) { }
+        DeviceDispatchInfo(DispatchTypes operation, const BDAddress& addr, uint32_t uuidRev) :
+            DispatchInfo(operation), addr(addr), uuidRev(uuidRev) { }
+    };
+
+    struct MsgDispatchInfo : public DispatchInfo {
+        MsgArg* args;
+        size_t argCnt;
+
+        MsgDispatchInfo(DispatchTypes operation, MsgArg* args, size_t argCnt) :
+            DispatchInfo(operation), args(args), argCnt(argCnt) { }
     };
 
     BusAttachment bzBus;
