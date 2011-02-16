@@ -379,7 +379,7 @@ static std::list<IfEntry> NetlinkGetInterfaces(void)
     // 64K which should handle about 150 interfaces.
     //
     const uint32_t BUFSIZE = 65536;
-    char *buffer = new char[BUFSIZE];
+    char* buffer = new char[BUFSIZE];
     uint32_t len;
 
     int sockFd = NetlinkRouteSocket(BUFSIZE);
@@ -457,7 +457,7 @@ static std::list<AddrEntry> NetlinkGetAddresses(uint32_t family)
     // 64K which should handle about 150 interfaces.
     //
     const uint32_t BUFSIZE = 65536;
-    char *buffer = new char[BUFSIZE];
+    char* buffer = new char[BUFSIZE];
     uint32_t len;
 
     int sockFd = NetlinkRouteSocket(BUFSIZE);
