@@ -155,6 +155,26 @@ QStatus RemoteEndpoint::Stop(void)
     return rxThread.Stop();
 }
 
+QStatus RemoteEndpoint::StopAfterTxEmpty()
+{
+    QStatus status;
+
+    /* Wait for txqueue to empty before triggering stop */
+    txQueueLock.Lock();
+    while (true) {
+        if (txQueue.empty()) {
+            status = Stop();
+            break;
+        } else {
+            txQueueLock.Unlock();
+            qcc::Sleep(5);
+            txQueueLock.Lock();
+        }
+    }
+    txQueueLock.Unlock();
+    return status;
+}
+
 QStatus RemoteEndpoint::Join(void)
 {
     /* Join any threads that are on the wait queue */
@@ -468,7 +488,13 @@ void RemoteEndpoint::DecrementRef()
 
 SocketFd RemoteEndpoint::GetSocketFd()
 {
-    return isSocket ? static_cast<SocketStream&>(stream).GetSocketFd() : -1;
+    if (isSocket) {
+        SocketStream& ss = static_cast<SocketStream&>(stream);
+        ss.DetachSocketFd();
+        return ss.GetSocketFd();
+    } else {
+        return -1;
+    }
 }
 
 }

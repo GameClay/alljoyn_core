@@ -71,7 +71,7 @@ struct QosInfo {
     QosInfo(QosInfo::TrafficType traffic, QosInfo::Proximity proximity, QosInfo::Transport transports) :
         traffic(traffic),
         proximity(proximity),
-        transports(transports) 
+        transports(transports)
     { }
 
     /**

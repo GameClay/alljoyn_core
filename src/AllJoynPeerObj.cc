@@ -847,16 +847,16 @@ void AllJoynPeerObj::AcceptSession(const InterfaceDescription::Member* member, M
         msg->GetArgs(na, args);
         assert(na == 5);
         QStatus status = args[4].Get(QOSINFO_SIG, &qos.traffic, &qos.proximity, &qos.transports);
-        
+
         if (status == ER_OK) {
             MsgArg replyArg;
-            
+
             /* Call bus listeners */
             bool isAccepted = bus.GetInternal().CallAcceptListeners(args[0].v_string.str,
                                                                     args[1].v_uint32,
                                                                     args[2].v_string.str,
                                                                     qos);
-            
+
             /* Reply to AcceptSession */
             replyArg.Set("b", isAccepted);
             status = MethodReply(msg, &replyArg, 1);

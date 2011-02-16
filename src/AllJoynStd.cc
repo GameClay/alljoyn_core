@@ -72,8 +72,8 @@ QStatus org::alljoyn::CreateInterfaces(BusAttachment& bus)
         ifc->AddMethod("CancelFindAdvertisedName", "s",            "u",             "name,disposition",                           0);
         ifc->AddMethod("GetSessionFd",             "u",            "h",             "sessionId,handle",                           0);
 
-        ifc->AddSignal("FoundAdvertisedName",      "s"QOSINFO_SIG"s",         "name,qos,prefix",                              0);
-        ifc->AddSignal("LostAdvertisedName",       "s"QOSINFO_SIG"s",         "name,qos,prefix",                              0);
+        ifc->AddSignal("FoundAdvertisedName",      "s"QOSINFO_SIG "s",         "name,qos,prefix",                              0);
+        ifc->AddSignal("LostAdvertisedName",       "s"QOSINFO_SIG "s",         "name,qos,prefix",                              0);
         ifc->AddSignal("BusConnectionLost",        "s",                       "busName",                                      0);
 
         ifc->Activate();

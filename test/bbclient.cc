@@ -72,9 +72,7 @@ static String g_wellKnownName = ::org::alljoyn::alljoyn_test::DefaultWellKnownNa
 class MyBusListener : public BusListener {
   public:
 
-    MyBusListener(bool useStreaming) : BusListener(), sessionId(0), streamingSessionId(0), useStreaming(useStreaming)
-    {
-    }
+    MyBusListener() : BusListener(), sessionId(0) { }
 
     void FoundAdvertisedName(const char* name, const QosInfo& qos, const char* namePrefix)
     {
@@ -87,16 +85,6 @@ class MyBusListener : public BusListener {
             QStatus status = g_msgBus->JoinSession(name, disposition, sessionId, qosIn);
             if ((ER_OK != status) || (ALLJOYN_JOINSESSION_REPLY_SUCCESS != disposition)) {
                 QCC_LogError(status, ("JoinSession(%s) failed (%u)", name, disposition));
-            }
-
-            /* Join streaming session also if indicated */
-            if ((ER_OK == status) && (ALLJOYN_JOINSESSION_REPLY_SUCCESS == disposition) && useStreaming) {
-                String ssName = g_wellKnownName + ".streaming";
-                QosInfo sQos(QosInfo::TRAFFIC_STREAM_RELIABLE, qosIn.proximity, qosIn.transports);
-                status = g_msgBus->JoinSession(ssName.c_str(), disposition, streamingSessionId, sQos);
-                if ((ER_OK != status) || (ALLJOYN_JOINSESSION_REPLY_SUCCESS != disposition)) {
-                    QCC_LogError(status, ("JoinSession(%s) failed (%u)", ssName.c_str(), disposition));
-                }
             }
 
             /* Release the main thread */
@@ -117,22 +105,12 @@ class MyBusListener : public BusListener {
                        name,
                        previousOwner ? previousOwner : "null",
                        newOwner ? newOwner : "null");
-
-        if (newOwner && (0 == strcmp(name, g_wellKnownName.c_str()))) {
-            /* Inform main thread that name is available */
-            //g_discoverEvent.SetEvent();
-        }
     }
 
     SessionId GetSessionId() const { return sessionId; }
-    
-    SessionId GetStreamingSessionId() const { return streamingSessionId; }
 
   private:
     SessionId sessionId;
-    SessionId streamingSessionId;
-    bool useStreaming;
-    
 };
 
 /** Static bus listener */
@@ -167,7 +145,7 @@ static void usage(void)
     printf("   -ta                   = Like -t except calls asynchronously\n");
     printf("   -rt                   = Round trip timer\n");
     printf("   -w                    = Don't wait for service\n");
-    printf("   -s                    = Join streaming session created by bbservice\n");
+    printf("   -s                    = Call BusAttachment::WaitStop before exiting");
     printf("\n");
 }
 
@@ -335,7 +313,6 @@ int main(int argc, char** argv)
     uint32_t pingInterval = 0;
     bool waitStop = false;
     bool roundtrip = false;
-    bool useStreaming = false;
 
 #ifdef _WIN32
     WSADATA wsaData;
@@ -455,10 +432,8 @@ int main(int argc, char** argv)
             if (pingCount == 1) {
                 pingCount = 1000;
             }
-        } else if (0 == strcmp("-o", argv[i])) {
-            waitStop = true;
         } else if (0 == strcmp("-s", argv[i])) {
-            useStreaming = true;
+            waitStop = true;
         } else {
             status = ER_FAIL;
             printf("Unknown option %s\n", argv[i]);
@@ -512,7 +487,7 @@ int main(int argc, char** argv)
 
     /* Register a bus listener in order to get discovery indications */
     if (ER_OK == status) {
-        g_busListener = new MyBusListener(useStreaming);
+        g_busListener = new MyBusListener();
         g_msgBus->RegisterBusListener(*g_busListener);
     }
 
@@ -726,55 +701,6 @@ int main(int argc, char** argv)
                                    val.ToString().c_str());
                 } else {
                     QCC_LogError(status, ("GetProperty on %s failed", g_wellKnownName.c_str()));
-                }
-            }
-
-            /* Get the streaming data */
-            if (useStreaming) {
-                SessionId ssId = g_busListener->GetStreamingSessionId();
-                if (ssId == 0) {
-                    status = ER_FAIL;
-                    QCC_LogError(status, ("Streaming session id is invalid"));
-                } else {
-                    /* Get the streaming descriptor */
-                    MsgArg arg;
-                    arg.Set("u", g_busListener->GetStreamingSessionId());
-                    const ProxyBusObject& ajObj = g_msgBus->GetAllJoynProxyObj();
-                    Message reply(*g_msgBus);
-                    QStatus status = ajObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName,
-                                                      "GetSessionFd",
-                                                      &arg,
-                                                      1,
-                                                      reply);
-                    if ((status == ER_OK) && (reply->GetType() == MESSAGE_METHOD_RET)) {
-                        size_t na;
-                        const MsgArg* args;
-                        reply->GetArgs(na, args);
-                        SocketFd sockFd;
-                        status = args[0].Get("h", &sockFd);
-                        if (status == ER_OK) {
-                            /* Attempt to read test string from fd */
-                            char buf[256];
-                            int ret = read(sockFd, buf, sizeof(buf)-1);
-                            
-                            if (ret > 0) {
-                                QCC_SyncPrintf("Read %d bytes from streaming fd\n", ret);
-                                buf[ret] = '\0';
-                                QCC_SyncPrintf("Bytes: %s", buf);
-                            } else {
-                                QCC_SyncPrintf("Read from streaming fd failed (%d)\n", ret);
-                            }
-                        } else {
-                            QCC_LogError(status, ("Failed to get socket from GetSessionFd args"));
-                        }
-                    } else {
-                        if (ER_OK == status) {
-                            status = ER_FAIL;
-                            QCC_LogError(status, ("GetSessionFd failed: %s\n", reply->ToString().c_str()));
-                        } else {
-                            QCC_LogError(status, ("org.alljoyn.Bus.GetSessionFd failed"));
-                        }
-                    }
                 }
             }
 

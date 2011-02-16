@@ -24,6 +24,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <vector>
+#include <errno.h>
 
 #include <qcc/Debug.h>
 #include <qcc/Environ.h>
@@ -34,7 +35,6 @@
 #include <qcc/Util.h>
 
 #include <alljoyn/BusAttachment.h>
-#include <alljoyn/BusObject.h>
 #include <alljoyn/DBusStd.h>
 #include <alljoyn/AllJoynStd.h>
 #include <alljoyn/MsgArg.h>
@@ -75,144 +75,24 @@ static void SigIntHandler(int sig)
 }
 
 class MyBusListener : public BusListener {
+
+  public:
+    MyBusListener() : BusListener(), sessionId(0) { }
+
     bool AcceptSession(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
     {
         QCC_SyncPrintf("Accepting JoinSession request from %s\n", joiner);
+        sessionId = id;
 
-        /* Get the streaming socket */
-        if (qos.traffic == QosInfo::TRAFFIC_STREAM_RELIABLE) {
-            MsgArg arg;
-            arg.Set("u", id);
-            const ProxyBusObject& ajObj = g_msgBus->GetAllJoynProxyObj();
-            Message reply(*g_msgBus);
-            QStatus status = ajObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName,
-                                              "GetSessionFd",
-                                              &arg,
-                                              1,
-                                              reply);
-            if ((status == ER_OK) && (reply->GetType() == MESSAGE_METHOD_RET)) {
-                size_t na;
-                const MsgArg* args;
-                reply->GetArgs(na, args);
-                SocketFd sockFd;
-                status = args[0].Get("h", &sockFd);
-                if (status == ER_OK) {
-                    /* Attempt to write test string to fd */
-                    const char* testBytes = "Test Streaming Bytes";
-                    size_t testBytesLen = ::strlen(testBytes);
-                    int ret = write(sockFd, testBytes, testBytesLen);
-                    if (ret > 0) {
-                        QCC_SyncPrintf("Wrote %d of %d bytes to streaming fd\n", ret, testBytesLen);
-                    } else {
-                        QCC_SyncPrintf("Write to streaming fd failed (%d)\n", ret);
-                    }
-                } else {
-                    QCC_SyncPrintf("Failed to get socket from GetSessionFd args\n");
-                }
-                
-            } else {
-                QCC_SyncPrintf("GetSessionFd failed: %s\n", reply->ToString().c_str());
-            }
-        }
         /* Allow the join attempt */
         return true;
     }
-};
 
-class LocalTestObject : public BusObject {
-
-  public:
-
-    LocalTestObject(BusAttachment& bus, const char* path) :
-        BusObject(bus, path),
-        sessionId(0)
-    {
-    }
-
-    void ObjectRegistered(void)
-    {
-        Message reply(bus);
-
-        /* Request a well-known name */
-        const ProxyBusObject& dbusObj = bus.GetDBusProxyObj();
-        MsgArg args[2];
-        args[0].Set("s", g_wellKnownName.c_str());
-        args[1].Set("u", 6);
-        QStatus status = dbusObj.MethodCall(ajn::org::freedesktop::DBus::InterfaceName,
-                                            "RequestName",
-                                            args,
-                                            ArraySize(args),
-                                            reply);
-        if ((status != ER_OK) || (reply->GetType() != MESSAGE_METHOD_RET)) {
-            status = (status == ER_OK) ? ER_BUS_ERROR_RESPONSE : status;
-            QCC_LogError(status, ("Failed to request name %s", g_wellKnownName.c_str()));
-            return;
-        } else {
-            size_t numArgs;
-            const MsgArg* replyArgs;
-            reply->GetArgs(numArgs, replyArgs);
-            if (replyArgs[0].v_uint32 != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
-                status = ER_FAIL;
-                QCC_LogError(status, ("RequestName(%s) returned failed status %d", g_wellKnownName.c_str(), replyArgs[0].v_uint32));
-                return;
-            }
-        }
-
-        /* Create a session for incoming client connections */
-        const ProxyBusObject& alljoynObj = bus.GetAllJoynProxyObj();
-        MsgArg createSessionArgs[2];
-        createSessionArgs[0].Set("s", g_wellKnownName.c_str());
-        createSessionArgs[1].Set(QOSINFO_SIG, QosInfo::TRAFFIC_STREAM_RELIABLE, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
-        status = alljoynObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName,
-                                       "CreateSession",
-                                       createSessionArgs,
-                                       ArraySize(createSessionArgs),
-                                       reply);
-        
-        if ((status != ER_OK) || (reply->GetType() != MESSAGE_METHOD_RET)) {
-            status = (status == ER_OK) ? ER_BUS_ERROR_RESPONSE : status;
-            QCC_LogError(status, ("CreateSession(%s,<>) failed", g_wellKnownName.c_str()));
-            return;
-        } else {
-            size_t numArgs;
-            const MsgArg* replyArgs;
-            reply->GetArgs(numArgs, replyArgs);
-            if (replyArgs[0].v_uint32 == ALLJOYN_CREATESESSION_REPLY_SUCCESS) {
-                sessionId = replyArgs[1].v_uint32;
-            } else {
-                status = ER_FAIL;
-                QCC_LogError(status, ("CreateSession(%s) returned failed status %d", g_wellKnownName.c_str(), replyArgs[0].v_uint32));
-                return;
-            }
-        }
-
-        /* Begin Advertising the well-known name */
-        MsgArg advArg("s", g_wellKnownName.c_str());
-        status = alljoynObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName,
-                                       "AdvertiseName",
-                                       &advArg,
-                                       1,
-                                       reply);
-        if ((ER_OK != status) || (reply->GetType() != MESSAGE_METHOD_RET)) {
-            status = (status == ER_OK) ? ER_BUS_ERROR_RESPONSE : status;
-            QCC_LogError(status, ("Sending org.alljoyn.Bus.Advertise failed"));
-            return;
-        } else {
-            size_t numArgs;
-            const MsgArg* replyArgs;
-            reply->GetArgs(numArgs, replyArgs);
-            if (replyArgs[0].v_uint32 != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS) {
-                QCC_LogError(ER_FAIL, ("AdvertiseName(%s) failed with %d", g_wellKnownName.c_str(), replyArgs[0].v_uint32));
-                return;
-            }
-        }
-    }
+    SocketFd GetSessionId() { return sessionId; }
 
   private:
-
     SessionId sessionId;
 };
-
 
 static void usage(void)
 {
@@ -277,26 +157,145 @@ int main(int argc, char** argv)
         QCC_LogError(status, ("BusAttachment::Start failed"));
     }
 
-    /* Create a bus listener to be used to accept incoming session requests */
+    /* Create a bus listener and connect to the local daemon */
     if (status == ER_OK) {
         g_msgBus->RegisterBusListener(myBusListener);
 
-        /* Register local objects and connect to the daemon */
-        LocalTestObject testObj(*g_msgBus, ::org::alljoyn::stream_test::ObjectPath);
-        g_msgBus->RegisterBusObject(testObj);
-
         /* Connect to the daemon */
         status = g_msgBus->Connect(clientArgs.c_str());
-        if (status == ER_OK) {
-            /* Wait until bus is stopped */
-            g_msgBus->WaitStop();
-        } else {
+        if (status != ER_OK) {
             QCC_LogError(status, ("Failed to connect to \"%s\"", clientArgs.c_str()));
         }
-        /* Deregister the bus object */
-        g_msgBus->DeregisterBusObject(testObj);
     }
 
+    /* Request a well-known name */
+    if (status == ER_OK) {
+        Message reply(*g_msgBus);
+        const ProxyBusObject& dbusObj = g_msgBus->GetDBusProxyObj();
+        MsgArg args[2];
+        args[0].Set("s", g_wellKnownName.c_str());
+        args[1].Set("u", 6);
+        QStatus status = dbusObj.MethodCall(ajn::org::freedesktop::DBus::InterfaceName,
+                                            "RequestName",
+                                            args,
+                                            ArraySize(args),
+                                            reply);
+        if ((status != ER_OK) || (reply->GetType() != MESSAGE_METHOD_RET)) {
+            status = (status == ER_OK) ? ER_BUS_ERROR_RESPONSE : status;
+            QCC_LogError(status, ("Failed to request name %s", g_wellKnownName.c_str()));
+        } else {
+            size_t numArgs;
+            const MsgArg* replyArgs;
+            reply->GetArgs(numArgs, replyArgs);
+            if (replyArgs[0].v_uint32 != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
+                status = ER_FAIL;
+                QCC_LogError(status, ("RequestName(%s) returned failed status %d", g_wellKnownName.c_str(), replyArgs[0].v_uint32));
+            }
+        }
+    }
+
+    /* Create a session for incoming client connections */
+    const ProxyBusObject& alljoynObj = g_msgBus->GetAllJoynProxyObj();
+    if (status == ER_OK) {
+        Message reply(*g_msgBus);
+        MsgArg createSessionArgs[2];
+        createSessionArgs[0].Set("s", g_wellKnownName.c_str());
+        createSessionArgs[1].Set(QOSINFO_SIG, QosInfo::TRAFFIC_STREAM_RELIABLE, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
+        status = alljoynObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName,
+                                       "CreateSession",
+                                       createSessionArgs,
+                                       ArraySize(createSessionArgs),
+                                       reply);
+
+        if ((status != ER_OK) || (reply->GetType() != MESSAGE_METHOD_RET)) {
+            status = (status == ER_OK) ? ER_BUS_ERROR_RESPONSE : status;
+            QCC_LogError(status, ("CreateSession(%s,<>) failed", g_wellKnownName.c_str()));
+        } else {
+            size_t numArgs;
+            const MsgArg* replyArgs;
+            reply->GetArgs(numArgs, replyArgs);
+            if (replyArgs[0].v_uint32 == ALLJOYN_CREATESESSION_REPLY_SUCCESS) {
+                SessionId sessionId = replyArgs[1].v_uint32;
+                printf("Created session with id = %u\n", sessionId);
+            } else {
+                status = ER_FAIL;
+                QCC_LogError(status, ("CreateSession(%s) returned failed status %d", g_wellKnownName.c_str(), replyArgs[0].v_uint32));
+            }
+        }
+    }
+
+    /* Begin Advertising the well-known name */
+    if (status == ER_OK) {
+        Message reply(*g_msgBus);
+        MsgArg advArg("s", g_wellKnownName.c_str());
+        status = alljoynObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName,
+                                       "AdvertiseName",
+                                       &advArg,
+                                       1,
+                                       reply);
+        if ((ER_OK != status) || (reply->GetType() != MESSAGE_METHOD_RET)) {
+            status = (status == ER_OK) ? ER_BUS_ERROR_RESPONSE : status;
+            QCC_LogError(status, ("Sending org.alljoyn.Bus.Advertise failed"));
+        } else {
+            size_t numArgs;
+            const MsgArg* replyArgs;
+            reply->GetArgs(numArgs, replyArgs);
+            if (replyArgs[0].v_uint32 != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS) {
+                QCC_LogError(ER_FAIL, ("AdvertiseName(%s) failed with %d", g_wellKnownName.c_str(), replyArgs[0].v_uint32));
+            }
+        }
+    }
+
+    /* Wait for someone to join our session */
+    if (status == ER_OK) {
+        SessionId id;
+        while ((id = myBusListener.GetSessionId()) == 0) {
+            qcc::Sleep(100);
+        }
+
+        /* Get the streaming socket */
+        SocketFd sockFd;
+        MsgArg arg;
+        arg.Set("u", id);
+        const ProxyBusObject& ajObj = g_msgBus->GetAllJoynProxyObj();
+        Message reply(*g_msgBus);
+        QStatus status = ajObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName,
+                                          "GetSessionFd",
+                                          &arg,
+                                          1,
+                                          reply);
+        if ((status == ER_OK) && (reply->GetType() == MESSAGE_METHOD_RET)) {
+            size_t na;
+            const MsgArg* args;
+            reply->GetArgs(na, args);
+            status = args[0].Get("h", &sockFd);
+            if (status != ER_OK) {
+                QCC_LogError(status, ("Failed to get socket from GetSessionFd args"));
+            }
+        } else {
+            status = ER_FAIL;
+            QCC_LogError(status, ("GetSessionFd failed: %s", reply->ToString().c_str()));
+        }
+
+        /* Write test message on stream */
+        const char* testMessage = "abcdefghijklmnopqrstuvwxyz";
+        int testMessageLen = ::strlen(testMessage);
+        int ret = ::write(sockFd, testMessage, testMessageLen);
+        if (ret > 0) {
+            printf("Wrote %d of %d bytes of testMessage to stream\n", ret, testMessageLen);
+        } else {
+            printf("Failed to write testMessage (%s)\n", ::strerror(errno));
+            status = ER_FAIL;
+        }
+    }
+
+    /* Wait for bus to stop */
+    if (status == ER_OK) {
+        /* Wait until bus is stopped */
+        g_msgBus->WaitStop();
+    }
+
+    /* Delete the bus */
     delete g_msgBus;
 
     printf("%s exiting with status %d (%s)\n", argv[0], status, QCC_StatusText(status));

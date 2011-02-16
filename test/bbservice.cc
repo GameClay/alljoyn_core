@@ -67,8 +67,6 @@ static BusAttachment* g_msgBus = NULL;
 static String g_wellKnownName = ::org::alljoyn::alljoyn_test::DefaultWellKnownName;
 static bool g_echo_signal = false;
 static bool g_compress = false;
-static bool g_streaming = false;
-static SocketFd g_streamSock = -1;
 
 /** Signal handler */
 static void SigIntHandler(int sig)
@@ -230,40 +228,6 @@ class MyBusListener : public BusListener {
     {
         QCC_SyncPrintf("Accepting JoinSession request from %s\n", joiner);
 
-        /* Get the streaming socket */
-        if (qos.traffic == QosInfo::TRAFFIC_STREAM_RELIABLE) {
-            MsgArg arg;
-            arg.Set("u", id);
-            const ProxyBusObject& ajObj = g_msgBus->GetAllJoynProxyObj();
-            Message reply(*g_msgBus);
-            QStatus status = ajObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName,
-                                              "GetSessionFd",
-                                              &arg,
-                                              1,
-                                              reply);
-            if ((status == ER_OK) && (reply->GetType() == MESSAGE_METHOD_RET)) {
-                size_t na;
-                const MsgArg* args;
-                reply->GetArgs(na, args);
-                status = args[0].Get("h", &g_streamSock);
-                if (status == ER_OK) {
-                    /* Attempt to write test string to fd */
-                    const char* testBytes = "Test Streaming Bytes";
-                    size_t testBytesLen = ::strlen(testBytes);
-                    int ret = write(g_streamSock, testBytes, testBytesLen);
-                    if (ret > 0) {
-                        QCC_SyncPrintf("Wrote %d of %d bytes to streaming fd\n", ret, testBytesLen);
-                    } else {
-                        QCC_SyncPrintf("Write to streaming fd failed (%d)\n", ret);
-                    }
-                } else {
-                    QCC_SyncPrintf("Failed to get socket from GetSessionFd args\n");
-                }
-                
-            } else {
-                QCC_SyncPrintf("GetSessionFd failed: %s\n", reply->ToString().c_str());
-            }
-        }
         /* Allow the join attempt */
         return true;
     }
@@ -371,9 +335,7 @@ class LocalTestObject : public BusObject {
         prop_str_val("hello world"),
         prop_ro_str("I cannot be written"),
         prop_int_val(100),
-        sessionId(0),
-        streamSessionId(0)
-        
+        sessionId(0)
     {
         QStatus status;
 
@@ -463,61 +425,6 @@ class LocalTestObject : public BusObject {
                 status = ER_FAIL;
                 QCC_LogError(status, ("CreateSession(%s) returned failed status %d", g_wellKnownName.c_str(), replyArgs[0].v_uint32));
                 return;
-            }
-        }
-
-        /* Create a separate session for exchanging streaming data */
-        if (g_streaming) {
-            /* Request the streaming session's well-known name */
-            String ssName = g_wellKnownName + ".streaming";
-            MsgArg args[2];
-            args[0].Set("s", ssName.c_str());
-            args[1].Set("u", 6);
-            status = dbusObj.MethodCall(ajn::org::freedesktop::DBus::InterfaceName,
-                                            "RequestName",
-                                            args,
-                                            ArraySize(args),
-                                            reply);
-            if ((status != ER_OK) || (reply->GetType() != MESSAGE_METHOD_RET)) {
-                status = (status == ER_OK) ? ER_BUS_ERROR_RESPONSE : status;
-                QCC_LogError(status, ("Failed to request name %s", ssName.c_str()));
-                return;
-            } else {
-                size_t numArgs;
-                const MsgArg* replyArgs;
-                reply->GetArgs(numArgs, replyArgs);
-                if (replyArgs[0].v_uint32 != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
-                    status = ER_FAIL;
-                    QCC_LogError(status, ("RequestName(%s) returned failed status %d", ssName.c_str(), replyArgs[0].v_uint32));
-                    return;
-                }
-            }
-            /* Create the session */
-            MsgArg ssArgs[2];
-            Message ssReply(bus);
-            ssArgs[0].Set("s", ssName.c_str());
-            ssArgs[1].Set(QOSINFO_SIG, QosInfo::TRAFFIC_STREAM_RELIABLE, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
-            status = alljoynObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName,
-                                           "CreateSession",
-                                           ssArgs,
-                                           ArraySize(ssArgs),
-                                           reply);
-
-            if ((status != ER_OK) || (reply->GetType() != MESSAGE_METHOD_RET)) {
-                status = (status == ER_OK) ? ER_BUS_ERROR_RESPONSE : status;
-                QCC_LogError(status, ("CreateSession(%s,<>) failed", ssName.c_str()));
-                return;
-            } else {
-                size_t numArgs;
-                const MsgArg* replyArgs;
-                reply->GetArgs(numArgs, replyArgs);
-                if (replyArgs[0].v_uint32 == ALLJOYN_CREATESESSION_REPLY_SUCCESS) {
-                    streamSessionId = replyArgs[1].v_uint32;
-                } else {
-                    status = ER_FAIL;
-                    QCC_LogError(status, ("CreateSession(%s) returned failed status %d", ssName.c_str(), replyArgs[0].v_uint32));
-                    return;
-                }
             }
         }
 
@@ -669,7 +576,6 @@ class LocalTestObject : public BusObject {
     qcc::String prop_ro_str;
     int32_t prop_int_val;
     SessionId sessionId;
-    SessionId streamSessionId;
 };
 
 
@@ -688,7 +594,6 @@ static void usage(void)
     printf("   -x         = Compress signals echoed back to sender\n");
     printf("   -i #       = Signal report interval (number of signals rx per update; default = 1000)\n");
     printf("   -n <name>  = Well-known name to advertise\n");
-    printf("   -s         = Create a streaming session and exchange some test bytes");
 }
 
 /** Main entry point */
@@ -737,8 +642,6 @@ int main(int argc, char** argv)
             } else {
                 g_wellKnownName = argv[i];
             }
-        } else if (0 == strcmp("-s", argv[i])) {
-            g_streaming = true;
         } else {
             status = ER_FAIL;
             printf("Unknown option %s\n", argv[i]);

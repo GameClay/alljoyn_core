@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <vector>
+#include <errno.h>
 
 #include <qcc/Environ.h>
 #include <qcc/Event.h>
@@ -101,7 +102,7 @@ class MyBusListener : public BusListener {
     }
 
     SessionId GetSessionId() const { return sessionId; }
-    
+
   private:
     SessionId sessionId;
 };
@@ -122,11 +123,10 @@ static void SigIntHandler(int sig)
 
 static void usage(void)
 {
-    printf("Usage: streamclient [-h] [-d] [-n <well-known name>]\n\n");
+    printf("Usage: streamclient [-h] [-n <well-known name>]\n\n");
     printf("Options:\n");
     printf("   -h                    = Print this help message\n");
     printf("   -n <well-known name>  = Well-known bus name advertised by bbservice\n");
-    printf("   -d                    = discover remote bus with test service\n");
     printf("\n");
 }
 
@@ -135,7 +135,6 @@ int main(int argc, char** argv)
 {
     QStatus status = ER_OK;
     Environ* env;
-    bool discoverRemote = false;
 
     printf("AllJoyn Library version: %s\n", ajn::GetVersion());
     printf("AllJoyn Library build info: %s\n", ajn::GetBuildInfo());
@@ -157,8 +156,6 @@ int main(int argc, char** argv)
         } else if (0 == strcmp("-h", argv[i])) {
             usage();
             exit(0);
-        } else if (0 == strcmp("-d", argv[i])) {
-            discoverRemote = true;
         } else {
             status = ER_FAIL;
             printf("Unknown option %s\n", argv[i]);
@@ -184,7 +181,7 @@ int main(int argc, char** argv)
 
     /* Start the msg bus */
     status = g_msgBus->Start();
-    if (ER_OK == status) {
+    if (ER_OK != status) {
         QCC_LogError(status, ("BusAttachment::Start failed"));
     }
 
@@ -196,8 +193,8 @@ int main(int argc, char** argv)
         }
     }
 
-    if (discoverRemote && (ER_OK == status)) {
-        /* Begin discovery on the well-known name of the service to be called */
+    /* Begin discovery for the well-known name of the service */
+    if (ER_OK == status) {
         Message reply(*g_msgBus);
         const ProxyBusObject& alljoynObj = g_msgBus->GetAllJoynProxyObj();
 
@@ -238,15 +235,16 @@ int main(int argc, char** argv)
             status = args[0].Get("h", &sockFd);
             if (status == ER_OK) {
                 /* Attempt to read test string from fd */
+                qcc::Sleep(200);
                 char buf[256];
-                int ret = read(sockFd, buf, sizeof(buf)-1);
-                
+                int ret = ::read(sockFd, buf, sizeof(buf) - 1);
                 if (ret > 0) {
                     QCC_SyncPrintf("Read %d bytes from streaming fd\n", ret);
                     buf[ret] = '\0';
-                    QCC_SyncPrintf("Bytes: %s", buf);
+                    QCC_SyncPrintf("Bytes: %s\n", buf);
                 } else {
-                    QCC_SyncPrintf("Read from streaming fd failed (%d)\n", ret);
+                    status = ER_FAIL;
+                    QCC_LogError(status, ("Read from streaming fd failed (%s)", ::strerror(errno)));
                 }
             } else {
                 QCC_LogError(status, ("Failed to get socket from GetSessionFd args"));
@@ -262,7 +260,6 @@ int main(int argc, char** argv)
     }
 
     /* Stop the bus */
-    g_msgBus->WaitStop();
     delete g_msgBus;
 
     printf("bbclient exiting with status %d (%s)\n", status, QCC_StatusText(status));

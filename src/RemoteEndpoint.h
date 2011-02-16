@@ -138,6 +138,14 @@ class RemoteEndpoint : public BusEndpoint, public qcc::ThreadListener {
     virtual QStatus Stop();
 
     /**
+     * Request endpoint to stop AFTER the endpoint's txqueue empties out.
+     *
+     * @return
+     *     - ER_OK if successful.
+     */
+    QStatus StopAfterTxEmpty();
+
+    /**
      * Join the endpoint.
      * Block the caller until the endpoint is stopped.
      *
@@ -254,7 +262,7 @@ class RemoteEndpoint : public BusEndpoint, public qcc::ThreadListener {
     qcc::Sink& GetSink() { return stream; };
 
     /**
-     * Get the SocketFd fro thsi endpoint.
+     * Get the SocketFd from this endpoint and detach it from the endpoint.
      *
      * @return Underlying socket file descriptor for this endpoint.
      */

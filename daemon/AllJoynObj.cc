@@ -531,7 +531,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
     ajObj.discoverMapLock.Unlock();
     ajObj.router.UnlockNameTable();
 
-        
+
     /* Reply to request */
     MsgArg replyArgs[3];
     replyArgs[0].Set("u", replyCode);
@@ -667,6 +667,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     router.LockNameTable();
     discoverMapLock.Lock();
     BusEndpoint* destEp = router.FindEndpoint(dest);
+    RemoteEndpoint* srcB2BEp = NULL;
 
     /* Determine if the dest is local to this daemon */
     if (!destEp) {
@@ -693,36 +694,12 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
         } else {
             qosOut = sit->second.qos;
             BusEndpoint* ep = router.FindEndpoint(srcB2B);
-            RemoteEndpoint* srcB2BEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
+            srcB2BEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
             ep = router.FindEndpoint(src);
             VirtualEndpoint* srcEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
-            
+
             if (srcEp && srcB2BEp) {
 
-                /* If the session is streaming, then extract the fd from the new B2B endpoint and close the ep */
-                if (qosOut.traffic != QosInfo::TRAFFIC_MESSAGES) {
-                    SocketFd sockFd = srcB2BEp->GetSocketFd();
-                    status = SocketDup(sockFd, sockFd);
-                    if (status == ER_OK) {
-                        status = srcB2BEp->Stop();
-                        if (status == ER_OK) {
-                            status = srcB2BEp->Join();
-                            if (status == ER_OK) {
-                                sessionMap[id].fd = sockFd;
-                            } else {
-                                QCC_LogError(status, ("Failed to join streaming RemoteEndpoint"));
-                                replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                            }
-                        } else {
-                            QCC_LogError(status, ("Failed to stop streaming RemoteEndpoint"));
-                            replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                        }
-                    } else {
-                        QCC_LogError(status, ("Failed to dup streaming RemoteEndpoint fd"));
-                        replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                    }
-                }
-                
                 if (status == ER_OK) {
                     /* Give the receiver a chance to accept or reject the new member */
                     Message reply(bus);
@@ -758,12 +735,12 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                         bool isAccepted = false;
                         reply->GetArgs(na, replyArgs);
                         replyArgs[0].Get("b", &isAccepted);
-                        
+
                         if (isAccepted) {
                             id = sit->second.id;
                             replyCode = ALLJOYN_JOINSESSION_REPLY_SUCCESS;
                             sessionMap[id].memberNames.push_back(src);
-                            
+
                             /* Add routes for new session */
                             if (qosOut.traffic == QosInfo::TRAFFIC_MESSAGES) {
                                 status = router.AddSessionRoute(dest, id, *srcEp, srcB2BEp);
@@ -781,12 +758,20 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                         } else {
                             replyCode =  ALLJOYN_JOINSESSION_REPLY_REJECTED;
                         }
-                    } 
+                    }
 
-                    if (replyCode != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
-                        if (qosOut.traffic != QosInfo::TRAFFIC_MESSAGES) {
-                            /* Close saved session fd */
-                            qcc::Close(sessionMap[id].fd);
+                    /* ExractHandle streaming sessions */
+                    if (qosOut.traffic != QosInfo::TRAFFIC_MESSAGES) {
+                        if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
+                            /* Extract the fd from the new B2B endpoint */
+                            SocketFd sockFd = srcB2BEp->GetSocketFd();
+                            status = SocketDup(sockFd, sockFd);
+                            if (status == ER_OK) {
+                                sessionMap[id].fd = sockFd;
+                            } else {
+                                QCC_LogError(status, ("Failed to dup streaming RemoteEndpoint fd"));
+                                replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+                            }
                         }
                     }
                 }
@@ -879,6 +864,21 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     if (ER_OK != status) {
         QCC_LogError(status, ("Failed to respond to org.alljoyn.Daemon.AttachSession"));
     }
+
+    /* If the session is streaming, then close the new ep */
+    if (srcB2BEp && (qosOut.traffic != QosInfo::TRAFFIC_MESSAGES)) {
+        status = srcB2BEp->StopAfterTxEmpty();
+        if (status == ER_OK) {
+            status = srcB2BEp->Join();
+            if (status != ER_OK) {
+                QCC_LogError(status, ("Failed to join streaming RemoteEndpoint"));
+                replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+            }
+        } else {
+            QCC_LogError(status, ("Failed to stop streaming RemoteEndpoint"));
+            replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+        }
+    }
 }
 
 void AllJoynObj::DetachSessionSignalHandler(const InterfaceDescription::Member* member, const char* sourcePath, Message& msg)
@@ -909,7 +909,7 @@ void AllJoynObj::GetSessionFd(const InterfaceDescription::Member* member, Messag
     if ((it != sessionMap.end()) && (it->second.fd != -1)) {
         /* Send the fd and transfer ownership */
         MsgArg replyArg;
-        replyArg.Set("h", it->second.fd);
+        replyArg.Set("h", &it->second.fd);
         status = MethodReply(msg, &replyArg, 1);
         qcc::Close(it->second.fd);
         it->second.fd = -1;
