@@ -405,14 +405,14 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
     /* Send AttachSession */
     if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
         Message reply(ajObj.bus);
-        String endControllerName = sessionEp->GetControllerUniqueName();
+        String nextControllerName = b2bEp->GetRemoteName();
         MsgArg attachArgs[5];
         attachArgs[0].Set("s", sessionName.c_str());
         attachArgs[1].Set("s", msg->GetSender());
         attachArgs[2].Set("s", sessionEp->GetUniqueName().c_str());
         attachArgs[3].Set("s", b2bEp->GetUniqueName().c_str());
         attachArgs[4].Set(QOSINFO_SIG, qosIn.traffic, qosIn.proximity, qosIn.transports);
-        ProxyBusObject controllerObj(ajObj.bus, endControllerName.c_str(), org::alljoyn::Daemon::ObjectPath, 0);
+        ProxyBusObject controllerObj(ajObj.bus, nextControllerName.c_str(), org::alljoyn::Daemon::ObjectPath, 0);
         controllerObj.AddInterface(*ajObj.daemonIface);
         QCC_DbgPrintf(("Sending AttachSession(%s, %s, %s, %s, <%x, %x, %x>) to %s",
                        attachArgs[0].v_string.str,
@@ -420,7 +420,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                        attachArgs[2].v_string.str,
                        attachArgs[3].v_string.str,
                        qosIn.proximity, qosIn.traffic, qosIn.transports,
-                       endControllerName.c_str()));
+                       nextControllerName.c_str()));
 
         /* Give up the locks during the sync method call */
         ajObj.virtualEndpointsLock.Unlock();
