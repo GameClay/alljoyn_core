@@ -401,35 +401,21 @@ class LocalTestObject : public BusObject {
         }
 
         /* Create a session for incoming client connections */
-        const ProxyBusObject& alljoynObj = bus.GetAllJoynProxyObj();
-        MsgArg createSessionArgs[2];
-        createSessionArgs[0].Set("s", g_wellKnownName.c_str());
-        createSessionArgs[1].Set(QOSINFO_SIG, QosInfo::TRAFFIC_MESSAGES, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
-        status = alljoynObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName,
-                                       "CreateSession",
-                                       createSessionArgs,
-                                       ArraySize(createSessionArgs),
-                                       reply);
-
-        if ((status != ER_OK) || (reply->GetType() != MESSAGE_METHOD_RET)) {
-            status = (status == ER_OK) ? ER_BUS_ERROR_RESPONSE : status;
+        QosInfo qos(QosInfo::TRAFFIC_MESSAGES, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
+        uint32_t replyCode = 0;
+        status = bus.CreateSession(g_wellKnownName.c_str(), true, qos, replyCode, sessionId);
+        if (status != ER_OK) {
             QCC_LogError(status, ("CreateSession(%s,<>) failed", g_wellKnownName.c_str()));
             return;
-        } else {
-            size_t numArgs;
-            const MsgArg* replyArgs;
-            reply->GetArgs(numArgs, replyArgs);
-            if (replyArgs[0].v_uint32 == ALLJOYN_CREATESESSION_REPLY_SUCCESS) {
-                sessionId = replyArgs[1].v_uint32;
-            } else {
-                status = ER_FAIL;
-                QCC_LogError(status, ("CreateSession(%s) returned failed status %d", g_wellKnownName.c_str(), replyArgs[0].v_uint32));
-                return;
-            }
+        } else if (replyCode != ALLJOYN_CREATESESSION_REPLY_SUCCESS) {
+            status = ER_FAIL;
+            QCC_LogError(status, ("CreateSession(%s) returned failed status %d", g_wellKnownName.c_str(), replyCode));
+            return;
         }
 
         /* Begin Advertising the well-known name */
         MsgArg advArg("s", g_wellKnownName.c_str());
+        const ProxyBusObject& alljoynObj = g_msgBus->GetAllJoynProxyObj();
         status = alljoynObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName,
                                        "AdvertiseName",
                                        &advArg,

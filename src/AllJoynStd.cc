@@ -62,18 +62,18 @@ QStatus org::alljoyn::CreateInterfaces(BusAttachment& bus)
             QCC_LogError(status, ("Failed to create interface \"%s\"", org::alljoyn::Bus::InterfaceName));
             return status;
         }
-        ifc->AddMethod("BusHello",                 "su",           "ssu",           "GUIDC,protoVerC,GUIDS,uniqueName,protoVerS", 0);
-        ifc->AddMethod("CreateSession",            "s"QOSINFO_SIG, "uu",            "sessionName,qos,disposition,sessionId",      0);
-        ifc->AddMethod("JoinSession",              "s"QOSINFO_SIG, "uu"QOSINFO_SIG, "sName,qos,disp,sessionId,qos",               0);
-        ifc->AddMethod("LeaveSession",             "u",            "u",             "sessionId,disposition",                      0);
-        ifc->AddMethod("AdvertiseName",            "s",            "u",             "name,disposition",                           0);
-        ifc->AddMethod("CancelAdvertiseName",      "s",            "u",             "name,disposition",                           0);
-        ifc->AddMethod("FindAdvertisedName",       "s",            "u",             "name,disposition",                           0);
-        ifc->AddMethod("CancelFindAdvertisedName", "s",            "u",             "name,disposition",                           0);
-        ifc->AddMethod("GetSessionFd",             "u",            "h",             "sessionId,handle",                           0);
+        ifc->AddMethod("BusHello",                 "su",            "ssu",           "GUIDC,protoVerC,GUIDS,uniqueName,protoVerS", 0);
+        ifc->AddMethod("CreateSession",            "sb"QOSINFO_SIG, "uu",            "sessionName,isMulticast,qos,disposition,sessionId",      0);
+        ifc->AddMethod("JoinSession",              "s"QOSINFO_SIG,  "uu"QOSINFO_SIG, "sName,qos,disp,sessionId,qos",               0);
+        ifc->AddMethod("LeaveSession",             "u",             "u",             "sessionId,disposition",                      0);
+        ifc->AddMethod("AdvertiseName",            "s",             "u",             "name,disposition",                           0);
+        ifc->AddMethod("CancelAdvertiseName",      "s",             "u",             "name,disposition",                           0);
+        ifc->AddMethod("FindAdvertisedName",       "s",             "u",             "name,disposition",                           0);
+        ifc->AddMethod("CancelFindAdvertisedName", "s",             "u",             "name,disposition",                           0);
+        ifc->AddMethod("GetSessionFd",             "u",             "h",             "sessionId,handle",                           0);
 
-        ifc->AddSignal("FoundAdvertisedName",      "s"QOSINFO_SIG "s",         "name,qos,prefix",                              0);
-        ifc->AddSignal("LostAdvertisedName",       "s"QOSINFO_SIG "s",         "name,qos,prefix",                              0);
+        ifc->AddSignal("FoundAdvertisedName",      "s"QOSINFO_SIG"s",         "name,qos,prefix",                              0);
+        ifc->AddSignal("LostAdvertisedName",       "s"QOSINFO_SIG"s",         "name,qos,prefix",                              0);
         ifc->AddSignal("BusConnectionLost",        "s",                       "busName",                                      0);
 
         ifc->Activate();

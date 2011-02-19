@@ -256,7 +256,7 @@ int main(int argc, char** argv)
         if (ER_OK == status) {
             uint32_t disposition = 0;
             QosInfo qos(QosInfo::TRAFFIC_MESSAGES, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
-            status = s_bus->CreateSession(s_advertisedName.c_str(), qos, disposition, s_sessionId);
+            status = s_bus->CreateSession(s_advertisedName.c_str(), true, qos, disposition, s_sessionId);
             if (ER_OK != status) {
                 printf("CreateSession failed (%s)\n", QCC_StatusText(status));
             } else if (disposition != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {

@@ -233,21 +233,21 @@ int main(int argc, char** argv)
             reply->GetArgs(na, args);
             SocketFd sockFd;
             status = args[0].Get("h", &sockFd);
-            if (status == ER_OK) {
+            while (status == ER_OK) {
                 /* Attempt to read test string from fd */
-                qcc::Sleep(200);
                 char buf[256];
                 int ret = ::read(sockFd, buf, sizeof(buf) - 1);
+                int againCount = 0;
                 if (ret > 0) {
                     QCC_SyncPrintf("Read %d bytes from streaming fd\n", ret);
                     buf[ret] = '\0';
                     QCC_SyncPrintf("Bytes: %s\n", buf);
+                } else if ((errno == EAGAIN) && (againCount < 2)) {
+                    ++againCount;
                 } else {
                     status = ER_FAIL;
                     QCC_LogError(status, ("Read from streaming fd failed (%s)", ::strerror(errno)));
                 }
-            } else {
-                QCC_LogError(status, ("Failed to get socket from GetSessionFd args"));
             }
         } else {
             if (ER_OK == status) {
@@ -262,7 +262,7 @@ int main(int argc, char** argv)
     /* Stop the bus */
     delete g_msgBus;
 
-    printf("bbclient exiting with status %d (%s)\n", status, QCC_StatusText(status));
+    printf("streamclient exiting with status %d (%s)\n", status, QCC_StatusText(status));
 
     return (int) status;
 }

@@ -26,6 +26,7 @@
 #include <assert.h>
 #include <map>
 #include <vector>
+#include <errno.h>
 
 #include <qcc/Debug.h>
 #include <qcc/ManagedObj.h>
@@ -247,9 +248,11 @@ void AllJoynObj::CreateSession(const InterfaceDescription::Member* member, Messa
     QStatus status;
 
     msg->GetArgs(numArgs, args);
-    assert(numArgs == 2);
+    assert(numArgs == 3);
     String sessionName = args[0].v_string.str;
-    QCC_DbgTrace(("AllJoynObj::CreateSession(%s)", sessionName.c_str()));
+    bool isMulticast;
+    args[1].Get("b", &isMulticast);
+    QCC_DbgTrace(("AllJoynObj::CreateSession(%s, <>, %s)", sessionName.c_str(), isMulticast ? "true" : "false"));
 
     /* Get the sender */
     String sender = msg->GetSender();
@@ -265,7 +268,9 @@ void AllJoynObj::CreateSession(const InterfaceDescription::Member* member, Messa
 
         entry.name = sessionName;
         entry.fd = -1;
-        args[1].Get(QOSINFO_SIG, &entry.qos.traffic, &entry.qos.proximity, &entry.qos.transports);
+        entry.streamingEp = NULL;
+        entry.isMulticast = isMulticast;
+        args[2].Get(QOSINFO_SIG, &entry.qos.traffic, &entry.qos.proximity, &entry.qos.transports);
         val.GenerateRandomValue(8 * sizeof(SessionId));
         val.RenderBinary(reinterpret_cast<uint8_t*>(&id), sizeof(SessionId));
         entry.id = id;
@@ -277,7 +282,7 @@ void AllJoynObj::CreateSession(const InterfaceDescription::Member* member, Messa
 
     /* Reply to request */
     replyArgs[0].Set("u", replyCode);
-    replyArgs[1].Set("u", id);
+    replyArgs[1].Set("u", isMulticast ? id : static_cast<uint32_t>(-1));
     status = MethodReply(msg, replyArgs, ArraySize(replyArgs));
     QCC_DbgPrintf(("AllJoynObj::CreateSession(%s) returned (%d,%u) (status=%s)", sessionName.c_str(), replyCode, id, QCC_StatusText(status)));
 
@@ -401,69 +406,19 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             }
         }
     }
-
-    /* Send AttachSession */
     if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
-        Message reply(ajObj.bus);
-        String nextControllerName = b2bEp->GetRemoteName();
-        MsgArg attachArgs[5];
-        attachArgs[0].Set("s", sessionName.c_str());
-        attachArgs[1].Set("s", msg->GetSender());
-        attachArgs[2].Set("s", sessionEp->GetUniqueName().c_str());
-        attachArgs[3].Set("s", b2bEp->GetUniqueName().c_str());
-        attachArgs[4].Set(QOSINFO_SIG, qosIn.traffic, qosIn.proximity, qosIn.transports);
-        ProxyBusObject controllerObj(ajObj.bus, nextControllerName.c_str(), org::alljoyn::Daemon::ObjectPath, 0);
-        controllerObj.AddInterface(*ajObj.daemonIface);
-        QCC_DbgPrintf(("Sending AttachSession(%s, %s, %s, %s, <%x, %x, %x>) to %s",
-                       attachArgs[0].v_string.str,
-                       attachArgs[1].v_string.str,
-                       attachArgs[2].v_string.str,
-                       attachArgs[3].v_string.str,
-                       qosIn.proximity, qosIn.traffic, qosIn.transports,
-                       nextControllerName.c_str()));
+        status = ajObj.SendAttachSession(sessionName.c_str(), msg->GetSender(), sessionEp->GetUniqueName().c_str(),
+                                         *b2bEp, qosIn, replyCode, id, qosOut);
+    }
 
-        /* Give up the locks during the sync method call */
-        ajObj.virtualEndpointsLock.Unlock();
-        ajObj.discoverMapLock.Unlock();
-        ajObj.router.UnlockNameTable();
-        status = controllerObj.MethodCall(org::alljoyn::Daemon::InterfaceName,
-                                          "AttachSession",
-                                          attachArgs,
-                                          ArraySize(attachArgs),
-                                          reply);
-        if ((status != ER_OK) || (reply->GetType() != MESSAGE_METHOD_RET)) {
-            if (status == ER_OK) {
-                status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
-            }
-            replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-            QCC_LogError(status, ("AttachSession failed"));
-
-        } else {
-            /* Parse the response to AttachSession */
-            size_t na;
-            const MsgArg* attachSessionReplyArgs;
-            reply->GetArgs(na, attachSessionReplyArgs);
-            assert(na == 3);
-            attachSessionReplyArgs[0].Get("u", &replyCode);
-            attachSessionReplyArgs[1].Get("u", &id);
-            attachSessionReplyArgs[2].Get(QOSINFO_SIG, &qosOut.traffic, &qosOut.proximity, &qosOut.transports);
-            QCC_DbgPrintf(("Received AttachSession response: replyCode=%d, sessionId=0x%x, qos=<%x, %x, %x>",
-                           replyCode, id, qosOut.proximity, qosOut.traffic, qosOut.transports));
-        }
-
-        /* Re-lock and re-acquire b2bEp */
-        ajObj.router.LockNameTable();
-        ajObj.discoverMapLock.Lock();
-        ajObj.virtualEndpointsLock.Lock();
-
-        if (!b2bEpName.empty()) {
-            b2bEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
-        }
-        sessionEp = static_cast<VirtualEndpoint*>(ajObj.router.FindEndpoint(sessionName));
-        if (!sessionEp) {
-            QCC_LogError(ER_FAIL, ("Session destination unexpectedly left the bus"));
-            replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-        }
+    /* Reacquire b2bEp and sessionEp after sync method call */
+    if (!b2bEpName.empty()) {
+        b2bEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
+    }
+    sessionEp = static_cast<VirtualEndpoint*>(ajObj.router.FindEndpoint(sessionName));
+    if (!sessionEp) {
+        QCC_LogError(ER_FAIL, ("Session destination unexpectedly left the bus"));
+        replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
     }
 
     /* If session was successful, Add two-way session routes to the table */
@@ -489,36 +444,17 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
 
     /* If a streaming sesssion was requested, then teardown the new b2bEp to use it for a raw stream */
     if ((replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) && (0 == (qosOut.traffic & QosInfo::TRAFFIC_MESSAGES))) {
-        if (reusedB2b) {
+        if (reusedB2b || !b2bEp) {
             replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
         } else {
-            /* Grab the file descriptor for the B2B endpoint and close the endpoint */
-            SocketFd sockFd = b2bEp->GetSocketFd();
-            status = SocketDup(sockFd, sockFd);
-            if (status == ER_OK) {
-                status = b2bEp->Stop();
-                if (status == ER_OK) {
-                    status = b2bEp->Join();
-                    if (status == ER_OK) {
-                        /* Store the open file descriptor */
-                        ajObj.sessionMapLock.Lock();
-                        ajObj.sessionMap[id].fd = sockFd;
-                        ajObj.sessionMapLock.Unlock();
-                    } else {
-                        QCC_LogError(status, ("Failed to join RemoteEndpoint used for streaming"));
-                        replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                        sockFd = -1;
-                    }
-                } else {
-                    QCC_LogError(status, ("Failed to stop RemoteEndpoint used for streaming"));
-                    replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                    sockFd = -1;
-                }
-            } else {
-                QCC_LogError(status, ("Failed to dup remote endpoint's socket"));
+            ajObj.sessionMapLock.Lock();
+            SessionMapEntry& entry = ajObj.sessionMap[id];
+            status = ajObj.ShutdownEndpoint(*b2bEp, entry.fd);
+            if (status != ER_OK) {
+                QCC_LogError(status, ("Failed to shutdown remote endpoint for streaming"));
                 replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                sockFd = -1;
             }
+            ajObj.sessionMapLock.Unlock();
         }
     }
 
@@ -530,7 +466,6 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
     ajObj.virtualEndpointsLock.Unlock();
     ajObj.discoverMapLock.Unlock();
     ajObj.router.UnlockNameTable();
-
 
     /* Reply to request */
     MsgArg replyArgs[3];
@@ -678,21 +613,41 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
         /* This daemon serves dest directly */
 
         /* Check for a session in the session map */
+        SessionMapEntry sme;
+        bool foundSessionMapEntry = false;
+        sessionMapLock.Lock();
         map<SessionId, SessionMapEntry>::const_iterator sit = sessionMap.begin();
         while (sit != sessionMap.end()) {
             if (sit->second.name == sessionName) {
+                /* If this session is not multipoint, then create a new session entry */
+                if (sit->second.isMulticast) {
+                    sme = sit->second;
+                } else {
+                    Crypto_BigNum val;
+                    sme.name = sit->second.name;
+                    sme.fd = -1;
+                    sme.streamingEp = NULL;
+                    sme.isMulticast = false;
+                    sme.qos = sit->second.qos;
+                    val.GenerateRandomValue(8 * sizeof(SessionId));
+                    val.RenderBinary(reinterpret_cast<uint8_t*>(&sme.id), sizeof(SessionId));
+                    sme.endpointName = sit->second.endpointName;
+                    sessionMap[sme.id] = sme;
+                }
+                foundSessionMapEntry = true;
                 break;
             }
             ++sit;
         }
-        if (sit == sessionMap.end()) {
+        sessionMapLock.Unlock();
+        if (!foundSessionMapEntry) {
             /* No such session */
             replyCode = ALLJOYN_JOINSESSION_REPLY_NO_SESSION;
-        } else if (!sit->second.qos.IsCompatible(inQos)) {
+        } else if (!sme.qos.IsCompatible(inQos)) {
             replyCode = ALLJOYN_JOINSESSION_REPLY_BAD_QOS;
-            qosOut = sit->second.qos;
+            qosOut = sme.qos;
         } else {
-            qosOut = sit->second.qos;
+            qosOut = sme.qos;
             BusEndpoint* ep = router.FindEndpoint(srcB2B);
             srcB2BEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
             ep = router.FindEndpoint(src);
@@ -705,7 +660,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                     Message reply(bus);
                     MsgArg acceptArgs[5];
                     acceptArgs[0].Set("s", sessionName);
-                    acceptArgs[1].Set("u", sit->second.id);
+                    acceptArgs[1].Set("u", sme.id);
                     acceptArgs[2].Set("s", src);
                     acceptArgs[3].Set("s", dest);
                     acceptArgs[4].Set(QOSINFO_SIG, inQos.traffic, inQos.proximity, inQos.transports);
@@ -737,7 +692,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                         replyArgs[0].Get("b", &isAccepted);
 
                         if (isAccepted) {
-                            id = sit->second.id;
+                            id = sme.id;
                             replyCode = ALLJOYN_JOINSESSION_REPLY_SUCCESS;
                             sessionMap[id].memberNames.push_back(src);
 
@@ -760,18 +715,12 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                         }
                     }
 
-                    /* ExractHandle streaming sessions */
+                    /* Store ep for streaming sessions (for future close and fd extract) */
                     if (qosOut.traffic != QosInfo::TRAFFIC_MESSAGES) {
                         if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
-                            /* Extract the fd from the new B2B endpoint */
-                            SocketFd sockFd = srcB2BEp->GetSocketFd();
-                            status = SocketDup(sockFd, sockFd);
-                            if (status == ER_OK) {
-                                sessionMap[id].fd = sockFd;
-                            } else {
-                                QCC_LogError(status, ("Failed to dup streaming RemoteEndpoint fd"));
-                                replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                            }
+                            sessionMapLock.Lock();
+                            sessionMap[id].streamingEp = srcB2BEp;
+                            sessionMapLock.Unlock();
                         }
                     }
                 }
@@ -788,63 +737,32 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
         RemoteEndpoint* destB2B = vDestEp->GetQosCompatibleB2B(inQos);
         if (destB2B) {
             /* Forward AttachSession to next hop */
-            Message reply(bus);
-            String endControllerName = vDestEp->GetControllerUniqueName();
-            MsgArg attachArgs[5];
-            attachArgs[0].Set("s", sessionName);
-            attachArgs[1].Set("s", src);
-            attachArgs[2].Set("s", dest);
-            attachArgs[3].Set("s", destB2B->GetUniqueName().c_str());
-            attachArgs[4].Set(QOSINFO_SIG, inQos.traffic, inQos.proximity, inQos.transports);
-            ProxyBusObject controllerObj(bus, endControllerName.c_str(), org::alljoyn::Daemon::ObjectPath, 0);
-            controllerObj.AddInterface(*daemonIface);
-            QCC_DbgPrintf(("Forwarding AttachSession(%s, %s, %s, %s, <%x, %x, %x>) to %s",
-                           attachArgs[0].v_string.str,
-                           attachArgs[1].v_string.str,
-                           attachArgs[2].v_string.str,
-                           attachArgs[3].v_string.str,
-                           inQos.proximity, inQos.traffic, inQos.transports,
-                           endControllerName.c_str()));
-            discoverMapLock.Unlock();
-            router.UnlockNameTable();
-            status = controllerObj.MethodCall(org::alljoyn::Daemon::InterfaceName, "AttachSession", attachArgs, ArraySize(attachArgs), reply);
-            router.LockNameTable();
-            discoverMapLock.Lock();
+            SessionId tempId;
+            QosInfo tempQos;
+            status = SendAttachSession(sessionName, src, dest, *destB2B, inQos, replyCode, tempId, tempQos);
 
-
-            if ((status == ER_OK) && (reply->GetType() == MESSAGE_METHOD_RET)) {
-                size_t na;
-                const MsgArg* replyArgs;
-                reply->GetArgs(na, replyArgs);
-                SessionId tempId;
-                QosInfo tempQos;
-
-                replyArgs[0].Get("u", &replyCode);
-                replyArgs[1].Get("u", &tempId);
-                replyArgs[2].Get(QOSINFO_SIG, &tempQos.traffic, &tempQos.proximity, &tempQos.transports);
-
-                if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
-                    BusEndpoint* ep = router.FindEndpoint(srcB2B);
-                    RemoteEndpoint* srcB2BEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_REMOTE)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
-                    ep = router.FindEndpoint(src);
-                    VirtualEndpoint* srcEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
-
-                    if (srcB2BEp && srcEp) {
-                        router.AddSessionRoute(dest, id, *srcEp, srcB2BEp);
-                        router.AddSessionRoute(src, id, *vDestEp, destB2B);
-                        id = tempId;
-                        qosOut = tempQos;
-                    } else {
-                        // TODO: Need to cleanup partially setup session
-                        replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                    }
+            /* If successful, add bi-directional session routes */
+            if ((status == ER_OK) && (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS)) {
+                BusEndpoint* ep = router.FindEndpoint(srcB2B);
+                RemoteEndpoint* srcB2BEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
+                ep = router.FindEndpoint(src);
+                VirtualEndpoint* srcEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
+                
+                if (srcB2BEp && srcEp) {
+                    id = tempId;
+                    qosOut = tempQos;
+                    router.AddSessionRoute(dest, id, *srcEp, srcB2BEp);
+                    router.AddSessionRoute(src, id, *vDestEp, destB2B);
                 } else {
-                    if (status == ER_OK) {
-                        status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
-                    }
+                    // TODO: Need to cleanup partially setup session
                     replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                    QCC_LogError(status, ("AttachSession failed"));
                 }
+            } else {
+                if (status == ER_OK) {
+                    status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
+                }
+                replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+                QCC_LogError(status, ("AttachSession failed"));
             }
         }
     }
@@ -865,20 +783,106 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
         QCC_LogError(status, ("Failed to respond to org.alljoyn.Daemon.AttachSession"));
     }
 
-    /* If the session is streaming, then close the new ep */
+    /* If the session is streaming, then close the new ep and preserve the fd */
     if (srcB2BEp && (qosOut.traffic != QosInfo::TRAFFIC_MESSAGES)) {
-        status = srcB2BEp->StopAfterTxEmpty();
-        if (status == ER_OK) {
-            status = srcB2BEp->Join();
+        sessionMapLock.Lock();
+        SessionMapEntry& entry = sessionMap[id];
+        if (entry.streamingEp) {
+            status = ShutdownEndpoint(*entry.streamingEp, entry.fd);
             if (status != ER_OK) {
-                QCC_LogError(status, ("Failed to join streaming RemoteEndpoint"));
-                replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+                QCC_LogError(status, ("Failed to shutdown streaming endpoint\n"));
+            }
+            entry.streamingEp = NULL;
+        }
+        sessionMapLock.Unlock();
+    }
+}
+
+QStatus AllJoynObj::SendAttachSession(const char* sessionName,
+                                      const char* src,
+                                      const char* dest,
+                                      RemoteEndpoint& b2bEp,
+                                      const QosInfo& qosIn,
+                                      uint32_t& replyCode,
+                                      SessionId& id,
+                                      QosInfo& qosOut)
+{
+    Message reply(bus);
+    String nextControllerName = b2bEp.GetRemoteName();
+    MsgArg attachArgs[5];
+    attachArgs[0].Set("s", sessionName);
+    attachArgs[1].Set("s", src);
+    attachArgs[2].Set("s", dest);
+    attachArgs[3].Set("s", b2bEp.GetUniqueName().c_str());
+    attachArgs[4].Set(QOSINFO_SIG, qosIn.traffic, qosIn.proximity, qosIn.transports);
+    ProxyBusObject controllerObj(bus, nextControllerName.c_str(), org::alljoyn::Daemon::ObjectPath, 0);
+    controllerObj.AddInterface(*daemonIface);
+    QCC_DbgPrintf(("Sending AttachSession(%s, %s, %s, %s, <%x, %x, %x>) to %s",
+                   attachArgs[0].v_string.str,
+                   attachArgs[1].v_string.str,
+                   attachArgs[2].v_string.str,
+                   attachArgs[3].v_string.str,
+                   qosIn.proximity, qosIn.traffic, qosIn.transports,
+                   nextControllerName.c_str()));
+
+    /* Give up the locks during the sync method call */
+    virtualEndpointsLock.Unlock();
+    discoverMapLock.Unlock();
+    router.UnlockNameTable();
+    QStatus status = controllerObj.MethodCall(org::alljoyn::Daemon::InterfaceName,
+                                              "AttachSession",
+                                              attachArgs,
+                                              ArraySize(attachArgs),
+                                              reply);
+    if ((status != ER_OK) || (reply->GetType() != MESSAGE_METHOD_RET)) {
+        if (status == ER_OK) {
+            status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
+        }
+        replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+        QCC_LogError(status, ("AttachSession failed"));
+    } else {
+        /* Parse the response to AttachSession */
+        size_t na;
+        const MsgArg* attachSessionReplyArgs;
+        reply->GetArgs(na, attachSessionReplyArgs);
+        assert(na == 3);
+        attachSessionReplyArgs[0].Get("u", &replyCode);
+        attachSessionReplyArgs[1].Get("u", &id);
+        attachSessionReplyArgs[2].Get(QOSINFO_SIG, &qosOut.traffic, &qosOut.proximity, &qosOut.transports);
+        QCC_DbgPrintf(("Received AttachSession response: replyCode=%d, sessionId=0x%x, qos=<%x, %x, %x>",
+                       replyCode, id, qosOut.proximity, qosOut.traffic, qosOut.transports));
+    }
+    
+    /* Re-lock and re-acquire b2bEp */
+    router.LockNameTable();
+    discoverMapLock.Lock();
+    virtualEndpointsLock.Lock();
+
+    return status;
+}
+
+QStatus AllJoynObj::ShutdownEndpoint(RemoteEndpoint& b2bEp, SocketFd& sockFd)
+{
+    /* Grab the file descriptor for the B2B endpoint and close the endpoint */
+    SocketFd epSockFd = b2bEp.GetSocketFd();
+    QStatus status = SocketDup(epSockFd, sockFd);
+    if (status == ER_OK) {
+        status = b2bEp.StopAfterTxEmpty();
+        if (status == ER_OK) {
+            status = b2bEp.Join();
+            if (status != ER_OK) {
+                QCC_LogError(status, ("Failed to join RemoteEndpoint used for streaming"));
+                sockFd = -1;
             }
         } else {
-            QCC_LogError(status, ("Failed to stop streaming RemoteEndpoint"));
-            replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+            QCC_LogError(status, ("Failed to stop RemoteEndpoint used for streaming"));
+            sockFd = -1;
         }
+    } else {
+        QCC_LogError(status, ("Failed to dup remote endpoint's socket"));
+        sockFd = -1;
     }
+    return status;
 }
 
 void AllJoynObj::DetachSessionSignalHandler(const InterfaceDescription::Member* member, const char* sourcePath, Message& msg)
@@ -903,18 +907,46 @@ void AllJoynObj::GetSessionFd(const InterfaceDescription::Member* member, Messag
     msg->GetArgs(numArgs, args);
     SessionId id = args[0].v_uint32;
     QStatus status;
+    SocketFd sockFd = -1;
 
     /* Check for a streaming fd waiting to be retrieved */
+    sessionMapLock.Lock();
     map<SessionId, SessionMapEntry>::iterator it = sessionMap.find(id);
-    if ((it != sessionMap.end()) && (it->second.fd != -1)) {
+    if (it != sessionMap.end()) {
+        /* Force shutdown the endpoint if it isn't already */
+        if (it->second.streamingEp) {
+            status = ShutdownEndpoint(*it->second.streamingEp, it->second.fd);
+            if (status != ER_OK) {
+                QCC_LogError(status, ("Failed to shutdown streaming endpoint"));
+            }
+            it->second.streamingEp = NULL;
+        }
+        sockFd = it->second.fd;
+        it->second.fd = -1;
+    }
+    sessionMapLock.Unlock();
+    
+    if (sockFd != -1) {
+#if 0
+#if 1
+const char* testBuf = "12345";
+int ret = ::write(sockFd, testBuf, ::strlen(testBuf));
+printf("TEST WRITE: ret = %d errno=%d\n", ret, errno);
+#else
+char buf[255];
+int ret = ::read(sockFd, buf, sizeof(buf));
+printf("TEST READ: ret = %d, errno = %d\n", ret, errno);
+if (ret > 0) { buf[ret] = '\0'; printf("BYTES: %s\n", buf); }
+#endif
+#endif
         /* Send the fd and transfer ownership */
         MsgArg replyArg;
-        replyArg.Set("h", &it->second.fd);
+        replyArg.Set("h", &sockFd);
         status = MethodReply(msg, &replyArg, 1);
-        qcc::Close(it->second.fd);
-        it->second.fd = -1;
+        qcc::Close(sockFd);
     } else {
         /* Send an error */
+        sessionMapLock.Unlock();
         status = MethodReply(msg, ER_BUS_NO_SESSION);
     }
 

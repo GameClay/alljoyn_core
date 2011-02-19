@@ -20,6 +20,7 @@
  ******************************************************************************/
 
 #include <qcc/platform.h>
+#include <qcc/GUID.h>
 
 #include <BusEndpoint.h>
 
@@ -30,7 +31,7 @@ String BusEndpoint::GetControllerUniqueName() const {
 
     /* An endpoint with unique name :X.Y has a controller with a unique name :X.1 */
     String ret = GetUniqueName();
-    ret[GUID::SHORT_SIZE + 2] = '1';
-    ret.resize(GUID::SHORT_SIZE + 3);
+    ret[qcc::GUID::SHORT_SIZE + 2] = '1';
+    ret.resize(qcc::GUID::SHORT_SIZE + 3);
     return ret;
 }

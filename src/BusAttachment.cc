@@ -601,17 +601,18 @@ QStatus BusAttachment::NameHasOwner(const char* name, bool& hasOwner)
     return status;
 }
 
-QStatus BusAttachment::CreateSession(const char* sessionName, const QosInfo& qos, uint32_t& disposition, SessionId& sessionId)
+QStatus BusAttachment::CreateSession(const char* sessionName, bool isMultipoint, const QosInfo& qos, uint32_t& disposition, SessionId& sessionId)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
     }
 
     Message reply(*this);
-    MsgArg args[2];
+    MsgArg args[3];
 
     args[0].Set("s", sessionName);
-    args[1].Set(QOSINFO_SIG, qos.traffic, qos.proximity, qos.transports);
+    args[1].Set("b", isMultipoint);
+    args[2].Set(QOSINFO_SIG, qos.traffic, qos.proximity, qos.transports);
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
     QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "CreateSession", args, ArraySize(args), reply);
     if (ER_OK == status) {
@@ -686,6 +687,41 @@ QStatus BusAttachment::LeaveSession(const SessionId& sessionId, uint32_t& dispos
     if (ER_OK == status) {
         if (reply->GetType() == MESSAGE_METHOD_RET) {
             disposition = reply->GetArg(0)->v_uint32;
+        } else if (reply->GetType() == MESSAGE_ERROR) {
+            status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
+            String errMsg;
+            const char* errName = reply->GetErrorName(&errMsg);
+            QCC_LogError(status, ("%s.LeaveSession returned ERROR_MESSAGE (error=%s, \"%s\")",
+                                  org::alljoyn::Bus::InterfaceName,
+                                  errName,
+                                  errMsg.c_str()));
+        } else {
+            status = ER_FAIL;
+        }
+    }
+    return status;
+}
+
+QStatus BusAttachment::GetSessionFd(SessionId sessionId, SocketFd& sockFd)
+{
+    if (!IsConnected()) {
+        return ER_BUS_NOT_CONNECTED;
+    }
+
+    Message reply(*this);
+    MsgArg args[1];
+
+    args[0].Set("u", sessionId);
+    const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
+    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "GetSessionFd", args, ArraySize(args), reply);
+    if (ER_OK == status) {
+        if (reply->GetType() == MESSAGE_METHOD_RET) {
+            size_t na;
+            const MsgArg* args;
+            reply->GetArgs(na,args);
+            int tempFd;
+            status = args[0].Get("h", &tempFd);
+            sockFd = tempFd;
         } else if (reply->GetType() == MESSAGE_ERROR) {
             status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
             String errMsg;

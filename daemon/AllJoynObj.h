@@ -327,6 +327,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
         QosInfo qos;
         bool isMulticast;
         qcc::SocketFd fd;
+        RemoteEndpoint* streamingEp;
         std::vector<qcc::String> memberNames;
     };
     std::map<SessionId, SessionMapEntry> sessionMap;     /**< Map sessionId to session info (valid on session endpoints) */
@@ -401,6 +402,27 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
                                    const QosInfo& advQos);
 
     /**
+     * Utility method used to invoke SessionAttach remote method.
+     *
+     * @param sessionName      Name of session.
+     * @param src              Unique name of session joiner.
+     * @param dest             Unique name of session creator.
+     * @param b2bEp            B2B endpoint to use for session.
+     * @param qosIn            QoS requested by joiner.
+     * @param replyCode        [OUT] SessionAttach response code
+     * @param sessionId        [OUT] session id if reply code indicates success.
+     * @param qosOut           [OUT] QoS dictated by the creator.
+     */
+    QStatus SendAttachSession(const char* sessionName,
+                              const char* src,
+                              const char* dest,
+                              RemoteEndpoint& b2bEp,
+                              const QosInfo& qosIn,
+                              uint32_t& replyCode,
+                              SessionId& sessionId,
+                              QosInfo& qosOut);
+
+    /**
      * Add a virtual endpoint with a given unique name.
      *
      * @param uniqueName          The uniqueName of the virtual endpoint.
@@ -442,26 +464,6 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      */
     QStatus ExchangeNames(RemoteEndpoint& endpoint);
 
-#if 0
-    /**
-     * Process a connect request from a given (locally-connected) endpoint.
-     *
-     * @param uniqueName         Name of endpoint requesting the disconnection.
-     * @param normConnectSpec    Normalized connect spec to be disconnected.
-     * @return ER_OK if successful.
-     */
-    QStatus ProcConnect(const qcc::String& uniqueName, const qcc::String& normConnectSpec);
-
-    /**
-     * Process a disconnect request from a given (locally-connected) endpoint.
-     *
-     * @param uniqueName         Name of endpoint requesting the disconnection.
-     * @param normConnectSpec    Normalized connect spec to be disconnected.
-     * @return ER_OK if successful.
-     */
-    QStatus ProcDisconnect(const qcc::String& uniqueName, const qcc::String& normConnectSpec);
-#endif
-
     /**
      * Process a request to cancel advertising a name from a given (locally-connected) endpoint.
      *
@@ -497,6 +499,16 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     {
         return bus.GetInternal().GetTransportList().NormalizeTransportSpec(inSpec, outSpec, argMap);
     }
+
+    /**
+     * Helper method used to shutdown a remote endpoint while preserving it's open file descriptor.
+     * This is used for converting a RemoteEndpoint into a raw streaming socket.
+     *
+     * @param b2bEp    Bus to bus endpoint being shutdown.
+     * @param sockFd   [OUT] b2bEp's socket descriptor.
+     * @return   ER_OK if successful.
+     */
+    QStatus ShutdownEndpoint(RemoteEndpoint& b2bEp, qcc::SocketFd& sockFd);
 
     /**
      * Get a list of the currently advertised names

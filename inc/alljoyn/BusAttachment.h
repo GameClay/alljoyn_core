@@ -28,6 +28,7 @@
 #include <qcc/platform.h>
 
 #include <qcc/String.h>
+#include <qcc/Socket.h>
 #include <alljoyn/KeyStoreListener.h>
 #include <alljoyn/AuthListener.h>
 #include <alljoyn/BusListener.h>
@@ -178,6 +179,11 @@ class BusAttachment : public MessageReceiver {
      * Returns true if the mesage bus has been started.
      */
     bool IsStarted() { return isStarted; }
+
+    /**
+     * Returns true if the mesage bus has been requested to stop.
+     */
+    bool IsStopping() { return isStopping; }
 
     /**
      * Wait for the message bus to be stopped. This method blocks the calling thread until another thread
@@ -373,6 +379,8 @@ class BusAttachment : public MessageReceiver {
      * and interprets the response.
      *
      * @param[in]  sessionName   Name for session. Must be globally unique.
+     * @param[in]  isMultipoint  true if this session can be joined multiple times to form a single multipoint session.
+     *                           When false, each join attempt creates a new point-to-point session.
      * @param[in]  qos           QoS requirements that potential joiners must meet in order to successfully join the session.
      * @param[out] disposition   ALLJOYN_CREATESESSION_REPLY_*" constant from AllJoynStd.h
      * @param[out] sessionId     Daemon assigned unique identifier for session. Valid if disposition is ALLJOYN_CREATESESSION_REPLY_SUCCESS.
@@ -381,7 +389,7 @@ class BusAttachment : public MessageReceiver {
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus CreateSession(const char* sessionName, const QosInfo& qos, uint32_t& disposition, SessionId& sessionId);
+    QStatus CreateSession(const char* sessionName, bool isMultipoint, const QosInfo& qos, uint32_t& disposition, SessionId& sessionId);
 
     /**
      * Join an existing session.
@@ -412,6 +420,15 @@ class BusAttachment : public MessageReceiver {
      *      - Other error status codes indicating a failure.
      */
     QStatus LeaveSession(const SessionId& sessionId, uint32_t& disposition);
+
+    /**
+     * Get the file descriptor for a streaming (non-message based) session.
+     *
+     * @param sessionId   Id of an existing streamming session.
+     * @param sockFd      [OUT] Socket file descriptor for session.
+     * @return ER_OK if successful.
+     */
+    QStatus GetSessionFd(SessionId sessionId, qcc::SocketFd& sockFd);
 
     /**
      * Determine whether a given well-known name exists on the bus.

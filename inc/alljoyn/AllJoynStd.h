@@ -84,6 +84,7 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
  *
  * In params:
  *  sessionName - Globally unique name for session.
+ *  isMulticast - true iff session supports more than two participants.
  *  requiredQos - Quality of service requirements for session joiners.
  *
  * Out params:
