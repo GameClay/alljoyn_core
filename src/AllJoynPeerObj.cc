@@ -416,7 +416,7 @@ void AllJoynPeerObj::AuthAdvance(Message& msg)
         /*
          * Report the succesful authentication to allow application to clear UI etc.
          */
-        if (peerAuthListener) {
+        if ((status == ER_OK) && peerAuthListener) {
             peerAuthListener->AuthenticationComplete(mech.c_str(), true /* success */);
         }
         /*
@@ -426,7 +426,6 @@ void AllJoynPeerObj::AuthAdvance(Message& msg)
         sasl = NULL;
     }
     if (status != ER_OK) {
-        MethodReply(msg, status);
         /*
          * Report the failed authentication to allow application to clear UI etc.
          */
@@ -438,6 +437,10 @@ void AllJoynPeerObj::AuthAdvance(Message& msg)
          */
         delete sasl;
         sasl = NULL;
+        /*
+         * Let remote peer know the authentication failed.
+         */
+        MethodReply(msg, status);
     } else {
         MsgArg replyMsg("s", outStr.c_str());
         MethodReply(msg, &replyMsg, 1);
