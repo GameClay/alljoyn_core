@@ -245,7 +245,7 @@ size_t IsAt::Serialize(uint8_t* buffer) const
     size_t size = 0;
 
     //
-    // The first octet is type (1) and flags.
+    // The first octet is type (M = 1) and flags.
     //
     uint8_t typeAndFlags = 1 << 6;
 
@@ -560,7 +560,7 @@ size_t WhoHas::Serialize(uint8_t* buffer) const
     size_t size = 0;
 
     //
-    // The first octet is type (1) and flags.
+    // The first octet is type (M = 2) and flags.
     //
     uint8_t typeAndFlags = 2 << 6;
 

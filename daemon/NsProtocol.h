@@ -107,7 +107,7 @@ namespace ajn {
  *      0                   1                   2                   3
  *      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     | M |G C T U S F|     Count     |              Port             |
+ *     |F S U T C G| M |     Count     |              Port             |
  *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *     |            IPv4Address present if 'F' bit is set              |
  *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -155,7 +155,7 @@ namespace ajn {
  *      0                   1                   2                   3
  *      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     | M |R R T U S F|     Count     |                               |
+ *     |F S U T R R| M |     Count     |                               |
  *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
  *     |                                                               |
  *     ~              Variable Number of StringData Records            ~
@@ -225,47 +225,48 @@ namespace ajn {
  *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *     | Version = 0   |  Q Count = 1  |  A Count = 1  | Timer = 255   |   (A)
  *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     |   WHO-HAS     |1 0         0 1|   Count = 1   |   Count = 13  |   (B)
+ *     |   WHO-HAS     |   Count = 1   |   Count = 13  |     'o'       |   (B) (C)
  *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+               |
- *     |     'o'             'r'             'g'             '.'       |
- *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+   (C)
- *     |     'y'             'a'             'd'             'd'       |
+ *     |     'r'             'g'             '.'             'y'       |
+ *     |                                                               |
+ *     |     'a'             'd'             'd'             'a'       |
+ *     |                                                               |
+ *     |     '.'             'f'             'o'             'o'       |
  *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     |     'a'            '.'             'f'              'o'       |
+ *     |     IS-AT     |  Count = 1    |  Port = 9955  |      192      |  (D)
  *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     |     'o'       |     IS-AT     |1 0         0 1|  Count = 1    |   (D)
+ *     |      168             10              10       |  Count = 13   |  (E)
  *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     |  Port = 9955  |      192             168             10       |
- *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     |      10       |  Count = 13   |     'o'             'r'       |
- *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     |     'g'             '.'             'y'             'a'       |   (E)
- *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     |     'd'             'd'             'a'             '.'       |
- *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     |     'b'             'a'             'r'       |
- *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     |      'o'            'r'             'g'             '.'       |
+ *     |                                                               |
+ *     |      'y'            'a'             'd'             'd'       |
+ *     |                                                               |
+ *     |      'a'            '.'             'b'             'a'       |
+ *     |               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     |      'r'      |
+ *     +-+-+-+-+-+-+-+-+
  * @endverbatim
  *
  * The notation (A) indicates the name service header.  This header tells
- * us that the version is one, there is one question and one answer
+ * us that the version is zero, there is one question and one answer
  * message following, and that the timeout value of any answer messages
- * present in this message is infinite.
+ * present in this message is set to be 255 (infinite).
  *
  * The (B) section shows one question, which is a WHO-HAS message.  The
- * flags indicate that the sending daemon is interested in discovering
- * services listening on TCP connections addressible with IPv4.  What
- * follows is a count of one bus name, which is "org.yadda.foo", which
- * is signified by the (C).  This ends the question section of the
- * packet since there was only one question present as indicated by the
- * header.
+ * flags present in the WHO-HAS message are not shown here. What follows
+ * is the count of bus names present in this message (1).  The bus name
+ * shown here is "org.yadda.foo" (C).  This name is contained in a
+ * serialized SDATA (string data) message.  The length of the string is
+ * thirteen bytes, and the characters of the string follow.  This ends
+ * the question section of the messge since there was only one question
+ * present as indicated by the header.
  *
- * Next, the (D) notation shows an answer message which is an IS-AT
- * message.  The flags show that the sending daemon reports that it is
- * reporting names for a TCP connection addressible by IPv4.  The fact
- * that there is one bus name following which is found at port 9955 of
- * IPv4 address 192.168.10.10 is found next.  The single SDATA record
- * with a count of 13 indicates that the sending daemon supports the
+ * Next, the (D) notation shows the single answer message described in
+ * the header.  Answer messages are called IS-AT messages.  There is a
+ * count of one bus name in the IS-AT messsage which, the message is
+ * telling us, can be found at port 9955 of IPv4 address 192.168.10.10
+ * which come next in the serialized message.  The single SDATA record
+ * (E) with a count of 13 indicates that the sending daemon supports the
  * bus name "org.yadda.bar" at that address.
  * @} End of "defgroup name_service_protocol"
  */
