@@ -480,6 +480,17 @@ class _Message {
 
     /**
      * @internal
+     * Turn a method call message into an error message
+     *
+     * @param status      The status code for this error
+     * @return
+     *      - #ER_OK if successful
+     *      - An error status otherwise
+     */
+    QStatus ErrorMsg(QStatus status);
+
+    /**
+     * @internal
      * Compose a new internally generated error message.
      *
      * @param errorName   The name of this error

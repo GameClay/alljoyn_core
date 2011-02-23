@@ -481,7 +481,12 @@ QStatus BusObject::MethodReply(Message& msg, QStatus status)
     if (status == ER_OK) {
         return MethodReply(msg);
     } else {
-        return MethodReply(msg, org::alljoyn::Bus::ErrorName, QCC_StatusText(status));
+        if (msg->GetType() != MESSAGE_METHOD_CALL) {
+            return ER_BUS_NO_CALL_FOR_REPLY;
+        } else {
+            msg->ErrorMsg(status);
+            return bus.GetInternal().GetRouter().PushMessage(msg, bus.GetInternal().GetLocalEndpoint());
+        }
     }
 }
 

@@ -1196,6 +1196,38 @@ ExitErrorMsg:
 }
 
 
+QStatus _Message::ErrorMsg(QStatus status)
+{
+    qcc::String destination = hdrFields.field[ALLJOYN_HDR_FIELD_SENDER].v_string.str;
+    qcc::String msg = QCC_StatusText(status);
+    uint16_t msgStatus = status;
+
+    assert(msgHeader.msgType == MESSAGE_METHOD_CALL);
+    /*
+     * Clear any stale header fields
+     */
+    ClearHeader();
+    /*
+     * Error name is required
+     */
+    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].typeId = ALLJOYN_STRING;
+    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].v_string.str = org::alljoyn::Bus::ErrorName;
+    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].v_string.len = strlen(org::alljoyn::Bus::ErrorName);
+    /*
+     * Return serial number
+     */
+    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].typeId = ALLJOYN_UINT32;
+    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].v_uint32 = msgHeader.serialNum;
+    /*
+     * Build error message
+     */
+    size_t numArgs = 2;
+    MsgArg args[numArgs];
+    MsgArg::Set(args, numArgs, "sq", msg.c_str(), msgStatus);
+    return MarshalMessage("sq", destination, MESSAGE_ERROR, args, numArgs, msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED);
+}
+
+
 void _Message::ErrorMsg(const char* errorName,
                         uint32_t replySerial)
 {
@@ -1227,6 +1259,7 @@ void _Message::ErrorMsg(QStatus status,
                         uint32_t replySerial)
 {
     qcc::String msg = QCC_StatusText(status);
+    uint16_t msgStatus = status;
     /*
      * Clear any stale header fields
      */
@@ -1239,8 +1272,10 @@ void _Message::ErrorMsg(QStatus status,
     hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].typeId = ALLJOYN_UINT32;
     hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].v_uint32 = replySerial;
 
-    MsgArg arg("s", msg.c_str());
-    MarshalMessage("s", "", MESSAGE_ERROR, &arg, 1, 0);
+    size_t numArgs = 2;
+    MsgArg args[numArgs];
+    MsgArg::Set(args, numArgs, "sq", msg.c_str(), msgStatus);
+    MarshalMessage("sq", "", MESSAGE_ERROR, args, numArgs, 0);
 }
 
 QStatus _Message::GetExpansion(uint32_t token, MsgArg& replyArg)
