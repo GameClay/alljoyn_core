@@ -451,8 +451,10 @@ class MsgArg {
     static QStatus Set(MsgArg* args, size_t& numArgs, const char* signature, ...);
 
     /**
-     * Matches a signature to the MsArg and if the signature matches Unpacks the component values of a MsgArg. Note that the values
+     * Matches a signature to the MsArg and if the signature matches unpacks the component values of a MsgArg. Note that the values
      * returned are references into the MsgArg itself so unless copied will become invalid if the MsgArg is freed or goes out of scope.
+     * This function resolved through variants, so if the MsgArg is a variant that references a 32 bit integer is can be unpacked
+     * directly into a 32 bit integer pointer.
      *
      *  - @c 'a'  A pointer to a length of type size_t that returns the number of elements in the array followed by:
      *            - If the element type is a scalar type a pointer to a pointer of the correct type for the values.
@@ -492,7 +494,8 @@ class MsgArg {
      *     arg.Get("(uss)", &myStruct.i, &myStruct.hello, &myStruct.world);
      *     @endcode
      *
-     * A variant where it is known that the value is a uint32, a string, or double.
+     * A variant where it is known that the value is a uint32, a string, or double. Note that the
+     * variant is resolved away.
      *
      *     @code
      *     uint32_t i;
@@ -534,7 +537,7 @@ class MsgArg {
      *     @endcode
      *
      * @param signature   The signature for MsgArg value
-     * @param ...         Pointers to return references to the unpacked values.
+     * @param ...         Pointers to return the unpacked values.
      *
      * @return
      *      - #ER_OK if the signature matched and MsgArg was successfully unpacked.
@@ -556,6 +559,55 @@ class MsgArg {
      *         - Other error status codes indicating a failure.
      */
     static QStatus Get(const MsgArg* args, size_t numArgs, const char* signature, ...);
+
+    /**
+     * Helper function for accessing dictionary elements. The MsgArg must be an array of dictionary
+     * elements. The second parameter is the key value, this is expressed according to the rules for
+     * #MsgArg::Set so is either a scalar, a pointer to a string, or for 64 bit values a pointer to the
+     * value. This value is matched against the dictionary array to locate the matchinge element. The
+     * third and subsequent parameters are unpacked according to the rules of #MsgArg::Get.
+     *
+     * For example, where the key is a string and the values are structs:
+     *
+     *     @code
+     *     uint8_t age;
+     *     uint32_t height;
+     *     const char* address;
+     *     QStatus status = arg.GetElement("{s(yus)}", "fred", &age, &height,  &address);
+     *     @endcode
+     *
+     * This function is particularly useful for extracting specific properties from the array of property
+     * values returned by #ProxyBusObject::GetAllProperties().
+     *
+     * @param elemSig  The expected signature for the dictionary element, e.g. "{su}"
+     * @param ...      Pointers to return unpacked key values.
+     *
+     * @return
+     *      - #ER_OK if the dictionary signature matched and MsgArg was successfully unpacked.
+     *      - #ER_BUS_NOT_A_DICTIONARY if this method is called on a MsgArg that is not a dictionary.
+     *      - #ER_BUS_SIGNATURE_MISMATCH if the signature did not match.
+     *      - #ER_BUS_ELEMENT_NOT_FOUND if the key was not found in the dictionary.
+     *      - An error status otherwise
+     */
+    QStatus GetElement(const char* elemSig, ...) const;
+
+    /**
+     * Equality operator.
+     *
+     * @param other  The other MsgArg to compare.
+     *
+     * @return  Returns true if the two message args have the same signatures and values.
+     */
+    bool operator==(const MsgArg& other);
+
+    /**
+     * Inequality operator.
+     *
+     * @param other  The other MsgArg to compare.
+     *
+     * @return  Returns true if the two message args do not have the same signatures and values.
+     */
+    bool operator!=(const MsgArg& other) { return !(*this == other); }
 
     /**
      * Clear the MsgArg setting the type to ALLJOYN_INVALID and freeing any memory allocated for the

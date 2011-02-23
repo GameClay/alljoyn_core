@@ -382,6 +382,98 @@ void MsgArg::Stabilize()
     }
 }
 
+bool MsgArg::operator==(const MsgArg& other)
+{
+    if (typeId != other.typeId) {
+        return false;
+    }
+    switch (typeId) {
+    case ALLJOYN_DICT_ENTRY:
+        return (v_dictEntry.key == other.v_dictEntry.key) &&  (v_dictEntry.val == other.v_dictEntry.val);
+
+    case ALLJOYN_STRUCT:
+        if (v_struct.numMembers != other.v_struct.numMembers) {
+            return false;
+        }
+        for (size_t i = 0; i < v_struct.numMembers; i++) {
+            if (v_struct.members[i] != other.v_struct.members[i]) {
+                return false;
+            }
+        }
+        return true;
+
+    case ALLJOYN_ARRAY:
+        if (v_array.numElements != other.v_array.numElements) {
+            return false;
+        }
+        for (size_t i = 0; i < v_array.numElements; i++) {
+            if (v_array.elements[i] != other.v_array.elements[i]) {
+                return false;
+            }
+        }
+        return true;
+
+    case ALLJOYN_VARIANT:
+        return v_variant.val == other.v_variant.val;
+
+    case ALLJOYN_OBJECT_PATH:
+    case ALLJOYN_STRING:
+        return (v_string.len == other.v_string.len) && (strcmp(v_string.str, other.v_string.str) == 0);
+
+    case ALLJOYN_SIGNATURE:
+        return (v_signature.len == other.v_signature.len) && (strcmp(v_signature.sig, other.v_signature.sig) == 0);
+
+    case ALLJOYN_BOOLEAN_ARRAY:
+        return (v_scalarArray.numElements == other.v_scalarArray.numElements) &&
+               (memcmp(v_scalarArray.v_bool, other.v_scalarArray.v_bool, v_scalarArray.numElements * sizeof(bool)) == 0);
+
+    case ALLJOYN_INT32_ARRAY:
+    case ALLJOYN_UINT32_ARRAY:
+        return (v_scalarArray.numElements == other.v_scalarArray.numElements) &&
+               (memcmp(v_scalarArray.v_uint32, other.v_scalarArray.v_uint32, v_scalarArray.numElements * sizeof(uint32_t)) == 0);
+
+    case ALLJOYN_INT16_ARRAY:
+    case ALLJOYN_UINT16_ARRAY:
+        return (v_scalarArray.numElements == other.v_scalarArray.numElements) &&
+               (memcmp(v_scalarArray.v_uint16, other.v_scalarArray.v_uint16, v_scalarArray.numElements * sizeof(uint16_t)) == 0);
+
+    case ALLJOYN_DOUBLE_ARRAY:
+    case ALLJOYN_UINT64_ARRAY:
+    case ALLJOYN_INT64_ARRAY:
+        return (v_scalarArray.numElements == other.v_scalarArray.numElements) &&
+               (memcmp(v_scalarArray.v_uint64, other.v_scalarArray.v_uint64, v_scalarArray.numElements * sizeof(uint64_t)) == 0);
+
+    case ALLJOYN_BYTE_ARRAY:
+        return (v_scalarArray.numElements == other.v_scalarArray.numElements) &&
+               (memcmp(v_scalarArray.v_byte, other.v_scalarArray.v_byte, v_scalarArray.numElements) == 0);
+
+    case ALLJOYN_BYTE:
+        return v_byte == other.v_byte;
+
+    case ALLJOYN_INT16:
+    case ALLJOYN_UINT16:
+        return v_uint16 == other.v_uint16;
+
+    case ALLJOYN_BOOLEAN:
+        return v_bool == other.v_bool;
+
+    case ALLJOYN_INT32:
+    case ALLJOYN_UINT32:
+        return v_uint32 == other.v_uint32;
+
+    case ALLJOYN_DOUBLE:
+    case ALLJOYN_UINT64:
+    case ALLJOYN_INT64:
+        return v_uint64 == other.v_uint64;
+
+    case ALLJOYN_HANDLE:
+        return v_handle.fd == other.v_handle.fd;
+
+    default:
+        return false;
+    }
+}
+
 void MsgArg::Clone(MsgArg& dest, const MsgArg& src)
 {
     dest.Clear();
@@ -1093,6 +1185,46 @@ QStatus MsgArg::Get(const char* signature, ...) const
     va_list argp;
     va_start(argp, signature);
     QStatus status = VParseArgs(signature, sigLen, this, 1, &argp);
+    va_end(argp);
+    return status;
+}
+
+QStatus MsgArg::GetElement(const char* elemSig, ...) const
+{
+
+    size_t sigLen = (elemSig ? strlen(elemSig) : 0);
+    if (sigLen < 4) {
+        return ER_BAD_ARG_1;
+    }
+    /* Check this MsgArg is an array of dictionary entries */
+    if ((typeId != ALLJOYN_ARRAY) || (*v_array.elemSig != '{')) {
+        return ER_BUS_NOT_A_DICTIONARY;
+    }
+    /* Check key has right type */
+    if (v_array.elemSig[1] != elemSig[1]) {
+        return ER_BUS_SIGNATURE_MISMATCH;
+    }
+    va_list argp;
+    va_start(argp, elemSig);
+    /* Get the key as a MsgArg */
+    MsgArg key;
+    size_t numArgs;
+    ++elemSig;
+    QStatus status = MsgArg::VBuildArgs(elemSig, 1, &key, 1, &argp, &numArgs);
+    if (status == ER_OK) {
+        status = ER_BUS_ELEMENT_NOT_FOUND;
+        /* Linear search to match the key */
+        const MsgArg* entry = v_array.elements;
+        for (size_t i = 0; i < v_array.numElements; ++i, ++entry) {
+            if (*entry->v_dictEntry.key == key) {
+                status = ER_OK;
+                break;
+            }
+        }
+        if (status == ER_OK) {
+            status = VParseArgs(elemSig, sigLen - 3, entry->v_dictEntry.val, 1, &argp);
+        }
+    }
     va_end(argp);
     return status;
 }
