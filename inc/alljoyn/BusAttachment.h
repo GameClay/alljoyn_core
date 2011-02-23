@@ -28,7 +28,6 @@
 #include <qcc/platform.h>
 
 #include <qcc/String.h>
-#include <qcc/Socket.h>
 #include <alljoyn/KeyStoreListener.h>
 #include <alljoyn/AuthListener.h>
 #include <alljoyn/BusListener.h>
