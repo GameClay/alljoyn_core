@@ -129,4 +129,8 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
   <status name="ER_BUS_HANDLES_MISMATCH" value="0x906d" comment="Message had more handles than expected"/>
   <status name="ER_BT_MAX_CONNECTIONS_USED" value="0x906e" comment="Maximum Bluetooth connections already in use"/>
   <status name="ER_BUS_NO_SESSION" value="0x906f" comment="Session id is not valid"/>
+  <status name="ER_BUS_ELEMENT_NOT_FOUND" value="0x9070" comment="Dictionary element was not found"/>
+  <status name="ER_BUS_NOT_A_DICTIONARY" value="0x9071" comment="MsgArg was not an array of dictionary elements"/>
+  <status name="ER_BUS_WAIT_FAILED" value="0x9072" comment="Wait failed"/>
+  <status name="ER_BUS_INVALID_MEDIA_TYPE" value="0x9073" comment="Unexpected mimetype for the media"/>
 </status_block>
