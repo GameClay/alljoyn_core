@@ -1245,7 +1245,7 @@ void BTController::ImportState(size_t num, MsgArg* entries, const qcc::String& n
         NodeStateMap::const_iterator node;
         QCC_DbgPrintf(("Node State Table (local = %s):", bus.GetUniqueName().c_str()));
         for (node = nodeStates.begin(); node != nodeStates.end(); ++node) {
-            std::set<qcc::String>:: const_iterator name;
+            std::set<qcc::String>::const_iterator name;
             QCC_DbgPrintf(("    %s:", node->first.c_str()));
             QCC_DbgPrintf(("         Advertise names:"));
             for (name = node->second.advertiseNames.begin(); name != node->second.advertiseNames.end(); ++name) {

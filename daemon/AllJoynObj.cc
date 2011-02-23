@@ -747,7 +747,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                 RemoteEndpoint* srcB2BEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
                 ep = router.FindEndpoint(src);
                 VirtualEndpoint* srcEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
-                
+
                 if (srcB2BEp && srcEp) {
                     id = tempId;
                     qosOut = tempQos;
@@ -852,7 +852,7 @@ QStatus AllJoynObj::SendAttachSession(const char* sessionName,
         QCC_DbgPrintf(("Received AttachSession response: replyCode=%d, sessionId=0x%x, qos=<%x, %x, %x>",
                        replyCode, id, qosOut.proximity, qosOut.traffic, qosOut.transports));
     }
-    
+
     /* Re-lock and re-acquire b2bEp */
     router.LockNameTable();
     discoverMapLock.Lock();
@@ -925,18 +925,20 @@ void AllJoynObj::GetSessionFd(const InterfaceDescription::Member* member, Messag
         it->second.fd = -1;
     }
     sessionMapLock.Unlock();
-    
+
     if (sockFd != -1) {
 #if 0
 #if 1
-const char* testBuf = "12345";
-int ret = ::write(sockFd, testBuf, ::strlen(testBuf));
-printf("TEST WRITE: ret = %d errno=%d\n", ret, errno);
+        const char* testBuf = "12345";
+        int ret = ::write(sockFd, testBuf, ::strlen(testBuf));
+        printf("TEST WRITE: ret = %d errno=%d\n", ret, errno);
 #else
-char buf[255];
-int ret = ::read(sockFd, buf, sizeof(buf));
-printf("TEST READ: ret = %d, errno = %d\n", ret, errno);
-if (ret > 0) { buf[ret] = '\0'; printf("BYTES: %s\n", buf); }
+        char buf[255];
+        int ret = ::read(sockFd, buf, sizeof(buf));
+        printf("TEST READ: ret = %d, errno = %d\n", ret, errno);
+        if (ret > 0) {
+            buf[ret] = '\0'; printf("BYTES: %s\n", buf);
+        }
 #endif
 #endif
         /* Send the fd and transfer ownership */

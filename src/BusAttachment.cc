@@ -718,7 +718,7 @@ QStatus BusAttachment::GetSessionFd(SessionId sessionId, SocketFd& sockFd)
         if (reply->GetType() == MESSAGE_METHOD_RET) {
             size_t na;
             const MsgArg* args;
-            reply->GetArgs(na,args);
+            reply->GetArgs(na, args);
             int tempFd;
             status = args[0].Get("h", &tempFd);
             sockFd = tempFd;

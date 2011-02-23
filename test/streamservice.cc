@@ -236,14 +236,14 @@ int main(int argc, char** argv)
         }
         printf("Found a new joiner with session id = %u\n", id);
         lastSessionId = id;
-        
+
         /* Get the streaming socket */
         SocketFd sockFd;
         status = g_msgBus->GetSessionFd(id, sockFd);
         if (status != ER_OK) {
             QCC_LogError(status, ("Failed to get socket from GetSessionFd args"));
         }
-        
+
         /* Write test message on stream */
         if (status == ER_OK) {
             const char* testMessage = "abcdefghijklmnopqrstuvwxyz";
@@ -257,7 +257,7 @@ int main(int argc, char** argv)
             }
             //::shutdown(sockFd, SHUT_RDWR);
             //::close(sockFd);
-        }            
+        }
     }
 
     /* Wait for bus to stop */
