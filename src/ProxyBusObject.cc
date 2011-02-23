@@ -344,6 +344,11 @@ QStatus ProxyBusObject::MethodCallAsync(const InterfaceDescription::Member& meth
     Message msg(*bus);
     LocalEndpoint& localEndpoint = bus->GetInternal().GetLocalEndpoint();
 
+    if (!ImplementsInterface(method.iface->GetName())) {
+        status = ER_BUS_OBJECT_NO_SUCH_INTERFACE;
+        QCC_LogError(status, ("Object %s does not implement %s", path.c_str(), method.iface->GetName()));
+        return status;
+    }
     if (!replyHandler) {
         flags |= ALLJOYN_FLAG_NO_REPLY_EXPECTED;
     }
@@ -431,6 +436,11 @@ QStatus ProxyBusObject::MethodCall(const InterfaceDescription::Member& method,
     Message msg(*bus);
     LocalEndpoint& localEndpoint = bus->GetInternal().GetLocalEndpoint();
 
+    if (!ImplementsInterface(method.iface->GetName())) {
+        status = ER_BUS_OBJECT_NO_SUCH_INTERFACE;
+        QCC_LogError(status, ("Object %s does not implement %s", path.c_str(), method.iface->GetName()));
+        goto MethodCallExit;
+    }
     /*
      * Check if the current thread allows blocking on the current bus.
      */
