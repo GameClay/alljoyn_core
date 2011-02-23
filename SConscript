@@ -70,7 +70,7 @@ env.Install('$DISTDIR', 'NOTICE')
 
 # Whitespace policy
 import os.path
-wscmd_default = os.path.abspath('../build_core/tools/bin/whitespace.sh')
+wscmd_default = 'bash ' + os.path.abspath('../build_core/tools/bin/whitespace.sh')
 if env['WS'] != 'off' and not env.GetOption('clean'):
     if env['WS'] == 'check':
         wscmd = wscmd_default
