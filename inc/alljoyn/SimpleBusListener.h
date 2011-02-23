@@ -102,7 +102,7 @@ class SimpleBusListener : public BusListener {
         /**
          * Constructor
          */
-        BusEvent() : eventType(0) {}
+        BusEvent() : eventType(0) { }
 
         /**
          * Copy constructor.

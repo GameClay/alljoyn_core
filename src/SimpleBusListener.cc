@@ -55,11 +55,13 @@ SimpleBusListener::BusEvent& SimpleBusListener::BusEvent::operator=(const BusEve
         pos += strlen(foundAdvertisedName.name) + 1;
         foundAdvertisedName.namePrefix = pos;
         break;
+
     case LOST_ADVERTISED_NAME:
         lostAdvertisedName.name = pos;
         pos += strlen(other.lostAdvertisedName.name) + 1;
         lostAdvertisedName.namePrefix = pos;
         break;
+
     case NAME_OWNER_CHANGED:
         nameOwnerChanged.busName = pos;
         pos += strlen(nameOwnerChanged.busName) + 1;
@@ -75,9 +77,11 @@ SimpleBusListener::BusEvent& SimpleBusListener::BusEvent::operator=(const BusEve
             nameOwnerChanged.newOwner = NULL;
         }
         break;
+
     case SESSION_LOST:
         sessionLost.sessionId = other.sessionLost.sessionId;
         break;
+
     case ACCEPT_SESSION:
         acceptSession.sessionName = pos;
         acceptSession.id = other.acceptSession.id;
@@ -85,16 +89,16 @@ SimpleBusListener::BusEvent& SimpleBusListener::BusEvent::operator=(const BusEve
         acceptSession.joiner = pos;
         acceptSession.qos = &qosInfo;
         break;
+
     default:
         break;
     }
     return *this;
 };
 
-class SimpleBusListener::Internal
-{
+class SimpleBusListener::Internal {
   public:
-    Internal() : acceptEvent(NULL), accepted(false), numWaiters(0) {}
+    Internal() : acceptEvent(NULL), accepted(false), numWaiters(0) { }
     Event waitEvent;
     qcc::Mutex lock;
     std::queue<BusEvent> eventQueue;
@@ -110,7 +114,9 @@ class SimpleBusListener::Internal
     }
 };
 
-SimpleBusListener::SimpleBusListener(uint32_t enabled) : enabled(enabled), internal(*(new Internal)) {}
+SimpleBusListener::SimpleBusListener(uint32_t enabled) : enabled(enabled), internal(*(new Internal))
+{
+}
 
 void SimpleBusListener::FoundAdvertisedName(const char* name, const QosInfo& advQos, const char* namePrefix)
 {
@@ -224,7 +230,7 @@ void SimpleBusListener::SetFilter(uint32_t enabled)
     internal.lock.Unlock();
 }
 
-QStatus SimpleBusListener::WaitForEvent(BusEvent& busEvent, uint32_t timeout) 
+QStatus SimpleBusListener::WaitForEvent(BusEvent& busEvent, uint32_t timeout)
 {
     QStatus status = ER_OK;
     internal.lock.Lock();
