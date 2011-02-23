@@ -247,10 +247,11 @@ int main(int argc, char** argv)
         /* Write test message on stream */
         if (status == ER_OK) {
             const char* testMessage = "abcdefghijklmnopqrstuvwxyz";
-            int testMessageLen = ::strlen(testMessage);
-            int ret = ::write(sockFd, testMessage, testMessageLen);
-            if (ret > 0) {
-                printf("Wrote %d of %d bytes of testMessage to stream\n", ret, testMessageLen);
+            size_t testMessageLen = ::strlen(testMessage);
+            size_t sent;
+            status = qcc::Send(sockFd, testMessage, testMessageLen, sent);
+            if (status == ER_OK) {
+                printf("Wrote %d of %d bytes of testMessage to stream\n", sent, testMessageLen);
             } else {
                 printf("Failed to write testMessage (%s)\n", ::strerror(errno));
                 status = ER_FAIL;

@@ -236,17 +236,14 @@ int main(int argc, char** argv)
             while (status == ER_OK) {
                 /* Attempt to read test string from fd */
                 char buf[256];
-                int ret = ::read(sockFd, buf, sizeof(buf) - 1);
-                int againCount = 0;
-                if (ret > 0) {
-                    QCC_SyncPrintf("Read %d bytes from streaming fd\n", ret);
-                    buf[ret] = '\0';
+                size_t recvd;
+                status = qcc::Recv(sockFd, buf, sizeof(buf) - 1, recvd);
+                if (status == ER_OK) {
+                    QCC_SyncPrintf("Read %d bytes from streaming fd\n", recvd);
+                    buf[recvd] = '\0';
                     QCC_SyncPrintf("Bytes: %s\n", buf);
-                } else if ((errno == EAGAIN) && (againCount < 2)) {
-                    ++againCount;
                 } else {
-                    status = ER_FAIL;
-                    QCC_LogError(status, ("Read from streaming fd failed (%s)", ::strerror(errno)));
+                    QCC_LogError(status, ("Read from streaming fd failed"));
                 }
             }
         } else {
