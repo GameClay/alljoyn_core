@@ -406,8 +406,18 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
         }
     }
     if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
-        status = ajObj.SendAttachSession(sessionName.c_str(), msg->GetSender(), sessionEp->GetUniqueName().c_str(),
+        /* Give up the locks during the sync method call */
+        qcc::String sepName = sessionEp->GetUniqueName();
+        ajObj.virtualEndpointsLock.Unlock();
+        ajObj.discoverMapLock.Unlock();
+        ajObj.router.UnlockNameTable();
+        status = ajObj.SendAttachSession(sessionName.c_str(), msg->GetSender(), sepName.c_str(),
                                          *b2bEp, qosIn, replyCode, id, qosOut);
+        /* Re-lock and re-acquire b2bEp */
+        ajObj.router.LockNameTable();
+        ajObj.discoverMapLock.Lock();
+        ajObj.virtualEndpointsLock.Lock();
+
     }
 
     /* Reacquire b2bEp and sessionEp after sync method call */
@@ -738,7 +748,11 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
             /* Forward AttachSession to next hop */
             SessionId tempId;
             QosInfo tempQos;
+            discoverMapLock.Unlock();
+            router.UnlockNameTable();
             status = SendAttachSession(sessionName, src, dest, *destB2B, inQos, replyCode, tempId, tempQos);
+            router.LockNameTable();
+            discoverMapLock.Lock();
 
             /* If successful, add bi-directional session routes */
             if ((status == ER_OK) && (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS)) {
@@ -824,10 +838,6 @@ QStatus AllJoynObj::SendAttachSession(const char* sessionName,
                    qosIn.proximity, qosIn.traffic, qosIn.transports,
                    nextControllerName.c_str()));
 
-    /* Give up the locks during the sync method call */
-    virtualEndpointsLock.Unlock();
-    discoverMapLock.Unlock();
-    router.UnlockNameTable();
     QStatus status = controllerObj.MethodCall(org::alljoyn::Daemon::InterfaceName,
                                               "AttachSession",
                                               attachArgs,
@@ -852,10 +862,6 @@ QStatus AllJoynObj::SendAttachSession(const char* sessionName,
                        replyCode, id, qosOut.proximity, qosOut.traffic, qosOut.transports));
     }
 
-    /* Re-lock and re-acquire b2bEp */
-    router.LockNameTable();
-    discoverMapLock.Lock();
-    virtualEndpointsLock.Lock();
 
     return status;
 }
