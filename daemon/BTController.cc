@@ -238,6 +238,8 @@ QStatus BTController::SendSetState(const qcc::String& busName)
     Message reply(bus);
     ProxyBusObject* newMaster = new ProxyBusObject(bus, busName.c_str(), bluetoothObjPath, 0);
 
+    newMaster->AddInterface(*org.alljoyn.Bus.BTController.interface);
+
     args[0].Set(SIG_MINION_CNT, directMinions);
 
     array.reserve(nodeStates.size());
