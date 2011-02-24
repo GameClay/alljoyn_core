@@ -119,7 +119,7 @@ class SimpleBusListener : public BusListener {
         /**
          * @internal  Storage for the busEvent strings.
          */
-        qcc::String strings;
+        qcc::String strings[3];
         /**
          * @internal  Storage for quality of service information.
          */

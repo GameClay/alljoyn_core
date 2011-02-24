@@ -42,40 +42,36 @@ using namespace std;
 
 namespace ajn {
 
+static inline const char* CopyIn(qcc::String& dest, const char* src)
+{
+    if (src) {
+        dest = src;
+        return dest.c_str();
+    } else {
+        return NULL;
+    }
+}
+
 SimpleBusListener::BusEvent& SimpleBusListener::BusEvent::operator=(const BusEvent& other)
 {
     eventType = other.eventType;
-    strings = other.strings;
-    qosInfo = other.qosInfo;
-    const char* pos = strings.c_str();
     switch (eventType) {
     case FOUND_ADVERTISED_NAME:
-        foundAdvertisedName.name = pos;
+        foundAdvertisedName.name = CopyIn(strings[0], other.foundAdvertisedName.name);
+        qosInfo = *other.foundAdvertisedName.advQos;
         foundAdvertisedName.advQos = &qosInfo;
-        pos += strlen(foundAdvertisedName.name) + 1;
-        foundAdvertisedName.namePrefix = pos;
+        foundAdvertisedName.namePrefix = CopyIn(strings[1], other.foundAdvertisedName.namePrefix);
         break;
 
     case LOST_ADVERTISED_NAME:
-        lostAdvertisedName.name = pos;
-        pos += strlen(other.lostAdvertisedName.name) + 1;
-        lostAdvertisedName.namePrefix = pos;
+        lostAdvertisedName.name = CopyIn(strings[0], other.lostAdvertisedName.name);
+        lostAdvertisedName.namePrefix = CopyIn(strings[1], other.lostAdvertisedName.namePrefix);
         break;
 
     case NAME_OWNER_CHANGED:
-        nameOwnerChanged.busName = pos;
-        pos += strlen(nameOwnerChanged.busName) + 1;
-        if (other.nameOwnerChanged.previousOwner) {
-            nameOwnerChanged.previousOwner = pos;
-            pos += strlen(nameOwnerChanged.previousOwner) + 1;
-        } else {
-            nameOwnerChanged.previousOwner = NULL;
-        }
-        if (other.nameOwnerChanged.newOwner) {
-            nameOwnerChanged.newOwner = pos;
-        } else {
-            nameOwnerChanged.newOwner = NULL;
-        }
+        nameOwnerChanged.busName = CopyIn(strings[0], other.nameOwnerChanged.previousOwner);
+        nameOwnerChanged.previousOwner = CopyIn(strings[1], other.nameOwnerChanged.previousOwner);
+        nameOwnerChanged.newOwner = CopyIn(strings[2], other.nameOwnerChanged.newOwner);
         break;
 
     case SESSION_LOST:
@@ -83,10 +79,10 @@ SimpleBusListener::BusEvent& SimpleBusListener::BusEvent::operator=(const BusEve
         break;
 
     case ACCEPT_SESSION:
-        acceptSession.sessionName = pos;
+        acceptSession.sessionName = CopyIn(strings[0], other.acceptSession.sessionName);
         acceptSession.id = other.acceptSession.id;
-        pos += strlen(acceptSession.sessionName) + 1;
-        acceptSession.joiner = pos;
+        acceptSession.joiner = CopyIn(strings[1], other.acceptSession.joiner);
+        qosInfo = *other.acceptSession.qos;
         acceptSession.qos = &qosInfo;
         break;
 
@@ -172,8 +168,8 @@ bool SimpleBusListener::AcceptSession(const char* sessionName, SessionId id, con
         busEvent.acceptSession.id = id;
         busEvent.acceptSession.joiner = joiner;
         busEvent.acceptSession.qos = &qos;
-        internal.QueueEvent(busEvent);
         internal.lock.Lock();
+        internal.QueueEvent(busEvent);
         if (!internal.acceptEvent) {
             Event acceptEvent;
             internal.acceptEvent = &acceptEvent;
@@ -248,7 +244,7 @@ QStatus SimpleBusListener::WaitForEvent(BusEvent& busEvent, uint32_t timeout)
     if (internal.eventQueue.empty() && timeout) {
         ++internal.numWaiters;
         internal.lock.Unlock();
-        status = Event::Wait(internal.waitEvent, (timeout == -1) ? Event::WAIT_FOREVER : timeout);
+        status = Event::Wait(internal.waitEvent, (timeout == 0xFFFFFFFF) ? Event::WAIT_FOREVER : timeout);
         internal.lock.Lock();
         internal.waitEvent.ResetEvent();
         --internal.numWaiters;
