@@ -33,7 +33,6 @@
 #include <qcc/String.h>
 #include <qcc/Thread.h>
 #include <qcc/Util.h>
-#include <qcc/Crypto.h>
 
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/DBusStd.h>
@@ -263,7 +262,6 @@ void AllJoynObj::CreateSession(const InterfaceDescription::Member* member, Messa
         replyCode = ALLJOYN_CREATESESSION_REPLY_NOT_OWNER;
     } else {
         /* Assign a session id and store the session information */
-        Crypto_BigNum val;
         SessionMapEntry entry;
 
         entry.name = sessionName;
@@ -271,8 +269,9 @@ void AllJoynObj::CreateSession(const InterfaceDescription::Member* member, Messa
         entry.streamingEp = NULL;
         entry.isMulticast = isMulticast;
         args[2].Get(QOSINFO_SIG, &entry.qos.traffic, &entry.qos.proximity, &entry.qos.transports);
-        val.GenerateRandomValue(8 * sizeof(SessionId));
-        val.RenderBinary(reinterpret_cast<uint8_t*>(&id), sizeof(SessionId));
+        do {
+            id = qcc::Rand32();
+        } while (id == 0);
         entry.id = id;
         entry.endpointName = msg->GetSender();
         sessionMapLock.Lock();
@@ -623,14 +622,14 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                 if (sit->second.isMulticast) {
                     sme = sit->second;
                 } else {
-                    Crypto_BigNum val;
                     sme.name = sit->second.name;
                     sme.fd = -1;
                     sme.streamingEp = NULL;
                     sme.isMulticast = false;
                     sme.qos = sit->second.qos;
-                    val.GenerateRandomValue(8 * sizeof(SessionId));
-                    val.RenderBinary(reinterpret_cast<uint8_t*>(&sme.id), sizeof(SessionId));
+                    do {
+                        sme.id = qcc::Rand32();
+                    } while (sme.id == 0);
                     sme.endpointName = sit->second.endpointName;
                     sessionMap[sme.id] = sme;
                 }
@@ -684,7 +683,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                                                 reply);
                     router.LockNameTable();
                     discoverMapLock.Lock();
-                    if ((status == ER_OK) && (reply->GetType() == MESSAGE_METHOD_RET)) {
+                    if (status == ER_OK) {
                         size_t na;
                         const MsgArg* replyArgs;
                         bool isAccepted = false;
