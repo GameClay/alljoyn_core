@@ -1,4 +1,4 @@
-AllJoyn Version 1.8.0 Release Notes
+AllJoyn Version 2.0.0 Release Notes
 -----------------------------------
 
 Platform Support
@@ -9,30 +9,34 @@ Platform Support
 
 Features added in this release
 ------------------------------
-Initial Open Source Release
+Streaming connections and session management.
 
 
 Issues Addressed in this Release
 --------------------------------
-Initial Open Source Release
+NA
 
 
 Known issues and limitations with this release
 ----------------------------------------------
-1) Bluetooth stability is improved but problems with sudden disconnects
-   still exist when the bus topology is anything other than a single
-   piconet configuration.
+1) This is an alpha release, intended only to preview the new 2.0
+   feature set.  The new 2.0 features are not fully implemented.
 
-2) org.alljoyn.Bus.Connect may fail if called too quickly after
+2) The AllJoyn Java language binding is not supported in this
+   alpha release.
+
+3) org.alljoyn.Bus.Connect may fail if called too quickly after
    org.allJoyn.Bus.Disconnect for the same remote host. (ALLJOYN-194)
 
 
 Compatibility
 -------------
-N/A
+AllJoyn APIs have changed.  Applications written for AllJoyn 1.8 or
+earlier will need to be modified and rebuilt for use with AllJoyn 2.0
+and later.
 
 
 Change history
 --------------
-Initial Open Source Release
+1.8.0 - Initial Open Source Release
 

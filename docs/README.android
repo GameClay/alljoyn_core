@@ -1,11 +1,11 @@
-AllJoyn version 1.8.0 README.TXT
+AllJoyn version 2.0.0 README.TXT
 --------------------------------
 
 What's inside:
 -------------
 
- * alljoyn_1_8_0_dbg : AllJoyn SDK for Android (debug), version 1.8.0
- * alljoyn_1_8_0_rel : AllJoyn SDK for Android (release), version 1.8.0
+ * alljoyn_2_0_0_dbg : AllJoyn SDK for Android (debug), version 2.0.0
+ * alljoyn_2_0_0_rel : AllJoyn SDK for Android (release), version 2.0.0
     The above folders are identical, except for compilation options.
     The file and folder structure inside them is described below. 
 
@@ -52,18 +52,6 @@ Summary of NDK file and folder structure:
     ./samples
         C++ sample programs for AllJoyn (see Developers Guide)
 
- * The remaining top-level folder (java) contains a similar structure
-   underneath it, supporting the AllJoyn Java language binding:
-
-    ./java/docs
-        AllJoyn Java API (HTML documentation)
-
-    ./java/lib
-        liballjoyn_java.so
-
-    ./java/samples
-        Java sample programs for AllJoyn (see README)
-
-    ./java/jar
-        alljoyn.jar, alljoyn_test.jar
-
+#   =================================================================================
+#   NOTE: The AllJoyn Java language binding is java is NOT supported in release 2.0.0
+#   =================================================================================
