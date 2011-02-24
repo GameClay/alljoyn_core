@@ -133,32 +133,30 @@ BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
         masterUUIDRev = qcc::Rand32();
     }
 
-    if (!org.alljoyn.Bus.BTController.interface) {
-        InterfaceDescription* ifc;
-        bus.CreateInterface(bluetoothTopoMgrIfcName, ifc);
-        for (size_t i = 0; i < ArraySize(btmIfcTable); ++i) {
-            ifc->AddMember(btmIfcTable[i].type,
-                           btmIfcTable[i].name,
-                           btmIfcTable[i].inputSig,
-                           btmIfcTable[i].outSig,
-                           btmIfcTable[i].argNames,
-                           0);
-        }
-        ifc->Activate();
-
-        org.alljoyn.Bus.BTController.interface =           ifc;
-        org.alljoyn.Bus.BTController.SetState =            ifc->GetMember("SetState");
-        org.alljoyn.Bus.BTController.ProxyConnect =        ifc->GetMember("ProxyConnect");
-        org.alljoyn.Bus.BTController.ProxyDisconnect =     ifc->GetMember("ProxyDisconnect");
-        org.alljoyn.Bus.BTController.FindName =            ifc->GetMember("FindName");
-        org.alljoyn.Bus.BTController.CancelFindName =      ifc->GetMember("CancelFindName");
-        org.alljoyn.Bus.BTController.AdvertiseName =       ifc->GetMember("AdvertiseName");
-        org.alljoyn.Bus.BTController.CancelAdvertiseName = ifc->GetMember("CancelAdvertiseName");
-        org.alljoyn.Bus.BTController.DelegateAdvertise =   ifc->GetMember("DelegateAdvertise");
-        org.alljoyn.Bus.BTController.DelegateFind =        ifc->GetMember("DelegateFind");
-        org.alljoyn.Bus.BTController.FoundBus =            ifc->GetMember("FoundBus");
-        org.alljoyn.Bus.BTController.FoundDevice =         ifc->GetMember("FoundDevice");
+    InterfaceDescription* ifc;
+    bus.CreateInterface(bluetoothTopoMgrIfcName, ifc);
+    for (size_t i = 0; i < ArraySize(btmIfcTable); ++i) {
+        ifc->AddMember(btmIfcTable[i].type,
+                       btmIfcTable[i].name,
+                       btmIfcTable[i].inputSig,
+                       btmIfcTable[i].outSig,
+                       btmIfcTable[i].argNames,
+                       0);
     }
+    ifc->Activate();
+
+    org.alljoyn.Bus.BTController.interface =           ifc;
+    org.alljoyn.Bus.BTController.SetState =            ifc->GetMember("SetState");
+    org.alljoyn.Bus.BTController.ProxyConnect =        ifc->GetMember("ProxyConnect");
+    org.alljoyn.Bus.BTController.ProxyDisconnect =     ifc->GetMember("ProxyDisconnect");
+    org.alljoyn.Bus.BTController.FindName =            ifc->GetMember("FindName");
+    org.alljoyn.Bus.BTController.CancelFindName =      ifc->GetMember("CancelFindName");
+    org.alljoyn.Bus.BTController.AdvertiseName =       ifc->GetMember("AdvertiseName");
+    org.alljoyn.Bus.BTController.CancelAdvertiseName = ifc->GetMember("CancelAdvertiseName");
+    org.alljoyn.Bus.BTController.DelegateAdvertise =   ifc->GetMember("DelegateAdvertise");
+    org.alljoyn.Bus.BTController.DelegateFind =        ifc->GetMember("DelegateFind");
+    org.alljoyn.Bus.BTController.FoundBus =            ifc->GetMember("FoundBus");
+    org.alljoyn.Bus.BTController.FoundDevice =         ifc->GetMember("FoundDevice");
 
     advertise.delegateSignal = org.alljoyn.Bus.BTController.DelegateAdvertise;
     find.delegateSignal = org.alljoyn.Bus.BTController.DelegateFind;
