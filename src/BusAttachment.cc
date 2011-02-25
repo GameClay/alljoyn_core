@@ -584,19 +584,14 @@ QStatus BusAttachment::NameHasOwner(const char* name, bool& hasOwner)
     const ProxyBusObject& dbusObj = this->GetDBusProxyObj();
     QStatus status = dbusObj.MethodCall(org::freedesktop::DBus::InterfaceName, "NameHasOwner", &arg, 1, reply);
     if (ER_OK == status) {
-        if (reply->GetType() == MESSAGE_METHOD_RET) {
-            hasOwner = reply->GetArg(0)->v_bool;
-        } else if (reply->GetType() == MESSAGE_ERROR) {
-            status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
-            String errMsg;
-            const char* errName = reply->GetErrorName(&errMsg);
-            QCC_LogError(status, ("%s.NameHasOwner returned ERROR_MESSAGE (error=%s, \"%s\")",
-                                  org::freedesktop::DBus::InterfaceName,
-                                  errName,
-                                  errMsg.c_str()));
-        } else {
-            status = ER_FAIL;
-        }
+        status = reply->GetArgs("b", &hasOwner);
+    } else {
+        String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        QCC_LogError(status, ("%s.NameHasOwner returned ERROR_MESSAGE (error=%s, \"%s\")",
+                              org::freedesktop::DBus::InterfaceName,
+                              errName,
+                              errMsg.c_str()));
     }
     return status;
 }
@@ -616,22 +611,17 @@ QStatus BusAttachment::CreateSession(const char* sessionName, bool isMultipoint,
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
     QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "CreateSession", args, ArraySize(args), reply);
     if (ER_OK == status) {
-        if (reply->GetType() == MESSAGE_METHOD_RET) {
-            disposition = reply->GetArg(0)->v_uint32;
-            if (disposition == ALLJOYN_CREATESESSION_REPLY_SUCCESS) {
-                sessionId = reply->GetArg(1)->v_uint32;
-            }
-        } else if (reply->GetType() == MESSAGE_ERROR) {
-            status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
-            String errMsg;
-            const char* errName = reply->GetErrorName(&errMsg);
-            QCC_LogError(status, ("%s.CreateSession returned ERROR_MESSAGE (error=%s, \"%s\")",
-                                  org::alljoyn::Bus::InterfaceName,
-                                  errName,
-                                  errMsg.c_str()));
-        } else {
-            status = ER_FAIL;
+        status = reply->GetArgs("uu", &disposition, &sessionId);
+        if (disposition != ALLJOYN_CREATESESSION_REPLY_SUCCESS) {
+            sessionId = 0;
         }
+    } else {
+        String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        QCC_LogError(status, ("%s.CreateSession returned ERROR_MESSAGE (error=%s, \"%s\")",
+                              org::alljoyn::Bus::InterfaceName,
+                              errName,
+                              errMsg.c_str()));
     }
     return status;
 }
@@ -651,23 +641,17 @@ QStatus BusAttachment::JoinSession(const char* sessionName, uint32_t& dispositio
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
     QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "JoinSession", args, ArraySize(args), reply);
     if (ER_OK == status) {
-        if (reply->GetType() == MESSAGE_METHOD_RET) {
-            disposition = reply->GetArg(0)->v_uint32;
-            if (disposition == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
-                sessionId = reply->GetArg(1)->v_uint32;
-                status = reply->GetArg(2)->Get(QOSINFO_SIG, &qos.traffic, &qos.proximity, &qos.transports);
-            }
-        } else if (reply->GetType() == MESSAGE_ERROR) {
-            status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
-            String errMsg;
-            const char* errName = reply->GetErrorName(&errMsg);
-            QCC_LogError(status, ("%s.JoinSession returned ERROR_MESSAGE (error=%s, \"%s\")",
-                                  org::alljoyn::Bus::InterfaceName,
-                                  errName,
-                                  errMsg.c_str()));
-        } else {
-            status = ER_FAIL;
+        status = reply->GetArgs("uu"QOSINFO_SIG, &disposition, &sessionId, &qos.traffic, &qos.proximity, &qos.transports);
+        if (disposition != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
+            sessionId = 0;
         }
+    } else {
+        String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        QCC_LogError(status, ("%s.JoinSession returned ERROR_MESSAGE (error=%s, \"%s\")",
+                              org::alljoyn::Bus::InterfaceName,
+                              errName,
+                              errMsg.c_str()));
     }
     return status;
 }
@@ -685,19 +669,14 @@ QStatus BusAttachment::LeaveSession(const SessionId& sessionId, uint32_t& dispos
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
     QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "LeaveSession", args, ArraySize(args), reply);
     if (ER_OK == status) {
-        if (reply->GetType() == MESSAGE_METHOD_RET) {
-            disposition = reply->GetArg(0)->v_uint32;
-        } else if (reply->GetType() == MESSAGE_ERROR) {
-            status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
-            String errMsg;
-            const char* errName = reply->GetErrorName(&errMsg);
-            QCC_LogError(status, ("%s.LeaveSession returned ERROR_MESSAGE (error=%s, \"%s\")",
-                                  org::alljoyn::Bus::InterfaceName,
-                                  errName,
-                                  errMsg.c_str()));
-        } else {
-            status = ER_FAIL;
-        }
+        status = reply->GetArgs("u", &disposition);
+    } else {
+        String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        QCC_LogError(status, ("%s.LeaveSession returned ERROR_MESSAGE (error=%s, \"%s\")",
+                              org::alljoyn::Bus::InterfaceName,
+                              errName,
+                              errMsg.c_str()));
     }
     return status;
 }
@@ -715,24 +694,14 @@ QStatus BusAttachment::GetSessionFd(SessionId sessionId, SocketFd& sockFd)
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
     QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "GetSessionFd", args, ArraySize(args), reply);
     if (ER_OK == status) {
-        if (reply->GetType() == MESSAGE_METHOD_RET) {
-            size_t na;
-            const MsgArg* args;
-            reply->GetArgs(na, args);
-            int tempFd;
-            status = args[0].Get("h", &tempFd);
-            sockFd = tempFd;
-        } else if (reply->GetType() == MESSAGE_ERROR) {
-            status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
-            String errMsg;
-            const char* errName = reply->GetErrorName(&errMsg);
-            QCC_LogError(status, ("%s.LeaveSession returned ERROR_MESSAGE (error=%s, \"%s\")",
-                                  org::alljoyn::Bus::InterfaceName,
-                                  errName,
-                                  errMsg.c_str()));
-        } else {
-            status = ER_FAIL;
-        }
+        status = reply->GetArgs("h", &sockFd);
+    } else {
+        String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        QCC_LogError(status, ("%s.LeaveSession returned ERROR_MESSAGE (error=%s, \"%s\")",
+                              org::alljoyn::Bus::InterfaceName,
+                              errName,
+                              errMsg.c_str()));
     }
     return status;
 }
