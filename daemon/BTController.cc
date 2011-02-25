@@ -182,7 +182,9 @@ void BTController::ObjectRegistered() {
      * accordingly.  This will allow add and remove advertise and find name
      * functions to work properly.
      */
+    nodeStateLock.Lock();
     nodeStates[bus.GetUniqueName()].guid = bus.GetGlobalGUIDString();
+    nodeStateLock.Unlock();
 }
 
 
@@ -230,6 +232,7 @@ QStatus BTController::SendSetState(const qcc::String& busName)
 {
     QCC_DbgTrace(("BTController::SendSetState(busName = %s)", busName.c_str()));
     assert(!master);
+
     nodeStateLock.Lock();
 
     NodeStateMap::const_iterator it;
@@ -243,7 +246,6 @@ QStatus BTController::SendSetState(const qcc::String& busName)
     args[0].Set(SIG_MINION_CNT, directMinions);
 
     array.reserve(nodeStates.size());
-
     for (it = nodeStates.begin(); it != nodeStates.end(); ++it) {
         vector<const char*> nodeAdNames;
         vector<const char*> nodeFindNames;
@@ -261,6 +263,7 @@ QStatus BTController::SendSetState(const qcc::String& busName)
                                nodeAdNames.size(), &nodeAdNames.front(),
                                nodeFindNames.size(), &nodeFindNames.front()));
     }
+
     args[1].Set(SIG_NODE_STATES, array.size(), &array.front());
 
     QStatus status = newMaster->MethodCall(*org.alljoyn.Bus.BTController.SetState, args, ArraySize(args), reply);
@@ -272,12 +275,10 @@ QStatus BTController::SendSetState(const qcc::String& busName)
         if (num == 0) {
             // We are now a minion (or a drone if we have more than one direct connection)
             master = newMaster;
-            nodeStateLock.Unlock();
         } else {
             // We are the still the master
             ImportState(num, array, busName);
             delete newMaster;
-            nodeStateLock.Unlock();
 
             assert(find.resultDest.empty());
             find.ignoreUUID = masterUUIDRev;
@@ -304,9 +305,8 @@ QStatus BTController::SendSetState(const qcc::String& busName)
         if (IsDrone()) {
             // TODO - Move minion connections to new master
         }
-    } else {
-        nodeStateLock.Unlock();
     }
+    nodeStateLock.Unlock();
 
     return status;
 }
@@ -371,25 +371,33 @@ QStatus BTController::ProcessFoundDevice(const BDAddress& adBdAddr, uint32_t uui
             ci = &uuidRevCache[ci->uuidRev];
         }
 
+        bool notifyOurself = false;
+        nodeStateLock.Lock();
         for (NodeStateMap::iterator it = nodeStates.begin(); it != nodeStates.end(); ++it) {
             if (it->first == bus.GetUniqueName()) {
-                BluetoothDeviceInterface::AdvertiseInfo::const_iterator aiit;
-                // Tell ourself about the names
-#ifndef NDEBUG
-                int i = 0;
-#endif
-                for (aiit = ci->adInfo.begin(); aiit != ci->adInfo.end(); ++aiit) {
-                    QCC_DbgPrintf(("Processing %d  addr: %s   guid: %s   names: %u (size)   channel: %u   psm: %04x",
-                                   ++i, ci->connAddr.ToString().c_str(), aiit->first.c_str(), aiit->second.size(), ci->channel, ci->psm));
-
-                    bt.FoundBus(ci->connAddr, aiit->first, aiit->second, ci->channel, ci->psm);
-                }
+                notifyOurself = true;
             } else {
                 // Send Found Bus information to the node(s) that is
                 // interested in it.
                 status = SendFoundBus(ci->connAddr, ci->channel, ci->psm, ci->adInfo, it->first.c_str());
             }
         }
+        nodeStateLock.Unlock();
+
+        if (notifyOurself) {
+            // Tell ourself about the names (This is best done outside the noseStateLock just in case).
+            BluetoothDeviceInterface::AdvertiseInfo::const_iterator aiit;
+#ifndef NDEBUG
+            int i = 0;
+#endif
+            for (aiit = ci->adInfo.begin(); aiit != ci->adInfo.end(); ++aiit) {
+                QCC_DbgPrintf(("Processing %d  addr: %s   guid: %s   names: %u (size)   channel: %u   psm: %04x",
+                               ++i, ci->connAddr.ToString().c_str(), aiit->first.c_str(), aiit->second.size(), ci->channel, ci->psm));
+
+                bt.FoundBus(ci->connAddr, aiit->first, aiit->second, ci->channel, ci->psm);
+            }
+        }
+
     } else {
         // Must be a drone or slave.
         MsgArg args[2];
@@ -661,6 +669,10 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                             Signal(advertise.minion->first.c_str(), 0, *advertise.delegateSignal, advertise.args, advertise.argsSize);
                             advertise.minion = nodeStates.end();
                             find.minion = nodeStates.begin();
+                            while (!find.minion->second.direct || find.minion->first == bus.GetUniqueName()) {
+                                ++find.minion;
+                                assert(find.minion != nodeStates.end());
+                            }
                             QCC_DbgPrintf(("Selected %s as our find minion.", find.minion->first.c_str()));
                         } else {
                             // We had more than 2 minions, so at least one is
@@ -883,6 +895,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     if (numConnections > directMinions) {
         // We are now a minion (or a drone if we have more than one direct connection)
         master = new ProxyBusObject(bus, sender.c_str(), bluetoothObjPath, 0);
+
         MsgArg* array = new MsgArg[nodeStates.size()];
         NodeStateMap::const_iterator it;
         size_t cnt;
@@ -1110,8 +1123,10 @@ void BTController::HandleFoundDevice(const InterfaceDescription::Member* member,
 {
     QCC_DbgTrace(("BTController::HandleFoundDevice(member = %s, sourcePath = \"%s\", msg = <>)",
                   member->name.c_str(), sourcePath));
-    NodeStateMap::const_iterator it = nodeStates.find(msg->GetSender());
-    if (it == nodeStates.end()) {
+    nodeStateLock.Lock();
+    bool ourMinion = (nodeStates.find(msg->GetSender()) != nodeStates.end());
+    nodeStateLock.Unlock();
+    if (ourMinion) {
         // We only handle FoundDevice signals from our minions.
         return;
     }
@@ -1273,7 +1288,12 @@ void BTController::ImportState(size_t num, MsgArg* entries, const qcc::String& n
 
 
     if (adEnd) {
-        advertise.minion = UseLocalAdvertise() ? nodeStates.end() : nodeStates.begin();
+        if (UseLocalAdvertise()) {
+            advertise.minion = nodeStates.end();
+        } else {
+            nodeStates.begin();
+            NextDirectMinion(advertise.minion);   // Make sure we haven't chose ourself.
+        }
     } else {
         advertise.minion = nodeStates.find(adNode);
     }
