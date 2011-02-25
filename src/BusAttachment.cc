@@ -46,6 +46,7 @@
 #include "Transport.h"
 #include "TransportList.h"
 #include "TCPTransport.h"
+#include "BusUtil.h"
 #include "UnixTransport.h"
 #include "BusEndpoint.h"
 #include "LocalTransport.h"
@@ -581,8 +582,7 @@ QStatus BusAttachment::NameHasOwner(const char* name, bool& hasOwner)
 
     Message reply(*this);
     MsgArg arg("s", name);
-    const ProxyBusObject& dbusObj = this->GetDBusProxyObj();
-    QStatus status = dbusObj.MethodCall(org::freedesktop::DBus::InterfaceName, "NameHasOwner", &arg, 1, reply);
+    QStatus status = this->GetDBusProxyObj().MethodCall(org::freedesktop::DBus::InterfaceName, "NameHasOwner", &arg, 1, reply);
     if (ER_OK == status) {
         status = reply->GetArgs("b", &hasOwner);
     } else {
@@ -601,28 +601,65 @@ QStatus BusAttachment::CreateSession(const char* sessionName, bool isMultipoint,
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
     }
+    if (!IsLegalBusName(sessionName)) {
+        return ER_BUS_BAD_BUS_NAME;
+    }
 
+    QStatus status;
+    bool nameOwned;
     Message reply(*this);
     MsgArg args[3];
+    size_t numArgs;
 
-    args[0].Set("s", sessionName);
-    args[1].Set("b", isMultipoint);
-    args[2].Set(QOSINFO_SIG, qos.traffic, qos.proximity, qos.transports);
-    const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
-    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "CreateSession", args, ArraySize(args), reply);
-    if (ER_OK == status) {
-        status = reply->GetArgs("uu", &disposition, &sessionId);
-        if (disposition != ALLJOYN_CREATESESSION_REPLY_SUCCESS) {
-            sessionId = 0;
+    status = NameHasOwner(sessionName, nameOwned);
+    if (status != ER_OK) {
+        goto Exit;
+    }
+
+    if (!nameOwned) {
+        uint32_t returnCode;
+        /* Request the well known name */
+        numArgs = ArraySize(args);
+        MsgArg::Set(args, numArgs, "su", sessionName, DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_DO_NOT_QUEUE);
+        status = this->GetDBusProxyObj().MethodCall(ajn::org::freedesktop::DBus::InterfaceName, "RequestName", args, numArgs, reply);
+        if (status != ER_OK) {
+            QCC_LogError(status, ("Failed to request name %s", sessionName));
+            goto Exit;
         }
-    } else {
+        reply->GetArgs("u", &returnCode);
+        if (returnCode != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
+            status = ER_BUS_ERROR_RESPONSE;
+            QCC_LogError(status, ("Failed to obtain requested name %s", sessionName));
+            goto Exit;
+        }
+    }
+
+    numArgs = ArraySize(args);
+    MsgArg::Set(args, numArgs, "sb"QOSINFO_SIG, sessionName, isMultipoint, qos.traffic, qos.proximity, qos.transports);
+    status = this->GetAllJoynProxyObj().MethodCall(org::alljoyn::Bus::InterfaceName, "CreateSession", args, ArraySize(args), reply);
+    if (status != ER_OK) {
         String errMsg;
         const char* errName = reply->GetErrorName(&errMsg);
         QCC_LogError(status, ("%s.CreateSession returned ERROR_MESSAGE (error=%s, \"%s\")",
                               org::alljoyn::Bus::InterfaceName,
                               errName,
                               errMsg.c_str()));
+
+        /* If we requested the name release it */
+        if (!nameOwned) {
+            numArgs = ArraySize(args);
+            MsgArg::Set(args, numArgs, "s", sessionName);
+            this->GetDBusProxyObj().MethodCall(ajn::org::freedesktop::DBus::InterfaceName, "ReleaseName", args, numArgs, reply);
+        }
+        goto Exit;
     }
+    status = reply->GetArgs("uu", &disposition, &sessionId);
+    if (disposition != ALLJOYN_CREATESESSION_REPLY_SUCCESS) {
+        status = ER_BUS_ERROR_RESPONSE;
+        sessionId = 0;
+    }
+
+    Exit :
     return status;
 }
 
@@ -631,15 +668,18 @@ QStatus BusAttachment::JoinSession(const char* sessionName, uint32_t& dispositio
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
     }
+    if (!IsLegalBusName(sessionName)) {
+        return ER_BUS_BAD_BUS_NAME;
+    }
 
     Message reply(*this);
     MsgArg args[2];
+    size_t numArgs = ArraySize(args);
 
-    args[0].Set("s", sessionName);
-    args[1].Set(QOSINFO_SIG, qos.traffic, qos.proximity, qos.transports);
+    MsgArg::Set(args, numArgs, "s"QOSINFO_SIG, sessionName, qos.traffic, qos.proximity, qos.transports);
 
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
-    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "JoinSession", args, ArraySize(args), reply);
+    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "JoinSession", args, numArgs, reply);
     if (ER_OK == status) {
         status = reply->GetArgs("uu"QOSINFO_SIG, &disposition, &sessionId, &qos.traffic, &qos.proximity, &qos.transports);
         if (disposition != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
@@ -663,11 +703,9 @@ QStatus BusAttachment::LeaveSession(const SessionId& sessionId, uint32_t& dispos
     }
 
     Message reply(*this);
-    MsgArg args[1];
-
-    args[0].Set("u", sessionId);
+    MsgArg arg("u", sessionId);
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
-    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "LeaveSession", args, ArraySize(args), reply);
+    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "LeaveSession", &arg, 1, reply);
     if (ER_OK == status) {
         status = reply->GetArgs("u", &disposition);
     } else {
@@ -687,14 +725,17 @@ QStatus BusAttachment::GetSessionFd(SessionId sessionId, SocketFd& sockFd)
         return ER_BUS_NOT_CONNECTED;
     }
 
-    Message reply(*this);
-    MsgArg args[1];
+    sockFd = qcc::INVALID_SOCKET_FD;
 
-    args[0].Set("u", sessionId);
+    Message reply(*this);
+    MsgArg arg("u", sessionId);
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
-    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "GetSessionFd", args, ArraySize(args), reply);
+    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "GetSessionFd", &arg, 1, reply);
     if (ER_OK == status) {
         status = reply->GetArgs("h", &sockFd);
+        if (status == ER_OK) {
+            status = qcc::SocketDup(sockFd, sockFd);
+        }
     } else {
         String errMsg;
         const char* errName = reply->GetErrorName(&errMsg);
