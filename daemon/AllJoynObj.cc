@@ -843,21 +843,11 @@ QStatus AllJoynObj::SendAttachSession(const char* sessionName,
                                               attachArgs,
                                               ArraySize(attachArgs),
                                               reply);
-    if ((status != ER_OK) || (reply->GetType() != MESSAGE_METHOD_RET)) {
-        if (status == ER_OK) {
-            status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
-        }
+    if (status != ER_OK) {
         replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
         QCC_LogError(status, ("AttachSession failed"));
     } else {
-        /* Parse the response to AttachSession */
-        size_t na;
-        const MsgArg* attachSessionReplyArgs;
-        reply->GetArgs(na, attachSessionReplyArgs);
-        assert(na == 3);
-        attachSessionReplyArgs[0].Get("u", &replyCode);
-        attachSessionReplyArgs[1].Get("u", &id);
-        attachSessionReplyArgs[2].Get(QOSINFO_SIG, &qosOut.traffic, &qosOut.proximity, &qosOut.transports);
+        status = reply->GetArgs("uu"QOSINFO_SIG, &replyCode, &id, &qosOut.traffic, &qosOut.proximity, &qosOut.transports);
         QCC_DbgPrintf(("Received AttachSession response: replyCode=%d, sessionId=0x%x, qos=<%x, %x, %x>",
                        replyCode, id, qosOut.proximity, qosOut.traffic, qosOut.transports));
     }
