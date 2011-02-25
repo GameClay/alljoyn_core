@@ -132,8 +132,6 @@ void RemoteEndpoint::SetListener(EndpointListener* listener)
 
 QStatus RemoteEndpoint::Stop(void)
 {
-    QStatus rxStatus, txStatus;
-
     /* Alert any threads that are on the wait queue */
     txQueueLock.Lock();
     deque<Thread*>::iterator it = txWaitQueue.begin();
@@ -142,10 +140,15 @@ QStatus RemoteEndpoint::Stop(void)
     }
     txQueueLock.Unlock();
 
-
-    rxStatus = rxThread.Stop();
-    txStatus = txThread.Stop();
-    return (ER_OK == rxStatus) ? txStatus : rxStatus;
+    /*
+     * Don't call txThread.Stop() here; the logic in RemoteEndpoint::ThreadExit() takes care of
+     * stopping the txThread.
+     *
+     * See also the comment in UnixTransport::Disconnect() which says that once this function is
+     * called, the endpoint must be considered dead (i.e. may have been destroyed).  That comment
+     * applied here means that once rxThread.Stop() above is called, this may have been destroyed.
+     */
+    return rxThread.Stop();
 }
 
 QStatus RemoteEndpoint::Join(void)
