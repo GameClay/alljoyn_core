@@ -69,7 +69,7 @@ SimpleBusListener::BusEvent& SimpleBusListener::BusEvent::operator=(const BusEve
         break;
 
     case NAME_OWNER_CHANGED:
-        nameOwnerChanged.busName = CopyIn(strings[0], other.nameOwnerChanged.previousOwner);
+        nameOwnerChanged.busName = CopyIn(strings[0], other.nameOwnerChanged.busName);
         nameOwnerChanged.previousOwner = CopyIn(strings[1], other.nameOwnerChanged.previousOwner);
         nameOwnerChanged.newOwner = CopyIn(strings[2], other.nameOwnerChanged.newOwner);
         break;
