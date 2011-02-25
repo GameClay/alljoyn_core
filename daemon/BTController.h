@@ -690,6 +690,10 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     bool UseLocalAdvertise() { return directMinions <= 1; }
     bool RotateMinions() { return directMinions > 2; }
 
+#ifndef NDEBUG
+    void DumpNodeStateTable() const;
+#endif
+
     BusAttachment& bus;
     BluetoothDeviceInterface& bt;
 

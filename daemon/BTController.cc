@@ -292,6 +292,7 @@ QStatus BTController::SendSetState(const qcc::String& busName)
         if (!IsMinion()) {
             UpdateDelegations(advertise, listening);
             UpdateDelegations(find);
+            QCC_DEBUG_ONLY(DumpNodeStateTable());
         }
 
         if (!IsMaster()) {
@@ -557,6 +558,7 @@ void BTController::BTDeviceAvailable(bool on)
                 nodeStateLock.Lock();
                 UpdateDelegations(advertise, listening);
                 UpdateDelegations(find);
+                QCC_DEBUG_ONLY(DumpNodeStateTable());
                 nodeStateLock.Unlock();
             }
         } else {
@@ -620,6 +622,7 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
             nodeStateLock.Lock();
             UpdateDelegations(advertise, listening);
             UpdateDelegations(find);
+            QCC_DEBUG_ONLY(DumpNodeStateTable());
             nodeStateLock.Unlock();
 
         } else {
@@ -706,6 +709,7 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
 
                 UpdateDelegations(advertise, listening);
                 UpdateDelegations(find);
+                QCC_DEBUG_ONLY(DumpNodeStateTable());
             }
             nodeStateLock.Unlock();
         }
@@ -795,6 +799,7 @@ QStatus BTController::DoNameOp(const qcc::String& name,
 
         UpdateDelegations(advertise, listening);
         UpdateDelegations(find);
+        QCC_DEBUG_ONLY(DumpNodeStateTable());
 
         if (advertise.Empty() && listening) {
             bt.StopListen();
@@ -859,6 +864,7 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
         if (IsMaster()) {
             UpdateDelegations(this->advertise, listening);
             UpdateDelegations(this->find);
+            QCC_DEBUG_ONLY(DumpNodeStateTable());
         } else {
             // We are a drone so pass on the name
             const MsgArg* args;
@@ -947,6 +953,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     if (!IsMinion()) {
         UpdateDelegations(advertise, listening);
         UpdateDelegations(find);
+        QCC_DEBUG_ONLY(DumpNodeStateTable());
     }
     nodeStateLock.Unlock();
 
@@ -1254,25 +1261,6 @@ void BTController::ImportState(size_t num, MsgArg* entries, const qcc::String& n
 
     nodeStates[newNode].direct = true;
     ++directMinions;
-
-#ifndef NDEBUG
-    if (true) {
-        NodeStateMap::const_iterator node;
-        QCC_DbgPrintf(("Node State Table (local = %s):", bus.GetUniqueName().c_str()));
-        for (node = nodeStates.begin(); node != nodeStates.end(); ++node) {
-            std::set<qcc::String>::const_iterator name;
-            QCC_DbgPrintf(("    %s:", node->first.c_str()));
-            QCC_DbgPrintf(("         Advertise names:"));
-            for (name = node->second.advertiseNames.begin(); name != node->second.advertiseNames.end(); ++name) {
-                QCC_DbgPrintf(("            %s", name->c_str()));
-            }
-            QCC_DbgPrintf(("         Find names:"));
-            for (name = node->second.findNames.begin(); name != node->second.findNames.end(); ++name) {
-                QCC_DbgPrintf(("            %s", name->c_str()));
-            }
-        }
-    }
-#endif
 
     if (findEnd) {
         find.minion = nodeStates.begin();
@@ -1656,5 +1644,33 @@ void BTController::FindNameArgInfo::ClearArgs()
                 (uint32_t)0);
     assert(argsSize == this->argsSize);
 }
+
+
+
+#ifndef NDEBUG
+void BTController::DumpNodeStateTable() const
+{
+    NodeStateMap::const_iterator node;
+    QCC_DbgPrintf(("Node State Table (local = %s):", bus.GetUniqueName().c_str()));
+    for (node = nodeStates.begin(); node != nodeStates.end(); ++node) {
+        std::set<qcc::String>::const_iterator name;
+        QCC_DbgPrintf(("    %s (%s):",
+                       node->first.c_str(),
+                       (node->first == bus.GetUniqueName()) ? "local" :
+                       ((node == find.minion) ? "find minion" :
+                        ((node == advertise.minion) ? "advertise minion" :
+                         (node->second.direct ? "direct minon" : "indirect minion")))));
+        QCC_DbgPrintf(("         Advertise names:"));
+        for (name = node->second.advertiseNames.begin(); name != node->second.advertiseNames.end(); ++name) {
+            QCC_DbgPrintf(("            %s", name->c_str()));
+        }
+        QCC_DbgPrintf(("         Find names:"));
+        for (name = node->second.findNames.begin(); name != node->second.findNames.end(); ++name) {
+            QCC_DbgPrintf(("            %s", name->c_str()));
+        }
+    }
+}
+#endif
+
 
 }
