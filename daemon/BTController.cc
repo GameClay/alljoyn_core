@@ -546,6 +546,7 @@ void BTController::BTDeviceAvailable(bool on)
 {
     QCC_DbgPrintf(("BTController::BTDevicePower(<%s>)", on ? "on" : "off"));
     if (IsMaster()) {
+        nodeStateLock.Lock();
         if (on) {
             if (!advertise.Empty()) {
                 QStatus status = bt.StartListen(advertise.bdAddr, advertise.channel, advertise.psm);
@@ -554,13 +555,11 @@ void BTController::BTDeviceAvailable(bool on)
                     find.ignoreAddr = advertise.bdAddr;
                     find.dirty = true;
                 }
-
-                nodeStateLock.Lock();
-                UpdateDelegations(advertise, listening);
-                UpdateDelegations(find);
-                QCC_DEBUG_ONLY(DumpNodeStateTable());
-                nodeStateLock.Unlock();
             }
+
+            UpdateDelegations(advertise, listening);
+            UpdateDelegations(find);
+            QCC_DEBUG_ONLY(DumpNodeStateTable());
         } else {
             if (advertise.active) {
                 if (UseLocalAdvertise()) {
@@ -579,7 +578,9 @@ void BTController::BTDeviceAvailable(bool on)
                 listening = false;
             }
         }
+        nodeStateLock.Unlock();
     }
+    devAvailable = on;
 }
 
 
@@ -1311,16 +1312,17 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo, bool allow)
     const bool empty = nameInfo.Empty();
     const bool active = nameInfo.active;
 
-    const bool start = !active && !empty && allowConn;
+    const bool start = !active && !empty && allowConn && devAvailable;
     const bool stop = active && (empty || !allowConn);
     const bool restart = active && changed && !empty && allowConn;
 
     const bool sendSignal = stop || start || restart;
     const bool deferredClearArgs = stop && advertiseOp;
 
-    QCC_DbgPrintf(("%s %s operation because conn is %s, name list %s%s, and op is %s.",
+    QCC_DbgPrintf(("%s %s operation because device is %s, conn is %s, name list %s%s, and op is %s.",
                    start ? "Starting" : (restart ? "Updating" : (stop ? "Stopping" : "Skipping")),
                    advertiseOp ? "advertise" : "find",
+                   devAvailable ? "available" : "not available",
                    allowConn ? "allowed" : "not allowed",
                    changed ? "changed" : "didn't change",
                    empty ? " to empty" : "",

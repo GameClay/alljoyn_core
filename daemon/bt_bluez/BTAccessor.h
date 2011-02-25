@@ -253,8 +253,9 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
                       uint32_t& newHandle);
     void RemoveRecord();
     void AlarmTriggered(const qcc::Alarm& alarm, QStatus reason);
-    static size_t FindAllJoynUUID(const MsgArg& var,
-                                  uint32_t& uuidRev);
+    static bool FindAllJoynUUID(const MsgArg* uuids,
+                                size_t listSize,
+                                uint32_t& uuidRev);
     static QStatus ProcessSDPXML(qcc::XmlParseContext& xmlctx,
                                  BDAddress* connAddr,
                                  uint32_t* uuidRev,

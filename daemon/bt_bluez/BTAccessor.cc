@@ -350,10 +350,11 @@ exit:
 void BTTransport::BTAccessor::Stop()
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::Stop()"));
-    QCC_DbgHLPrintf(("BTTransport::BTAccessor::Stop()"));
-    DisconnectBlueZ();
-    bzBus.Stop();
-    bzBus.WaitStop();
+    if (bluetoothAvailable) {
+        DisconnectBlueZ();
+        bzBus.Stop();
+        bzBus.WaitStop();
+    }
 }
 
 
@@ -376,14 +377,13 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::DisconnectBlueZ()"));
 
-    bluetoothAvailable = false;
     transport->BTDeviceAvailable(false);
 
     /*
      * Deregister any registered services
      */
     if (recordHandle != 0) {
-        QCC_DbgPrintf(("Removing record handle %x", recordHandle));
+        QCC_DbgPrintf(("Removing record handle %x (disconnct from BlueZ)", recordHandle));
         RemoveRecord();
     }
 
@@ -401,6 +401,8 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
      * Close down the listen file descriptors
      */
     StopConnectable();
+
+    bluetoothAvailable = false;
 
     /*
      * Invalidate the adapters.
@@ -425,6 +427,7 @@ QStatus BTTransport::BTAccessor::SetSDPInfo(uint32_t uuidRev,
 
     if ((uuidRev == BTController::INVALID_UUIDREV) || adInfo.empty()) {
         if (recordHandle != 0) {
+            QCC_DbgPrintf(("Removing record handle %x (no more records)", recordHandle));
             RemoveRecord();
         }
     } else {
@@ -459,7 +462,7 @@ QStatus BTTransport::BTAccessor::SetSDPInfo(uint32_t uuidRev,
 
         } else {
             if (recordHandle) {
-                QCC_DbgPrintf(("Removing record handle %x", recordHandle));
+                QCC_DbgPrintf(("Removing record handle %x (old record)", recordHandle));
                 RemoveRecord();
             }
 
@@ -510,13 +513,14 @@ void BTTransport::BTAccessor::RemoveRecord()
     QStatus status = ER_FAIL;
     AdapterObject adapter = GetAnyAdapterObject();
     if (adapter->IsValid()) {
-        MsgArg arg("u", recordHandle);
+        uint32_t doomedHandle = recordHandle;
+        recordHandle = 0;
+        MsgArg arg("u", doomedHandle);
         Message rsp(bzBus);
 
         status = adapter->MethodCall(*org.bluez.Service.RemoveRecord, &arg, 1, rsp, BT_DEFAULT_TO);
-        if (status == ER_OK) {
-            recordHandle = 0;
-        } else {
+        if (status != ER_OK) {
+            recordHandle = doomedHandle;
             qcc::String errMsg;
             const char* errName = rsp->GetErrorName(&errMsg);
             QCC_LogError(status, ("RemoveRecord method call failed (%s - %s)",
@@ -680,9 +684,8 @@ QStatus BTTransport::BTAccessor::FillAdapterAddress(AdapterObject& adapter)
 
     if (adapter->IsValid()) {
         Message rsp(bzBus);
-        MsgArg* entries;
-        size_t size;
-        bool addressFound = false;
+        const char* bdAddrStr;
+        const MsgArg* arg;
 
         status = adapter->MethodCall(*org.bluez.Adapter.GetProperties, NULL, 0, rsp, BT_DEFAULT_TO);
         if (status != ER_OK) {
@@ -694,33 +697,14 @@ QStatus BTTransport::BTAccessor::FillAdapterAddress(AdapterObject& adapter)
             goto exit;
         }
 
-        status = rsp->GetArgs("a{sv}", &size, &entries);
-        if (status != ER_OK) {
-            goto exit;
-        }
+        arg = rsp->GetArg(0);
 
-        for (size_t i = 0; !addressFound && (i < size); ++i) {
-            const char* key = NULL;
-            MsgArg* value;
-            status = entries[i].Get("{sv}", &key, &value);
-            if (status != ER_OK) {
-                goto exit;
-            }
-            if (strcmp(key, "Address") == 0) {
-                const char* bdAddrStr;
-                status = value->Get("s", &bdAddrStr);
-                if (status != ER_OK) {
-                    goto exit;
-                }
+        if (arg) {
+            status = arg->GetElement("{ss}", "Address", &bdAddrStr);
+
+            if (status == ER_OK) {
                 status = adapter->address.FromString(bdAddrStr);
-                if (status != ER_OK) {
-                    goto exit;
-                }
-                addressFound = true;
             }
-        }
-        if (!addressFound) {
-            status = ER_FAIL;
         }
     }
 
@@ -1191,86 +1175,73 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
                                                        Message& msg)
 {
     const char* addrStr;
-    size_t dictSize;
     MsgArg* dictionary;
     QStatus status;
 
-    status = msg->GetArgs("sa{sv}", &addrStr, &dictSize, &dictionary);
+    // Use wildcard "*" for the dictionary array so that MsgArg gives us a
+    // MsgArg pointer to an array of dictionary elements instead of an array
+    // of MsgArg's of dictionary elements.
+    status = msg->GetArgs("s*", &addrStr, &dictionary);
     if (status != ER_OK) {
         QCC_LogError(status, ("Parsing args from DeviceFound signal"));
         return;
     }
 
     BDAddress addr(addrStr);
-    QCC_DbgTrace(("BTTransport::BTAccessor::DeviceFoundSignalHandler - found addr = %s", addrStr));
+    //QCC_DbgTrace(("BTTransport::BTAccessor::DeviceFoundSignalHandler - found addr = %s", addrStr));
 
-    for (size_t i = 0; i < dictSize; ++i) {
-        const char* key;
-        const MsgArg* var;
-        status = dictionary[i].Get("{sv}", &key, &var);
-        if (status == ER_OK) {
-            if (strcmp(key, "UUIDs") == 0) {
-                QCC_DbgPrintf(("BTTransport::BTAccessor::DeviceFoundSignalHandler(): checking %s (%d UUIDs)",
-                               addrStr, var->v_array.GetNumElements()));
+    const MsgArg* uuids;
+    size_t listSize;
 
-                qcc::String uuid;
-                uint32_t uuidRev = 0;
-                size_t count = FindAllJoynUUID(*var, uuidRev);
+    status = dictionary->GetElement("{sas}", "UUIDs", &listSize, &uuids);
+    if (status == ER_OK) {
+        //QCC_DbgPrintf(("BTTransport::BTAccessor::DeviceFoundSignalHandler(): checking %s (%d UUIDs)",
+        //               addrStr, listSize));
 
-                if ((count > 0) && (uuidRev != busUUIDRev)) {
-                    uint32_t now = GetTimestamp();
+        qcc::String uuid;
+        uint32_t uuidRev = 0;
+        bool found = FindAllJoynUUID(uuids, listSize, uuidRev);
 
-                    QCC_DbgHLPrintf(("Found AllJoyn device: %s  UUIDRev = %08x", addrStr, uuidRev));
+        if (found && (uuidRev != busUUIDRev)) {
+            uint32_t now = GetTimestamp();
 
-                    deviceLock.Lock();
-                    FoundInfo& foundInfo = foundDevices[addr];
+            QCC_DbgHLPrintf(("Found AllJoyn device: %s  UUIDRev = %08x", addrStr, uuidRev));
 
-                    if ((foundInfo.uuidRev == BTController::INVALID_UUIDREV) ||
-                        (foundInfo.uuidRev != uuidRev) ||
-                        (now - foundInfo.timestamp > FOUND_DEVICE_INFO_REFRESH)) {
+            deviceLock.Lock();
+            FoundInfo& foundInfo = foundDevices[addr];
 
-                        foundInfo.uuidRev = uuidRev;
-                        foundInfo.timestamp = now;
+            if ((foundInfo.uuidRev == BTController::INVALID_UUIDREV) ||
+                (foundInfo.uuidRev != uuidRev) ||
+                (now - foundInfo.timestamp > FOUND_DEVICE_INFO_REFRESH)) {
 
-                        DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_FOUND, addr, uuidRev));
-                    }
-                    deviceLock.Unlock();
-                }
-                return;
+                foundInfo.uuidRev = uuidRev;
+                foundInfo.timestamp = now;
+
+                DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_FOUND, addr, uuidRev));
             }
+            deviceLock.Unlock();
         }
     }
 }
 
 
-size_t BTTransport::BTAccessor::FindAllJoynUUID(const MsgArg& var,
-                                                uint32_t& uuidRev)
+bool BTTransport::BTAccessor::FindAllJoynUUID(const MsgArg* uuids,
+                                              size_t listSize,
+                                              uint32_t& uuidRev)
 {
-    size_t count = 0;
+    // Search the UUID list for AllJoyn UUIDs.
+    for (size_t i = 0; i < listSize; ++i) {
+        const char* uuid;
+        QStatus status = uuids[i].Get("s", &uuid);
 
-    if (var.typeId == ALLJOYN_ARRAY) {
-        MsgArg* uuids;
-        size_t listSize;
-        QStatus status;
-
-        status = var.Get("as", &listSize, &uuids);
-        if (status == ER_OK) {
-
-            // Search the UUID list for AllJoyn UUIDs.
-            for (size_t i = 0; i < listSize; ++i) {
-                const char* uuid;
-                status = uuids[i].Get("s", &uuid);
-
-                if ((status == ER_OK) &&
-                    (strcasecmp(alljoynUUIDBase, uuid + ALLJOYN_BT_UUID_REV_SIZE) == 0)) {
-                    qcc::String uuidRevStr(uuid, ALLJOYN_BT_UUID_REV_SIZE);
-                    uuidRev = StringToU32(uuidRevStr, 16);
-                    ++count;
-                }
-            }
+        if ((status == ER_OK) &&
+            (strcasecmp(alljoynUUIDBase, uuid + ALLJOYN_BT_UUID_REV_SIZE) == 0)) {
+            qcc::String uuidRevStr(uuid, ALLJOYN_BT_UUID_REV_SIZE);
+            uuidRev = StringToU32(uuidRevStr, 16);
+            return true;
         }
     }
-    return count;
+    return false;
 }
 
 

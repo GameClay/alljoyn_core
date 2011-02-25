@@ -704,7 +704,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     uint8_t directMinions;         // Number of directly connected minions
     const uint8_t maxConnections;
     bool listening;
-
+    bool devAvailable;
 
     NodeStateMap nodeStates;
     mutable qcc::Mutex nodeStateLock;
