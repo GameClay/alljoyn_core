@@ -685,6 +685,7 @@ void AllJoynObj::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
             RemoveVirtualEndpoint(it++->second);
 
             /* Let directly connected daemons know that this virtual endpoint is gone. */
+            b2bEndpointsLock.Lock();
             map<qcc::StringMapKey, RemoteEndpoint*>::iterator it2 = b2bEndpoints.begin();
             while (it2 != b2bEndpoints.end()) {
                 if (it2->second != &endpoint) {
@@ -712,6 +713,7 @@ void AllJoynObj::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
                 }
                 ++it2;
             }
+            b2bEndpointsLock.Unlock();
         } else {
             ++it;
         }
@@ -859,6 +861,7 @@ void AllJoynObj::ExchangeNamesSignalHandler(const InterfaceDescription::Member* 
      * sent us this ExchangeNames
      */
     if (madeChanges) {
+        router.LockNameTable();
         b2bEndpointsLock.Lock();
         bool isRemarshaled = false;
         map<qcc::StringMapKey, RemoteEndpoint*>::const_iterator bit = b2bEndpoints.find(msg->GetRcvEndpointName());
@@ -877,6 +880,7 @@ void AllJoynObj::ExchangeNamesSignalHandler(const InterfaceDescription::Member* 
             ++it;
         }
         b2bEndpointsLock.Unlock();
+        router.UnlockNameTable();
     }
 }
 
@@ -908,6 +912,7 @@ void AllJoynObj::NameChangedSignalHandler(const InterfaceDescription::Member* me
     }
 
     if (alias[0] == ':') {
+        router.LockNameTable();
         b2bEndpointsLock.Lock();
         map<qcc::StringMapKey, RemoteEndpoint*>::iterator bit = b2bEndpoints.find(msg->GetRcvEndpointName());
         if (bit != b2bEndpoints.end()) {
@@ -930,6 +935,7 @@ void AllJoynObj::NameChangedSignalHandler(const InterfaceDescription::Member* me
             QCC_LogError(ER_BUS_NO_ENDPOINT, ("Cannot find bus-to-bus endpoint %s", msg->GetRcvEndpointName()));
         }
         b2bEndpointsLock.Unlock();
+        router.UnlockNameTable();
     } else {
         /* Change affects a well-known name (name table only) */
         VirtualEndpoint* remoteController = FindVirtualEndpoint(msg->GetSender());
@@ -943,6 +949,7 @@ void AllJoynObj::NameChangedSignalHandler(const InterfaceDescription::Member* me
 
     if (madeChanges) {
         /* Forward message to all directly connected controllers except the one that sent us this NameChanged */
+        router.LockNameTable();
         b2bEndpointsLock.Lock();
         map<qcc::StringMapKey, RemoteEndpoint*>::const_iterator bit = b2bEndpoints.find(msg->GetRcvEndpointName());
         map<qcc::StringMapKey, RemoteEndpoint*>::iterator it = b2bEndpoints.begin();
@@ -961,6 +968,7 @@ void AllJoynObj::NameChangedSignalHandler(const InterfaceDescription::Member* me
             ++it;
         }
         b2bEndpointsLock.Unlock();
+        router.UnlockNameTable();
     }
 
 }
@@ -1054,6 +1062,7 @@ void AllJoynObj::NameOwnerChanged(const qcc::String& alias, const qcc::String* o
     if (0 == ::strncmp(shortGuidStr.c_str(), un->c_str() + 1, shortGuidStr.size())) {
 
         /* Send NameChanged to all directly connected controllers */
+        router.LockNameTable();
         b2bEndpointsLock.Lock();
         map<qcc::StringMapKey, RemoteEndpoint*>::iterator it = b2bEndpoints.begin();
         while (it != b2bEndpoints.end()) {
@@ -1082,7 +1091,7 @@ void AllJoynObj::NameOwnerChanged(const qcc::String& alias, const qcc::String* o
             ++it;
         }
         b2bEndpointsLock.Unlock();
-
+        router.UnlockNameTable();
 
         /* If a local unique name dropped, then remove any refs it had in the connnect, advertise and discover maps */
         if ((NULL == newOwner) && (alias[0] == ':')) {
@@ -1160,6 +1169,7 @@ void AllJoynObj::FoundNames(const qcc::String& busAddr, const qcc::String& guid,
     /* If name is NULL expire all names for the given bus address. */
     if (names == NULL) {
         if (ttl == 0) {
+            router.LockNameTable();
             discoverMapLock.Lock();
             multimap<String, NameMapEntry>::iterator it = nameMap.begin();
             while (it != nameMap.end()) {
@@ -1172,11 +1182,13 @@ void AllJoynObj::FoundNames(const qcc::String& busAddr, const qcc::String& guid,
                 }
             }
             discoverMapLock.Unlock();
+            router.UnlockNameTable();
         }
         return;
     }
 
     /* Generate a list of name deltas */
+    router.LockNameTable();
     discoverMapLock.Lock();
     vector<String>::const_iterator nit = names->begin();
     while (nit != names->end()) {
@@ -1230,6 +1242,8 @@ void AllJoynObj::FoundNames(const qcc::String& busAddr, const qcc::String& guid,
         ++nit;
     }
     discoverMapLock.Unlock();
+    router.UnlockNameTable();
+
 }
 
 QStatus AllJoynObj::SendFoundAdvertisedName(const String& dest,
@@ -1250,11 +1264,12 @@ QStatus AllJoynObj::SendLostAdvertisedName(const String& name,
                                            const String& guid,
                                            const String& busAddr)
 {
-    QCC_DbgTrace(("AllJoynObj::SendLostAdvertisdName(%s, %s, %s)", name.c_str(), guid.c_str(), busAddr.c_str()));
+    QCC_DbgTrace(("AllJoynObj::SendLostAdvertisedName(%s, %s, %s)", name.c_str(), guid.c_str(), busAddr.c_str()));
 
     QStatus status = ER_OK;
 
     /* Send LostAdvertisedName to anyone who is discovering name */
+    router.LockNameTable();
     discoverMapLock.Lock();
     if (0 < discoverMap.size()) {
         multimap<String, String>::const_iterator dit = discoverMap.lower_bound(name);
@@ -1284,6 +1299,7 @@ QStatus AllJoynObj::SendLostAdvertisedName(const String& name,
         }
     }
     discoverMapLock.Unlock();
+    router.UnlockNameTable();
     return status;
 }
 
@@ -1292,6 +1308,7 @@ ThreadReturn STDCALL AllJoynObj::NameMapReaperThread::Run(void* arg)
     uint32_t waitTime(Event::WAIT_FOREVER);
     Event evt(waitTime);
     while (!IsStopping()) {
+        ajnObj->router.LockNameTable();
         ajnObj->discoverMapLock.Lock();
         set<qcc::String> expiredBuses;
         multimap<String, NameMapEntry>::iterator it = ajnObj->nameMap.begin();
@@ -1312,6 +1329,7 @@ ThreadReturn STDCALL AllJoynObj::NameMapReaperThread::Run(void* arg)
             }
         }
         ajnObj->discoverMapLock.Unlock();
+        ajnObj->router.UnlockNameTable();
 
         while (expiredBuses.begin() != expiredBuses.end()) {
             expiredBuses.erase(expiredBuses.begin());
