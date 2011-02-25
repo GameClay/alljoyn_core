@@ -85,7 +85,6 @@ DaemonRouter::DaemonRouter() : localEndpoint(NULL), ruleTable(), nameTable(), bu
     AddBusNameListener(ConfigDB::GetConfigDB());
 }
 
-
 QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
 {
     QStatus status(ER_OK);
@@ -93,6 +92,7 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
     PolicyDB policydb(configDB->GetPolicyDB());
     NormalizedMsgHdr nmh(msg, policydb);
     BusEndpoint* sender = &origSender;
+    bool replyExpected = (msg->GetType() == MESSAGE_METHOD_CALL) && ((msg->GetFlags() & ALLJOYN_FLAG_NO_REPLY_EXPECTED) == 0);
 
     const char* destination = msg->GetDestination();
     SessionId sessionId = msg->GetSessionId();
@@ -159,16 +159,37 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
             if (ER_OK == status) {
                 /* If this message is coming from a bus-to-bus ep, make sure the receiver is willing to receive it */
                 if (!((sender->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS) && !destEndpoint->AllowRemoteMessages())) {
-                    if ((sessionId != 0) && (destEndpoint->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
-                        status = static_cast<VirtualEndpoint*>(destEndpoint)->PushMessage(msg, sessionId);
+                    /*
+                     * If the sender doesn't allow remote messages reject method calls that go off
+                     * device and require a reply because the reply will be blocked and this is most
+                     * definitely not what the sender expects.
+                     */
+                    if ((destEndpoint->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL) && replyExpected && !sender->AllowRemoteMessages()) {
+                        QCC_DbgPrintf(("Blocking method call from %s to %s (serial=%d) because caller does not allow remote messages",
+                                       msg->GetSender(),
+                                       destEndpoint->GetUniqueName().c_str(),
+                                       msg->GetCallSerial()));
+                        msg->ErrorMsg("org.alljoyn.Bus.Blocked", "Method reply would be blocked because caller does not allow remote messages");
+                        PushMessage(msg, *localEndpoint);
                     } else {
-                        status = destEndpoint->PushMessage(msg);
+                        if ((sessionId != 0) && (destEndpoint->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
+                            status = static_cast<VirtualEndpoint*>(destEndpoint)->PushMessage(msg, sessionId);
+                        } else {
+                            status = destEndpoint->PushMessage(msg);
+                        }
                     }
                 } else {
                     QCC_DbgPrintf(("Blocking message from %s to %s (serial=%d) because receiver does not allow remote messages",
                                    msg->GetSender(),
                                    destEndpoint->GetUniqueName().c_str(),
                                    msg->GetCallSerial()));
+                    /* If caller is expecting a response return an error indicating the method call was blocked */
+                    if (replyExpected) {
+                        qcc::String description("Remote method calls blocked for bus name: ");
+                        description += destination;
+                        msg->ErrorMsg("org.alljoyn.Bus.Blocked", description.c_str());
+                        PushMessage(msg, *localEndpoint);
+                    }
                 }
                 if ((ER_OK != status) && (ER_BUS_ENDPOINT_CLOSING != status)) {
                     QCC_LogError(status, ("BusEndpoint::PushMessage failed"));
@@ -176,26 +197,19 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
             }
         } else {
             if ((msg->GetFlags() & ALLJOYN_FLAG_AUTO_START) && (sender->GetEndpointType() != BusEndpoint::ENDPOINT_TYPE_BUS2BUS)) {
-                // Need to auto start the service targeted by the message and
-                // postpone delivery of the message.
+                /* Need to auto start the service targeted by the message and postpone delivery of the message. */
                 Bus& bus(reinterpret_cast<Bus&>(msg->bus));
                 DeferredMsg* dm(new DeferredMsg(msg, sender->GetUniqueName(), *this));
                 ServiceDB serviceDB(configDB->GetServiceDB());
                 status = serviceDB->BusStartService(destination, dm, &bus);
 
-            } else if ((msg->GetType() == MESSAGE_METHOD_CALL) && ((msg->GetFlags() & ALLJOYN_FLAG_NO_REPLY_EXPECTED) == 0)) {
+            } else if (replyExpected) {
                 QCC_LogError(ER_BUS_NO_ROUTE, ("Returning error %s no route to %s", msg->Description().c_str(), destination));
-
-                // Need to let the sender know its reply message cannot be passed on.
-                destEndpoint = nameTable.FindEndpoint(msg->GetSender());
+                /* Need to let the sender know its reply message cannot be passed on. */
                 qcc::String description("Unknown bus name: ");
                 description += destination;
                 msg->ErrorMsg("org.freedesktop.DBus.Error.ServiceUnknown", description.c_str());
-                if ((sessionId != 0) && (destEndpoint->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
-                    status = static_cast<VirtualEndpoint*>(destEndpoint)->PushMessage(msg, sessionId);
-                } else {
-                    status = destEndpoint->PushMessage(msg);
-                }
+                PushMessage(msg, *localEndpoint);
             } else {
                 QCC_LogError(ER_BUS_NO_ROUTE, ("Discarding %s no route to %s:%d", msg->Description().c_str(), destination, sessionId));
             }

@@ -201,7 +201,7 @@ class _Message {
      *
      * @see flag types in Message.h file
      */
-    uint8_t GetFlags() { return msgHeader.flags; }
+    uint8_t GetFlags() const { return msgHeader.flags; }
 
     /**
      * Return true if message's TTL header indicates that it is expired
