@@ -1221,8 +1221,8 @@ QStatus _Message::ErrorMsg(QStatus status)
     /*
      * Build error message
      */
+    MsgArg args[2];
     size_t numArgs = 2;
-    MsgArg args[numArgs];
     MsgArg::Set(args, numArgs, "sq", msg.c_str(), msgStatus);
     return MarshalMessage("sq", destination, MESSAGE_ERROR, args, numArgs, msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED);
 }
@@ -1272,8 +1272,8 @@ void _Message::ErrorMsg(QStatus status,
     hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].typeId = ALLJOYN_UINT32;
     hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].v_uint32 = replySerial;
 
+    MsgArg args[2];
     size_t numArgs = 2;
-    MsgArg args[numArgs];
     MsgArg::Set(args, numArgs, "sq", msg.c_str(), msgStatus);
     MarshalMessage("sq", "", MESSAGE_ERROR, args, numArgs, 0);
 }
