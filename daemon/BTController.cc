@@ -246,16 +246,20 @@ QStatus BTController::SendSetState(const qcc::String& busName)
     args[0].Set(SIG_MINION_CNT, directMinions);
 
     array.reserve(nodeStates.size());
+    QCC_DbgPrintf(("SendSetState prep args"));
     for (it = nodeStates.begin(); it != nodeStates.end(); ++it) {
+        QCC_DbgPrintf(("    Node %s:", it->first.c_str()));
         vector<const char*> nodeAdNames;
         vector<const char*> nodeFindNames;
         set<qcc::String>::const_iterator nit;
         nodeAdNames.reserve(it->second.advertiseNames.size());
         nodeFindNames.reserve(it->second.findNames.size());
         for (nit = it->second.advertiseNames.begin(); nit != it->second.advertiseNames.end(); ++nit) {
+            QCC_DbgPrintf(("        Ad name: %s", nit->c_str()));
             nodeAdNames.push_back(nit->c_str());
         }
         for (nit = it->second.findNames.begin(); nit != it->second.findNames.end(); ++nit) {
+            QCC_DbgPrintf(("        Find name: %s", nit->c_str()));
             nodeFindNames.push_back(nit->c_str());
         }
         array.push_back(MsgArg(SIG_NODE_STATE_ENTRY, it->first.c_str(),
@@ -1132,7 +1136,6 @@ void BTController::HandleFoundDevice(const InterfaceDescription::Member* member,
     QCC_DbgTrace(("BTController::HandleFoundDevice(member = %s, sourcePath = \"%s\", msg = <>)",
                   member->name.c_str(), sourcePath));
 
-    QCC_DbgPrintf(("SJK: msg:\n%s", msg->ToString().c_str()));
     nodeStateLock.Lock();
     bool ourMinion = (nodeStates.find(msg->GetSender()) != nodeStates.end());
     nodeStateLock.Unlock();
@@ -1422,9 +1425,9 @@ void BTController::EncodeAdInfo(const BluetoothDeviceInterface::AdvertiseInfo& a
 
         QCC_DbgPrintf(("Encoding %u advertise names for %s:", names.size(), guid.c_str()));
 
-        for (size_t j = 0; i < names.size(); ++i) {
+        for (size_t j = 0; i < names.size(); ++j) {
             QCC_DbgPrintf(("    %s", names[j].c_str()));
-            nameList[j].Set(SIG_NAME, names[j].c_str());
+            nameList[i].Set(SIG_NAME, names[j].c_str());
         }
 
         nodeList[i].Set(SIG_AD_NAME_MAP_ENTRY, guid.c_str(), names.size(), nameList);
