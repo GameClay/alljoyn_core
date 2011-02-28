@@ -214,7 +214,7 @@ static void Fuzz(TestPipe& stream)
         /*
          * Toggle endianess
          */
-        hdr->endian = hdr->endian = ALLJOYN_BIG_ENDIAN ? ALLJOYN_LITTLE_ENDIAN : ALLJOYN_BIG_ENDIAN;
+        hdr->endian = (hdr->endian == ALLJOYN_BIG_ENDIAN) ? ALLJOYN_LITTLE_ENDIAN : ALLJOYN_BIG_ENDIAN;
         break;
 
     case 3:

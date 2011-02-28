@@ -251,7 +251,7 @@ int main(int argc, char** argv)
             size_t sent;
             status = qcc::Send(sockFd, testMessage, testMessageLen, sent);
             if (status == ER_OK) {
-                printf("Wrote %d of %d bytes of testMessage to stream\n", sent, testMessageLen);
+                printf("Wrote %u of %u bytes of testMessage to stream\n", (unsigned int)sent, (unsigned int)testMessageLen);
             } else {
                 printf("Failed to write testMessage (%s)\n", ::strerror(errno));
                 status = ER_FAIL;
