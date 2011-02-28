@@ -644,7 +644,7 @@ exit:
     }
 
     if (useLocal) {
-        btController->PostConnect(status, *newep);
+        btController->PostConnect(status, conn);
     }
 
     return status;
