@@ -1131,10 +1131,12 @@ void BTController::HandleFoundDevice(const InterfaceDescription::Member* member,
 {
     QCC_DbgTrace(("BTController::HandleFoundDevice(member = %s, sourcePath = \"%s\", msg = <>)",
                   member->name.c_str(), sourcePath));
+
+    QCC_DbgPrintf(("SJK: msg:\n%s", msg->ToString().c_str()));
     nodeStateLock.Lock();
     bool ourMinion = (nodeStates.find(msg->GetSender()) != nodeStates.end());
     nodeStateLock.Unlock();
-    if (ourMinion) {
+    if (!ourMinion) {
         // We only handle FoundDevice signals from our minions.
         return;
     }
