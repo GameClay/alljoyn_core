@@ -569,7 +569,7 @@ QStatus BTTransport::Connect(const BDAddress& bdAddr,
                              RemoteEndpoint** newep)
 {
     QStatus status;
-    BTEndpoint* conn;
+    BTEndpoint* conn = NULL;
     bool useLocal = btController->OKToConnect();
 
     if (useLocal) {
@@ -624,7 +624,7 @@ QStatus BTTransport::Connect(const BDAddress& bdAddr,
             threadListLock.Lock();
             std::vector<BTEndpoint*>::const_iterator it;
             for (it = threadList.begin(); it != threadList.end(); ++it) {
-                if ((*it)->GetUniqueName() == delegate) {
+                if ((*it)->GetRemoteName() == delegate) {
                     conn = *it;
                 }
             }

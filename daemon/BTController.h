@@ -631,6 +631,12 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     void UpdateDelegations(NameArgInfo& nameInfo, bool allow = true);
 
     /**
+     * Helper function to create an array of MsgArg's containing the
+     * advertised and find names.
+     */
+    QStatus EncodeStateInfo(std::vector<MsgArg>& array);
+
+    /**
      * Extract advertisement information from a message arg into the internal
      * representation.
      *

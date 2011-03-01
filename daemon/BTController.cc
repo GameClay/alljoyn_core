@@ -94,14 +94,14 @@ static const char* bluetoothTopoMgrIfcName = "org.alljoyn.Bus.BluetoothControlle
 #define SIG_NAME_OP           SIG_NAME SIG_NAME
 #define SIG_DELEGATE_AD       SIG_UUIDREV SIG_BDADDR SIG_CHANNEL SIG_PSM SIG_AD_NAME_MAP SIG_DURATION
 #define SIG_DELEGATE_FIND     SIG_NAME SIG_UUIDREV SIG_BDADDR SIG_DURATION
-#define SIG_FOUND_BUS         SIG_GUID SIG_BDADDR SIG_CHANNEL SIG_PSM SIG_AD_NAME_MAP
+#define SIG_FOUND_BUS         SIG_BDADDR SIG_CHANNEL SIG_PSM SIG_AD_NAME_MAP
 #define SIG_FOUND_DEV         SIG_BDADDR SIG_UUIDREV
 
 
 const InterfaceDesc btmIfcTable[] = {
     /* Methods */
     { MESSAGE_METHOD_CALL, "SetState",        SIG_SET_STATE_IN,  SIG_SET_STATE_OUT,  "minionCnt,findnames,adNames" },
-    { MESSAGE_METHOD_CALL, "ProxyConnect",    SIG_PROXY_CONN_IN, SIG_PROXY_CONN_OUT  "bdAddr,channel,psm,status" },
+    { MESSAGE_METHOD_CALL, "ProxyConnect",    SIG_PROXY_CONN_IN, SIG_PROXY_CONN_OUT, "bdAddr,channel,psm,status" },
     { MESSAGE_METHOD_CALL, "ProxyDisconnect", SIG_PROXY_DISC_IN, SIG_PROXY_DISC_OUT, "bdAddr,status" },
 
     /* Signals */
@@ -235,47 +235,37 @@ QStatus BTController::SendSetState(const qcc::String& busName)
 
     nodeStateLock.Lock();
 
-    NodeStateMap::const_iterator it;
+    QStatus status;
     vector<MsgArg> array;
     MsgArg args[2];
+    size_t numArgs = ArraySize(args);
     Message reply(bus);
     ProxyBusObject* newMaster = new ProxyBusObject(bus, busName.c_str(), bluetoothObjPath, 0);
 
     newMaster->AddInterface(*org.alljoyn.Bus.BTController.interface);
 
-    args[0].Set(SIG_MINION_CNT, directMinions);
-
-    array.reserve(nodeStates.size());
     QCC_DbgPrintf(("SendSetState prep args"));
-    for (it = nodeStates.begin(); it != nodeStates.end(); ++it) {
-        QCC_DbgPrintf(("    Node %s:", it->first.c_str()));
-        vector<const char*> nodeAdNames;
-        vector<const char*> nodeFindNames;
-        set<qcc::String>::const_iterator nit;
-        nodeAdNames.reserve(it->second.advertiseNames.size());
-        nodeFindNames.reserve(it->second.findNames.size());
-        for (nit = it->second.advertiseNames.begin(); nit != it->second.advertiseNames.end(); ++nit) {
-            QCC_DbgPrintf(("        Ad name: %s", nit->c_str()));
-            nodeAdNames.push_back(nit->c_str());
-        }
-        for (nit = it->second.findNames.begin(); nit != it->second.findNames.end(); ++nit) {
-            QCC_DbgPrintf(("        Find name: %s", nit->c_str()));
-            nodeFindNames.push_back(nit->c_str());
-        }
-        array.push_back(MsgArg(SIG_NODE_STATE_ENTRY, it->first.c_str(),
-                               it->second.guid.c_str(),
-                               nodeAdNames.size(), &nodeAdNames.front(),
-                               nodeFindNames.size(), &nodeFindNames.front()));
+    status = EncodeStateInfo(array);
+    if (status != ER_OK) {
+        goto exit;
     }
 
-    args[1].Set(SIG_NODE_STATES, array.size(), &array.front());
+    status = MsgArg::Set(args, numArgs, SIG_SET_STATE_IN, directMinions, array.size(), &array.front());
+    if (status != ER_OK) {
+        goto exit;
+    }
 
-    QStatus status = newMaster->MethodCall(*org.alljoyn.Bus.BTController.SetState, args, ArraySize(args), reply);
+    status = newMaster->MethodCall(*org.alljoyn.Bus.BTController.SetState, args, ArraySize(args), reply);
 
     if (status == ER_OK) {
         MsgArg* array;
         size_t num;
-        reply->GetArg(0)->Get(SIG_NODE_STATES, &num, &array);
+
+        status = reply->GetArgs(SIG_SET_STATE_OUT, &num, &array);
+        if (status != ER_OK) {
+            goto exit;
+        }
+
         if (num == 0) {
             // We are now a minion (or a drone if we have more than one direct connection)
             master = newMaster;
@@ -311,6 +301,8 @@ QStatus BTController::SendSetState(const qcc::String& busName)
             // TODO - Move minion connections to new master
         }
     }
+
+exit:
     nodeStateLock.Unlock();
 
     return status;
@@ -737,7 +729,8 @@ QStatus BTController::SendFoundBus(const BDAddress& bdAddr,
         dest = find.resultDest.c_str();
     }
 
-    MsgArg args[5];
+    MsgArg args[4];
+    size_t argsSize = ArraySize(args);
     vector<MsgArg> nodeList(adInfo.size());
 
     for (size_t i = 0; i < adInfo.size(); ++i) {
@@ -756,10 +749,7 @@ QStatus BTController::SendFoundBus(const BDAddress& bdAddr,
         nodeList[i].Set(SIG_AD_NAME_MAP_ENTRY, guid.c_str(), names.size(), &nameList.front());
     }
 
-    args[1].Set(SIG_BDADDR, bdAddr.ToString().c_str());
-    args[2].Set(SIG_CHANNEL, channel);
-    args[3].Set(SIG_PSM, psm);
-    args[4].Set(SIG_AD_NAME_MAP, adInfo.size(), &nodeList.front());
+    MsgArg::Set(args, argsSize, SIG_FOUND_BUS, bdAddr.ToString().c_str(), channel, psm, nodeList.size(), &nodeList.front());
 
     return Signal(dest, 0, *org.alljoyn.Bus.BTController.FoundBus, args, ArraySize(args));
 }
@@ -918,34 +908,30 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
         find.active = false;
     }
 
+    /*
+     * Only get the number of direct connections first.  If the other guy has
+     * more direct connections then there is no point in extracting all of his
+     * names from the second argument.
+     */
     msg->GetArg(0)->Get(SIG_MINION_CNT, &numConnections);
+
     if (numConnections > directMinions) {
         // We are now a minion (or a drone if we have more than one direct connection)
         master = new ProxyBusObject(bus, sender.c_str(), bluetoothObjPath, 0);
 
-        MsgArg* array = new MsgArg[nodeStates.size()];
-        NodeStateMap::const_iterator it;
-        size_t cnt;
+        QStatus status;
+        vector<MsgArg> array;
 
-        for (it = nodeStates.begin(), cnt = 0; it != nodeStates.end(); ++it, ++cnt) {
-            vector<qcc::String> nodeAdNames;
-            nodeAdNames.reserve(it->second.advertiseNames.size());
-            nodeAdNames.assign(it->second.advertiseNames.begin(),
-                               it->second.advertiseNames.end());
-            vector<qcc::String> nodeFindNames;
-            nodeFindNames.reserve(it->second.findNames.size());
-            nodeFindNames.assign(it->second.findNames.begin(), it->second.findNames.end());
-            array[cnt].Set(SIG_NODE_STATE_ENTRY, it->first.c_str(),
-                           it->second.guid.c_str(),
-                           nodeAdNames.size(), &nodeAdNames.front(),
-                           nodeFindNames.size(), &nodeFindNames.front());
-            assert(cnt < nodeStates.size());
-        }
+        status = EncodeStateInfo(array);
+        if (status == ER_OK) {
+            MsgArg arg(SIG_NODE_STATES, array.size(), &array.front());
 
-        MsgArg arg(SIG_NODE_STATES, cnt, array);
-        QStatus status = MethodReply(msg, &arg, 1);
-        if (status != ER_OK) {
-            QCC_LogError(status, ("MethodReply"));
+            status = MethodReply(msg, &arg, 1);
+            if (status != ER_OK) {
+                QCC_LogError(status, ("MethodReply"));
+            }
+        } else {
+            MethodReply(msg, "org.alljoyn.Bus.BTController.InternalError", QCC_StatusText(status));
         }
 
     } else {
@@ -1126,12 +1112,12 @@ void BTController::HandleFoundBus(const InterfaceDescription::Member* member,
     uint8_t channel;
     uint16_t psm;
 
-    msg->GetArg(1)->Get(SIG_BDADDR, &bdAddrStr);
-    msg->GetArg(2)->Get(SIG_CHANNEL, &channel);
-    msg->GetArg(3)->Get(SIG_PSM, &psm);
+    msg->GetArg(0)->Get(SIG_BDADDR, &bdAddrStr);
+    msg->GetArg(1)->Get(SIG_CHANNEL, &channel);
+    msg->GetArg(2)->Get(SIG_PSM, &psm);
 
     BluetoothDeviceInterface::AdvertiseInfo adInfo;
-    ExtractAdInfo(*msg->GetArg(4), adInfo);
+    ExtractAdInfo(*msg->GetArg(3), adInfo);
 
     if (!adInfo.empty()) {
         BDAddress bdAddr(bdAddrStr);
@@ -1425,6 +1411,37 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo, bool allow)
         // Clear out the advertise arguments.
         nameInfo.ClearArgs();
     }
+}
+
+
+QStatus BTController::EncodeStateInfo(vector<MsgArg>& array)
+{
+    QStatus status = ER_OK;
+    array.resize(nodeStates.size());
+    NodeStateMap::const_iterator it;
+    size_t cnt;
+    for (cnt = 0, it = nodeStates.begin(); (status == ER_OK) && (it != nodeStates.end()); ++it, ++cnt) {
+        QCC_DbgPrintf(("    Node %s:", it->first.c_str()));
+        vector<const char*> nodeAdNames;
+        vector<const char*> nodeFindNames;
+        set<qcc::String>::const_iterator nit;
+        nodeAdNames.reserve(it->second.advertiseNames.size());
+        nodeFindNames.reserve(it->second.findNames.size());
+        for (nit = it->second.advertiseNames.begin(); nit != it->second.advertiseNames.end(); ++nit) {
+            QCC_DbgPrintf(("        Ad name: %s", nit->c_str()));
+            nodeAdNames.push_back(nit->c_str());
+        }
+        for (nit = it->second.findNames.begin(); nit != it->second.findNames.end(); ++nit) {
+            QCC_DbgPrintf(("        Find name: %s", nit->c_str()));
+            nodeFindNames.push_back(nit->c_str());
+        }
+        status = array[cnt].Set(SIG_NODE_STATE_ENTRY, it->first.c_str(),
+                                it->second.guid.c_str(),
+                                nodeAdNames.size(), &nodeAdNames.front(),
+                                nodeFindNames.size(), &nodeFindNames.front());
+    }
+
+    return status;
 }
 
 
