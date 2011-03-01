@@ -4,7 +4,8 @@ AllJoyn Version 2.0.0 Release Notes
 Platform Support
 ----------------
 1) Linux Ubuntu 9.10 32-bit (x86)
-2) Android Froyo 2.2 (ARM7)
+2) Linux Ubnto 10.10 64-bit (x86-64)
+3) Android Froyo 2.2 (ARM7)
 
 
 Features added in this release
@@ -25,15 +26,14 @@ Known issues and limitations with this release
 2) The AllJoyn Java language binding is not supported in this
    alpha release.
 
-3) org.alljoyn.Bus.Connect may fail if called too quickly after
-   org.allJoyn.Bus.Disconnect for the same remote host. (ALLJOYN-194)
-
 
 Compatibility
 -------------
-AllJoyn APIs have changed.  Applications written for AllJoyn 1.8 or
-earlier will need to be modified and rebuilt for use with AllJoyn 2.0
-and later.
+The AllJoyn APIs have changed. Applications written for AllJoyn 1.8 or
+earlier will need to be modified and rebuilt for use with AllJoyn 2.0 and later.
+
+The AllJoyn daemon-to-daemon protocol has changed. Alljoyn version 2.X daemons are
+not backwards compatibile with AllJoyn 1.X daemons.
 
 
 Change history
