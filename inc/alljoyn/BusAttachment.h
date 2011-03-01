@@ -382,7 +382,10 @@ class BusAttachment : public MessageReceiver {
      *                           When false, each join attempt creates a new point-to-point session.
      * @param[in]  qos           QoS requirements that potential joiners must meet in order to successfully join the session.
      * @param[out] disposition   ALLJOYN_CREATESESSION_REPLY_*" constant from AllJoynStd.h
-     * @param[out] sessionId     Daemon assigned unique identifier for session. Valid if disposition is ALLJOYN_CREATESESSION_REPLY_SUCCESS.
+     * @param[out] sessionId     Daemon assigned unique identifier for session.
+     *                           Valid ONLY if disposition is ALLJOYN_CREATESESSION_REPLY_SUCCESS and isMultipoint == true.
+     *                           (When isMultipoint == false, there is a new sessionId for each successful joiner, therefore
+     *                           the sessionIds are passed in BusListener::AcceptSession().)
      * @return
      *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
