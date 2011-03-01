@@ -177,7 +177,19 @@ QStatus ProxyBusObject::AddInterface(const InterfaceDescription& iface) {
     StringMapKey key = iface.GetName();
     pair<StringMapKey, const InterfaceDescription*> item(key, &iface);
     pair<map<StringMapKey, const InterfaceDescription*>::const_iterator, bool> ret = components->ifaces.insert(item);
-    return ret.second ? ER_OK : ER_BUS_IFACE_ALREADY_EXISTS;
+    QStatus status = ret.second ? ER_OK : ER_BUS_IFACE_ALREADY_EXISTS;
+    
+    /* Add org.freedesktop.DBus.Properties interface implicitly if iface specified properties */
+    if ((status == ER_OK) && !hasProperties && (iface.GetProperties() > 0)) {
+        const InterfaceDescription* propIntf = bus->GetInterface(::ajn::org::freedesktop::DBus::Properties::InterfaceName);
+        if (propIntf) {
+            hasProperties = true;
+            status = AddInterface(*propIntf);
+        } else {
+            status = ER_BUS_NO_SUCH_INTERFACE;
+        }
+    }
+    return status;
 }
 
 
@@ -686,13 +698,14 @@ ProxyBusObject::ProxyBusObject(BusAttachment& bus, const char* service, const ch
     components(new Components),
     path(path),
     serviceName(service),
-    sessionId(sessionId)
+    sessionId(sessionId),
+    hasProperties(false)
 {
     /* The Peer interface is implicitly defined for all objects */
     AddInterface(org::freedesktop::DBus::Peer::InterfaceName);
 }
 
-ProxyBusObject::ProxyBusObject() : bus(NULL), components(NULL), sessionId(0)
+ProxyBusObject::ProxyBusObject() : bus(NULL), components(NULL), sessionId(0), hasProperties(false)
 {
 }
 
@@ -703,6 +716,7 @@ ProxyBusObject::ProxyBusObject(const ProxyBusObject& other)
     path = other.path;
     serviceName = other.serviceName;
     sessionId = other.sessionId;
+    hasProperties = other.hasProperties;
     if (other.components) {
         *components = *other.components;
     }

@@ -654,7 +654,7 @@ class ProxyBusObject : public MessageReceiver {
 
     qcc::String serviceName;    /**< Remote destination */
     SessionId sessionId;        /**< Session to use for communicating with remote object */
-
+    bool hasProperties;         /**< True if proxy object implements properties */
 };
 
 }
