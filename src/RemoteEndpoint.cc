@@ -237,7 +237,7 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
             Message msg(bus);
             status = msg->Unmarshal(*ep, (validateSender && !bus2bus));
             switch (status) {
-            case ER_OK :
+            case ER_OK:
                 status = router.PushMessage(msg, *ep);
                 if (status != ER_OK) {
                     /*
@@ -255,7 +255,7 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
                 }
                 break;
 
-            case ER_BUS_CANNOT_EXPAND_MESSAGE :
+            case ER_BUS_CANNOT_EXPAND_MESSAGE:
                 /*
                  * The message could not be expanded so pass it the peer object to request the expansion
                  * rule from the endpoint that sent it.

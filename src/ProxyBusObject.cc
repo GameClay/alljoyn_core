@@ -178,7 +178,7 @@ QStatus ProxyBusObject::AddInterface(const InterfaceDescription& iface) {
     pair<StringMapKey, const InterfaceDescription*> item(key, &iface);
     pair<map<StringMapKey, const InterfaceDescription*>::const_iterator, bool> ret = components->ifaces.insert(item);
     QStatus status = ret.second ? ER_OK : ER_BUS_IFACE_ALREADY_EXISTS;
-    
+
     /* Add org.freedesktop.DBus.Properties interface implicitly if iface specified properties */
     if ((status == ER_OK) && !hasProperties && (iface.GetProperties() > 0)) {
         const InterfaceDescription* propIntf = bus->GetInterface(::ajn::org::freedesktop::DBus::Properties::InterfaceName);

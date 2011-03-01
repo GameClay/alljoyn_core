@@ -659,7 +659,7 @@ QStatus BusAttachment::CreateSession(const char* sessionName, bool isMultipoint,
         sessionId = 0;
     }
 
-    Exit :
+Exit:
     return status;
 }
 
