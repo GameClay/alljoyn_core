@@ -738,12 +738,28 @@ QStatus BTController::SendFoundBus(const BDAddress& bdAddr,
     }
 
     MsgArg args[5];
+    vector<MsgArg> nodeList(adInfo.size());
+
+    for (size_t i = 0; i < adInfo.size(); ++i) {
+        const qcc::String& guid = adInfo[i].first;
+        const BluetoothDeviceInterface::AdvertiseNames& names = adInfo[i].second;
+
+        vector<const char*> nameList;
+        nameList.reserve(names.size());
+
+        QCC_DbgPrintf(("Encoding %u advertise names for %s:", names.size(), guid.c_str()));
+
+        for (size_t j = 0; j < names.size(); ++j) {
+            QCC_DbgPrintf(("    %u: %s", j, names[j].c_str()));
+            nameList.push_back(names[j].c_str());
+        }
+        nodeList[i].Set(SIG_AD_NAME_MAP_ENTRY, guid.c_str(), names.size(), &nameList.front());
+    }
 
     args[1].Set(SIG_BDADDR, bdAddr.ToString().c_str());
     args[2].Set(SIG_CHANNEL, channel);
     args[3].Set(SIG_PSM, psm);
-
-    EncodeAdInfo(adInfo, args[4]);
+    args[4].Set(SIG_AD_NAME_MAP, adInfo.size(), &nodeList.front());
 
     return Signal(dest, 0, *org.alljoyn.Bus.BTController.FoundBus, args, ArraySize(args));
 }
@@ -1409,31 +1425,6 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo, bool allow)
         // Clear out the advertise arguments.
         nameInfo.ClearArgs();
     }
-}
-
-
-void BTController::EncodeAdInfo(const BluetoothDeviceInterface::AdvertiseInfo& adInfo, MsgArg& arg)
-{
-    QCC_DbgTrace(("BTController::EncodeAdInfo()"));
-    MsgArg* nodeList = new MsgArg[adInfo.size()];
-
-    for (size_t i = 0; i < adInfo.size(); ++i) {
-        const qcc::String& guid = adInfo[i].first;
-        const BluetoothDeviceInterface::AdvertiseNames& names = adInfo[i].second;
-
-        MsgArg* nameList = new MsgArg[names.size()];
-
-        QCC_DbgPrintf(("Encoding %u advertise names for %s:", names.size(), guid.c_str()));
-
-        for (size_t j = 0; i < names.size(); ++j) {
-            QCC_DbgPrintf(("    %s", names[j].c_str()));
-            nameList[i].Set(SIG_NAME, names[j].c_str());
-        }
-
-        nodeList[i].Set(SIG_AD_NAME_MAP_ENTRY, guid.c_str(), names.size(), nameList);
-    }
-
-    arg.Set(SIG_AD_NAME_MAP, adInfo.size(), nodeList);
 }
 
 

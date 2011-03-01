@@ -634,18 +634,6 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      * Extract advertisement information from a message arg into the internal
      * representation.
      *
-     * @param adInfo    Advertisement information to be encoded
-     * @param arg       Message arg to be filled with the signature "a{sas}":
-     *                    - Array of dict entries:
-     *                      - Key: Bus GUID associated with advertise names
-     *                      - Value: Array of bus names advertised by device with associated Bus GUID
-     */
-    static void EncodeAdInfo(const BluetoothDeviceInterface::AdvertiseInfo& adInfo, MsgArg& arg);
-
-    /**
-     * Extract advertisement information from a message arg into the internal
-     * representation.
-     *
      * @param arg       Message arg with the signature "a{sas}":
      *                    - Array of dict entries:
      *                      - Key: Bus GUID associated with advertise names
