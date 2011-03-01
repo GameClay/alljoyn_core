@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <assert.h>
+#include <limits>
 #include <map>
 #include <vector>
 #include <errno.h>
@@ -930,20 +931,6 @@ void AllJoynObj::GetSessionFd(const InterfaceDescription::Member* member, Messag
     sessionMapLock.Unlock();
 
     if (sockFd != -1) {
-#if 0
-#if 1
-        const char* testBuf = "12345";
-        int ret = ::write(sockFd, testBuf, ::strlen(testBuf));
-        printf("TEST WRITE: ret = %d errno=%d\n", ret, errno);
-#else
-        char buf[255];
-        int ret = ::read(sockFd, buf, sizeof(buf));
-        printf("TEST READ: ret = %d, errno = %d\n", ret, errno);
-        if (ret > 0) {
-            buf[ret] = '\0'; printf("BYTES: %s\n", buf);
-        }
-#endif
-#endif
         /* Send the fd and transfer ownership */
         MsgArg replyArg;
         replyArg.Set("h", &sockFd);
@@ -1805,7 +1792,10 @@ void AllJoynObj::FoundNames(const qcc::String& busAddr,
         if (0 < ttl) {
             if (isNew) {
                 /* Add new name to map */
-                nameMap.insert(pair<String, NameMapEntry>(*nit, NameMapEntry(busAddr, guid, qos, (1000 * ttl))));
+                nameMap.insert(pair<String, NameMapEntry>(*nit, NameMapEntry(busAddr,
+                                                                             guid,
+                                                                             qos,
+                                                                             (ttl == numeric_limits<uint8_t>::max()) ? numeric_limits<uint32_t>::max() : (1000 * ttl))));
 
                 /* Send FoundAdvertisedName to anyone who is discovering *nit */
                 if (0 < discoverMap.size()) {
@@ -1925,9 +1915,11 @@ ThreadReturn STDCALL AllJoynObj::NameMapReaperThread::Run(void* arg)
                 ajnObj->SendLostAdvertisedName(it->first, it->second.qos);
                 ajnObj->nameMap.erase(it++);
             } else {
-                uint32_t nextTime(it->second.ttl - (now - it->second.timestamp));
-                if (nextTime < waitTime) {
-                    waitTime = nextTime;
+                if (it->second.ttl != numeric_limits<uint32_t>::max()) {
+                    uint32_t nextTime(it->second.ttl - (now - it->second.timestamp));
+                    if (nextTime < waitTime) {
+                        waitTime = nextTime;
+                    }
                 }
                 ++it;
             }

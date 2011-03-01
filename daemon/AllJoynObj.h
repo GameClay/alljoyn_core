@@ -274,7 +274,8 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * @param   guid      GUID of daemon that sent the advertisment.
      * @param   qos       Advertised quality of service
      * @param   names     Vector of bus names advertised by the discovered bus.
-     * @param   ttl       Number of seconds before this advertisment expires (0 means expire immediately)
+     * @param   ttl       Number of seconds before this advertisment expires
+     *                    (0 means expire immediately, numeric_limits<uint8_t>::max() means never expire)
      */
     void FoundNames(const qcc::String& busAddr, const qcc::String& guid, const QosInfo& qos, const std::vector<qcc::String>* names, uint8_t ttl);
 
