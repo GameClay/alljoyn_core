@@ -407,7 +407,8 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * @param sessionName      Name of session.
      * @param src              Unique name of session joiner.
      * @param dest             Unique name of session creator.
-     * @param b2bEp            B2B endpoint to use for session.
+     * @param remoteB2BName    Unique name of directly connected (next hop) B2B endpoint.
+     * @param remoteControllerName  Unique name of bus controller at next hop.
      * @param qosIn            QoS requested by joiner.
      * @param replyCode        [OUT] SessionAttach response code
      * @param sessionId        [OUT] session id if reply code indicates success.
@@ -416,7 +417,8 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     QStatus SendAttachSession(const char* sessionName,
                               const char* src,
                               const char* dest,
-                              RemoteEndpoint& b2bEp,
+                              const char* remoteB2BName,
+                              const char* remoteControllerName,
                               const QosInfo& qosIn,
                               uint32_t& replyCode,
                               SessionId& sessionId,

@@ -407,17 +407,18 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
     }
     if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
         /* Give up the locks during the sync method call */
-        qcc::String sepName = sessionEp->GetUniqueName();
+        const String sepName = sessionEp->GetUniqueName();
+        const String b2bEpName = b2bEp->GetUniqueName();
+        const String nextControllerName = b2bEp->GetRemoteName();
         ajObj.virtualEndpointsLock.Unlock();
         ajObj.discoverMapLock.Unlock();
         ajObj.router.UnlockNameTable();
         status = ajObj.SendAttachSession(sessionName.c_str(), msg->GetSender(), sepName.c_str(),
-                                         *b2bEp, qosIn, replyCode, id, qosOut);
+                                         b2bEpName.c_str(), nextControllerName.c_str(), qosIn, replyCode, id, qosOut);
         /* Re-lock and re-acquire b2bEp */
         ajObj.router.LockNameTable();
         ajObj.discoverMapLock.Lock();
         ajObj.virtualEndpointsLock.Lock();
-
     }
 
     /* Reacquire b2bEp and sessionEp after sync method call */
@@ -748,9 +749,15 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
             /* Forward AttachSession to next hop */
             SessionId tempId;
             QosInfo tempQos;
+            const String b2bEpName = destB2B->GetUniqueName();
+            const String nextControllerName = destB2B->GetRemoteName();
+
+            /* Unlock in preparation for sync method call. Ep pointers are unsafe after this operation */
             discoverMapLock.Unlock();
             router.UnlockNameTable();
-            status = SendAttachSession(sessionName, src, dest, *destB2B, inQos, replyCode, tempId, tempQos);
+            status = SendAttachSession(sessionName, src, dest, b2bEpName.c_str(), nextControllerName.c_str(), inQos, replyCode, tempId, tempQos);
+
+            /* Re-lock */
             router.LockNameTable();
             discoverMapLock.Lock();
 
@@ -760,8 +767,10 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                 RemoteEndpoint* srcB2BEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
                 ep = router.FindEndpoint(src);
                 VirtualEndpoint* srcEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
-
-                if (srcB2BEp && srcEp) {
+                vDestEp = static_cast<VirtualEndpoint*>(router.FindEndpoint(dest));
+                destB2B = vDestEp ? vDestEp->GetQosCompatibleB2B(inQos) : NULL;
+            
+                if (srcB2BEp && srcEp && vDestEp && destB2B) {
                     id = tempId;
                     qosOut = tempQos;
                     router.AddSessionRoute(dest, id, *srcEp, srcB2BEp);
@@ -814,21 +823,21 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
 QStatus AllJoynObj::SendAttachSession(const char* sessionName,
                                       const char* src,
                                       const char* dest,
-                                      RemoteEndpoint& b2bEp,
+                                      const char* remoteB2BName,
+                                      const char* remoteControllerName,
                                       const QosInfo& qosIn,
                                       uint32_t& replyCode,
                                       SessionId& id,
                                       QosInfo& qosOut)
 {
     Message reply(bus);
-    String nextControllerName = b2bEp.GetRemoteName();
     MsgArg attachArgs[5];
     attachArgs[0].Set("s", sessionName);
     attachArgs[1].Set("s", src);
     attachArgs[2].Set("s", dest);
-    attachArgs[3].Set("s", b2bEp.GetUniqueName().c_str());
+    attachArgs[3].Set("s", remoteB2BName);
     attachArgs[4].Set(QOSINFO_SIG, qosIn.traffic, qosIn.proximity, qosIn.transports);
-    ProxyBusObject controllerObj(bus, nextControllerName.c_str(), org::alljoyn::Daemon::ObjectPath, 0);
+    ProxyBusObject controllerObj(bus, remoteControllerName, org::alljoyn::Daemon::ObjectPath, 0);
     controllerObj.AddInterface(*daemonIface);
     QCC_DbgPrintf(("Sending AttachSession(%s, %s, %s, %s, <%x, %x, %x>) to %s",
                    attachArgs[0].v_string.str,
@@ -836,7 +845,7 @@ QStatus AllJoynObj::SendAttachSession(const char* sessionName,
                    attachArgs[2].v_string.str,
                    attachArgs[3].v_string.str,
                    qosIn.proximity, qosIn.traffic, qosIn.transports,
-                   nextControllerName.c_str()));
+                   remoteControllerName));
 
     QStatus status = controllerObj.MethodCall(org::alljoyn::Daemon::InterfaceName,
                                               "AttachSession",
@@ -851,7 +860,6 @@ QStatus AllJoynObj::SendAttachSession(const char* sessionName,
         QCC_DbgPrintf(("Received AttachSession response: replyCode=%d, sessionId=0x%x, qos=<%x, %x, %x>",
                        replyCode, id, qosOut.proximity, qosOut.traffic, qosOut.transports));
     }
-
 
     return status;
 }
