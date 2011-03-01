@@ -1,6 +1,6 @@
 /**
  * @file
- * SimpleBusListener is a syncronous bus listener that fits the need of applications that can
+ * SimpleBusListener is a synchronous bus listener that fits the need of applications that can
  * handled all bus events from the main thread.
  */
 

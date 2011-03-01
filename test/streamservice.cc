@@ -251,13 +251,13 @@ int main(int argc, char** argv)
             size_t sent;
             status = qcc::Send(sockFd, testMessage, testMessageLen, sent);
             if (status == ER_OK) {
-                printf("Wrote %u of %u bytes of testMessage to stream\n", (unsigned int)sent, (unsigned int)testMessageLen);
+                printf("Wrote %lu of %lu bytes of testMessage to stream\n", sent, testMessageLen);
             } else {
                 printf("Failed to write testMessage (%s)\n", ::strerror(errno));
                 status = ER_FAIL;
             }
-            //::shutdown(sockFd, SHUT_RDWR);
-            //::close(sockFd);
+            ::shutdown(sockFd, SHUT_RDWR);
+            ::close(sockFd);
         }
     }
 

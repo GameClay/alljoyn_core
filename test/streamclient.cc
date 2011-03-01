@@ -233,15 +233,19 @@ int main(int argc, char** argv)
             reply->GetArgs(na, args);
             SocketFd sockFd;
             status = args[0].Get("h", &sockFd);
-            while (status == ER_OK) {
-                /* Attempt to read test string from fd */
-                char buf[256];
-                size_t recvd;
+
+            /* Attempt to read test string from fd */
+            char buf[256];
+            size_t recvd;
+            while ((status == ER_OK) || (status == ER_WOULDBLOCK)) {
                 status = qcc::Recv(sockFd, buf, sizeof(buf) - 1, recvd);
                 if (status == ER_OK) {
                     QCC_SyncPrintf("Read %d bytes from streaming fd\n", recvd);
                     buf[recvd] = '\0';
                     QCC_SyncPrintf("Bytes: %s\n", buf);
+                    break;
+                } else if (status == ER_WOULDBLOCK) {
+                    qcc::Sleep(200);
                 } else {
                     QCC_LogError(status, ("Read from streaming fd failed"));
                 }
