@@ -360,6 +360,18 @@ QStatus BusAttachment::Stop(bool blockUntilStopped)
     QStatus status = ER_OK;
     if (isStarted) {
         isStopping = true;
+        /*
+         * Let bus listeners know the bus is stopping.
+         */
+        busInternal->listenersLock.Lock();
+        list<BusListener*>::iterator it = busInternal->listeners.begin();
+        while (it != busInternal->listeners.end()) {
+            (*it++)->BusStopping();
+        }
+        busInternal->listenersLock.Unlock();
+        /*
+         * Stop the timer thread
+         */
         status = busInternal->timer.Stop();
         if (ER_OK != status) {
             QCC_LogError(status, ("Timer::Stop() failed"));
@@ -561,6 +573,8 @@ void BusAttachment::RegisterBusListener(BusListener& listener)
 {
     busInternal->listenersLock.Lock();
     busInternal->listeners.push_back(&listener);
+    /* Let listener know which bus attachment it has been registered on */
+    listener.ListenerRegistered(this);
     busInternal->listenersLock.Unlock();
 }
 
@@ -570,6 +584,7 @@ void BusAttachment::UnRegisterBusListener(BusListener& listener)
     list<BusListener*>::iterator it = std::find(busInternal->listeners.begin(), busInternal->listeners.end(), &listener);
     if (it != busInternal->listeners.end()) {
         busInternal->listeners.erase(it);
+        listener.ListenerUnRegistered();
     }
     busInternal->listenersLock.Unlock();
 }

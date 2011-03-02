@@ -31,6 +31,7 @@
 #include <qcc/Debug.h>
 
 #include <alljoyn/BusListener.h>
+#include <alljoyn/BusAttachment.h>
 #include <alljoyn/SimpleBusListener.h>
 
 
@@ -94,10 +95,11 @@ SimpleBusListener::BusEvent& SimpleBusListener::BusEvent::operator=(const BusEve
 
 class SimpleBusListener::Internal {
   public:
-    Internal() : acceptEvent(NULL), accepted(false), numWaiters(0) { }
+    Internal() : bus(NULL), acceptEvent(NULL), accepted(false), numWaiters(0) { }
     Event waitEvent;
     qcc::Mutex lock;
     std::queue<BusEvent> eventQueue;
+    BusAttachment* bus;
     Event* acceptEvent;
     bool accepted;
     uint32_t numWaiters;
@@ -231,6 +233,16 @@ QStatus SimpleBusListener::WaitForEvent(BusEvent& busEvent, uint32_t timeout)
     QStatus status = ER_OK;
     internal.lock.Lock();
     busEvent.eventType = NO_EVENT;
+    if (!internal.bus) {
+        status = ER_BUS_WAIT_FAILED;
+        QCC_LogError(status, ("Listener has not been registered with a bus attachment"));
+        goto ExitWait;
+    }
+    if (internal.bus->IsStopping() || !internal.bus->IsStarted()) {
+        status = ER_BUS_WAIT_FAILED;
+        QCC_LogError(status, ("Bus is not running"));
+        goto ExitWait;
+    }
     if (internal.numWaiters > 0) {
         status = ER_BUS_WAIT_FAILED;
         QCC_LogError(status, ("Another thread is already waiting"));
@@ -257,6 +269,37 @@ QStatus SimpleBusListener::WaitForEvent(BusEvent& busEvent, uint32_t timeout)
 ExitWait:
     internal.lock.Unlock();
     return status;
+}
+
+void SimpleBusListener::BusStopping()
+{
+    /*
+     * Check there are no threads waiting
+     */
+    internal.lock.Lock();
+    while (internal.numWaiters > 0) {
+        internal.waitEvent.SetEvent();
+        internal.lock.Unlock();
+        internal.lock.Lock();
+    }
+    if (internal.acceptEvent) {
+        internal.acceptEvent->SetEvent();
+    }
+    internal.lock.Unlock();
+}
+
+void SimpleBusListener::ListenerUnRegistered()
+{
+    internal.lock.Lock();
+    internal.bus = NULL;
+    internal.lock.Unlock();
+}
+
+void SimpleBusListener::ListenerRegistered(BusAttachment* bus)
+{
+    internal.lock.Lock();
+    internal.bus = bus;
+    internal.lock.Unlock();
 }
 
 SimpleBusListener::~SimpleBusListener()

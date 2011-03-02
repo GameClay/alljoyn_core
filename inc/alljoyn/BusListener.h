@@ -32,6 +32,11 @@
 namespace ajn {
 
 /**
+ * Foward declaration.
+ */
+class BusAttachment;
+
+/**
  * Abstract base class implemented by AllJoyn users and called by AllJoyn to inform
  * users of bus related events.
  */
@@ -41,6 +46,19 @@ class BusListener {
      * Virtual destructor for derivable class.
      */
     virtual ~BusListener() { }
+
+    /**
+     * Called by the bus when the listener is registered. This give the listener implementation the
+     * opportunity to save a reference to the bus.
+     *
+     * @param bus  The bus the listener is registered with.
+     */
+    void ListenerRegistered(BusAttachment* bus) { }
+
+    /**
+     * Called by the bus when the listener is unegistered.
+     */
+    void ListenerUnRegistered() { }
 
     /**
      * Called by the bus when an external bus is discovered that is advertising a well-known name
@@ -89,6 +107,12 @@ class BusListener {
     {
         return false;
     }
+
+    /**
+     * Called when a bus this listener is registered with is stopping.
+     */
+    virtual void BusStopping() { }
+
 };
 
 }

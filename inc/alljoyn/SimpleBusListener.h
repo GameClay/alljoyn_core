@@ -159,6 +159,10 @@ class SimpleBusListener : public BusListener {
      */
     uint32_t enabled;
 
+    void ListenerRegistered(BusAttachment* bus);
+    void ListenerUnRegistered();
+    void BusStopping();
+
     void FoundAdvertisedName(const char* name, const QosInfo& advQos, const char* namePrefix);
     void LostAdvertisedName(const char* name, const char* namePrefix);
     void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner);
