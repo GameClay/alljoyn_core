@@ -246,7 +246,9 @@ class ProxyBusObject : public MessageReceiver {
     QStatus SetProperty(const char* iface, const char* property, const qcc::String& s) const { MsgArg arg("s", s.c_str()); return SetProperty(iface, property, arg); }
 
     /**
-     * Returns the interfaces implemented by this object.
+     * Returns the interfaces implemented by this object. Note that all proxy bus objects
+     * automatically inherit the "org.freedesktop.DBus.Peer" which provides the built-in "ping"
+     * method, so this method always returns at least that one interface.
      *
      * @param ifaces     A pointer to an InterfaceDescription array to receive the interfaces. Can be NULL in
      *                   which case no interfaces are returned and the return value gives the number
