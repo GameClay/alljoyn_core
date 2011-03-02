@@ -747,13 +747,31 @@ QStatus BusAttachment::GetSessionFd(SessionId sessionId, SocketFd& sockFd)
     return status;
 }
 
+QStatus BusAttachment::Internal::DispatchMessage(AlarmListener& listener, Message& msg, uint32_t delay)
+{
+    QStatus status;
+
+    if (!bus.isStarted || !dispatcher.IsRunning()) {
+        status = ER_BUS_BUS_NOT_STARTED;
+    } else if (bus.isStopping) {
+        status = ER_BUS_STOPPING;
+    } else {
+        Message*mp = new Message(msg);
+        Alarm alarm(delay, &listener, 0, mp);
+        status = dispatcher.AddAlarm(alarm);
+        if (status != ER_OK) {
+            delete mp;
+        }
+    }
+    return status;
+}
+
 void BusAttachment::Internal::AllJoynSignalHandler(const InterfaceDescription::Member* member,
                                                    const char* srcPath,
                                                    Message& message)
 {
     /* Call listeners back on a non-Rx thread */
-    Alarm alarm(0, static_cast<AlarmListener*>(this), 0, new Message(message));
-    dispatcher.AddAlarm(alarm);
+    DispatchMessage(*this, message);
 }
 
 void BusAttachment::Internal::AlarmTriggered(const Alarm& alarm, QStatus reason)

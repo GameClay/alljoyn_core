@@ -192,6 +192,15 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
      */
     bool CallAcceptListeners(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos);
 
+    /**
+     * This function puts a message on the dispatch thread and deliver it to the specified alarm listener.
+     *
+     * @param listener  The alarm listener to receive the message.
+     * @param msg       The message to queue
+     * @param delay     Time to delay before delivering the message.
+     */
+    QStatus DispatchMessage(AlarmListener& listener, Message& msg, uint32_t delay = 0);
+
   private:
 
     void ThreadExit(qcc::Thread* thread);
