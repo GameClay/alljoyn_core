@@ -205,12 +205,14 @@ size_t ProxyBusObject::GetChildren(ProxyBusObject** children, size_t numChildren
 
 ProxyBusObject* ProxyBusObject::GetChild(const char* inPath)
 {
-    /* Create absolute version of inPath */
-    qcc::String inPathStr = ('/' == inPath[0]) ? inPath : path + '/' + inPath;
+    /* Add a trailing slash to this path */
+    qcc::String pathSlash = (path == "/") ? path : path + '/';
 
+    /* Create absolute version of inPath */
+    qcc::String inPathStr = ('/' == inPath[0]) ? inPath : pathSlash + inPath;
 
     /* Sanity check to make sure path is possible */
-    if ((0 != inPathStr.find(path + '/')) || (inPathStr[inPathStr.length() - 1] == '/')) {
+    if ((0 != inPathStr.find(pathSlash)) || (inPathStr[inPathStr.length() - 1] == '/')) {
         return NULL;
     }
 
@@ -282,10 +284,15 @@ QStatus ProxyBusObject::AddChild(const ProxyBusObject& child)
 QStatus ProxyBusObject::RemoveChild(const char* inPath)
 {
     QStatus status;
-    qcc::String childPath = inPath;
+
+    /* Add a trailing slash to this path */
+    qcc::String pathSlash = (path == "/") ? path : path + '/';
+
+    /* Create absolute version of inPath */
+    qcc::String childPath = ('/' == inPath[0]) ? inPath : pathSlash + inPath;
 
     /* Sanity check to make sure path is possible */
-    if ((0 != childPath.find(path + '/')) || (childPath[childPath.length() - 1] == '/')) {
+    if ((0 != childPath.find(pathSlash)) || (childPath[childPath.length() - 1] == '/')) {
         return ER_BUS_BAD_CHILD_PATH;
     }
 
