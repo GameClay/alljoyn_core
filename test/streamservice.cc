@@ -256,8 +256,12 @@ int main(int argc, char** argv)
                 printf("Failed to write testMessage (%s)\n", ::strerror(errno));
                 status = ER_FAIL;
             }
+#ifdef WIN32
+            closesocket(sockFd);
+#else
             ::shutdown(sockFd, SHUT_RDWR);
             ::close(sockFd);
+#endif
         }
     }
 
