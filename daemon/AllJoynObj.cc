@@ -770,7 +770,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                 VirtualEndpoint* srcEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
                 vDestEp = static_cast<VirtualEndpoint*>(router.FindEndpoint(dest));
                 destB2B = vDestEp ? vDestEp->GetQosCompatibleB2B(inQos) : NULL;
-            
+
                 if (srcB2BEp && srcEp && vDestEp && destB2B) {
                     id = tempId;
                     qosOut = tempQos;
