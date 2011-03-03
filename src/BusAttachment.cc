@@ -436,6 +436,21 @@ QStatus BusAttachment::DeleteInterface(InterfaceDescription& iface)
     }
 }
 
+size_t BusAttachment::GetInterfaces(const InterfaceDescription** ifaces, size_t numIfaces) const
+{
+    size_t count = 0;
+    map<qcc::StringMapKey, InterfaceDescription>::const_iterator it;
+    for (it = busInternal->ifaceDescriptions.begin(); it != busInternal->ifaceDescriptions.end(); it++) {
+        if (it->second.isActivated) {
+            if (ifaces && (count < numIfaces)) {
+                ifaces[count] = &(it->second);
+            }
+            ++count;
+        }
+    }
+    return count;
+}
+
 const InterfaceDescription* BusAttachment::GetInterface(const char* name) const
 {
     map<StringMapKey, InterfaceDescription>::const_iterator it = busInternal->ifaceDescriptions.find(StringMapKey(name));

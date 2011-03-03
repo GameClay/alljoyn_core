@@ -246,10 +246,10 @@ class ProxyBusObject : public MessageReceiver {
      * Returns the interfaces implemented by this object.
      *
      * @param ifaces     A pointer to an InterfaceDescription array to receive the interfaces. Can be NULL in
-     *                   which case no interface are returned and the return value gives the number
+     *                   which case no interfaces are returned and the return value gives the number
      *                   of interface available.
      * @param numIfaces  The size of the InterfaceDescription array. If this value is smaller than the total
-     *                   number of interface only numIfaces will be returned.
+     *                   number of interfaces only numIfaces will be returned.
      *
      * @return  The number of interfaces returned or the total number of interfaces if ifaces is NULL.
      */

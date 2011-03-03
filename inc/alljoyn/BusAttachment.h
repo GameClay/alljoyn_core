@@ -76,7 +76,8 @@ class BusAttachment : public MessageReceiver {
      *
      * Interfaces created with this method need to be activated using InterfaceDescription::Activate()
      * once all of the methods, signals, etc have been added to the interface. The interface will
-     * be unaccessible (via BusAttachment::GetInterface()) until it is activated.
+     * be unaccessible (via BusAttachment::GetInterfaces() or BusAttachment::GetInterface()) until
+     * it is activated.
      *
      * @param name   The requested interface name.
      * @param[out] iface
@@ -109,7 +110,20 @@ class BusAttachment : public MessageReceiver {
     QStatus CreateInterfacesFromXml(const char* xml);
 
     /**
-     * Retrieve an existing InterfaceDescription.
+     * Returns the existing activated InterfaceDescriptions.
+     *
+     * @param ifaces     A pointer to an InterfaceDescription array to receive the interfaces. Can be NULL in
+     *                   which case no interfaces are returned and the return value gives the number
+     *                   of interface available.
+     * @param numIfaces  The size of the InterfaceDescription array. If this value is smaller than the total
+     *                   number of interfaces only numIfaces will be returned.
+     *
+     * @return  The number of interfaces returned or the total number of interfaces if ifaces is NULL.
+     */
+    size_t GetInterfaces(const InterfaceDescription** ifaces = NULL, size_t numIfaces = 0) const;
+
+    /**
+     * Retrieve an existing activated InterfaceDescription.
      *
      * @param name       Interface name
      * @return
