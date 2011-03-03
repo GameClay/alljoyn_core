@@ -36,9 +36,9 @@ struct QosInfo {
     /** Traffic type */
     // {@
     typedef uint8_t TrafficType;
-    static const TrafficType TRAFFIC_MESSAGES          = 0x01;
-    static const TrafficType TRAFFIC_STREAM_UNRELIABLE = 0x02;
-    static const TrafficType TRAFFIC_STREAM_RELIABLE   = 0x04;
+    static const TrafficType TRAFFIC_MESSAGES       = 0x01;
+    static const TrafficType TRAFFIC_RAW_UNRELIABLE = 0x02;
+    static const TrafficType TRAFFIC_RAW_RELIABLE   = 0x04;
     TrafficType traffic;
     // @}
 

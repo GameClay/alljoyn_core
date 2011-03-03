@@ -1183,7 +1183,7 @@ void DaemonTCPTransport::FoundCallback::Found(const qcc::String& busAddr, const 
     // TODO: Qos for TCP is currenlty fixed (hardcoded). However, this may change once tcp transport
     //       can be used for both local and global (Internet-wide) connections
     QosInfo qos;
-    qos.traffic = QosInfo::TRAFFIC_MESSAGES | QosInfo::TRAFFIC_STREAM_RELIABLE;
+    qos.traffic = QosInfo::TRAFFIC_MESSAGES | QosInfo::TRAFFIC_RAW_RELIABLE;
     qos.proximity = QosInfo::PROXIMITY_ANY;
     qos.transports = QosInfo::TRANSPORT_WLAN;
 

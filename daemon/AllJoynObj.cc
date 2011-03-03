@@ -453,7 +453,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
         }
     }
 
-    /* If a streaming sesssion was requested, then teardown the new b2bEp to use it for a raw stream */
+    /* If a raw sesssion was requested, then teardown the new b2bEp to use it for a raw stream */
     if ((replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) && (0 == (qosOut.traffic & QosInfo::TRAFFIC_MESSAGES))) {
         if (reusedB2b || !b2bEp) {
             replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
@@ -462,7 +462,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             SessionMapEntry& entry = ajObj.sessionMap[id];
             status = ajObj.ShutdownEndpoint(*b2bEp, entry.fd);
             if (status != ER_OK) {
-                QCC_LogError(status, ("Failed to shutdown remote endpoint for streaming"));
+                QCC_LogError(status, ("Failed to shutdown remote endpoint for raw usage"));
                 replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
             }
             ajObj.sessionMapLock.Unlock();
@@ -726,7 +726,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                         }
                     }
 
-                    /* Store ep for streaming sessions (for future close and fd extract) */
+                    /* Store ep for raw sessions (for future close and fd extract) */
                     if (qosOut.traffic != QosInfo::TRAFFIC_MESSAGES) {
                         if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
                             sessionMapLock.Lock();
@@ -806,14 +806,14 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
         QCC_LogError(status, ("Failed to respond to org.alljoyn.Daemon.AttachSession"));
     }
 
-    /* If the session is streaming, then close the new ep and preserve the fd */
+    /* If the session is raw, then close the new ep and preserve the fd */
     if (srcB2BEp && (qosOut.traffic != QosInfo::TRAFFIC_MESSAGES)) {
         sessionMapLock.Lock();
         SessionMapEntry& entry = sessionMap[id];
         if (entry.streamingEp) {
             status = ShutdownEndpoint(*entry.streamingEp, entry.fd);
             if (status != ER_OK) {
-                QCC_LogError(status, ("Failed to shutdown streaming endpoint\n"));
+                QCC_LogError(status, ("Failed to shutdown raw endpoint\n"));
             }
             entry.streamingEp = NULL;
         }
@@ -913,7 +913,7 @@ void AllJoynObj::GetSessionFd(const InterfaceDescription::Member* member, Messag
     QStatus status;
     SocketFd sockFd = -1;
 
-    /* Check for a streaming fd waiting to be retrieved */
+    /* Check for a raw fd waiting to be retrieved */
     sessionMapLock.Lock();
     map<SessionId, SessionMapEntry>::iterator it = sessionMap.find(id);
     if (it != sessionMap.end()) {
@@ -921,7 +921,7 @@ void AllJoynObj::GetSessionFd(const InterfaceDescription::Member* member, Messag
         if (it->second.streamingEp) {
             status = ShutdownEndpoint(*it->second.streamingEp, it->second.fd);
             if (status != ER_OK) {
-                QCC_LogError(status, ("Failed to shutdown streaming endpoint"));
+                QCC_LogError(status, ("Failed to shutdown raw endpoint"));
             }
             it->second.streamingEp = NULL;
         }

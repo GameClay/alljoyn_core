@@ -1,6 +1,6 @@
 /**
  * @file
- * Sample implementation of an AllJoyn service that provides a raw stream.
+ * Sample implementation of an AllJoyn service that provides a raw socket.
  */
 
 /******************************************************************************
@@ -51,17 +51,17 @@ using namespace ajn;
 
 namespace org {
 namespace alljoyn {
-namespace stream_test {
-const char* InterfaceName = "org.alljoyn.stream_test";
-const char* DefaultWellKnownName = "org.alljoyn.stream_test";
-const char* ObjectPath = "/org/alljoyn/stream_test";
+namespace raw_test {
+const char* InterfaceName = "org.alljoyn.raw_test";
+const char* DefaultWellKnownName = "org.alljoyn.raw_test";
+const char* ObjectPath = "/org/alljoyn/raw_test";
 }
 }
 }
 
 /** Static top level message bus object */
 static BusAttachment* g_msgBus = NULL;
-static String g_wellKnownName = ::org::alljoyn::stream_test::DefaultWellKnownName;
+static String g_wellKnownName = ::org::alljoyn::raw_test::DefaultWellKnownName;
 
 /** Signal handler */
 static void SigIntHandler(int sig)
@@ -96,7 +96,7 @@ class MyBusListener : public BusListener {
 
 static void usage(void)
 {
-    printf("Usage: streamservice [-h] [-n <name>]\n\n");
+    printf("Usage: rawservice [-h] [-n <name>]\n\n");
     printf("Options:\n");
     printf("   -h         = Print this help message\n");
     printf("   -n <name>  = Well-known name to advertise\n");
@@ -148,7 +148,7 @@ int main(int argc, char** argv)
     }
 
     /* Create message bus */
-    g_msgBus = new BusAttachment("streamservice", true);
+    g_msgBus = new BusAttachment("rawservice", true);
     MyBusListener myBusListener;
 
     /* Start the msg bus */
@@ -179,7 +179,7 @@ int main(int argc, char** argv)
     }
 
     /* Create a session */
-    QosInfo qos(QosInfo::TRAFFIC_STREAM_RELIABLE, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
+    QosInfo qos(QosInfo::TRAFFIC_RAW_RELIABLE, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
     uint32_t replyCode = 0;
     SessionId sessionId;
     status = g_msgBus->CreateSession(g_wellKnownName.c_str(), false, qos, replyCode, sessionId);
@@ -208,21 +208,21 @@ int main(int argc, char** argv)
         printf("Found a new joiner with session id = %u\n", id);
         lastSessionId = id;
 
-        /* Get the streaming socket */
+        /* Get the socket */
         SocketFd sockFd;
         status = g_msgBus->GetSessionFd(id, sockFd);
         if (status != ER_OK) {
             QCC_LogError(status, ("Failed to get socket from GetSessionFd args"));
         }
 
-        /* Write test message on stream */
+        /* Write test message on socket */
         if (status == ER_OK) {
             const char* testMessage = "abcdefghijklmnopqrstuvwxyz";
             size_t testMessageLen = ::strlen(testMessage);
             size_t sent;
             status = qcc::Send(sockFd, testMessage, testMessageLen, sent);
             if (status == ER_OK) {
-                printf("Wrote %lu of %lu bytes of testMessage to stream\n", sent, testMessageLen);
+                printf("Wrote %lu of %lu bytes of testMessage to socket\n", sent, testMessageLen);
             } else {
                 printf("Failed to write testMessage (%s)\n", ::strerror(errno));
                 status = ER_FAIL;

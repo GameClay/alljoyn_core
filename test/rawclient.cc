@@ -1,6 +1,6 @@
 /**
  * @file
- * Sample implementation of an AllJoyn client the uses raw streams.
+ * Sample implementation of an AllJoyn client the uses raw sockets.
  */
 
 /******************************************************************************
@@ -51,10 +51,10 @@ using namespace ajn;
 /** Sample constants */
 namespace org {
 namespace alljoyn {
-namespace stream_test {
-const char* InterfaceName = "org.alljoyn.stream_test";
-const char* DefaultWellKnownName = "org.alljoyn.stream_test";
-const char* ObjectPath = "/org/alljoyn/stream_test";
+namespace raw_test {
+const char* InterfaceName = "org.alljoyn.raw_test";
+const char* DefaultWellKnownName = "org.alljoyn.raw_test";
+const char* ObjectPath = "/org/alljoyn/raw_test";
 }
 }
 }
@@ -62,7 +62,7 @@ const char* ObjectPath = "/org/alljoyn/stream_test";
 /** Static data */
 static BusAttachment* g_msgBus = NULL;
 static Event g_discoverEvent;
-static String g_wellKnownName = ::org::alljoyn::stream_test::DefaultWellKnownName;
+static String g_wellKnownName = ::org::alljoyn::raw_test::DefaultWellKnownName;
 
 /** AllJoynListener receives discovery events from AllJoyn */
 class MyBusListener : public BusListener {
@@ -123,7 +123,7 @@ static void SigIntHandler(int sig)
 
 static void usage(void)
 {
-    printf("Usage: streamclient [-h] [-n <well-known name>]\n\n");
+    printf("Usage: rawclient [-h] [-n <well-known name>]\n\n");
     printf("Options:\n");
     printf("   -h                    = Print this help message\n");
     printf("   -n <well-known name>  = Well-known bus name advertised by bbservice\n");
@@ -174,7 +174,7 @@ int main(int argc, char** argv)
 #endif
 
     /* Create message bus */
-    g_msgBus = new BusAttachment("streamclient", true);
+    g_msgBus = new BusAttachment("rawclient", true);
 
     /* Register a bus listener in order to get discovery indications */
     g_msgBus->RegisterBusListener(g_busListener);
@@ -212,9 +212,9 @@ int main(int argc, char** argv)
     SessionId ssId = g_busListener.GetSessionId();
     if (ssId == 0) {
         status = ER_FAIL;
-        QCC_LogError(status, ("Streaming session id is invalid"));
+        QCC_LogError(status, ("Raw session id is invalid"));
     } else {
-        /* Get the streaming descriptor */
+        /* Get the descriptor */
         SocketFd sockFd;
         QStatus status = g_msgBus->GetSessionFd(ssId, sockFd);
         if (status == ER_OK) {
@@ -224,14 +224,14 @@ int main(int argc, char** argv)
             while ((status == ER_OK) || (status == ER_WOULDBLOCK)) {
                 status = qcc::Recv(sockFd, buf, sizeof(buf) - 1, recvd);
                 if (status == ER_OK) {
-                    QCC_SyncPrintf("Read %d bytes from streaming fd\n", recvd);
+                    QCC_SyncPrintf("Read %d bytes from fd\n", recvd);
                     buf[recvd] = '\0';
                     QCC_SyncPrintf("Bytes: %s\n", buf);
                     break;
                 } else if (status == ER_WOULDBLOCK) {
                     qcc::Sleep(200);
                 } else {
-                    QCC_LogError(status, ("Read from streaming fd failed"));
+                    QCC_LogError(status, ("Read from raw fd failed"));
                 }
             }
         } else {
@@ -242,7 +242,7 @@ int main(int argc, char** argv)
     /* Stop the bus */
     delete g_msgBus;
 
-    printf("streamclient exiting with status %d (%s)\n", status, QCC_StatusText(status));
+    printf("rawclient exiting with status %d (%s)\n", status, QCC_StatusText(status));
 
     return (int) status;
 }

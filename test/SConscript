@@ -33,8 +33,8 @@ progs = [
     env.Program('names',         ['names.cc']),
     env.Program('compression',   ['compression.cc']),
     env.Program('bbcodisco',     ['bb_codisco.cc']),
-    env.Program('streamclient',  ['streamclient.cc']),
-    env.Program('streamservice', ['streamservice.cc'])
+    env.Program('rawclient',     ['rawclient.cc']),
+    env.Program('rawservice',    ['rawservice.cc'])
     ]
 
 if env['OS'] == 'linux' or env['OS'] == 'android':
