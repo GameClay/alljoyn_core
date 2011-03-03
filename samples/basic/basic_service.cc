@@ -29,6 +29,7 @@
 #include <assert.h>
 #include <signal.h>
 #include <stdio.h>
+#include <cstdlib>
 #include <vector>
 
 #include <qcc/String.h>
@@ -46,18 +47,23 @@ using namespace std;
 using namespace qcc;
 using namespace ajn;
 
-
+class MyBusListener;
 
 /** Static top level message bus object */
 static BusAttachment* g_msgBus = NULL;
 
+static SessionId s_sessionId = 0;
+static MyBusListener* s_busListener = NULL;
+
 /*constants*/
+static const char* INTERFACE_NAME = "org.alljoyn.Bus.method_sample";
 static const char* SERVICE_NAME = "org.alljoyn.Bus.method_sample";
 static const char* SERVICE_PATH = "/method_sample";
 
 /** Signal handler
- * with out the signal handler the program will exit without stoping the bus when kill signal is received.  (i.e. [Ctrl + c] is pressed)
- * not using this may result in a memory leak if [cont + c] is used to end this program.
+ * with out the signal handler the program will exit without stoping the bus
+ * when kill signal is received.  (i.e. [Ctrl + c] is pressed) not using this
+ * may result in a memory leak if [cont + c] is used to end this program.
  */
 static void SigIntHandler(int sig)
 {
@@ -75,7 +81,7 @@ class BasicSampleObject : public BusObject {
         BusObject(bus, path)
     {
         /** Add the test interface to this object */
-        const InterfaceDescription* exampleIntf = bus.GetInterface(SERVICE_NAME);
+        const InterfaceDescription* exampleIntf = bus.GetInterface(INTERFACE_NAME);
         assert(exampleIntf);
         AddInterface(*exampleIntf);
 
@@ -89,69 +95,10 @@ class BasicSampleObject : public BusObject {
         }
     }
 
-    /* override virtual function from base BusObject class
-     * this method will call the 'RequestName' from the daemon.
-     * If successful this will register the name 'org.alljoyn.Bus.method_sample'
-     * as the well-known name of this service.*/
-    void ObjectRegistered(void) {
-        // this function must call ObjectRegistered from the base class.
+    void ObjectRegistered()
+    {
         BusObject::ObjectRegistered();
-
-        /* Request a well-known name */
-        /* Note that you cannot make a blocking method call here */
-        const ProxyBusObject& dbusObj = bus.GetDBusProxyObj();
-        MsgArg args[2];
-        args[0].Set("s", SERVICE_NAME);
-        args[1].Set("u", DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_DO_NOT_QUEUE);
-        QStatus status = dbusObj.MethodCallAsync(ajn::org::freedesktop::DBus::InterfaceName,
-                                                 "RequestName",
-                                                 this,
-                                                 static_cast<MessageReceiver::ReplyHandler>(&BasicSampleObject::RequestNameCB),
-                                                 args, sizeof(args) / sizeof(args[0]));
-        if (ER_OK != status) {
-            printf("Failed to request name %s", SERVICE_NAME);
-        }
-    }
-
-    /* The return value for the 'RequestName' call will be checked by this function
-     * the ObjectRegistered function specified that this function should be used
-     * @see { ObjectRegistered() } */
-    void RequestNameCB(Message& msg, void* context)
-    {
-        if (msg->GetArg(0)->v_uint32 == DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
-            printf("Obtained the well-known name: %s\n", SERVICE_NAME);
-            /* Begin Advertising the well known name to remote busses */
-            const ProxyBusObject& alljoynObj = bus.GetAllJoynProxyObj();
-            MsgArg arg("s", SERVICE_NAME);
-            QStatus status = alljoynObj.MethodCallAsync(ajn::org::alljoyn::Bus::InterfaceName,
-                                                        "AdvertiseName",
-                                                        this,
-                                                        static_cast<MessageReceiver::ReplyHandler>(&BasicSampleObject::AdvertiseRequestCB),
-                                                        &arg,
-                                                        1);
-            if (ER_OK != status) {
-                printf("Sending org.alljoyn.Bus.Advertise failed.\n");
-            }
-        } else {
-            printf("Failed to request interface name 'org.alljoyn.Bus.method_sample'\n");
-            exit(1);
-        }
-    }
-
-    void AdvertiseRequestCB(Message& msg, void* context)
-    {
-        /* Make sure request was processed */
-        size_t numArgs;
-        const MsgArg* args;
-        msg->GetArgs(numArgs, args);
-
-        if ((MESSAGE_METHOD_RET != msg->GetType()) || (ALLJOYN_ADVERTISENAME_REPLY_SUCCESS != args[0].v_uint32)) {
-            printf("Failed to advertise name \"%s\". org.alljoyn.Bus.Advertise returned %d\n",
-                   SERVICE_NAME,
-                   args[0].v_uint32);
-        } else {
-            printf("Advertising the well-known name: %s\n", SERVICE_NAME);
-        }
+        printf("ObjectRegistered has been called\n");
     }
 
 
@@ -170,6 +117,25 @@ class BasicSampleObject : public BusObject {
     }
 };
 
+class MyBusListener : public BusListener {
+    void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner)
+    {
+        if (newOwner && (0 == strcmp(busName, SERVICE_NAME))) {
+            printf("NameOwnerChanged: name=%s, oldOwner=%s, newOwner=%s\n",
+                   busName,
+                   previousOwner ? previousOwner : "<none>",
+                   newOwner ? newOwner : "<none>");
+        }
+    }
+    bool AcceptSession(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
+    {
+        printf("Accepting join session request from %s (qos.proximity=%x, qos.traffic=%x, qos.transports=%x)\n",
+               joiner, qos.proximity, qos.traffic, qos.transports);
+        printf("Session name=%s, id=%d\n", sessionName, id);
+        return true;
+    }
+};
+
 /** Main entry point */
 int main(int argc, char** argv, char** envArg)
 {
@@ -181,11 +147,14 @@ int main(int argc, char** argv, char** envArg)
     /* Install SIGINT handler */
     signal(SIGINT, SigIntHandler);
 
+    const char* connectArgs = getenv("BUS_ADDRESS");
+    if (connectArgs == NULL) {
 #ifdef _WIN32
-    qcc::String connectArgs = "tcp:addr=127.0.0.1,port=9955";
+        connectArgs = "tcp:addr=127.0.0.1,port=9955";
 #else
-    qcc::String connectArgs = "unix:abstract=alljoyn";
+        connectArgs = "unix:abstract=alljoyn";
 #endif
+    }
 
     /* Create message bus */
     g_msgBus = new BusAttachment("myApp", true);
@@ -193,7 +162,7 @@ int main(int argc, char** argv, char** envArg)
 
     /* Add org.alljoyn.Bus.method_sample interface */
     InterfaceDescription* testIntf = NULL;
-    status = g_msgBus->CreateInterface(SERVICE_NAME, testIntf);
+    status = g_msgBus->CreateInterface(INTERFACE_NAME, testIntf);
     if (status == ER_OK) {
         printf("Interface Created.\n");
         testIntf->AddMethod("cat", "ss",  "s", "inStr1,inStr2,outStr", 0);
@@ -202,33 +171,82 @@ int main(int argc, char** argv, char** envArg)
         printf("Failed to create interface 'org.alljoyn.Bus.method_sample'\n");
     }
 
+    /* Register a bus listener */
+    if (ER_OK == status) {
+        s_busListener = new MyBusListener();
+        g_msgBus->RegisterBusListener(*s_busListener);
+    }
+
+    BasicSampleObject testObj(*g_msgBus, SERVICE_PATH);
+
     /* Start the msg bus */
     status = g_msgBus->Start();
     if (ER_OK == status) {
         printf("BusAttachement started.\n");
         /* Register  local objects and connect to the daemon */
-        BasicSampleObject testObj(*g_msgBus, SERVICE_PATH);
         g_msgBus->RegisterBusObject(testObj);
 
         /* Create the client-side endpoint */
-        status = g_msgBus->Connect(connectArgs.c_str());
+        status = g_msgBus->Connect(connectArgs);
         if (ER_OK != status) {
-            printf("Failed to connect to \"%s\"\n", connectArgs.c_str());
+            printf("Failed to connect to \"%s\"\n", connectArgs);
             exit(1);
         } else {
-            printf("Connected to '%s'\n", connectArgs.c_str());
+            printf("Connected to '%s'\n", connectArgs);
         }
-
-        if (ER_OK == status) {
-            /*
-             * Wait until bus is stopped
-             */
-            g_msgBus->WaitStop();
-        }
-
     } else {
         printf("BusAttachment::Start failed\n");
     }
+
+    /*
+     * Advertise this service on the bus
+     * There are three steps to advertising this service on the bus
+     * 1) Request a well-known name that will be used by the client to discover
+     *    this service
+     * 2) Create a session
+     * 3) Advertise the well-known name
+     */
+    /* Request name */
+    if (ER_OK == status) {
+        uint32_t disposition = 0;
+        uint32_t flags = DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_DO_NOT_QUEUE;
+        QStatus status = g_msgBus->RequestName(SERVICE_NAME, flags, disposition);
+        if ((ER_OK != status) || (disposition != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER)) {
+            printf("RequestName(%s) failed (status=%s, disposition=%d)\n", SERVICE_NAME, QCC_StatusText(status), disposition);
+            status = (status == ER_OK) ? ER_FAIL : status;
+        }
+    }
+
+    /* Create session */
+    if (ER_OK == status) {
+        uint32_t disposition = 0;
+        QosInfo qos(QosInfo::TRAFFIC_MESSAGES, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
+        status = g_msgBus->CreateSession(SERVICE_NAME, false, qos, disposition, s_sessionId);
+        if (ER_OK != status) {
+            printf("CreateSession failed (%s)\n", QCC_StatusText(status));
+        } else if (disposition != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
+            status = ER_FAIL;
+            printf("CreateSession returned failed disposition (%u)\n", disposition);
+        }
+    }
+
+    /* Advertise name */
+    if (ER_OK == status) {
+        uint32_t disposition = 0;
+        status = g_msgBus->AdvertiseName(SERVICE_NAME, disposition);
+        if ((status != ER_OK) || (disposition != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS)) {
+            printf("Failed to advertise name %s (%s) (disposition=%d)\n", SERVICE_NAME, QCC_StatusText(status), disposition);
+            status = (status == ER_OK) ? ER_FAIL : status;
+        }
+    }
+
+    if (ER_OK == status) {
+        /*
+         * Wait until bus is stopped
+         */
+        g_msgBus->WaitStop();
+    }
+
     /* Clean up msg bus */
     if (g_msgBus) {
         BusAttachment* deleteMe = g_msgBus;

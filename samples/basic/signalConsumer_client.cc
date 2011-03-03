@@ -53,11 +53,14 @@ using namespace qcc;
 using namespace ajn;
 
 /*constants*/
+static const char* INTERFACE_NAME = "org.alljoyn.Bus.signal_sample";
 static const char* SERVICE_NAME = "org.alljoyn.Bus.signal_sample";
 static const char* SERVICE_PATH = "/";
 
 /** Static top level message bus object */
 static BusAttachment* g_msgBus = NULL;
+
+static bool s_joinComplete = false;
 
 /** Signal handler */
 static void SigIntHandler(int sig)
@@ -71,34 +74,36 @@ static void SigIntHandler(int sig)
     exit(0);
 }
 
-/** AllJoynListener receives discovery events from AllJoyn */
+/** AlljounListener receives discovery events from AllJoyn */
 class MyBusListener : public BusListener {
   public:
 
     MyBusListener() : BusListener(), sessionId(0) { }
 
-    void FoundName(const char* name, const char* guid, const char* namePrefix, const char* busAddress)
+    void FoundAdvertisedName(const char* name, const QosInfo& advQos, const char* namePrefix)
     {
         if (0 == strcmp(name, SERVICE_NAME)) {
-            printf("FoundName(name=%s, guid=%s, addr=%s)\n", name, guid, busAddress);
-            /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
+            printf("FoundAdvertisedName(name=%s, prefix=%s)\n", name, namePrefix);
+            /* We found a remote bus that is advertising basic sercice's  well-known name so connect to it */
             uint32_t disposition;
-            SessionId sessionId;
             QosInfo qos;
             QStatus status = g_msgBus->JoinSession(name, disposition, sessionId, qos);
             if ((ER_OK != status) || (ALLJOYN_JOINSESSION_REPLY_SUCCESS != disposition)) {
-                printf("JoinSession failed (status=%s, disposition=%d)", QCC_StatusText(status), disposition);
+                printf("JoinSession failed (status=%s, disposition=%d)\n", QCC_StatusText(status), disposition);
+            } else {
+                printf("JoinSession SUCCESS (Session id=%d)\n", sessionId);
             }
         }
+        s_joinComplete = true;
     }
 
-    void NameOwnerChanged(const char* name, const char* previousOwner, const char* newOwner)
+    void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner)
     {
-        if (newOwner && (0 == strcmp(name, SERVICE_NAME))) {
-            printf("NameOwnerChanged(%s, %s, %s)\n",
-                   name,
-                   previousOwner ? previousOwner : "null",
-                   newOwner ? newOwner : "null");
+        if (newOwner && (0 == strcmp(busName, SERVICE_NAME))) {
+            printf("NameOwnerChanged: name=%s, oldOwner=%s, newOwner=%s\n",
+                   busName,
+                   previousOwner ? previousOwner : "<none>",
+                   newOwner ? newOwner : "<none>");
         }
     }
 
@@ -114,60 +119,31 @@ static MyBusListener g_busListener;
 class SignalListeningObject : public BusObject {
   public:
     SignalListeningObject(BusAttachment& bus, const char* path) :
-        BusObject(bus, path)
+        BusObject(bus, path),
+        nameChangedMember(NULL)
     {
-        /* Empty constructor */
-    }
-
-    QStatus SubscribeNameChangedSignal(void) {
-
-        QStatus status;
-
-        /* Register a bus listener in order to get discovery indications */
-        g_msgBus->RegisterBusListener(g_busListener);
-        printf("BusListener Registered.\n");
-
-        /* Begin discovery on the well-known name of the service to be called */
-        Message reply(bus);
-        const ProxyBusObject& alljoynProxyObj = g_msgBus->GetAllJoynProxyObj();
-
-        MsgArg serviceName("s", SERVICE_NAME);
-        status = alljoynProxyObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName,
-                                            "FindName",
-                                            &serviceName,
-                                            1,
-                                            reply,
-                                            5000);
-        if (ER_OK != status) {
-            printf("%s.FindName failed\n", ajn::org::alljoyn::Bus::InterfaceName);
+        /* Add org.alljoyn.Bus.signal_sample interface */
+        InterfaceDescription* intf = NULL;
+        QStatus status = bus.CreateInterface(INTERFACE_NAME, intf);
+        if (status == ER_OK) {
+            printf("Interface created successfully.\n");
+            intf->AddSignal("nameChanged", "s", "newName", 0);
+            intf->AddProperty("name", "s", PROP_ACCESS_RW);
+            intf->Activate();
         } else {
-            printf("%s.FindName method called.\n", ajn::org::alljoyn::Bus::InterfaceName);
+            printf("Failed to create interface %s\n", INTERFACE_NAME);
         }
 
-        ProxyBusObject remoteObj;
-        if (ER_OK == status) {
-            remoteObj = ProxyBusObject(bus, SERVICE_NAME, SERVICE_PATH, g_busListener.GetSessionId());
-            status = remoteObj.IntrospectRemoteObject();
-            if (ER_OK != status) {
-                printf("Introspection of %s (path=%s) failed\n", SERVICE_NAME, SERVICE_PATH);
-                printf("Make sure the service is running before launching the client.\n");
-            }
-            ;
-        }
+        status = AddInterface(*intf);
 
-        const InterfaceDescription* intf = remoteObj.GetInterface(SERVICE_NAME);
-        assert(intf);
-        status = remoteObj.AddInterface(*intf);
-        if (ER_OK == status) {
-            printf("the %s interface has been added to the ProxyBusObject.\n", SERVICE_NAME);
+        if (status == ER_OK) {
+            printf("Interface successfully added to the bus.\n");
+            /* Register the signal handler 'nameChanged' with the bus*/
+            nameChangedMember = intf->GetMember("nameChanged");
+            assert(nameChangedMember);
         } else {
-            printf("Error adding %s interface to the ProxyBusObject.\n", SERVICE_NAME);
+            printf("Failed to Add interface: %s", INTERFACE_NAME);
         }
-
-        const InterfaceDescription::Member* nameChangedMember = intf->GetMember("nameChanged");
-        assert("nameChangedMember");
-
-
 
         /* register the signal handler for the the 'nameChanged' signal */
         status =  bus.RegisterSignalHandler(this,
@@ -179,26 +155,11 @@ class SignalListeningObject : public BusObject {
         } else {
             printf("Registered signal handler for %s.nameChanged\n", SERVICE_NAME);
         }
-
-        /* add the match rules */
-        const ProxyBusObject& dbusObj = bus.GetDBusProxyObj();
-
-        MsgArg arg("s", "type='signal',interface='org.alljoyn.Bus.signal_sample',member='nameChanged'");
-        status = dbusObj.MethodCall("org.freedesktop.DBus", "AddMatch", &arg, 1, reply);
-
-        if (status != ER_OK) {
-            printf("Failed to register Match rule for 'org.alljoyn.Bus.signal_sample.nameChanged\n");
-            printf("reply msg: %s\n", reply->ToString().c_str());
-            printf("Status %d (%s)\n", status, QCC_StatusText(status));
-        } else {
-            printf("Registered Match rule for 'org.alljoyn.Bus.signal_sample.nameChanged signal\n");
-        }
-        return status;
+        /* Empty constructor */
     }
 
-    void ObjectRegistered(void)
-    {
-        BusObject::ObjectRegistered();
+    QStatus SubscribeNameChangedSignal(void) {
+        return bus.AddMatch("type='signal',interface='org.alljoyn.Bus.signal_sample',member='nameChanged'");
     }
 
     void NameChangedSignalHandler(const InterfaceDescription::Member* member,
@@ -209,6 +170,9 @@ class SignalListeningObject : public BusObject {
         printf("\tNew name: %s\n", msg->GetArg(0)->v_string.str);
 
     }
+
+  private:
+    const InterfaceDescription::Member* nameChangedMember;
 
 };
 
@@ -222,37 +186,63 @@ int main(int argc, char** argv, char** envArg)
     /* Install SIGINT handler */
     signal(SIGINT, SigIntHandler);
 
+    const char* connectArgs = getenv("BUS_ADDRESS");
+    if (connectArgs == NULL) {
 #ifdef _WIN32
-    qcc::String connectArgs = "tcp:addr=127.0.0.1,port=9955";
+        connectArgs = "tcp:addr=127.0.0.1,port=9955";
 #else
-    qcc::String connectArgs = "unix:abstract=alljoyn";
+        connectArgs = "unix:abstract=alljoyn";
 #endif
+    }
 
     g_msgBus = new BusAttachment("myApp", true);
+
+    /* Start the msg bus */
     status = g_msgBus->Start();
-    if (status == ER_OK) {
-        printf("BusAttachment started\n");
-        /* Register object */
-        SignalListeningObject object(*g_msgBus, SERVICE_PATH);
+    if (ER_OK != status) {
+        printf("BusAttachment::Start failed\n");
+    } else {
+        printf("BusAttachment started.\n");
+    }
 
-        g_msgBus->RegisterBusObject(object);
-
-        /* Create the client-side endpoint */
-        status = g_msgBus->Connect(connectArgs.c_str());
-
-        if (status != ER_OK) {
-            printf("failed to connect to '%s'\n", connectArgs.c_str());
+    /* Connect to the bus */
+    if (ER_OK == status) {
+        status = g_msgBus->Connect(connectArgs);
+        if (ER_OK != status) {
+            printf("BusAttachment::Connect(\"%s\") failed\n", connectArgs);
         } else {
-            printf("BusAttachement connected to %s\n", connectArgs.c_str());
+            printf("BusAttchement connected to %s\n", connectArgs);
         }
-        if (ER_OK == status) {
-            status = object.SubscribeNameChangedSignal();
-            if (status != ER_OK) {
-                printf("Failed to Subscribe to the Name Changed Signal.\n");
-            } else {
-                printf("Successfully Subscribed to the Name Changed Signal.\n");
-            }
+    }
 
+    SignalListeningObject object(*g_msgBus, SERVICE_PATH);
+    /* Register object */
+    g_msgBus->RegisterBusObject(object);
+
+
+    /* Register a bus listener in order to get discovery indications */
+    g_msgBus->RegisterBusListener(g_busListener);
+    printf("BusListener Registered.\n");
+    if (ER_OK == status) {
+        uint32_t disposition = 0;
+        status = g_msgBus->FindAdvertisedName(SERVICE_NAME, disposition);
+        if ((status != ER_OK) || (disposition != ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS)) {
+            printf("org.alljoyn.Bus.FindAdvertisedName failed (%s) (disposition=%d)\n", QCC_StatusText(status), disposition);
+            status = (status == ER_OK) ? ER_FAIL : status;
+        }
+    }
+
+    /* Wait for join session to complete */
+    while (!s_joinComplete) {
+        sleep(1);
+    }
+
+    if (status == ER_OK) {
+        status = object.SubscribeNameChangedSignal();
+        if (status != ER_OK) {
+            printf("Failed to Subscribe to the Name Changed Signal.\n");
+        } else {
+            printf("Successfully Subscribed to the Name Changed Signal.\n");
         }
     }
 
