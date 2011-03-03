@@ -534,18 +534,11 @@ int main(int argc, char** argv)
                                             reply);
             } else if (discoverRemote) {
                 /* Begin discovery on the well-known name of the service to be called */
-                Message reply(*g_msgBus);
-                const ProxyBusObject& alljoynObj = g_msgBus->GetAllJoynProxyObj();
-
-                MsgArg serviceName("s", g_wellKnownName.c_str());
-                status = alljoynObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName,
-                                               "FindAdvertisedName",
-                                               &serviceName,
-                                               1,
-                                               reply,
-                                               60000);
-                if (ER_OK != status) {
-                    QCC_LogError(status, ("%s.FindAdvertisedName failed", ::ajn::org::alljoyn::Bus::InterfaceName));
+                uint32_t disposition = 0;
+                status = g_msgBus->FindAdvertisedName(g_wellKnownName.c_str(), disposition);
+                if ((status != ER_OK) || (disposition != ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS)) {
+                    status = (status == ER_OK) ? ER_FAIL : status;
+                    QCC_LogError(status, ("FindAdvertisedName failed (disposition=%d)", disposition));
                 }
             }
         }

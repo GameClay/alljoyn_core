@@ -195,24 +195,17 @@ int main(int argc, char** argv)
 
     /* Begin discovery for the well-known name of the service */
     if (ER_OK == status) {
-        Message reply(*g_msgBus);
-        const ProxyBusObject& alljoynObj = g_msgBus->GetAllJoynProxyObj();
-
-        MsgArg serviceName("s", g_wellKnownName.c_str());
-        status = alljoynObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName,
-                                       "FindAdvertisedName",
-                                       &serviceName,
-                                       1,
-                                       reply,
-                                       6000);
-        if (ER_OK != status) {
+        uint32_t disposition = 0;
+        status = g_msgBus->FindAdvertisedName(g_wellKnownName.c_str(), disposition);
+        if ((status != ER_OK) || (disposition != ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS)) {
             QCC_LogError(status, ("%s.FindAdvertisedName failed", ::ajn::org::alljoyn::Bus::InterfaceName));
+            status = (status == ER_OK) ? ER_FAIL : status;
         }
+    }
 
-        /* Wait for the "FoundAdvertisedName" signal */
-        if (ER_OK == status) {
-            status = Event::Wait(g_discoverEvent);
-        }
+    /* Wait for the "FoundAdvertisedName" signal */
+    if (ER_OK == status) {
+        status = Event::Wait(g_discoverEvent);
     }
 
     /* Check the session */
@@ -222,18 +215,9 @@ int main(int argc, char** argv)
         QCC_LogError(status, ("Streaming session id is invalid"));
     } else {
         /* Get the streaming descriptor */
-        MsgArg arg;
-        arg.Set("u", ssId);
-        const ProxyBusObject& ajObj = g_msgBus->GetAllJoynProxyObj();
-        Message reply(*g_msgBus);
-        QStatus status = ajObj.MethodCall(ajn::org::alljoyn::Bus::InterfaceName, "GetSessionFd", &arg, 1, reply);
-        if ((status == ER_OK) && (reply->GetType() == MESSAGE_METHOD_RET)) {
-            size_t na;
-            const MsgArg* args;
-            reply->GetArgs(na, args);
-            SocketFd sockFd;
-            status = args[0].Get("h", &sockFd);
-
+        SocketFd sockFd;
+        QStatus status = g_msgBus->GetSessionFd(ssId, sockFd);
+        if (status == ER_OK) {
             /* Attempt to read test string from fd */
             char buf[256];
             size_t recvd;
@@ -251,15 +235,10 @@ int main(int argc, char** argv)
                 }
             }
         } else {
-            if (ER_OK == status) {
-                status = ER_FAIL;
-                QCC_LogError(status, ("GetSessionFd failed: %s\n", reply->ToString().c_str()));
-            } else {
-                QCC_LogError(status, ("org.alljoyn.Bus.GetSessionFd failed"));
-            }
+            QCC_LogError(status, ("GetSessionFd failed"));
         }
     }
-
+    
     /* Stop the bus */
     delete g_msgBus;
 
