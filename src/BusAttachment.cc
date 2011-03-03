@@ -569,6 +569,193 @@ QStatus BusAttachment::AddLogonEntry(const char* authMechanism, const char* user
     }
 }
 
+QStatus BusAttachment::RequestName(const char* requestedName, uint32_t flags, uint32_t& disposition)
+{
+    if (!IsConnected()) {
+        return ER_BUS_NOT_CONNECTED;
+    }
+
+    Message reply(*this);
+    MsgArg args[2];
+    size_t numArgs = ArraySize(args);
+
+    MsgArg::Set(args, numArgs, "su", requestedName, flags);
+
+    const ProxyBusObject& dbusObj = this->GetDBusProxyObj();
+    QStatus status = dbusObj.MethodCall(org::freedesktop::DBus::InterfaceName, "RequestName", args, numArgs, reply);
+    if (ER_OK == status) {
+        status = reply->GetArgs("u", &disposition);
+    } else {
+        String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        QCC_LogError(status, ("%s.RequestName returned ERROR_MESSAGE (error=%s, \"%s\")",
+                              org::freedesktop::DBus::InterfaceName,
+                              errName,
+                              errMsg.c_str()));
+    }
+    return status;
+}
+
+QStatus BusAttachment::ReleaseName(const char* name, uint32_t& disposition)
+{
+    if (!IsConnected()) {
+        return ER_BUS_NOT_CONNECTED;
+    }
+
+    Message reply(*this);
+    MsgArg args[1];
+    size_t numArgs = ArraySize(args);
+
+    MsgArg::Set(args, numArgs, "s", name);
+
+    const ProxyBusObject& dbusObj = this->GetDBusProxyObj();
+    QStatus status = dbusObj.MethodCall(org::freedesktop::DBus::InterfaceName, "ReleaseName", args, numArgs, reply);
+    if (ER_OK == status) {
+        status = reply->GetArgs("u", &disposition);
+    } else {
+        String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        QCC_LogError(status, ("%s.ReleaseName returned ERROR_MESSAGE (error=%s, \"%s\")",
+                              org::freedesktop::DBus::InterfaceName,
+                              errName,
+                              errMsg.c_str()));
+    }
+    return status;
+}
+
+QStatus BusAttachment::AddMatch(const char* rule)
+{
+    if (!IsConnected()) {
+        return ER_BUS_NOT_CONNECTED;
+    }
+
+    Message reply(*this);
+    MsgArg args[1];
+    size_t numArgs = ArraySize(args);
+
+    MsgArg::Set(args, numArgs, "s", rule);
+
+    const ProxyBusObject& dbusObj = this->GetDBusProxyObj();
+    QStatus status = dbusObj.MethodCall(org::freedesktop::DBus::InterfaceName, "AddMatch", args, numArgs, reply);
+    if (ER_OK != status) {
+        String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        QCC_LogError(status, ("%s.AddMatch returned ERROR_MESSAGE (error=%s, \"%s\")",
+                              org::freedesktop::DBus::InterfaceName,
+                              errName,
+                              errMsg.c_str()));
+    }
+    return status;
+}
+
+QStatus BusAttachment::FindAdvertisedName(const char* namePrefix, uint32_t& disposition)
+{
+    if (!IsConnected()) {
+        return ER_BUS_NOT_CONNECTED;
+    }
+
+    Message reply(*this);
+    MsgArg args[1];
+    size_t numArgs = ArraySize(args);
+
+    MsgArg::Set(args, numArgs, "s", namePrefix);
+
+    const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
+    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "FindAdvertisedName", args, numArgs, reply);
+    if (ER_OK == status) {
+        status = reply->GetArgs("u", &disposition);
+    } else {
+        String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        QCC_LogError(status, ("%s.FindAdvertisedName returned ERROR_MESSAGE (error=%s, \"%s\")",
+                              org::alljoyn::Bus::InterfaceName,
+                              errName,
+                              errMsg.c_str()));
+    }
+    return status;
+}
+
+QStatus BusAttachment::CancelFindAdvertisedName(const char* namePrefix, uint32_t& disposition)
+{
+    if (!IsConnected()) {
+        return ER_BUS_NOT_CONNECTED;
+    }
+
+    Message reply(*this);
+    MsgArg args[1];
+    size_t numArgs = ArraySize(args);
+
+    MsgArg::Set(args, numArgs, "s", namePrefix);
+
+    const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
+    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "CancelFindAdvertisedName", args, numArgs, reply);
+    if (ER_OK == status) {
+        status = reply->GetArgs("u", &disposition);
+    } else {
+        String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        QCC_LogError(status, ("%s.CancelFindAdvertisedName returned ERROR_MESSAGE (error=%s, \"%s\")",
+                              org::alljoyn::Bus::InterfaceName,
+                              errName,
+                              errMsg.c_str()));
+    }
+    return status;
+}
+
+QStatus BusAttachment::AdvertiseName(const char* name, uint32_t& disposition)
+{
+    if (!IsConnected()) {
+        return ER_BUS_NOT_CONNECTED;
+    }
+
+    Message reply(*this);
+    MsgArg args[1];
+    size_t numArgs = ArraySize(args);
+
+    MsgArg::Set(args, numArgs, "s", name);
+
+    const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
+    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "AdvertiseName", args, numArgs, reply);
+    if (ER_OK == status) {
+        status = reply->GetArgs("u", &disposition);
+    } else {
+        String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        QCC_LogError(status, ("%s.AdvertiseName returned ERROR_MESSAGE (error=%s, \"%s\")",
+                              org::alljoyn::Bus::InterfaceName,
+                              errName,
+                              errMsg.c_str()));
+    }
+    return status;
+}
+
+QStatus BusAttachment::CancelAdvertiseName(const char* name, uint32_t& disposition)
+{
+    if (!IsConnected()) {
+        return ER_BUS_NOT_CONNECTED;
+    }
+
+    Message reply(*this);
+    MsgArg args[1];
+    size_t numArgs = ArraySize(args);
+
+    MsgArg::Set(args, numArgs, "s", name);
+
+    const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
+    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "CancelAdvertiseName", args, numArgs, reply);
+    if (ER_OK == status) {
+        status = reply->GetArgs("u", &disposition);
+    } else {
+        String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        QCC_LogError(status, ("%s.CancelAdvertiseName returned ERROR_MESSAGE (error=%s, \"%s\")",
+                              org::alljoyn::Bus::InterfaceName,
+                              errName,
+                              errMsg.c_str()));
+    }
+    return status;
+}
+
 void BusAttachment::RegisterBusListener(BusListener& listener)
 {
     busInternal->listenersLock.Lock();

@@ -373,6 +373,116 @@ class BusAttachment : public MessageReceiver {
     QStatus AddLogonEntry(const char* authMechanism, const char* userName, const char* password);
 
     /**
+     * Request a well-known name.
+     * This method is a shortcut/helper that issues an org.freedesktop.DBus.RequestName method call to the local daemon
+     * and interprets the response.
+     *
+     * @param[in]  requestedName  Well-known name being requested.
+     * @param[in]  flags          Bitmask of DBUS_NAME_FLAG_* defines (see DBusStd.h)
+     * @param[out] disposition    DBUS_REQUEST_NAME_REPLY_* response to org.freedesktop.DBus.RequestName (see DBusStd.h).
+     *                            disposition is only valid if return value is #ER_OK.
+     *
+     * @return
+     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+     *      - Other error status codes indicating a failure.
+     */
+    QStatus RequestName(const char* requestedName, uint32_t flags, uint32_t& disposition);
+
+    /**
+     * Release a previously requeted well-known name.
+     * This method is a shortcut/helper that issues an org.freedesktop.DBus.ReleaseName method call to the local daemon
+     * and interprets the response.
+     *
+     * @param[in]  name          Well-known name being released.
+     * @param[out] disposition   DBUS_RELEASE_NAME_REPLY_* response to org.freedesktop.DBus.ReleaseName (see DBusStd.h).
+     *                           disposition is only valid if return value is #ER_OK.
+     *
+     * @return
+     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+     *      - Other error status codes indicating a failure.
+     */
+    QStatus ReleaseName(const char* name, uint32_t& disposition);
+
+    /**
+     * Add a DBus match rule.
+     * This method is a shortcut/helper that issues an org.freedesktop.DBus.AddMatch method call to the local daemon.
+     *
+     * @param[in]  rule          Match rule to be added (see DBus specification for format of this string).
+     *
+     * @return
+     *      - #ER_OK if the AddMatch request was successful.
+     *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+     *      - Other error status codes indicating a failure.
+     */
+    QStatus AddMatch(const char* rule);
+
+    /**
+     * Advertise the existence of a well-known name to other (possibly disconnected) AllJoyn daemons.
+     *
+     * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.AdvertisedName method call to the local daemon
+     * and interprets the response.
+     *
+     * @param[in]  name          the well-known name to advertise. (Must be owned by the caller via RequestName).
+     * @param[out] disposition   ALLJOYN_ADVERTISEDNAME_REPLY_* constant from AllJoynStd.h
+     *
+     * @return
+     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+     *      - Other error status codes indicating a failure.
+     */
+    QStatus AdvertiseName(const char* name, uint32_t& disposition);
+
+    /**
+     * Stop advertising the existence of a well-known name to other AllJoyn daemons.
+     *
+     * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.CancelAdvertiseName method call to the local daemon
+     * and interprets the response.
+     *
+     * @param[in]  name          A well-known name that was previously advertised via AdvertiseName.
+     * @param[out] disposition   ALLJOYN_CANCELADVERTISENAME_REPLY_* constant from AllJoynStd.h
+     *
+     * @return
+     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+     *      - Other error status codes indicating a failure.
+     */
+    QStatus CancelAdvertiseName(const char* name, uint32_t& disposition);
+
+    /**
+     * Register interest in a well-known name prefix for the purpose of discovery.
+     * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.FindAdvertisedName method call to the local daemon
+     * and interprets the response.
+     *
+     * @param[in]  namePrefix    Well-known name prefix that application is interested in receiving BusListener::FoundAdvertisedName
+     *                           notifications about.
+     * @param[out] disposition   ALLJOYN_FINDADVERTISEDNAME_REPLY_* constant from AllJoynStd.h
+     *
+     * @return
+     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+     *      - Other error status codes indicating a failure.
+     */
+    QStatus FindAdvertisedName(const char* namePrefix, uint32_t& disposition);
+
+    /**
+     * Cancel interest in a well-known name prefix that was previously registered with FindAdvertisedName.
+     * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.CancelFindAdvertisedName method call to the local daemon
+     * and interprets the response.
+     *
+     * @param[in]  namePrefix    Well-known name prefix that application is no longer interested in receiving
+     *                           BusListener::FoundAdvertisedName notifications about.
+     * @param[out] disposition   ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_* constant from AllJoynStd.h
+     *
+     * @return
+     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+     *      - Other error status codes indicating a failure.
+     */
+    QStatus CancelFindAdvertisedName(const char* namePrefix, uint32_t& disposition);
+
+    /**
      * Create a session.
      * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.CreateSession method call to the local daemon
      * and interprets the response.
