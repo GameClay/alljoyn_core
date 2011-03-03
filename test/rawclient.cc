@@ -238,7 +238,7 @@ int main(int argc, char** argv)
             QCC_LogError(status, ("GetSessionFd failed"));
         }
     }
-    
+
     /* Stop the bus */
     delete g_msgBus;
 
