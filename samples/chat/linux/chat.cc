@@ -225,31 +225,14 @@ int main(int argc, char** argv)
         }
     }
 
-    const ProxyBusObject& dbusObj = s_bus->GetDBusProxyObj();
-    const ProxyBusObject& ajObj = bus->GetAllJoynProxyObj();
-
     /* Advertise or discover based on command line options */
     if (!s_advertisedName.empty()) {
         /* Request name */
-        MsgArg args[2];
-        args[0].Set("s", s_advertisedName.c_str());
-        args[1].Set("u", DBUS_NAME_FLAG_DO_NOT_QUEUE);
-        Message reply(*s_bus);
-        QStatus status = dbusObj.MethodCall(org::freedesktop::DBus::InterfaceName,
-                                            "RequestName",
-                                            args,
-                                            2,
-                                            reply);
-        if (ER_OK == status) {
-            size_t na;
-            const MsgArg* replyArgs;
-            reply->GetArgs(na, replyArgs);
-            if (replyArgs[0].v_uint32 != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
-                status = ER_FAIL;
-                printf("org.freedesktop.DBus.ReplyName failed response=%u\n", replyArgs[0].v_uint32);
-            }
-        } else {
-            printf("Failed to request name %s (%s)\n", s_advertisedName.c_str(), QCC_StatusText(status));
+        uint32_t disposition = 0;
+        QStatus status = s_bus->RequestName(s_advertisedName.c_str(), DBUS_NAME_FLAG_DO_NOT_QUEUE, disposition);
+        if ((ER_OK != status) || (disposition != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER)) {
+            printf("RequestName(%s) failed (status=%s, disposition=%d)\n", s_advertisedName.c_str(), QCC_StatusText(status), disposition);
+            status = (status == ER_OK) ? ER_FAIL : status;
         }
 
         /* Create session */
@@ -267,37 +250,20 @@ int main(int argc, char** argv)
 
         /* Advertise name */
         if (ER_OK == status) {
-            MsgArg arg("s", s_advertisedName.c_str());
-            status = ajObj.MethodCall(org::alljoyn::Bus::InterfaceName, "AdvertiseName", &arg, 1, reply);
-            if (ER_OK == status) {
-                size_t na;
-                const MsgArg* replyArgs;
-                reply->GetArgs(na, replyArgs);
-                if (replyArgs[0].v_uint32 != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS) {
-                    status = ER_FAIL;
-                    printf("org.alljoyn.Bus.AdvertiseName failed response=%u\n", replyArgs[0].v_uint32);
-                }
-            } else {
-                printf("Failed to advertise name %s (%s)\n", s_advertisedName.c_str(), QCC_StatusText(status));
+            uint32_t disposition = 0;
+            status = s_bus->AdvertiseName(s_advertisedName.c_str(), disposition);
+            if ((status != ER_OK) || (disposition != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS)) {
+                printf("Failed to advertise name %s (%s) (disposition=%d)\n", s_advertisedName.c_str(), QCC_StatusText(status), disposition);
+                status = (status == ER_OK) ? ER_FAIL : status;
             }
         }
     } else {
         /* Discover name */
-        MsgArg serviceName("s", s_joinName.c_str());
-        Message reply(*bus);
-        status = ajObj.MethodCall(::org::alljoyn::Bus::InterfaceName,
-                                  "FindAdvertisedName",
-                                  &serviceName,
-                                  1,
-                                  reply);
-        if (ER_OK == status) {
-            if (reply->GetType() != MESSAGE_METHOD_RET) {
-                status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
-            } else if (reply->GetArg(0)->v_uint32 != ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS) {
-                status = ER_FAIL;
-            }
-        } else {
-            printf("org.alljoyn.Bus.FindAdvertisedName failed (%s)\n", QCC_StatusText(status));
+        uint32_t disposition = 0;
+        status = s_bus->FindAdvertisedName(s_joinName.c_str(), disposition);
+        if ((status != ER_OK) || (disposition != ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS)) {
+            printf("org.alljoyn.Bus.FindAdvertisedName failed (%s) (disposition=%d)\n", QCC_StatusText(status), disposition);
+            status = (status == ER_OK) ? ER_FAIL : status;
         }
 
         /* Wait for join session to complete */
