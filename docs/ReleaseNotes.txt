@@ -26,14 +26,22 @@ Known issues and limitations with this release
 2) The AllJoyn Java language binding is not supported in this
    alpha release.
 
+3) Multicast sessions are not supported in this release
+
+4) Local sessions (involving only 1 daemon) are not supported in this release.
+
+5) In this release, all session names must be advertised and discovered via
+   AdvertiseName and FindAdvertsiedName. Failure to adhere to this rule will
+   cause some JoinSession attemts to fail.
+
 
 Compatibility
 -------------
-The AllJoyn APIs have changed. Applications written for AllJoyn 1.8 or
-earlier will need to be modified and rebuilt for use with AllJoyn 2.0 and later.
+The AllJoyn external APIs have changed. Applications written for AllJoyn 1.X
+will need to be modified and rebuilt for use with AllJoyn 2.0 and later.
 
-The AllJoyn daemon-to-daemon protocol has changed. Alljoyn version 2.X daemons are
-not backwards compatibile with AllJoyn 1.X daemons.
+The AllJoyn daemon-to-daemon protocol has changed. Alljoyn version 2.X daemons
+are not backwards compatibile with AllJoyn 1.X daemons.
 
 
 Change history
