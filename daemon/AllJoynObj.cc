@@ -251,8 +251,10 @@ void AllJoynObj::CreateSession(const InterfaceDescription::Member* member, Messa
     assert(numArgs == 3);
     String sessionName = args[0].v_string.str;
     bool isMulticast;
+    QosInfo qos;
     args[1].Get("b", &isMulticast);
-    QCC_DbgTrace(("AllJoynObj::CreateSession(%s, <>, %s)", sessionName.c_str(), isMulticast ? "true" : "false"));
+    args[2].Get(QOSINFO_SIG, &qos.traffic, &qos.proximity, &qos.transports);
+    QCC_DbgTrace(("AllJoynObj::CreateSession(%s, <%x, %x, %x>, %s)", sessionName.c_str(), qos.traffic, qos.proximity, qos.transports, isMulticast ? "true" : "false"));
 
     /* Get the sender */
     String sender = msg->GetSender();
@@ -610,6 +612,8 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     args[3].Get("s", &srcB2B);
     args[4].Get(QOSINFO_SIG, &inQos.traffic, &inQos.proximity, &inQos.transports);
 
+    QCC_DbgTrace(("AllJoynObj::AttachSession(%s, %s, %s, %s, <%x, %x, %x>)", sessionName, src, dest, srcB2B, inQos.traffic, inQos.proximity, inQos.transports));
+
     router.LockNameTable();
     discoverMapLock.Lock();
     BusEndpoint* destEp = router.FindEndpoint(dest);
@@ -667,6 +671,13 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
             if (srcEp && srcB2BEp) {
 
                 if (status == ER_OK) {
+                    /* Store ep for raw sessions (for future close and fd extract) */
+                    if (qosOut.traffic != QosInfo::TRAFFIC_MESSAGES) {
+                        sessionMapLock.Lock();
+                        sessionMap[sme.id].streamingEp = srcB2BEp;
+                        sessionMapLock.Unlock();
+                    }
+
                     /* Give the receiver a chance to accept or reject the new member */
                     Message reply(bus);
                     MsgArg acceptArgs[5];
@@ -723,15 +734,6 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                             }
                         } else {
                             replyCode =  ALLJOYN_JOINSESSION_REPLY_REJECTED;
-                        }
-                    }
-
-                    /* Store ep for raw sessions (for future close and fd extract) */
-                    if (qosOut.traffic != QosInfo::TRAFFIC_MESSAGES) {
-                        if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
-                            sessionMapLock.Lock();
-                            sessionMap[id].streamingEp = srcB2BEp;
-                            sessionMapLock.Unlock();
                         }
                     }
                 }
@@ -912,6 +914,8 @@ void AllJoynObj::GetSessionFd(const InterfaceDescription::Member* member, Messag
     SessionId id = args[0].v_uint32;
     QStatus status;
     SocketFd sockFd = -1;
+
+    QCC_DbgTrace(("AllJoynObj::GetSessionFd(%d)", id));
 
     /* Check for a raw fd waiting to be retrieved */
     sessionMapLock.Lock();
