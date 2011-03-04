@@ -938,7 +938,6 @@ void AllJoynObj::GetSessionFd(const InterfaceDescription::Member* member, Messag
         qcc::Close(sockFd);
     } else {
         /* Send an error */
-        sessionMapLock.Unlock();
         status = MethodReply(msg, ER_BUS_NO_SESSION);
     }
 
