@@ -23,6 +23,7 @@
 
 #include <qcc/platform.h>
 
+#include <limits>
 #include <map>
 #include <vector>
 
@@ -38,7 +39,6 @@
 
 #if defined QCC_OS_GROUP_POSIX
 #include "bt_bluez/BTAccessor.h"
-#include "bt_bluez/BTEndpoint.h"
 #elif defined QCC_OS_GROUP_WINDOWS
 #error Windows support to be implemented
 #endif
@@ -56,7 +56,7 @@ using namespace ajn::bluez;
 namespace ajn {
 
 
-#define BUS_NAME_TTL 60
+#define BUS_NAME_TTL numeric_limits<uint8_t>::max()
 
 /*****************************************************************************/
 
@@ -168,7 +168,7 @@ void* BTTransport::Run(void* arg)
             if (*it != &stopEvent) {
                 /* Accept a new connection */
                 qcc::String authName;
-                BTEndpoint* conn(btAccessor->Accept(bus, *it));
+                RemoteEndpoint* conn(btAccessor->Accept(bus, *it));
                 if (!conn) {
                     continue;
                 }
@@ -224,7 +224,7 @@ QStatus BTTransport::Stop(void)
 
     transportIsStopping = true;
 
-    vector<BTEndpoint*>::iterator eit;
+    vector<RemoteEndpoint*>::iterator eit;
 
     bool isStopping = IsStopping();
 
@@ -447,32 +447,30 @@ void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
         return;
     }
 
-    BTEndpoint* btEndpoint = static_cast<BTEndpoint*>(endpoint);
-
     QCC_DbgTrace(("BTTransport::EndpointExit(endpoint => \"%s\" - \"%s\")",
-                  btEndpoint->GetRemoteGUID().ToShortString().c_str(),
-                  btEndpoint->GetConnectSpec().c_str()));
+                  endpoint->GetRemoteGUID().ToShortString().c_str(),
+                  endpoint->GetConnectSpec().c_str()));
 
     /* Remove thread from thread list */
     threadListLock.Lock();
-    vector<BTEndpoint*>::iterator eit = find(threadList.begin(), threadList.end(), btEndpoint);
+    vector<RemoteEndpoint*>::iterator eit = find(threadList.begin(), threadList.end(), endpoint);
     if (eit != threadList.end()) {
         threadList.erase(eit);
     }
     threadListLock.Unlock();
 
-    delete btEndpoint;
+    delete endpoint;
 }
 
 
-QStatus BTTransport::FoundDevice(const BDAddress& adBdAddr,
-                                 uint32_t uuidRev)
+void BTTransport::DeviceChange(const BDAddress& adBdAddr,
+                              uint32_t newUUIDRev,
+                              uint32_t oldUUIDRev,
+                              bool lost)
 {
-    if (!btmActive) {
-        return ER_BUS_TRANSPORT_NOT_AVAILABLE;
+    if (btmActive) {
+        btController->ProcessDeviceChange(adBdAddr, newUUIDRev, oldUUIDRev, lost);
     }
-
-    return btController->ProcessFoundDevice(adBdAddr, uuidRev);
 }
 
 
@@ -513,18 +511,19 @@ void BTTransport::StopAdvertise()
 }
 
 
-void BTTransport::FoundBus(const BDAddress& bdAddr,
-                           const qcc::String& guid,
-                           const std::vector<qcc::String>& names,
-                           uint8_t channel,
-                           uint16_t psm)
+void BTTransport::FoundNamesChange(const qcc::String& guid,
+                                   const vector<String>& names,
+                                   const BDAddress& bdAddr,
+                                   uint8_t channel,
+                                   uint16_t psm,
+                                   bool lost)
 {
     if (listener) {
         qcc::String busAddr("bluetooth:addr=" + bdAddr.ToString() +
                             ",channel=" + U32ToString(channel) +
                             ",psm=0x" + U32ToString(psm, 16));
 
-        listener->FoundNames(busAddr, guid, btQos, &names, BUS_NAME_TTL);
+        listener->FoundNames(busAddr, guid, btQos, &names, lost ? 0 : BUS_NAME_TTL);
     }
 }
 
@@ -577,7 +576,7 @@ QStatus BTTransport::Connect(const BDAddress& bdAddr,
                              RemoteEndpoint** newep)
 {
     QStatus status;
-    BTEndpoint* conn = NULL;
+    RemoteEndpoint* conn = NULL;
     bool useLocal = btController->OKToConnect();
 
     if (useLocal) {
@@ -630,7 +629,7 @@ QStatus BTTransport::Connect(const BDAddress& bdAddr,
 
         if (status == ER_OK) {
             threadListLock.Lock();
-            std::vector<BTEndpoint*>::const_iterator it;
+            std::vector<RemoteEndpoint*>::const_iterator it;
             for (it = threadList.begin(); it != threadList.end(); ++it) {
                 if ((*it)->GetRemoteName() == delegate) {
                     conn = *it;
@@ -686,7 +685,7 @@ QStatus BTTransport::MoveConnection(const BDAddress& oldDev,
     bool isDaemon = bus.GetInternal().GetRouter().IsDaemon();
     bool allowRemote = bus.GetInternal().AllowRemoteMessages();
 
-    BTEndpoint* conn = btAccessor->Connect(bus, newDev, channel, psm);
+    RemoteEndpoint* conn = btAccessor->Connect(bus, newDev, channel, psm);
 
     if (!conn) {
         status = ER_FAIL;

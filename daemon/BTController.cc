@@ -41,8 +41,6 @@ using namespace qcc;
 #define MethodHander(_a) static_cast<MessageReceiver::MethodHandler>(_a)
 #define SignalHander(_a) static_cast<MessageReceiver::SignalHandler>(_a)
 
-#define MAX_CACHE_SIZE 100
-
 static const uint32_t ABSOLUTE_MAX_CONNECTIONS = 7; /* BT can't have more than 7 direct connections */
 static const uint32_t DEFAULT_MAX_CONNECTIONS =  6; /* Gotta allow 1 connection for car-kit/headset/headphones */
 
@@ -78,7 +76,7 @@ static const char* bluetoothTopoMgrIfcName = "org.alljoyn.Bus.BluetoothControlle
 #define SIG_UUIDREV    "u"
 
 #define SIG_NAME_LIST         SIG_ARRAY SIG_NAME
-#define SIG_AD_NAME_MAP_ENTRY "{" SIG_NAME SIG_NAME_LIST "}"
+#define SIG_AD_NAME_MAP_ENTRY "{" SIG_GUID SIG_NAME_LIST "}"
 #define SIG_AD_NAME_MAP       SIG_ARRAY SIG_AD_NAME_MAP_ENTRY
 #define SIG_AD_NAMES          SIG_NAME_LIST
 #define SIG_FIND_NAMES        SIG_NAME_LIST
@@ -94,8 +92,8 @@ static const char* bluetoothTopoMgrIfcName = "org.alljoyn.Bus.BluetoothControlle
 #define SIG_NAME_OP           SIG_NAME SIG_NAME
 #define SIG_DELEGATE_AD       SIG_UUIDREV SIG_BDADDR SIG_CHANNEL SIG_PSM SIG_AD_NAME_MAP SIG_DURATION
 #define SIG_DELEGATE_FIND     SIG_NAME SIG_UUIDREV SIG_BDADDR SIG_DURATION
-#define SIG_FOUND_BUS         SIG_BDADDR SIG_CHANNEL SIG_PSM SIG_AD_NAME_MAP
-#define SIG_FOUND_DEV         SIG_BDADDR SIG_UUIDREV
+#define SIG_FOUND_NAMES       SIG_AD_NAME_MAP SIG_BDADDR SIG_CHANNEL SIG_PSM
+#define SIG_FOUND_DEV         SIG_BDADDR SIG_UUIDREV SIG_UUIDREV
 
 
 const InterfaceDesc btmIfcTable[] = {
@@ -111,8 +109,10 @@ const InterfaceDesc btmIfcTable[] = {
     { MESSAGE_SIGNAL, "CancelAdvertiseName", SIG_NAME_OP,       NULL, "requestor,adName" },
     { MESSAGE_SIGNAL, "DelegateAdvertise",   SIG_DELEGATE_AD,   NULL, "uuidRev,bdAddr,channel,psm,adNames" },
     { MESSAGE_SIGNAL, "DelegateFind",        SIG_DELEGATE_FIND, NULL, "resultDest,ignoreUUIDRev,bdAddr,duration" },
-    { MESSAGE_SIGNAL, "FoundBus",            SIG_FOUND_BUS,     NULL, "guid,bdAddr,channel,psm,adNames" },
-    { MESSAGE_SIGNAL, "FoundDevice",         SIG_FOUND_DEV,     NULL, "bdAddr,uuidRev" }
+    { MESSAGE_SIGNAL, "FoundNames",          SIG_FOUND_NAMES,   NULL, "adNamesTable,bdAddr,channel,psm" },
+    { MESSAGE_SIGNAL, "LostNames",           SIG_FOUND_NAMES,   NULL, "adNamesTable,bdAddr,channel,psm" },
+    { MESSAGE_SIGNAL, "FoundDevice",         SIG_FOUND_DEV,     NULL, "bdAddr,newUUIDRev,oldUUIDRev" },
+    { MESSAGE_SIGNAL, "LostDevice",          SIG_FOUND_DEV,     NULL, "bdAddr,newUUIDRev,oldUUIDRev" }
 };
 
 
@@ -155,8 +155,10 @@ BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
     org.alljoyn.Bus.BTController.CancelAdvertiseName = ifc->GetMember("CancelAdvertiseName");
     org.alljoyn.Bus.BTController.DelegateAdvertise =   ifc->GetMember("DelegateAdvertise");
     org.alljoyn.Bus.BTController.DelegateFind =        ifc->GetMember("DelegateFind");
-    org.alljoyn.Bus.BTController.FoundBus =            ifc->GetMember("FoundBus");
+    org.alljoyn.Bus.BTController.FoundNames =          ifc->GetMember("FoundNames");
+    org.alljoyn.Bus.BTController.LostNames =           ifc->GetMember("LostNames");
     org.alljoyn.Bus.BTController.FoundDevice =         ifc->GetMember("FoundDevice");
+    org.alljoyn.Bus.BTController.LostDevice =          ifc->GetMember("LostDevice");
 
     advertise.delegateSignal = org.alljoyn.Bus.BTController.DelegateAdvertise;
     find.delegateSignal = org.alljoyn.Bus.BTController.DelegateFind;
@@ -210,8 +212,10 @@ QStatus BTController::Init()
         { org.alljoyn.Bus.BTController.CancelAdvertiseName, SignalHandler(&BTController::HandleNameSignal) },
         { org.alljoyn.Bus.BTController.DelegateAdvertise,   SignalHandler(&BTController::HandleDelegateAdvertise) },
         { org.alljoyn.Bus.BTController.DelegateFind,        SignalHandler(&BTController::HandleDelegateFind) },
-        { org.alljoyn.Bus.BTController.FoundBus,            SignalHandler(&BTController::HandleFoundBus) },
-        { org.alljoyn.Bus.BTController.FoundDevice,         SignalHandler(&BTController::HandleFoundDevice) }
+        { org.alljoyn.Bus.BTController.FoundNames,          SignalHandler(&BTController::HandleFoundNamesChange) },
+        { org.alljoyn.Bus.BTController.LostNames,           SignalHandler(&BTController::HandleFoundNamesChange) },
+        { org.alljoyn.Bus.BTController.FoundDevice,         SignalHandler(&BTController::HandleFoundDeviceChange) },
+        { org.alljoyn.Bus.BTController.LostDevice,          SignalHandler(&BTController::HandleFoundDeviceChange) }
     };
 
     QStatus status = AddMethodHandlers(methodEntries, ArraySize(methodEntries));
@@ -275,7 +279,6 @@ QStatus BTController::SendSetState(const qcc::String& busName)
             delete newMaster;
 
             assert(find.resultDest.empty());
-            find.ignoreUUID = masterUUIDRev;
             find.dirty = true;
         }
 
@@ -305,107 +308,6 @@ QStatus BTController::SendSetState(const qcc::String& busName)
 exit:
     nodeStateLock.Unlock();
 
-    return status;
-}
-
-
-QStatus BTController::ProcessFoundDevice(const BDAddress& adBdAddr, uint32_t uuidRev)
-{
-    QCC_DbgTrace(("BTController::ProcessFoundDevice(adBdAddr = %s, uuidRev = %08x)",
-                  adBdAddr.ToString().c_str(), uuidRev));
-    QStatus status = ER_OK;
-
-    if (IsMaster()) {
-        UUIDRevCacheInfo* ci = &uuidRevCache[uuidRev];
-
-        if (ci->uuidRev == INVALID_UUIDREV) {
-            nodeStateLock.Lock();
-            if (UseLocalFind()) {
-                QCC_DbgPrintf(("Stopping find..."));
-                assert(find.active);
-                bt.StopFind();
-                find.active = false;
-            }
-
-            status = bt.GetDeviceInfo(adBdAddr, ci->connAddr, ci->uuidRev, ci->channel, ci->psm, ci->adInfo);
-
-            if (UseLocalFind()) {
-                QCC_DbgPrintf(("Starting find..."));
-                bt.StartFind(find.ignoreUUID);
-                find.active = true;
-            }
-            nodeStateLock.Unlock();
-
-            if (status != ER_OK) {
-                uuidRevCache.erase(uuidRev);
-                goto exit;
-            }
-        } else {
-            // Pop the existing entry from the aging list so that it can be
-            // added to the end (implments LRU cache policy).
-            uuidRevCacheAging.erase(ci->position);
-        }
-
-        while (uuidRevCacheAging.size() > MAX_CACHE_SIZE) {
-            // The cache has grown too large.  Take the opportunity to clear
-            // out old information to keep resource utilization under control
-            uuidRevCache.erase(uuidRevCacheAging.front());
-            uuidRevCacheAging.pop_front();
-        }
-
-        uuidRevCacheAging.push_back(ci->uuidRev);
-        ci->position = uuidRevCacheAging.end();
-        --ci->position;
-
-        if (ci->uuidRev != uuidRev) {
-            // Somehow the UUID revision was updated between the time the EIR
-            // was sent and we performed an SDP query.  Thus we need to move
-            // the cache information to the UUID rev from the SDP record since
-            // we will be getting that the next time ProcessFoundDevice is
-            // called for this remote bus.
-            uuidRevCache[ci->uuidRev] = *ci;
-            uuidRevCache.erase(uuidRev);
-            ci = &uuidRevCache[ci->uuidRev];
-        }
-
-        bool notifyOurself = false;
-        nodeStateLock.Lock();
-        for (NodeStateMap::iterator it = nodeStates.begin(); it != nodeStates.end(); ++it) {
-            if (it->first == bus.GetUniqueName()) {
-                notifyOurself = true;
-            } else {
-                // Send Found Bus information to the node(s) that is
-                // interested in it.
-                status = SendFoundBus(ci->connAddr, ci->channel, ci->psm, ci->adInfo, it->first.c_str());
-            }
-        }
-        nodeStateLock.Unlock();
-
-        if (notifyOurself) {
-            // Tell ourself about the names (This is best done outside the noseStateLock just in case).
-            BluetoothDeviceInterface::AdvertiseInfo::const_iterator aiit;
-#ifndef NDEBUG
-            int i = 0;
-#endif
-            for (aiit = ci->adInfo.begin(); aiit != ci->adInfo.end(); ++aiit) {
-                QCC_DbgPrintf(("Processing %d  addr: %s   guid: %s   names: %u (size)   channel: %u   psm: %04x",
-                               ++i, ci->connAddr.ToString().c_str(), aiit->first.c_str(), aiit->second.size(), ci->channel, ci->psm));
-
-                bt.FoundBus(ci->connAddr, aiit->first, aiit->second, ci->channel, ci->psm);
-            }
-        }
-
-    } else {
-        // Must be a drone or slave.
-        MsgArg args[2];
-        size_t numArgs = sizeof(args);
-
-        MsgArg::Set(args, numArgs, SIG_FOUND_DEV, adBdAddr.ToString().c_str(), uuidRev);
-
-        status = Signal(find.resultDest.c_str(), 0, *org.alljoyn.Bus.BTController.FoundDevice, args, numArgs);
-    }
-
-exit:
     return status;
 }
 
@@ -455,7 +357,7 @@ void BTController::PostConnect(QStatus status, const RemoteEndpoint* ep)
              */
             QCC_DbgPrintf(("Starting find..."));
             assert(!find.active);
-            bt.StartFind(find.ignoreUUID);
+            bt.StartFind(masterUUIDRev);
             find.active = true;
         }
         if (UseLocalAdvertise()) {
@@ -464,12 +366,10 @@ void BTController::PostConnect(QStatus status, const RemoteEndpoint* ep)
              * we need to do the advertise for ourself.
              */
             BluetoothDeviceInterface::AdvertiseInfo adInfo;
-            MsgArg arg("a{sas}", advertise.adInfoArgs.size(), &advertise.adInfoArgs.front());
-            ExtractAdInfo(arg, adInfo);
-            advertise.uuidRev = masterUUIDRev;
+            status = ExtractAdInfo(&advertise.adInfoArgs.front(), advertise.adInfoArgs.size(), adInfo);
             QCC_DbgPrintf(("Starting advertise..."));
             assert(!advertise.active);
-            bt.StartAdvertise(advertise.uuidRev, advertise.bdAddr, advertise.channel, advertise.psm, adInfo);
+            bt.StartAdvertise(masterUUIDRev, advertise.bdAddr, advertise.channel, advertise.psm, adInfo);
             advertise.active = true;
         }
         nodeStateLock.Unlock();
@@ -493,20 +393,30 @@ QStatus BTController::ProxyConnect(const BDAddress& bdAddr,
         MsgArg args[3];
         size_t argsSize = ArraySize(args);
         Message reply(bus);
+        uint32_t s;
 
-        MsgArg::Set(args, argsSize, SIG_PROXY_CONN_IN, bdAddr.ToString().c_str(), channel, psm);
+        status = MsgArg::Set(args, argsSize, SIG_PROXY_CONN_IN, bdAddr.ToString().c_str(), channel, psm);
+        if (status != ER_OK) {
+            goto exit;
+        }
 
         status = master->MethodCall(*org.alljoyn.Bus.BTController.ProxyConnect, args, argsSize, reply);
-        if (status == ER_OK) {
-            uint32_t s;
-            reply->GetArg(0)->Get(SIG_STATUS, &s);
-            status = static_cast<QStatus>(s);
-            if (delegate && (status == ER_OK)) {
-                *delegate = master->GetServiceName();
-            }
+        if (status != ER_OK) {
+            goto exit;
+        }
+
+        status = reply->GetArgs(SIG_STATUS, &s);
+        if (status != ER_OK) {
+            goto exit;
+        }
+
+        status = static_cast<QStatus>(s);
+        if (delegate && (status == ER_OK)) {
+            *delegate = master->GetServiceName();
         }
     }
 
+exit:
     return status;
 }
 
@@ -523,17 +433,27 @@ QStatus BTController::ProxyDisconnect(const BDAddress& bdAddr)
         MsgArg args[3];
         size_t argsSize = ArraySize(args);
         Message reply(bus);
+        uint32_t s;
 
-        MsgArg::Set(args, argsSize, SIG_PROXY_DISC_IN, bdAddr.ToString().c_str());
+        status = MsgArg::Set(args, argsSize, SIG_PROXY_DISC_IN, bdAddr.ToString().c_str());
+        if (status != ER_OK) {
+            goto exit;
+        }
 
         status = master->MethodCall(*org.alljoyn.Bus.BTController.ProxyDisconnect, args, argsSize, reply);
-        if (status == ER_OK) {
-            uint32_t s;
-            reply->GetArg(0)->Get(SIG_STATUS, &s);
-            status = static_cast<QStatus>(s);
+        if (status != ER_OK) {
+            goto exit;
         }
+
+        status = reply->GetArgs(SIG_STATUS, &s);
+        if (status != ER_OK) {
+            goto exit;
+        }
+
+        status = static_cast<QStatus>(s);
     }
 
+exit:
     return status;
 }
 
@@ -714,66 +634,33 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
 }
 
 
-QStatus BTController::SendFoundBus(const BDAddress& bdAddr,
-                                   uint8_t channel,
-                                   uint16_t psm,
-                                   const BluetoothDeviceInterface::AdvertiseInfo& adInfo,
-                                   const char* dest)
+QStatus BTController::SendFoundNamesChange(const char* dest,
+                                           const BluetoothDeviceInterface::AdvertiseInfo& adInfo,
+                                           const BDAddress& bdAddr,
+                                           uint8_t channel,
+                                           uint16_t psm,
+                                           bool lost)
 {
-    QCC_DbgTrace(("BTController::SendFoundBus(bdAddr = %s, channel = %u, psm = %u, adInfo = <>, dest = \"%s\")",
-                  bdAddr.ToString().c_str(), channel, psm, dest));
-    if (!dest) {
-        if (find.resultDest.empty()) {
-            return ER_FAIL;
-        }
-        dest = find.resultDest.c_str();
-    }
+    QCC_DbgTrace(("BTController::SendFoundNamesChange(dest = \"%s\", adInfo = <>, bdAddr = %s, channel = %u, psm = %u, <%s>)",
+                  dest, bdAddr.ToString().c_str(), channel, psm, lost ? "lost" : "found/changed"));
 
     MsgArg args[4];
     size_t argsSize = ArraySize(args);
-    vector<MsgArg> nodeList(adInfo.size());
+    vector<MsgArg> nodeList;
 
-    for (size_t i = 0; i < adInfo.size(); ++i) {
-        const qcc::String& guid = adInfo[i].first;
-        const BluetoothDeviceInterface::AdvertiseNames& names = adInfo[i].second;
+    EncodeAdInfo(adInfo, nodeList);
 
-        vector<const char*> nameList;
-        nameList.reserve(names.size());
-
-        QCC_DbgPrintf(("Encoding %u advertise names for %s:", names.size(), guid.c_str()));
-
-        for (size_t j = 0; j < names.size(); ++j) {
-            QCC_DbgPrintf(("    %u: %s", j, names[j].c_str()));
-            nameList.push_back(names[j].c_str());
+    QStatus status = MsgArg::Set(args, argsSize, SIG_FOUND_NAMES,
+                         nodeList.size(), &nodeList.front(),
+                         bdAddr.ToString().c_str(),
+                         channel,
+                         psm);
+    if (status == ER_OK) {
+        if (lost) {
+            status = Signal(dest, 0, *org.alljoyn.Bus.BTController.LostNames, args, ArraySize(args));
+        } else {
+            status = Signal(dest, 0, *org.alljoyn.Bus.BTController.FoundNames, args, ArraySize(args));
         }
-        nodeList[i].Set(SIG_AD_NAME_MAP_ENTRY, guid.c_str(), names.size(), &nameList.front());
-    }
-
-    MsgArg::Set(args, argsSize, SIG_FOUND_BUS, bdAddr.ToString().c_str(), channel, psm, nodeList.size(), &nodeList.front());
-
-    return Signal(dest, 0, *org.alljoyn.Bus.BTController.FoundBus, args, ArraySize(args));
-}
-
-
-QStatus BTController::SendFoundDevice(const BDAddress& bdAddr,
-                                      uint32_t uuidRev)
-{
-    QCC_DbgTrace(("BTController::SendFoundDevice(bdAddr = %s, uuidRev = %08x)", bdAddr.ToString().c_str(), uuidRev));
-    if (find.resultDest.empty()) {
-        return ER_FAIL;
-    }
-
-    QStatus status = ER_OK;
-
-    if (bdAddr != find.ignoreAddr) {
-        const char* dest = find.resultDest.c_str();
-        MsgArg args[2];
-        size_t argsSize = ArraySize(args);
-
-        MsgArg::Set(args, argsSize, SIG_FOUND_DEV, bdAddr.ToString().c_str(), uuidRev);
-        assert(argsSize == ArraySize(args));
-
-        status = Signal(dest, 0, *org.alljoyn.Bus.BTController.FoundDevice, args, ArraySize(args));
     }
 
     return status;
@@ -830,6 +717,150 @@ QStatus BTController::DoNameOp(const qcc::String& name,
 }
 
 
+void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
+                                       uint32_t newUUIDRev,
+                                       uint32_t oldUUIDRev,
+                                       bool lost)
+{
+    QCC_DbgTrace(("BTController::ProcessDeviceChange(adBdAddr = %s, newUUIDRev = %08x, oldUUIDRev = %08x, <%s>)",
+                  adBdAddr.ToString().c_str(), newUUIDRev, oldUUIDRev, lost ? "lost": "found/changed"));
+    QStatus status = ER_OK;
+
+    if (IsMaster()) {
+        BDAddress connAddr;
+        uint8_t channel;
+        uint16_t psm;
+        BluetoothDeviceInterface::AdvertiseInfo adInfo;
+        BluetoothDeviceInterface::AdvertiseInfo oldAdInfo;
+        bool notifyOurself = false;
+
+        if (!lost) {
+            // Need to get new or updated information...
+            nodeStateLock.Lock();
+            if (UseLocalFind()) {
+                // TODO - This should probably move into BTAccessor
+                QCC_DbgPrintf(("Stopping find..."));
+                assert(find.active);
+                bt.StopFind();
+                find.active = false;
+            }
+
+            status = bt.GetDeviceInfo(adBdAddr, connAddr, newUUIDRev, channel, psm, adInfo);
+
+            if (UseLocalFind()) {
+                // TODO - This should probably move into BTAccessor
+                QCC_DbgPrintf(("Starting find..."));
+                bt.StartFind(masterUUIDRev);
+                find.active = true;
+            }
+            nodeStateLock.Unlock();
+            if (status != ER_OK) {
+                QCC_LogError(status, ("Failed to get device information"));
+                return;
+            }
+        }
+
+        cacheLock.Lock();
+        UUIDRevCacheMap::iterator ci = uuidRevCache.lower_bound(oldUUIDRev);
+        UUIDRevCacheMap::const_iterator ciEnd = uuidRevCache.upper_bound(oldUUIDRev);
+
+        while ((ci != ciEnd) &&
+               ((lost && (ci->second.adAddr != adBdAddr)) ||
+                (!lost && (ci->second.connAddr != connAddr)))) {
+            ++ci;
+        }
+
+        if (ci != ciEnd) {
+            oldAdInfo = ci->second.adInfo;
+            if (lost) {
+                connAddr = ci->second.connAddr;
+                channel = ci->second.channel;
+                psm = ci->second.psm;
+            }
+            uuidRevCache.erase(ci);
+        }
+
+        if (!lost) {
+            ci = uuidRevCache.insert(pair<uint32_t, UUIDRevCacheInfo>(newUUIDRev, UUIDRevCacheInfo()));
+            ci->second.adAddr = adBdAddr;
+            ci->second.uuidRev = newUUIDRev;
+            ci->second.connAddr = connAddr;
+            ci->second.channel = channel;
+            ci->second.psm = psm;
+            ci->second.adInfo = adInfo;
+        }
+        cacheLock.Unlock();
+
+
+        // Need to find which previously advertised nodes/names are now gone.
+        BluetoothDeviceInterface::_AdvertiseInfo::const_iterator node;
+        for (node = adInfo->begin(); node != adInfo->end(); ++node) {
+            BluetoothDeviceInterface::_AdvertiseInfo::iterator oldNode = oldAdInfo->find(node->first);
+            if (oldNode != oldAdInfo->end()) {
+                BluetoothDeviceInterface::AdvertiseNames::const_iterator name;
+                for (name = node->second.begin(); !node->second.empty() && (name != node->second.end()); ++name) {
+                    oldNode->second.erase(*name);
+                }
+            }
+        }
+
+        // Now inform everyone of the changes in advertised names.
+        nodeStateLock.Lock();
+        for (NodeStateMap::iterator it = nodeStates.begin(); it != nodeStates.end(); ++it) {
+            if (!it->second.findNames.empty()) {
+                if (it->first == bus.GetUniqueName()) {
+                    notifyOurself = true;
+                } else {
+                    if (!oldAdInfo->empty()) {
+                        status = SendFoundNamesChange(it->first.c_str(), oldAdInfo, connAddr, channel, psm, true);
+                    }
+                    if (!adInfo->empty()) {
+                        status = SendFoundNamesChange(it->first.c_str(), adInfo, connAddr, channel, psm, false);
+                    }
+                }
+            }
+        }
+        nodeStateLock.Unlock();
+
+        if (notifyOurself) {
+            // Tell ourself about the names (This is best done outside the noseStateLock just in case).
+            for (node = oldAdInfo->begin(); node != oldAdInfo->end(); ++node) {
+                if (!node->second.empty()) {
+                    vector<String> vectorizedNames;
+                    vectorizedNames.reserve(node->second.size());
+                    vectorizedNames.assign(node->second.begin(), node->second.end());
+                    bt.FoundNamesChange(node->first, vectorizedNames, connAddr, channel, psm, true);
+                }
+            }
+            for (node = adInfo->begin(); node != adInfo->end(); ++node) {
+                if (!node->second.empty()) {
+                    vector<String> vectorizedNames;
+                    vectorizedNames.reserve(node->second.size());
+                    vectorizedNames.assign(node->second.begin(), node->second.end());
+                    bt.FoundNamesChange(node->first, vectorizedNames, connAddr, channel, psm, false);
+                }
+            }
+        }
+
+    } else {
+        // Must be a drone or slave.
+        MsgArg args[2];
+        size_t numArgs = ArraySize(args);
+
+        status = MsgArg::Set(args, numArgs, SIG_FOUND_DEV, adBdAddr.ToString().c_str(), newUUIDRev, oldUUIDRev);
+        if (status != ER_OK) {
+            return;
+        }
+
+        if (lost) {
+            Signal(find.resultDest.c_str(), 0, *org.alljoyn.Bus.BTController.LostDevice, args, numArgs);
+        } else {
+            Signal(find.resultDest.c_str(), 0, *org.alljoyn.Bus.BTController.FoundDevice, args, numArgs);
+        }
+    }
+}
+
+
 void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
                                     const char* sourcePath,
                                     Message& msg)
@@ -852,40 +883,42 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
     char* busName;
     char* name;
 
-    msg->GetArgs("ss", &busName, &name);
+    QStatus status = msg->GetArgs(SIG_NAME_OP, &busName, &name);
 
-    QCC_DbgPrintf(("%s %s to the list of %s names for %s.",
-                   addName ? "Adding" : "Removing",
-                   name,
-                   (fn || cfn) ? "find" : "advertise",
-                   busName));
+    if (status == ER_OK) {
+        QCC_DbgPrintf(("%s %s to the list of %s names for %s.",
+                       addName ? "Adding" : "Removing",
+                       name,
+                       (fn || cfn) ? "find" : "advertise",
+                       busName));
 
-    nodeStateLock.Lock();
-    NodeStateMap::iterator it = nodeStates.find(busName);
+        nodeStateLock.Lock();
+        NodeStateMap::iterator it = nodeStates.find(busName);
 
-    if (it != nodeStates.end()) {
-        // All nodes need to be registered via SetState
-        qcc::String n(name);
-        if (addName) {
-            nameCollection->AddName(n, it);
-        } else {
-            nameCollection->RemoveName(n, it);
+        if (it != nodeStates.end()) {
+            // All nodes need to be registered via SetState
+            qcc::String n(name);
+            if (addName) {
+                nameCollection->AddName(n, it);
+            } else {
+                nameCollection->RemoveName(n, it);
+            }
+
+            if (IsMaster()) {
+                UpdateDelegations(this->advertise, listening);
+                UpdateDelegations(this->find);
+                QCC_DEBUG_ONLY(DumpNodeStateTable());
+            } else {
+                // We are a drone so pass on the name
+                const MsgArg* args;
+                size_t numArgs;
+                msg->GetArgs(numArgs, args);
+                Signal(master->GetServiceName().c_str(), 0, *member, args, numArgs);
+            }
         }
 
-        if (IsMaster()) {
-            UpdateDelegations(this->advertise, listening);
-            UpdateDelegations(this->find);
-            QCC_DEBUG_ONLY(DumpNodeStateTable());
-        } else {
-            // We are a drone so pass on the name
-            const MsgArg* args;
-            size_t numArgs;
-            msg->GetArgs(numArgs, args);
-            Signal(master->GetServiceName().c_str(), 0, *member, args, numArgs);
-        }
+        nodeStateLock.Unlock();
     }
-
-    nodeStateLock.Unlock();
 }
 
 
@@ -901,6 +934,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     uint8_t numConnections;
     nodeStateLock.Lock();
     qcc::String sender = msg->GetSender();
+    QStatus status;
 
     if (UseLocalFind() && find.active) {
         QCC_DbgPrintf(("Stopping find..."));
@@ -913,13 +947,16 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
      * more direct connections then there is no point in extracting all of his
      * names from the second argument.
      */
-    msg->GetArg(0)->Get(SIG_MINION_CNT, &numConnections);
+    status = msg->GetArg(0)->Get(SIG_MINION_CNT, &numConnections);
+    if (status != ER_OK) {
+        MethodReply(msg, "org.alljoyn.Bus.BTController.InternalError", QCC_StatusText(status));
+        return;
+    }
 
     if (numConnections > directMinions) {
         // We are now a minion (or a drone if we have more than one direct connection)
         master = new ProxyBusObject(bus, sender.c_str(), bluetoothObjPath, 0);
 
-        QStatus status;
         vector<MsgArg> array;
 
         status = EncodeStateInfo(array);
@@ -939,15 +976,19 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
         size_t size;
         MsgArg* entries;
 
-        msg->GetArg(1)->Get(SIG_NODE_STATES, &size, &entries);
+        status = msg->GetArg(1)->Get(SIG_NODE_STATES, &size, &entries);
+        if (status != ER_OK) {
+            MethodReply(msg, "org.alljoyn.Bus.BTController.InternalError", QCC_StatusText(status));
+            return;
+        }
+
         ImportState(size, entries, sender);
 
         assert(find.resultDest.empty());
-        find.ignoreUUID = masterUUIDRev;
         find.dirty = true;
 
         MsgArg arg(SIG_NODE_STATES, 0, NULL);
-        QStatus status = MethodReply(msg, &arg, 1);
+        status = MethodReply(msg, &arg, 1);
         if (status != ER_OK) {
             QCC_LogError(status, ("MethodReply"));
         }
@@ -991,12 +1032,8 @@ void BTController::HandleDelegateFind(const InterfaceDescription::Member* member
         char* bdAddrStr;
         uint32_t ignoreUUID;
         uint32_t duration;
-        QStatus status = ER_OK;
 
-        status = (status == ER_OK) ? msg->GetArg(0)->Get(SIG_NAME,     &resultDest) : status;
-        status = (status == ER_OK) ? msg->GetArg(1)->Get(SIG_UUIDREV,  &ignoreUUID) : status;
-        status = (status == ER_OK) ? msg->GetArg(2)->Get(SIG_BDADDR,   &bdAddrStr) :  status;
-        status = (status == ER_OK) ? msg->GetArg(3)->Get(SIG_DURATION, &duration) :  status;
+        QStatus status = msg->GetArgs(SIG_DELEGATE_FIND, &resultDest, &ignoreUUID, &bdAddrStr, &duration);
 
         if (status == ER_OK) {
             QCC_DbgPrintf(("Delegated Find: result dest: \"%s\"  ignore UUIDRev: %08x  ignore BDAddr: %s",
@@ -1005,7 +1042,7 @@ void BTController::HandleDelegateFind(const InterfaceDescription::Member* member
             if (resultDest && (resultDest[0] != '\0')) {
                 find.resultDest = resultDest;
                 find.ignoreAddr.FromString(bdAddrStr);
-                find.ignoreUUID = ignoreUUID;
+                //find.ignoreUUID = ignoreUUID;
                 find.dirty = true;
 
                 QCC_DbgPrintf(("Starting find for %u seconds...", duration));
@@ -1049,38 +1086,28 @@ void BTController::HandleDelegateAdvertise(const InterfaceDescription::Member* m
         char* bdAddrStr;
         uint8_t channel;
         uint16_t psm;
-        QStatus status = ER_OK;
         BluetoothDeviceInterface::AdvertiseInfo adInfo;
+        MsgArg* entries;
+        size_t size;
 
-        status = (status == ER_OK) ? msg->GetArg(0)->Get(SIG_UUIDREV, &uuidRev) :   status;
-        status = (status == ER_OK) ? msg->GetArg(1)->Get(SIG_BDADDR,  &bdAddrStr) : status;
-        status = (status == ER_OK) ? msg->GetArg(2)->Get(SIG_CHANNEL, &channel) :   status;
-        status = (status == ER_OK) ? msg->GetArg(3)->Get(SIG_PSM,     &psm) :       status;
-        status = (status == ER_OK) ? ExtractAdInfo(*msg->GetArg(4), adInfo) :       status;
+        QStatus status = msg->GetArgs(SIG_DELEGATE_AD, &uuidRev, &bdAddrStr, &channel, &psm, &size, &entries);
 
-        QCC_DbgPrintf(("Delegated Advertise: UUIDRev: %08x  BDAddr: %s  channel = %d  psm = %04x",
-                       uuidRev, bdAddrStr, channel, psm));
-#ifndef NDEBUG
-        BluetoothDeviceInterface::AdvertiseInfo::const_iterator nit;
-        BluetoothDeviceInterface::AdvertiseNames::const_iterator ait;
-        for (nit = adInfo.begin(); nit != adInfo.end(); ++nit) {
-            QCC_DbgPrintf(("                     Node: %s", nit->first.c_str()));
-            for (ait = nit->second.begin(); ait != nit->second.end(); ++ait) {
-                QCC_DbgPrintf(("                         Name: %s", ait->c_str()));
-            }
+        if (status == ER_OK) {
+            status = ExtractAdInfo(entries, size, adInfo);
         }
-#endif
 
-        if (!adInfo.empty()) {
-            BDAddress bdAddr(bdAddrStr);
+        if (status == ER_OK) {
+            if (!adInfo->empty()) {
+                BDAddress bdAddr(bdAddrStr);
 
-            QCC_DbgPrintf(("Starting advertise..."));
-            bt.StartAdvertise(uuidRev, bdAddr, channel, psm, adInfo, DELEGATE_TIME);
-            advertise.active = true;
-        } else {
-            QCC_DbgPrintf(("Stopping advertise..."));
-            bt.StopAdvertise();
-            advertise.active = false;
+                QCC_DbgPrintf(("Starting advertise..."));
+                bt.StartAdvertise(uuidRev, bdAddr, channel, psm, adInfo, DELEGATE_TIME);
+                advertise.active = true;
+            } else {
+                QCC_DbgPrintf(("Stopping advertise..."));
+                bt.StopAdvertise();
+                advertise.active = false;
+            }
         }
     } else {
         const MsgArg* args;
@@ -1097,62 +1124,73 @@ void BTController::HandleDelegateAdvertise(const InterfaceDescription::Member* m
 }
 
 
-void BTController::HandleFoundBus(const InterfaceDescription::Member* member,
-                                  const char* sourcePath,
-                                  Message& msg)
+void BTController::HandleFoundNamesChange(const InterfaceDescription::Member* member,
+                                          const char* sourcePath,
+                                          Message& msg)
 {
-    QCC_DbgTrace(("BTController::HandleFoundBus(member = %s, sourcePath = \"%s\", msg = <>)",
+    QCC_DbgTrace(("BTController::HandleFoundNamesChange(member = %s, sourcePath = \"%s\", msg = <>)",
                   member->name.c_str(), sourcePath));
     if (IsMaster() || (strcmp(sourcePath, bluetoothObjPath) != 0)) {
-        // We only accept FoundBus signals if we are not the master!
+        // We only accept FoundNames signals if we are not the master!
         return;
     }
 
-    char* bdAddrStr;
+    BluetoothDeviceInterface::AdvertiseInfo adInfo;
+    char* addrStr;
     uint8_t channel;
     uint16_t psm;
+    bool lost = (member == org.alljoyn.Bus.BTController.LostNames);
+    MsgArg* entries;
+    size_t size;
 
-    msg->GetArg(0)->Get(SIG_BDADDR, &bdAddrStr);
-    msg->GetArg(1)->Get(SIG_CHANNEL, &channel);
-    msg->GetArg(2)->Get(SIG_PSM, &psm);
+    QStatus status = msg->GetArgs(SIG_FOUND_NAMES, &size, &entries, &addrStr, &channel, &psm);
 
-    BluetoothDeviceInterface::AdvertiseInfo adInfo;
-    ExtractAdInfo(*msg->GetArg(3), adInfo);
+    if (status == ER_OK) {
+        status = ExtractAdInfo(entries, size, adInfo);
+    }
 
-    if (!adInfo.empty()) {
-        BDAddress bdAddr(bdAddrStr);
+    if ((status == ER_OK) && (!adInfo->empty())) {
+        BDAddress bdAddr(addrStr);
 
-        BluetoothDeviceInterface::AdvertiseInfo::const_iterator aiit;
+        BluetoothDeviceInterface::_AdvertiseInfo::const_iterator node;
 
-        for (aiit = adInfo.begin(); aiit != adInfo.end(); ++aiit) {
-            bt.FoundBus(bdAddr, aiit->first, aiit->second, channel, psm);
+        for (node = adInfo->begin(); node != adInfo->end(); ++node) {
+            vector<String> vectorizedNames;
+            vectorizedNames.reserve(node->second.size());
+            vectorizedNames.assign(node->second.begin(), node->second.end());
+            bt.FoundNamesChange(node->first, vectorizedNames, bdAddr, channel, psm, lost);
         }
     }
 }
 
 
-void BTController::HandleFoundDevice(const InterfaceDescription::Member* member,
-                                     const char* sourcePath,
-                                     Message& msg)
+void BTController::HandleFoundDeviceChange(const InterfaceDescription::Member* member,
+                                           const char* sourcePath,
+                                           Message& msg)
 {
-    QCC_DbgTrace(("BTController::HandleFoundDevice(member = %s, sourcePath = \"%s\", msg = <>)",
+    QCC_DbgTrace(("BTController::HandleFoundDeviceChange(member = %s, sourcePath = \"%s\", msg = <>)",
                   member->name.c_str(), sourcePath));
 
     nodeStateLock.Lock();
     bool ourMinion = (nodeStates.find(msg->GetSender()) != nodeStates.end());
     nodeStateLock.Unlock();
     if (!ourMinion) {
-        // We only handle FoundDevice signals from our minions.
+        // We only handle FoundDevice or LostDevice signals from our minions.
         return;
     }
 
-    uint32_t uuidRev;
+    uint32_t newUUIDRev;
+    uint32_t oldUUIDRev;
     char* adBdAddrStr;
+    bool lost = (member == org.alljoyn.Bus.BTController.LostDevice);
 
-    msg->GetArg(0)->Get(SIG_FOUND_DEV, &adBdAddrStr, &uuidRev);
-    BDAddress adBdAddr(adBdAddrStr);
+    QStatus status = msg->GetArgs(SIG_FOUND_DEV, &adBdAddrStr, &newUUIDRev, &oldUUIDRev);
 
-    ProcessFoundDevice(adBdAddr, uuidRev);
+    if (status == ER_OK) {
+        BDAddress adBdAddr(adBdAddrStr);
+
+        ProcessDeviceChange(adBdAddr, newUUIDRev, oldUUIDRev, lost);
+    }
 }
 
 
@@ -1164,21 +1202,18 @@ void BTController::HandleProxyConnect(const InterfaceDescription::Member* member
     uint8_t channel;
     uint16_t psm;
 
-    msg->GetArg(0)->Get(SIG_BDADDR, &addrStr);
-    msg->GetArg(1)->Get(SIG_CHANNEL, &channel);
-    msg->GetArg(2)->Get(SIG_PSM, &psm);
+    QStatus status = msg->GetArgs(SIG_PROXY_CONN_IN, &addrStr, &channel, &psm);
 
-    BDAddress bdAddr(addrStr);
+    if (status == ER_OK) {
+        BDAddress bdAddr(addrStr);
 
-    QStatus status;
-
-    if (OKToConnect()) {
-        status = bt.Connect(bdAddr, channel, psm);
-    } else {
-        status = ProxyConnect(bdAddr, channel, psm, NULL);
+        if (OKToConnect()) {
+            status = bt.Connect(bdAddr, channel, psm);
+        } else {
+            status = ProxyConnect(bdAddr, channel, psm, NULL);
+        }
     }
-
-    MsgArg reply("u", static_cast<uint32_t>(status));
+    MsgArg reply(SIG_PROXY_CONN_OUT, static_cast<uint32_t>(status));
 
     MethodReply(msg, &reply, 1);
 }
@@ -1190,19 +1225,17 @@ void BTController::HandleProxyDisconnect(const InterfaceDescription::Member* mem
     QCC_DbgTrace(("BTController::HandleProxyDisconnect(member = %s, msg = <>)", member->name.c_str()));
     char* addrStr;
 
-    msg->GetArg(0)->Get(SIG_BDADDR, &addrStr);
+    QStatus status = msg->GetArgs(SIG_PROXY_DISC_IN, &addrStr);
 
-    BDAddress bdAddr(addrStr);
-
-    QStatus status;
-
-    status = bt.Disconnect(bdAddr);
-    if (status != ER_OK) {
-        status = ProxyDisconnect(bdAddr);
+    if (status == ER_OK) {
+        BDAddress bdAddr(addrStr);
+        status = bt.Disconnect(bdAddr);
+        if (status != ER_OK) {
+            status = ProxyDisconnect(bdAddr);
+        }
     }
 
-    MsgArg reply("u", static_cast<uint32_t>(status));
-
+    MsgArg reply(SIG_PROXY_DISC_OUT, static_cast<uint32_t>(status));
     MethodReply(msg, &reply, 1);
 }
 
@@ -1211,7 +1244,6 @@ void BTController::ImportState(size_t num, MsgArg* entries, const qcc::String& n
 {
     QCC_DbgTrace(("BTController::ImportState(num = %u, entries = <>, newNode = %s)", num, newNode.c_str()));
     size_t i;
-    bool newAdName = false;
 
     for (i = 0; i < num; ++i) {
         char* bn;
@@ -1226,7 +1258,8 @@ void BTController::ImportState(size_t num, MsgArg* entries, const qcc::String& n
         QCC_DbgPrintf(("Processing names for %s:", bn));
 
         nodeStates[busName].guid = guid;
-        newAdName = newAdName || (anSize > 0);
+        advertise.dirty = advertise.dirty || (anSize > 0);
+        find.dirty = find.dirty || (fnSize > 0);
 
         NodeStateMap::iterator it = nodeStates.find(busName);
 
@@ -1245,14 +1278,6 @@ void BTController::ImportState(size_t num, MsgArg* entries, const qcc::String& n
             qcc::String name(n);
             find.AddName(name, it);
         }
-    }
-
-    if (newAdName) {
-        ++masterUUIDRev;
-        if (masterUUIDRev == INVALID_UUIDREV) {
-            ++masterUUIDRev;
-        }
-        advertise.uuidRev = masterUUIDRev;
     }
 
     bool adEnd = advertise.minion == nodeStates.end();
@@ -1342,6 +1367,13 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo, bool allow)
     assert(!(start && restart));
     assert(!(restart && stop));
 
+    if (changed) {
+        ++masterUUIDRev;
+        if (masterUUIDRev == INVALID_UUIDREV) {
+            ++masterUUIDRev;
+        }
+    }
+
     if (start) {
         // Set the advertise/find arguments.
         nameInfo.SetArgs();
@@ -1368,11 +1400,14 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo, bool allow)
         if (advertiseOp && UseLocalAdvertise()) {
             if (nameInfo.active || deferredClearArgs) {
                 BluetoothDeviceInterface::AdvertiseInfo adInfo;
-                MsgArg arg("a{sas}", advertise.adInfoArgs.size(), &advertise.adInfoArgs.front());
-                ExtractAdInfo(arg, adInfo);
-                advertise.uuidRev = masterUUIDRev;
-                QCC_DbgPrintf(("%starting advertise...", restart ? "Res" : "S"));
-                bt.StartAdvertise(advertise.uuidRev, advertise.bdAddr, advertise.channel, advertise.psm, adInfo);
+                QStatus status = ER_OK;
+                if (!deferredClearArgs) {
+                    status = ExtractAdInfo(&advertise.adInfoArgs.front(), advertise.adInfoArgs.size(), adInfo);
+                }
+                if (status == ER_OK) {
+                    QCC_DbgPrintf(("%starting advertise...", restart ? "Res" : "S"));
+                    bt.StartAdvertise(masterUUIDRev, advertise.bdAddr, advertise.channel, advertise.psm, adInfo);
+                }
             } else {
                 QCC_DbgPrintf(("Stopping advertise..."));
                 bt.StopAdvertise();
@@ -1380,7 +1415,7 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo, bool allow)
         } else if (UseLocalFind()) {
             if (nameInfo.active) {
                 QCC_DbgPrintf(("%starting find...", restart ? "Res" : "S"));
-                bt.StartFind(find.ignoreUUID);
+                bt.StartFind(masterUUIDRev);
             } else {
                 QCC_DbgPrintf(("Stopping find..."));
                 bt.StopFind();
@@ -1445,40 +1480,60 @@ QStatus BTController::EncodeStateInfo(vector<MsgArg>& array)
 }
 
 
-QStatus BTController::ExtractAdInfo(const MsgArg& arg, BluetoothDeviceInterface::AdvertiseInfo& adInfo)
+void BTController::EncodeAdInfo(const BluetoothDeviceInterface::AdvertiseInfo& adInfo,
+                                vector<MsgArg>& nodeList)
+{
+    BluetoothDeviceInterface::_AdvertiseInfo::const_iterator it;
+
+    nodeList.reserve(adInfo->size());
+
+    for (it = adInfo->begin(); it != adInfo->end(); ++it) {
+        const qcc::String& guid = it->first;
+        const BluetoothDeviceInterface::AdvertiseNames& names = it->second;
+
+        vector<const char*> nameList;
+        BluetoothDeviceInterface::AdvertiseNames::const_iterator name;
+        nameList.reserve(names.size());
+        QCC_DbgPrintf(("Encoding %u advertise names for %s:", names.size(), guid.c_str()));
+
+        for (name = names.begin(); name != names.end(); ++name) {
+            QCC_DbgPrintf(("    %s", name->c_str()));
+            nameList.push_back(name->c_str());
+        }
+        nodeList.push_back(MsgArg(SIG_AD_NAME_MAP_ENTRY, guid.c_str(), nameList.size(), &nameList.front()));
+    }
+}
+
+
+QStatus BTController::ExtractAdInfo(const MsgArg* entries, size_t size,
+                                    BluetoothDeviceInterface::AdvertiseInfo& adInfo)
 {
     QCC_DbgTrace(("BTController::ExtractAdInfo()"));
-    MsgArg* entries;
-    size_t size;
-    QStatus status;
 
-    status = arg.Get(SIG_AD_NAME_MAP, &size, &entries);
+    QStatus status = ER_OK;
 
-    if ((status == ER_OK) && (size > 0)) {
-        adInfo.clear();
-        adInfo.resize(size);
+    if (entries && (size > 0)) {
+        adInfo->clear();
 
         for (size_t i = 0; i < size; ++i) {
-            char* node;
+            char* guid;
             MsgArg* names;
             size_t numNames;
 
-            status = entries[i].Get(SIG_AD_NAME_MAP_ENTRY, &node, &numNames, &names);
+            status = entries[i].Get(SIG_AD_NAME_MAP_ENTRY, &guid, &numNames, &names);
 
             if (status == ER_OK) {
-                BluetoothDeviceInterface::AdvertiseNames& nameList = adInfo[i].second;
-                adInfo[i].first = node;
+                BluetoothDeviceInterface::AdvertiseNames& nameList = (*adInfo)[guid];
 
                 nameList.clear();
-                nameList.reserve(numNames);
 
-                QCC_DbgPrintf(("Extracting %u advertise names for %s:", numNames, node));
+                QCC_DbgPrintf(("Extracting %u advertise names for %s:", numNames, guid));
                 for (size_t j = 0; j < numNames; ++j) {
                     char* name;
                     status = names[j].Get(SIG_NAME, &name);
                     if (status == ER_OK) {
                         QCC_DbgPrintf(("    %s", name));
-                        nameList.push_back(name);
+                        nameList.insert(name);
                     }
                 }
             }
@@ -1582,11 +1637,11 @@ void BTController::AdvertiseNameArgInfo::SetArgs()
         for (nameit = nodeit->second.advertiseNames.begin(); nameit != nodeit->second.advertiseNames.end(); ++nameit) {
             names.push_back(nameit->c_str());
         }
-        adInfoArgs.push_back(MsgArg(SIG_AD_NAME_MAP_ENTRY, nodeit->first.c_str(), names.size(), &names.front()));
+        adInfoArgs.push_back(MsgArg(SIG_AD_NAME_MAP_ENTRY, nodeit->second.guid.c_str(), names.size(), &names.front()));
     }
 
     MsgArg::Set(args, argsSize, SIG_DELEGATE_AD,
-                uuidRev,
+                bto.masterUUIDRev,
                 bdAddr.ToString().c_str(),
                 channel,
                 psm,
@@ -1620,7 +1675,7 @@ void BTController::AdvertiseNameArgInfo::SetEmptyArgs()
     size_t argsSize = this->argsSize;
 
     MsgArg::Set(args, argsSize, SIG_DELEGATE_AD,
-                uuidRev,
+                bto.masterUUIDRev,
                 bdAddr.ToString().c_str(),
                 channel,
                 psm,
@@ -1638,7 +1693,7 @@ void BTController::FindNameArgInfo::SetArgs()
 
     MsgArg::Set(args, argsSize, SIG_DELEGATE_FIND,
                 rdest,
-                ignoreUUID,
+                bto.masterUUIDRev,
                 ignoreAddr.ToString().c_str(),
                 bto.RotateMinions() ? DELEGATE_TIME : (uint32_t)0);
     assert(argsSize == this->argsSize);

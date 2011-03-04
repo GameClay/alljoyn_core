@@ -56,7 +56,7 @@ namespace ajn {
 /**
  * Class for a Bluetooth endpoint
  */
-class BTEndpoint;
+//class BTEndpoint;
 
 /**
  * %BTTransport is an implementation of Transport for Bluetooth.
@@ -316,31 +316,26 @@ class BTTransport :
 
     /**
      * Called by BTAccessor to inform transport of an AllJoyn capable device.
-     * Processes the found device information or sends it to the BT topology
-     * manager master as appropriate.
      *
      * @param adBdAddr  BD Address of the device advertising names.
      * @param uuidRev   UUID revision number of the device that was found.
-     *
-     * @return  ER_OK if successful.
+     * @param lost      Flag indicating if device actually disappeared.
      */
-    QStatus FoundDevice(const BDAddress& bdAddr,
-                        uint32_t uuidRev);
+    void DeviceChange(const BDAddress& bdAddr,
+                      uint32_t newUUIDRev,
+                      uint32_t oldUUIDRev,
+                      bool lost);
 
     /**
      * Start the find operation for AllJoyn capable devices.  A duration may
      * be specified that will result in the find operation to automatically
      * stop after the specified number of seconds.  Exclude any results from
-     * any device that includes the specified UUID in its EIR.  If an AllJoyn
-     * capable device is found with a UUID that does not match the ignore UUID
-     * (and was not previously seen from that device), call the
-     * BTController::ProcessFoundDevice() method with the appropriate
-     * information.
+     * any device that includes the specified UUID in its EIR.
      *
-     * @param ignoreUUID    EIR UUID revision to ignore
-     * @param duration      Find duration in seconds (0 = forever)
+     * @param uuidRev   EIR UUID revision to ignore
+     * @param duration  Find duration in seconds (0 = forever)
      */
-    virtual void StartFind(uint32_t ignoreUUID, uint32_t duration = 0);
+    virtual void StartFind(uint32_t uuidRev, uint32_t duration = 0);
 
     /**
      * Stop the find operation.
@@ -382,12 +377,14 @@ class BTTransport :
      * @param names     The advertised names
      * @param channel   RFCOMM channel accepting connections
      * @param psm       L2CAP PSM accepting connections
+     * @param lost      Set to true if names are lost, false otherwise
      */
-    virtual void FoundBus(const BDAddress& bdAddr,
-                          const qcc::String& guid,
-                          const std::vector<qcc::String>& names,
-                          uint8_t channel,
-                          uint16_t psm);
+    virtual void FoundNamesChange(const qcc::String& guid,
+                                  const std::vector<qcc::String>& names,
+                                  const BDAddress& bdAddr,
+                                  uint8_t channel,
+                                  uint16_t psm,
+                                  bool lost);
 
     /**
      * Tells the Bluetooth transport to start listening for incoming connections.
@@ -428,7 +425,7 @@ class BTTransport :
     BTAccessor* btAccessor;                        /**< Object for accessing the Bluetooth device */
     BTController* btController;                    /**< Bus Object that manages the BT topology */
     std::map<qcc::String, qcc::String> serverArgs; /**< Map of server configuration args */
-    std::vector<BTEndpoint*> threadList;           /**< List of active BT endpoints */
+    std::vector<RemoteEndpoint*> threadList;           /**< List of active BT endpoints */
     qcc::Mutex threadListLock;                     /**< Mutex that protects threadList */
     TransportListener* listener;
     bool transportIsStopping;                      /**< The transport has recevied a stop request */

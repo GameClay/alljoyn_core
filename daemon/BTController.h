@@ -42,14 +42,15 @@
 
 namespace ajn {
 
-class BTController;
+//class BTController;
 
 class BluetoothDeviceInterface {
     friend class BTController;
 
   public:
-    typedef std::vector<qcc::String> AdvertiseNames;
-    typedef std::vector<std::pair<qcc::String, AdvertiseNames> > AdvertiseInfo;
+    typedef std::set<qcc::String> AdvertiseNames;
+    typedef std::map<qcc::String, AdvertiseNames> _AdvertiseInfo;
+    typedef qcc::ManagedObj<_AdvertiseInfo> AdvertiseInfo;
 
     virtual ~BluetoothDeviceInterface() { }
 
@@ -59,16 +60,12 @@ class BluetoothDeviceInterface {
      * Start the find operation for AllJoyn capable devices.  A duration may
      * be specified that will result in the find operation to automatically
      * stop after the specified number of seconds.  Exclude any results from
-     * any device that includes the specified UUID in its EIR.  If an AllJoyn
-     * capable device is found with a UUID that does not match the ignore UUID
-     * (and was not previously seen from that device), call the
-     * BTController::ProcessFoundDevice() method with the appropriate
-     * information.
+     * any device that includes the specified UUIDRev in its EIR.
      *
-     * @param ignoreUUID    EIR UUID revision to ignore
-     * @param duration      Find duration in seconds (0 = forever)
+     * @param uuidRev   EIR UUID revision to ignore
+     * @param duration  Find duration in seconds (0 = forever)
      */
-    virtual void StartFind(uint32_t ignoreUUID, uint32_t duration = 0) = 0;
+    virtual void StartFind(uint32_t uuidRev, uint32_t duration = 0) = 0;
 
     /**
      * Stop the find operation.
@@ -87,7 +84,7 @@ class BluetoothDeviceInterface {
      * @param channel   The RFCOMM channel number for the AllJoyn service
      * @param psm       The L2CAP PSM number for the AllJoyn service
      * @param adInfo    The complete list of names to advertise and their associated GUIDs
-     * @param duration      Find duration in seconds (0 = forever)
+     * @param duration  Find duration in seconds (0 = forever)
      */
     virtual void StartAdvertise(uint32_t uuidRev,
                                 const BDAddress& bdAddr,
@@ -111,12 +108,14 @@ class BluetoothDeviceInterface {
      * @param names     The advertised names
      * @param channel   RFCOMM channel accepting connections
      * @param psm       L2CAP PSM accepting connections
+     * @param lost      Set to true if names are lost, false otherwise
      */
-    virtual void FoundBus(const BDAddress& bdAddr,
-                          const qcc::String& guid,
-                          const std::vector<qcc::String>& names,
-                          uint8_t channel,
-                          uint16_t psm) = 0;
+    virtual void FoundNamesChange(const qcc::String& guid,
+                                  const std::vector<qcc::String>& names,
+                                  const BDAddress& bdAddr,
+                                  uint8_t channel,
+                                  uint16_t psm,
+                                  bool lost) = 0;
 
     /**
      * Tells the Bluetooth transport to start listening for incoming connections.
@@ -190,10 +189,11 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     static const uint8_t INVALID_CHANNEL = 0xff;    /**< Invalid RFCOMM channel value */
     static const uint16_t INVALID_PSM = 0;          /**< Invalid L2CAP PSM value */
 
+    typedef std::set<qcc::String> NameSet;
 
     struct NodeState {
-        std::set<qcc::String> advertiseNames;
-        std::set<qcc::String> findNames;
+        NameSet advertiseNames;
+        NameSet findNames;
         qcc::String guid;
         bool direct;
         NodeState() : direct(false) { }
@@ -291,18 +291,27 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     }
 
     /**
-     * Process the found device information or pass it up the chain to the
-     * master node if we are not the master.
+     * Process the found or lost device or pass it up the chain to the master node if
+     * we are not the master.
      *
      * @param bdAddr   BD Address from the SDP record.
      * @param uuidRev  UUID revsision of the found bus.
+     * @param lost     Set to true when device change is lost, false if found or changed.
      *
      * @return ER_OK if successful.
      */
-    QStatus ProcessFoundDevice(const BDAddress& adBdAddr,
-                               uint32_t uuidRev);
+    void ProcessDeviceChange(const BDAddress& adBdAddr,
+                             uint32_t newUUIDRev,
+                             uint32_t oldUUIDRev,
+                             bool lost);
 
-    bool OKToConnect() { return IsMaster() && (directMinions < maxConnections); }
+    /**
+     * Test whether it is ok to make outgoing connections or accept incoming
+     * connections.
+     *
+     * @return  true if OK to make or accept a connection; false otherwise.
+     */
+    bool OKToConnect() const { return IsMaster() && (directMinions < maxConnections); }
 
     /**
      * Perform preparations for an outgoing connection.  For now, this just
@@ -407,7 +416,6 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     };
 
     struct AdvertiseNameArgInfo : public NameArgInfo {
-        uint32_t uuidRev;
         BDAddress bdAddr;
         uint8_t channel;
         uint16_t psm;
@@ -426,9 +434,8 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
 
     struct FindNameArgInfo : public NameArgInfo {
         qcc::String resultDest;
-        uint32_t ignoreUUID;
         BDAddress ignoreAddr;
-        std::set<qcc::String> names;
+        NameSet names;
         FindNameArgInfo(BTController& bto, qcc::Timer& dispatcher) :
             NameArgInfo(bto, 4, dispatcher)
         { }
@@ -441,47 +448,36 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
 
 
     struct UUIDRevCacheInfo {
-        BDAddress connAddr;
-        uint32_t uuidRev;
-        uint32_t lastUpdate;
-        uint8_t channel;
-        uint16_t psm;
-        BluetoothDeviceInterface::AdvertiseInfo adInfo;
-        std::list<uint32_t>::iterator position;
+        BDAddress adAddr;       /**< Advertising BDAddress */
+        uint32_t uuidRev;       /**< Advertised UUID Revision */
+        BDAddress connAddr;     /**< Connection BDAddress */
+        uint8_t channel;        /**< RFCOMM channel */
+        uint16_t psm;           /**< L2CAP PSM */
+        BluetoothDeviceInterface::AdvertiseInfo adInfo;    /**< Advertised names */
         UUIDRevCacheInfo() : uuidRev(INVALID_UUIDREV) { }
     };
 
-    typedef std::map<uint32_t, UUIDRevCacheInfo> UUIDRevCacheMap;
+    typedef std::multimap<uint32_t, UUIDRevCacheInfo> UUIDRevCacheMap;
 
     /**
-     * Send the FoundBus signal to the node interested in one or more of the
+     * Send the FoundNames signal to the node interested in one or more of the
      * names on that bus.
      *
+     * @param dest     Unique name of the minion that should receive the message.
+     * @param names    List of advertised names.
      * @param bdAddr   BD Address from the SDP record.
      * @param channel  RFCOMM channel number from in the SDP record.
      * @param psm      L2CAP PSM number from in the SDP record.
-     * @param names    List of advertised names.
+     * @param lost     Set to true if names are lost, false otherwise.
      *
      * @return ER_OK if successful.
      */
-    QStatus SendFoundBus(const BDAddress& bdAddr,
-                         uint8_t channel,
-                         uint16_t psm,
-                         const BluetoothDeviceInterface::AdvertiseInfo& adInfo,
-                         const char* dest = NULL);
-
-
-    /**
-     * Send the FoundDevice signal to the Master node (may actually be a drone
-     * node).
-     *
-     * @param bdAddr   BD Address from the SDP record.
-     * @param uuidRev  UUID revsision of the found bus.
-     *
-     * @return ER_OK if successful.
-     */
-    QStatus SendFoundDevice(const BDAddress& bdAddr,
-                            uint32_t uuidRev);
+    QStatus SendFoundNamesChange(const char* dest,
+                                 const BluetoothDeviceInterface::AdvertiseInfo& adInfo,
+                                 const BDAddress& bdAddr,
+                                 uint8_t channel,
+                                 uint16_t psm,
+                                 bool lost);
 
     /**
      * Send the one of the following specified signals to the node we believe
@@ -558,19 +554,19 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
                                  Message& msg);
 
     /**
-     * Handle the incoming FoundBus signal.
+     * Handle the incoming FoundNames signal.
      *
      * @param member        Member.
      * @param sourcePath    Object path of signal sender.
-     * @param msg           The incoming message - "syqas":
+     * @param msg           The incoming message - "assyq":
+     *                        - List of advertised names
      *                        - BD Address
      *                        - RFCOMM channel number
      *                        - L2CAP PSM
-     *                        - List of advertised names
      */
-    void HandleFoundBus(const InterfaceDescription::Member* member,
-                        const char* sourcePath,
-                        Message& msg);
+    void HandleFoundNamesChange(const InterfaceDescription::Member* member,
+                                const char* sourcePath,
+                                Message& msg);
 
     /**
      * Handle the incoming FoundDevice signal.
@@ -581,9 +577,9 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      *                        - BD Address
      *                        - UUID Revision number
      */
-    void HandleFoundDevice(const InterfaceDescription::Member* member,
-                           const char* sourcePath,
-                           Message& msg);
+    void HandleFoundDeviceChange(const InterfaceDescription::Member* member,
+                                 const char* sourcePath,
+                                 Message& msg);
 
     /**
      * Handle the incoming ProxyConnect method call.
@@ -633,6 +629,10 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     /**
      * Helper function to create an array of MsgArg's containing the
      * advertised and find names.
+     *
+     * @param array     Vector of MsgArg to hold the encoded state information
+     *
+     * @return  ER_OK if advertisment information successfully encoded.
      */
     QStatus EncodeStateInfo(std::vector<MsgArg>& array);
 
@@ -640,15 +640,28 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      * Extract advertisement information from a message arg into the internal
      * representation.
      *
-     * @param arg       Message arg with the signature "a{sas}":
-     *                    - Array of dict entries:
-     *                      - Key: Bus GUID associated with advertise names
-     *                      - Value: Array of bus names advertised by device with associated Bus GUID
+     * @param adInfo    Advertisement information to be filled
+     * @param nodeList  Vector of MsgArg to hold the encoded advertised names
+     *
+     * @return  ER_OK if advertisment information successfully encoded.
+     */
+    static void EncodeAdInfo(const BluetoothDeviceInterface::AdvertiseInfo& adInfo,
+                             std::vector<MsgArg>& nodeList);
+
+    /**
+     * Extract advertisement information from a message arg into the internal
+     * representation.
+     *
+     * @param entries   Array of MsgArgs all with type dict entry:
+     *                  - Key: Bus GUID associated with advertise names
+     *                  - Value: Array of bus names advertised by device with associated Bus GUID
+     * @param size      Number of entries in the array
      * @param adInfo    Advertisement information to be filled
      *
      * @return  ER_OK if advertisment information successfully extracted.
      */
-    static QStatus ExtractAdInfo(const MsgArg& arg, BluetoothDeviceInterface::AdvertiseInfo& adInfo);
+    static QStatus ExtractAdInfo(const MsgArg* entries, size_t size,
+                                 BluetoothDeviceInterface::AdvertiseInfo& adInfo);
 
 
     void AlarmTriggered(const qcc::Alarm& alarm, QStatus reason);
@@ -709,7 +722,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     qcc::Alarm stopAd;
 
     UUIDRevCacheMap uuidRevCache;
-    std::list<uint32_t> uuidRevCacheAging;
+    qcc::Mutex cacheLock;
 
     struct {
         struct {
@@ -727,8 +740,10 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
                     const InterfaceDescription::Member* CancelAdvertiseName;
                     const InterfaceDescription::Member* DelegateAdvertise;
                     const InterfaceDescription::Member* DelegateFind;
-                    const InterfaceDescription::Member* FoundBus;
+                    const InterfaceDescription::Member* FoundNames;
+                    const InterfaceDescription::Member* LostNames;
                     const InterfaceDescription::Member* FoundDevice;
+                    const InterfaceDescription::Member* LostDevice;
                 } BTController;
             } Bus;
         } alljoyn;

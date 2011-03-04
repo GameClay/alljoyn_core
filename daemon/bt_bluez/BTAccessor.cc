@@ -101,7 +101,7 @@ namespace ajn {
 #define MAX_CONNECT_ATTEMPTS  3
 #define MAX_CONNECT_WAITS    30
 
-#define FOUND_DEVICE_INFO_REFRESH 30000
+#define FOUND_DEVICE_INFO_TIMEOUT 30000
 
 static const char alljoynUUIDBase[] = ALLJOYN_BT_UUID_BASE;
 #define ALLJOYN_BT_UUID_REV_SIZE (sizeof("12345678") - 1)
@@ -390,7 +390,7 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
     /*
      * Shut down all endpoints
      */
-    vector<BTEndpoint*>::iterator eit;
+    vector<RemoteEndpoint*>::iterator eit;
     transport->threadListLock.Lock();
     for (eit = transport->threadList.begin(); eit != transport->threadList.end(); ++eit) {
         (*eit)->Stop();
@@ -425,15 +425,16 @@ QStatus BTTransport::BTAccessor::SetSDPInfo(uint32_t uuidRev,
                   uuidRev, bdAddr.ToString().c_str(), channel, psm));
     QStatus status = ER_OK;
 
-    if ((uuidRev == BTController::INVALID_UUIDREV) || adInfo.empty()) {
+    //if ((uuidRev == BTController::INVALID_UUIDREV) || adInfo->empty()) {
+    if (uuidRev == BTController::INVALID_UUIDREV) {
         if (recordHandle != 0) {
             QCC_DbgPrintf(("Removing record handle %x (no more records)", recordHandle));
             RemoveRecord();
         }
     } else {
         qcc::String nameList;
-        BluetoothDeviceInterface::AdvertiseInfo::const_iterator aiit;
-        for (aiit = adInfo.begin(); aiit != adInfo.end(); ++aiit) {
+        BluetoothDeviceInterface::_AdvertiseInfo::const_iterator aiit;
+        for (aiit = adInfo->begin(); aiit != adInfo->end(); ++aiit) {
             BluetoothDeviceInterface::AdvertiseNames::const_iterator anit;
             nameList += "<sequence><text value=\"" + aiit->first + "\"/><sequence>";
             for (anit = aiit->second.begin(); anit != aiit->second.end(); ++anit) {
@@ -713,8 +714,8 @@ exit:
 }
 
 
-BTEndpoint* BTTransport::BTAccessor::Accept(BusAttachment& alljoyn,
-                                            Event* connectEvent)
+RemoteEndpoint* BTTransport::BTAccessor::Accept(BusAttachment& alljoyn,
+                                                Event* connectEvent)
 {
     BTEndpoint* conn(NULL);
     SocketFd sockFd;
@@ -777,10 +778,10 @@ exit:
 }
 
 
-BTEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
-                                             const BDAddress& bdAddr,
-                                             uint8_t channel,
-                                             uint16_t psm)
+RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
+                                                 const BDAddress& bdAddr,
+                                                 uint8_t channel,
+                                                 uint16_t psm)
 {
     const qcc::String& bdAddrStr(bdAddr.ToString());
     QCC_DbgTrace(("BTTransport::BTAccessor::Connect(bdAddr = %s)", bdAddrStr.c_str()));
@@ -931,12 +932,12 @@ QStatus BTTransport::BTAccessor::Disconnect(const BDAddress& addr)
     QCC_DbgTrace(("BTTransport::BTAccessor::Disconnect(addr = \"%s\")", addr.ToString().c_str()));
     QStatus status(ER_BUS_BAD_TRANSPORT_ARGS);
 
-    BTEndpoint* ep(NULL);
-    vector<BTEndpoint*>::iterator eit;
+    RemoteEndpoint* ep(NULL);
+    vector<RemoteEndpoint*>::iterator eit;
 
     transport->threadListLock.Lock();
     for (eit = transport->threadList.begin(); eit != transport->threadList.end(); ++eit) {
-        if (addr == (*eit)->GetBDAddress()) {
+        if (addr == static_cast<BTEndpoint*>(*eit)->GetBDAddress()) {
             ep = *eit;
         }
         if (ep) {
@@ -1124,8 +1125,11 @@ void BTTransport::BTAccessor::AlarmTriggered(const Alarm& alarm, QStatus reason)
             break;
 
         case DispatchInfo::DEVICE_FOUND:
-            transport->FoundDevice(static_cast<DeviceDispatchInfo*>(op)->addr,
-                                   static_cast<DeviceDispatchInfo*>(op)->uuidRev);
+        case DispatchInfo::DEVICE_LOST:
+            transport->DeviceChange(static_cast<DeviceDispatchInfo*>(op)->addr,
+                                    static_cast<DeviceDispatchInfo*>(op)->newUUIDRev,
+                                    static_cast<DeviceDispatchInfo*>(op)->oldUUIDRev,
+                                    op->operation == DispatchInfo::DEVICE_LOST);
             break;
 
         case DispatchInfo::ADD_RECORD:
@@ -1199,26 +1203,33 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
         //               addrStr, listSize));
 
         qcc::String uuid;
-        uint32_t uuidRev = 0;
-        bool found = FindAllJoynUUID(uuids, listSize, uuidRev);
+        uint32_t newUUIDRev = BTController::INVALID_UUIDREV;
+        uint32_t oldUUIDRev;
+        bool found = FindAllJoynUUID(uuids, listSize, newUUIDRev);
 
-        if (found && (uuidRev != busUUIDRev)) {
-            uint32_t now = GetTimestamp();
-
-            QCC_DbgHLPrintf(("Found AllJoyn device: %s  UUIDRev = %08x", addrStr, uuidRev));
+        if (found && (newUUIDRev != busUUIDRev)) {
+            QCC_DbgHLPrintf(("Found AllJoyn device: %s  UUIDRev = %08x", addrStr, newUUIDRev));
 
             deviceLock.Lock();
             FoundInfo& foundInfo = foundDevices[addr];
+            oldUUIDRev = foundInfo.uuidRev;
+
+            if (foundInfo.uuidRev != BTController::INVALID_UUIDREV) {
+                // We've seen this device before, so clear out the old timeout alarm.
+                bzBus.GetInternal().GetDispatcher().RemoveAlarm(foundInfo.alarm);
+            }
 
             if ((foundInfo.uuidRev == BTController::INVALID_UUIDREV) ||
-                (foundInfo.uuidRev != uuidRev) ||
-                (now - foundInfo.timestamp > FOUND_DEVICE_INFO_REFRESH)) {
+                (foundInfo.uuidRev != newUUIDRev)) {
+                // Newly found device or changed advertisments, so inform the topology manager.
 
-                foundInfo.uuidRev = uuidRev;
-                foundInfo.timestamp = now;
-
-                DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_FOUND, addr, uuidRev));
+                foundInfo.uuidRev = newUUIDRev;
+                DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_FOUND, addr, newUUIDRev, oldUUIDRev));
             }
+
+            foundInfo.alarm = DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_LOST, addr, BTController::INVALID_UUIDREV, newUUIDRev),
+                                                FOUND_DEVICE_INFO_TIMEOUT);
+
             deviceLock.Unlock();
         }
     }
@@ -1422,10 +1433,12 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
 
                         QCC_DbgPrintf(("    Attribute ID: %04x  ALLJOYN_BT_ADVERTISEMENTS_ATTR:", attrId));
 #ifndef NDEBUG
-                        for (size_t i = 0; i < adInfo->size(); ++i) {
-                            QCC_DbgPrintf(("       %s", (*adInfo)[i].first.c_str()));
-                            for (size_t j = 0; j < (*adInfo)[i].second.size(); ++j) {
-                                QCC_DbgPrintf(("           \"%s\"", (*adInfo)[i].second[j].c_str()));
+                        BluetoothDeviceInterface::_AdvertiseInfo::const_iterator node;
+                        for (node = (*adInfo)->begin(); node != (*adInfo)->end(); ++node) {
+                            QCC_DbgPrintf(("       %s", node->first.c_str()));
+                            BluetoothDeviceInterface::AdvertiseNames:: const_iterator name;
+                            for (name = node->second.begin(); name != node->second.end(); ++name) {
+                                QCC_DbgPrintf(("           \"%s\"", name->c_str()));
                             }
                         }
 #endif
@@ -1468,8 +1481,7 @@ void BTTransport::BTAccessor::ProcessXMLAdvertisementsAttr(const XmlElement* ele
         // This sequence is essentially just a list of nodes.
         const vector<XmlElement*>& nodes = elem->GetChildren();
 
-        adInfo.clear();
-        adInfo.reserve(nodes.size());  // prevent memcpy's as names are added.
+        adInfo->clear();
 
         for (size_t i = 0; i < nodes.size(); ++i) {
             const XmlElement* node = nodes[i];
@@ -1482,22 +1494,19 @@ void BTTransport::BTAccessor::ProcessXMLAdvertisementsAttr(const XmlElement* ele
                     (tupleElements[0]->GetName().compare("text") == 0) &&
                     (tupleElements[1]->GetName().compare("sequence") == 0)) {
                     // Only 2 elements in this sequence: the GUID and another sequence
-
                     const qcc::String guid = tupleElements[0]->GetAttribute("value");
-                    // A bug in BlueZ adds a space to the end of our text string.
-                    adInfo.push_back(pair<qcc::String, vector<qcc::String> >(Trim(guid), vector<qcc::String>()));
 
                     // This sequence is just the list of advertised names for the given node.
                     const vector<XmlElement*>& nameList = tupleElements[1]->GetChildren();
 
-                    vector<qcc::String>& names = adInfo.back().second;
+                    // A bug in BlueZ adds a space to the end of our text string.
+                    BluetoothDeviceInterface::AdvertiseNames& names = (*adInfo)[Trim(guid)];
                     names.clear();
-                    names.reserve(nameList.size());
                     for (size_t j = 0; j < nameList.size(); ++j) {
                         if (nameList[j] && (nameList[j]->GetName().compare("text") == 0)) {
                             const qcc::String name = nameList[j]->GetAttribute("value");
                             // A bug in BlueZ adds a space to the end of our text string.
-                            names.push_back(Trim(name));
+                            names.insert(Trim(name));
                         }
                     }
                 }

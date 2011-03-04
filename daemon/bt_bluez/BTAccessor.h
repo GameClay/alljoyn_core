@@ -154,8 +154,8 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      *
      * @return  A newly instatiated remote endpoint for the Bluetooth connection (NULL indicates a failure)
      */
-    BTEndpoint* Accept(BusAttachment& alljoyn,
-                       qcc::Event* connectEvent);
+    RemoteEndpoint* Accept(BusAttachment& alljoyn,
+                           qcc::Event* connectEvent);
 
     /**
      * Create an outgoing connection to a remote Bluetooth device.  If the
@@ -169,10 +169,10 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      *
      * @return  A newly instatiated remote endpoint for the Bluetooth connection (NULL indicates a failure)
      */
-    BTEndpoint* Connect(BusAttachment& alljoyn,
-                        const BDAddress& bdAddr,
-                        uint8_t channel = 0xff,
-                        uint16_t psm = 0);
+    RemoteEndpoint* Connect(BusAttachment& alljoyn,
+                            const BDAddress& bdAddr,
+                            uint8_t channel = 0xff,
+                            uint16_t psm = 0);
 
     /**
      * Disconnect from the specified remote Bluetooth device.
@@ -298,10 +298,11 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
         return adapter;
     }
 
-    void DispatchOperation(DispatchInfo* op, uint32_t delay = 0)
+    qcc::Alarm DispatchOperation(DispatchInfo* op, uint32_t delay = 0)
     {
         qcc::Alarm alarm(delay, this, 0, (void*)op);
         bzBus.GetInternal().GetDispatcher().AddAlarm(alarm);
+        return alarm;
     }
 
 
@@ -319,6 +320,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
         { }
         uint32_t uuidRev;
         uint32_t timestamp;
+        qcc::Alarm alarm;
     };
 
     struct DispatchInfo {
@@ -329,6 +331,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
             ADAPTER_REMOVED,
             DEFAULT_ADAPTER_CHANGED,
             DEVICE_FOUND,
+            DEVICE_LOST,
             ADD_RECORD,
             REMOVE_RECORD
         } DispatchTypes;
@@ -347,10 +350,11 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
 
     struct DeviceDispatchInfo : public DispatchInfo {
         BDAddress addr;
-        uint32_t uuidRev;
+        uint32_t newUUIDRev;
+        uint32_t oldUUIDRev;
 
-        DeviceDispatchInfo(DispatchTypes operation, const BDAddress& addr, uint32_t uuidRev) :
-            DispatchInfo(operation), addr(addr), uuidRev(uuidRev) { }
+        DeviceDispatchInfo(DispatchTypes operation, const BDAddress& addr, uint32_t newUUIDRev, uint32_t oldUUIDRev) :
+            DispatchInfo(operation), addr(addr), newUUIDRev(newUUIDRev), oldUUIDRev(oldUUIDRev) { }
     };
 
     struct MsgDispatchInfo : public DispatchInfo {
@@ -360,6 +364,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
         MsgDispatchInfo(DispatchTypes operation, MsgArg* args, size_t argCnt) :
             DispatchInfo(operation), args(args), argCnt(argCnt) { }
     };
+
 
     BusAttachment bzBus;
     const qcc::String busGuid;
