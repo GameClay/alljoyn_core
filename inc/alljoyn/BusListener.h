@@ -53,12 +53,12 @@ class BusListener {
      *
      * @param bus  The bus the listener is registered with.
      */
-    void ListenerRegistered(BusAttachment* bus) { }
+    virtual void ListenerRegistered(BusAttachment* bus) { }
 
     /**
      * Called by the bus when the listener is unegistered.
      */
-    void ListenerUnRegistered() { }
+    virtual void ListenerUnRegistered() { }
 
     /**
      * Called by the bus when an external bus is discovered that is advertising a well-known name
