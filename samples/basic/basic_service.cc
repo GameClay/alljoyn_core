@@ -29,7 +29,6 @@
 #include <assert.h>
 #include <signal.h>
 #include <stdio.h>
-#include <cstdlib>
 #include <vector>
 
 #include <qcc/String.h>

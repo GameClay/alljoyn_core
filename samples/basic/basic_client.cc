@@ -177,7 +177,11 @@ int main(int argc, char** argv, char** envArg)
 
     /* Wait for join session to complete */
     while (!s_joinComplete) {
+#ifdef _WIN32
+        Sleep(10);
+#else
         sleep(1);
+#endif
     }
 
     ProxyBusObject remoteObj;
