@@ -313,7 +313,7 @@ QStatus BTTransport::EnableAdvertisement(const qcc::String& advertiseName, const
     if (btQos.IsCompatible(advQos)) {
         if (advQos.IsCompatible(btQos)) {
             status = btController->AddAdvertiseName(advertiseName);
-        
+
             if (status != ER_OK) {
                 QCC_LogError(status, ("BTTransport::EnableAdvertisement"));
             }
@@ -333,9 +333,9 @@ void BTTransport::DisableAdvertisement(const qcc::String& advertiseName, const Q
     /* Do nothing if qos doesn't include bluetooth */
     if (!advQos || advQos->IsCompatible(btQos)) {
         QStatus status;
-        
+
         status = btController->RemoveAdvertiseName(advertiseName);
-        
+
         if (status != ER_OK) {
             QCC_LogError(status, ("BTTransport::DisableAdvertisement"));
         }

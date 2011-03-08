@@ -1051,7 +1051,7 @@ void AllJoynObj::CancelAdvertiseName(const InterfaceDescription::Member* member,
     }
 
     QCC_DbgTrace(("AllJoynObj::CancelAdvertiseName(%s, <%x, %x, %x>)", advertiseName, qos.traffic, qos.proximity, qos.transports));
-    
+
     /* Cancel advertisement */
     status = ProcCancelAdvertise(msg->GetSender(), advertiseName, &qos);
     uint32_t replyCode = (ER_OK == status) ? ALLJOYN_CANCELADVERTISENAME_REPLY_SUCCESS : ALLJOYN_CANCELADVERTISENAME_REPLY_FAILED;
@@ -1068,7 +1068,7 @@ void AllJoynObj::CancelAdvertiseName(const InterfaceDescription::Member* member,
         FoundNames("local:", bus.GetGlobalGUIDString(), qos, &names, 0);
         discoverMapLock.Unlock();
     }
-    
+
     /* Log error if reply could not be sent */
     if (ER_OK != status) {
         QCC_LogError(status, ("Failed to respond to org.alljoyn.Bus.CancelAdvertise"));
@@ -1081,7 +1081,7 @@ QStatus AllJoynObj::ProcCancelAdvertise(const qcc::String& sender, const qcc::St
                   sender.c_str(),
                   advertiseName.c_str(),
                   qos ? qos->traffic : (int) QosInfo::TRAFFIC_ANY,
-                  qos ? qos->proximity : (int) QosInfo::PROXIMITY_ANY, 
+                  qos ? qos->proximity : (int) QosInfo::PROXIMITY_ANY,
                   qos ? qos->transports : (int) QosInfo::TRANSPORT_ANY));
 
     QStatus status = ER_OK;
@@ -1717,7 +1717,7 @@ void AllJoynObj::NameOwnerChanged(const qcc::String& alias, const qcc::String* o
 
         /* If a local well-known name dropped, then remove any nameMap entry */
         if ((NULL == newOwner) && (alias[0] != ':')) {
-            multimap<String,NameMapEntry>::const_iterator it = nameMap.lower_bound(alias);
+            multimap<String, NameMapEntry>::const_iterator it = nameMap.lower_bound(alias);
             while ((it != nameMap.end()) && (it->first == alias)) {
                 if (it->second.qos.transports & QosInfo::TRANSPORT_LOCAL) {
                     vector<String> names;
