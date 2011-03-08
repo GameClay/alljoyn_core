@@ -180,7 +180,7 @@ typedef struct {
 /**
  * Type for a handle. An handle is an abstraction of a platform-specific socket or file descriptor.
  *
- * @Note Handles associated with in a message received by the application will be closed when the
+ * @note Handles associated with in a message received by the application will be closed when the
  * message destructor is called. If the application code needs to continue using the handle the
  * handle must be duplicated by calling qcc:SocketDup() or the appropriate platform-specific APIs.
  * Handles that are passed in when creating a message to be sent are duplicated internally and can
@@ -563,9 +563,9 @@ class MsgArg {
     /**
      * Helper function for accessing dictionary elements. The MsgArg must be an array of dictionary
      * elements. The second parameter is the key value, this is expressed according to the rules for
-     * #MsgArg::Set so is either a scalar, a pointer to a string, or for 64 bit values a pointer to the
-     * value. This value is matched against the dictionary array to locate the matchinge element. The
-     * third and subsequent parameters are unpacked according to the rules of #MsgArg::Get.
+     * %MsgArg::Set so is either a scalar, a pointer to a string, or for 64 bit values a pointer to
+     * the value. This value is matched against the dictionary array to locate the matchinge element.
+     * The third and subsequent parameters are unpacked according to the rules of %MsgArg::Get.
      *
      * For example, where the key is a string and the values are structs:
      *

@@ -94,8 +94,8 @@ class BusAttachment : public MessageReceiver {
 
     /**
      * Initialize one more interface descriptions from an XML string in DBus introspection format.
-     * The root tag of the XML can be a <node> or a standalone <interface> tag. To initialize more
-     * than one interface the interfaces need to be nested in a <node> tag.
+     * The root tag of the XML can be a \<node\> or a standalone \<interface\> tag. To initialize more
+     * than one interface the interfaces need to be nested in a \<node\> tag.
      *
      * Note that when this method fails during parsing, the return code will be set accordingly.
      * However, any interfaces which were successfully parsed prior to the failure may be registered
@@ -492,7 +492,7 @@ class BusAttachment : public MessageReceiver {
      * @param[in]  isMultipoint  true if this session can be joined multiple times to form a single multipoint session.
      *                           When false, each join attempt creates a new point-to-point session.
      * @param[in]  qos           QoS requirements that potential joiners must meet in order to successfully join the session.
-     * @param[out] disposition   ALLJOYN_CREATESESSION_REPLY_*" constant from AllJoynStd.h
+     * @param[out] disposition   @ref CreateSessionReplyAnchor "ALLJOYN_CREATESESSION_REPLY_*" constant from AllJoynStd.h
      * @param[out] sessionId     Daemon assigned unique identifier for session. Valid if disposition is ALLJOYN_CREATESESSION_REPLY_SUCCESS.
      * @return
      *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
@@ -507,7 +507,7 @@ class BusAttachment : public MessageReceiver {
      * and interprets the response.
      *
      * @param[in]  sessionName   Name of existing session that caller wants to join.
-     * @param[out] disposition   ALLJOYN_JOINSESSION_REPLY_*" constant from AllJoynStd.h.
+     * @param[out] disposition   @ref JoinSessionReplyAnchor "ALLJOYN_JOINSESSION_REPLY_*" constant from AllJoynStd.h.
      * @param[out] sessionId     Daemon assigned unique identifier for session. Valid if disposition is ALLJOYN_CREATESESSION_REPLY_SUCCESS.
      * @param[out] qos           Quality of Service for session.
      * @return
@@ -523,7 +523,7 @@ class BusAttachment : public MessageReceiver {
      * and interprets the response.
      *
      * @param[in]  sessionId     Session id.
-     * @param[out] disposition   ALLJOYN_LEAVESESSION_REPLY_*" constant from AllJoynStd.h.
+     * @param[out] disposition   @ref LeaveSessionReplyAnchor "ALLJOYN_LEAVESESSION_REPLY_*" constant from AllJoynStd.h.
      * @return
      *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.

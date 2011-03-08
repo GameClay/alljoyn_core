@@ -76,6 +76,7 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
 }
 
 /**
+ * @anchor CreateSessionReplyAnchor
  * @name org.alljoyn.Bus.CreateSession
  *  Interface: org.alljoyn.Bus
  *  Method: UINT32 status, UINT64 sessionId CreateSession(String sessionName, QoSInfo requiredQos)
@@ -99,6 +100,7 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
 // @}
 
 /**
+ * @anchor JoinSessionReplyAnchor
  * @name org.alljoyn.Bus.JoinSession
  *  Interface: org.alljoyn.Bus
  *  Method: UINT32 status, UINT64 sessionId JoinSession(String sessionName, QosInfo preferredQoS, QosInfo requiredQoS)
@@ -127,6 +129,7 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
 // @}
 
 /**
+ * @anchor LeaveSessionReplyAnchor
  * @name org.alljoyn.Bus.LeaveSession
  *  Interface: org.alljoyn.Bus
  *  Method: void LeaveSession(UINT64 sessionId)
