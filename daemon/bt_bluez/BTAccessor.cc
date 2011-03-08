@@ -173,6 +173,7 @@ BTTransport::BTAccessor::BTAccessor(BTTransport* transport,
     recordHandle(0),
     bluetoothAvailable(false),
     discoverable(false),
+    discoveryActive(false),
     l2capLFd(-1),
     rfcommLFd(-1),
     l2capEvent(NULL),
@@ -793,15 +794,22 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
     BT_SOCKADDR addr;
     QStatus status = ER_OK;
     bool usingRfcomm;
+    bool resumeDiscovery = false;
 
+    if (discoveryActive) {
+        resumeDiscovery = true;
+        DiscoveryControl(*org.bluez.Adapter.StopDiscovery);
+    }
 
     if ((channel == BTController::INVALID_CHANNEL) && (psm == BTController::INVALID_PSM)) {
         status = GetDeviceInfo(bdAddr, NULL, NULL, &channel, &psm, NULL);
         if (status != ER_OK) {
+            if (resumeDiscovery) {
+                DiscoveryControl(*org.bluez.Adapter.StartDiscovery);
+            }
             return NULL;
         }
     }
-
 
     usingRfcomm = (psm == BTController::INVALID_PSM);
 
@@ -921,6 +929,10 @@ exit:
             close(sockFd);
             sockFd = -1;
         }
+    }
+
+    if (resumeDiscovery) {
+        DiscoveryControl(*org.bluez.Adapter.StartDiscovery);
     }
 
     return conn;
@@ -1273,6 +1285,12 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
     QCC_DbgTrace(("BTTransport::BTAccessor::GetDeviceInfo(addr = %s, ...)", addr.ToString().c_str()));
     QStatus status;
     qcc::String devObjPath;
+    bool resumeDiscovery = false;
+
+    if (discoveryActive) {
+        resumeDiscovery = true;
+        DiscoveryControl(*org.bluez.Adapter.StopDiscovery);
+    }
 
     status = GetDeviceObjPath(addr, devObjPath);
     if (status == ER_OK) {
@@ -1305,6 +1323,10 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
                 }
             }
         }
+    }
+
+    if (resumeDiscovery) {
+        DiscoveryControl(*org.bluez.Adapter.StartDiscovery);
     }
 
     return status;
@@ -1582,11 +1604,10 @@ QStatus BTTransport::BTAccessor::GetDeviceObjPath(const BDAddress& bdAddr,
 }
 
 
-QStatus BTTransport::BTAccessor::DiscoveryControl(uint32_t busRev, const InterfaceDescription::Member& method)
+QStatus BTTransport::BTAccessor::DiscoveryControl(const InterfaceDescription::Member& method)
 {
-    QCC_DbgTrace(("BTTransport::BTAccessor::DiscoveryControl(busRev = %08x, method = %s)", busRev, method.name.c_str()));
+    QCC_DbgTrace(("BTTransport::BTAccessor::DiscoveryControl(method = %s)", method.name.c_str()));
     QStatus status = ER_FAIL;
-    busUUIDRev = busRev;
 
     AdapterObject adapter = GetDefaultAdapterObject();
 
@@ -1663,11 +1684,9 @@ void BTTransport::BTAccessor::AdapterPropertyChangedSignalHandler(const Interfac
         const char* property;
         const MsgArg* value;
 
-        msg->GetArg(0)->Get("s", &property);
-        msg->GetArg(1)->Get("v", &value);
+        msg->GetArgs("sv", &property, &value);
 
-
-        // QCC_DbgPrintf(("New value for property on %s: %s = %s", sourcePath, property.str, value.ToString().c_str()));
+        //QCC_DbgPrintf(("New value for property on %s: %s = %s", sourcePath, property, value->ToString().c_str()));
 
         if (strcmp(property, "Discoverable") == 0) {
             bool disc;

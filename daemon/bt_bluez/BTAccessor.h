@@ -77,17 +77,25 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      */
     QStatus StartDiscovery(uint32_t busRev, uint32_t duration = 0)
     {
-        QStatus status = DiscoveryControl(busRev, *org.bluez.Adapter.StartDiscovery);
+        busUUIDRev = busRev;
+        QStatus status = DiscoveryControl(*org.bluez.Adapter.StartDiscovery);
         if (duration > 0) {
             DispatchOperation(new DispatchInfo(DispatchInfo::STOP_DISCOVERY),  duration * 1000);
         }
+        discoveryActive = true;
         return status;
     }
 
     /**
      * Stop discovery (inquiry)
      */
-    QStatus StopDiscovery() { return DiscoveryControl(BTController::INVALID_UUIDREV, *org.bluez.Adapter.StopDiscovery); }
+    QStatus StopDiscovery()
+    {
+        busUUIDRev = BTController::INVALID_UUIDREV;
+        QStatus status = DiscoveryControl(*org.bluez.Adapter.StopDiscovery);
+        discoveryActive = false;
+        return status;
+    }
 
     /**
      * Start discoverability (inquiry scan)
@@ -271,7 +279,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
                                              BluetoothDeviceInterface::AdvertiseInfo& adInfo);
     QStatus GetDeviceObjPath(const BDAddress& bdAddr,
                              qcc::String& devObjPath);
-    QStatus DiscoveryControl(uint32_t busRev, const InterfaceDescription::Member& method);
+    QStatus DiscoveryControl(const InterfaceDescription::Member& method);
     QStatus SetDiscoverabilityProperty();
 
     bluez::AdapterObject GetAdapterObject(const qcc::String& adapterObjPath) const
@@ -389,6 +397,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
 
     bool bluetoothAvailable;
     bool discoverable;
+    bool discoveryActive;
 
     uint32_t busUUIDRev;  // UUID revision to ignore when doing a FindBus
 

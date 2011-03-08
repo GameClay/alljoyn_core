@@ -364,22 +364,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
         if (!lost) {
             // Need to get new or updated information...
             nodeStateLock.Lock();
-            if (UseLocalFind()) {
-                // TODO - This should probably move into BTAccessor
-                QCC_DbgPrintf(("Stopping find..."));
-                assert(find.active);
-                bt.StopFind();
-                find.active = false;
-            }
-
             status = bt.GetDeviceInfo(adBdAddr, connAddr, newUUIDRev, channel, psm, adInfo);
-
-            if (UseLocalFind()) {
-                // TODO - This should probably move into BTAccessor
-                QCC_DbgPrintf(("Starting find..."));
-                bt.StartFind(masterUUIDRev);
-                find.active = true;
-            }
             nodeStateLock.Unlock();
             if (status != ER_OK) {
                 QCC_LogError(status, ("Failed to get device information"));
@@ -475,11 +460,10 @@ void BTController::PrepConnect()
     nodeStateLock.Lock();
     if (UseLocalFind()) {
         /*
-         * Gotta shut down the local find operation since it severely
-         * interferes with our ability to establish a connection.  Also, after
-         * a successful connection, the exchange of the SetState method call
-         * and response will result in one side or the other taking control of
-         * who performs the find operation.
+         * Gotta shut down the local find operation since a successful
+         * connection will cause the exchange of the SetState method call and
+         * response which will result in one side or the other taking control
+         * of who performs the find operation.
          */
         QCC_DbgPrintf(("Stopping find..."));
         assert(find.active);
@@ -489,9 +473,9 @@ void BTController::PrepConnect()
     if (UseLocalAdvertise() && advertise.active) {
         /*
          * Gotta shut down the local advertise operation since a successful
-         * connection will result in the exchange for the SetState method call
-         * and response afterwhich the node responsibility for advertising
-         * will be determined.
+         * connection will cause the exchange for the SetState method call and
+         * response which will result in one side or the other taking control
+         * of who performs the advertise operation.
          */
         QCC_DbgPrintf(("Stopping advertise..."));
         bt.StopAdvertise();
