@@ -577,7 +577,7 @@ class MsgArg {
      *     @endcode
      *
      * This function is particularly useful for extracting specific properties from the array of property
-     * values returned by #ProxyBusObject::GetAllProperties().
+     * values returned by @ref ajn::ProxyBusObject::GetAllProperties "ProxyBusObject::GetAllProperties()".
      *
      * @param elemSig  The expected signature for the dictionary element, e.g. "{su}"
      * @param ...      Pointers to return unpacked key values.

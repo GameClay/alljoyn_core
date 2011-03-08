@@ -133,9 +133,10 @@ class SimpleBusListener : public BusListener {
      * @param timeout  A timeout in milliseconds to wait for the busEvent, 0 means don't wait just
      *                 check for an busEvent and return, FOREVER (-1) means wait forever.
      *
-     * @return #ER_OK if an even was received.
-     *         #ER_TIMEOUT if the wait timed out.
-     *         #ER_THREAD_ALERTED if the wait unblocked due to a signal
+     * @return
+     *         - #ER_OK if an even was received.
+     *         - #ER_TIMEOUT if the wait timed out.
+     *         - #ER_ALERTED_THREAD if the wait unblocked due to a signal
      */
     QStatus WaitForEvent(BusEvent& busEvent, uint32_t timeout = FOREVER);
 

@@ -33,7 +33,7 @@ namespace ajn {
  */
 struct QosInfo {
 
-    /** Traffic type */
+    /** @name Traffic type */
     // {@
     typedef uint8_t TrafficType;
     static const TrafficType TRAFFIC_ANY            = 0xFF;
@@ -43,7 +43,7 @@ struct QosInfo {
     TrafficType traffic;
     // @}
 
-    /** Proximity */
+    /** @name Proximity */
     // {@
     typedef uint8_t Proximity;
     static const Proximity PROXIMITY_NONE        = 0x00;
@@ -53,7 +53,7 @@ struct QosInfo {
     Proximity proximity;
     // @}
 
-    /** Transport  */
+    /** @name Transport  */
     // @{
     typedef uint16_t Transport;
     static const Transport TRANSPORT_ANY       = 0xFFFF;
