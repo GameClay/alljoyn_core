@@ -36,6 +36,8 @@
 #include <qcc/SocketStream.h>
 #include <qcc/time.h>
 
+#include <alljoyn/QosInfo.h>
+
 #include "Transport.h"
 #include "RemoteEndpoint.h"
 
@@ -191,8 +193,10 @@ class TCPTransport : public Transport, public RemoteEndpoint::EndpointListener {
      * by clients or services.
      *
      * @param advertiseName unused parameter.
+     * @param qos unused parameter.
+     * @return ER_OK if successful
      */
-    void EnableAdvertisement(const qcc::String& advertiseName) { }
+    QStatus EnableAdvertisement(const qcc::String& advertiseName, const QosInfo& qos) { return ER_NOT_IMPLEMENTED; }
 
     /**
      * @internal
@@ -200,9 +204,10 @@ class TCPTransport : public Transport, public RemoteEndpoint::EndpointListener {
      * by clients or services.
      *
      * @param advertiseName unused parameter.
+     * @param qos unused parameter.
      * @param nameListEmpty unused parameter.
      */
-    void DisableAdvertisement(const qcc::String& advertiseName, bool nameListEmpty) { }
+    void DisableAdvertisement(const qcc::String& advertiseName, const QosInfo* qos, bool nameListEmpty) { }
 
     /**
      * Returns the name of this transport
