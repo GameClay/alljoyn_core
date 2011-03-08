@@ -224,13 +224,25 @@ class MyAuthListener : public AuthListener {
 };
 
 class MyBusListener : public BusListener {
+
+  public:
+    MyBusListener(const QosInfo& qos) : BusListener(), qos(qos) { }
+
     bool AcceptSession(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
     {
-        QCC_SyncPrintf("Accepting JoinSession request from %s\n", joiner);
-
-        /* Allow the join attempt */
-        return true;
+        if (qos.IsCompatible(this->qos)) {
+            /* Allow the join attempt */
+            QCC_SyncPrintf("Accepting JoinSession request from %s\n", joiner);
+            return true;
+        } else {
+            /* Reject incompatible qos */
+            QCC_SyncPrintf("Rejecting joiner %s with incompatible QoS\n", joiner);
+            return false;
+        }
     }
+
+  private:
+    QosInfo qos;
 };
 
 class LocalTestObject : public BusObject {
@@ -329,13 +341,14 @@ class LocalTestObject : public BusObject {
 
   public:
 
-    LocalTestObject(BusAttachment& bus, const char* path, unsigned long reportInterval) :
+    LocalTestObject(BusAttachment& bus, const char* path, unsigned long reportInterval, const QosInfo& qos) :
         BusObject(bus, path),
         reportInterval(reportInterval),
         prop_str_val("hello world"),
         prop_ro_str("I cannot be written"),
         prop_int_val(100),
-        sessionId(0)
+        sessionId(0),
+        qos(qos)
     {
         QStatus status;
 
@@ -385,7 +398,6 @@ class LocalTestObject : public BusObject {
         }
 
         /* Create a session for incoming client connections */
-        QosInfo qos(QosInfo::TRAFFIC_MESSAGES, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
         uint32_t replyCode = 0;
         status = bus.CreateSession(g_wellKnownName.c_str(), true, qos, replyCode, sessionId);
         if (status != ER_OK) {
@@ -399,7 +411,7 @@ class LocalTestObject : public BusObject {
 
         /* Begin Advertising the well-known name */
         disposition = 0;
-        status = g_msgBus->AdvertiseName(g_wellKnownName.c_str(), disposition);
+        status = g_msgBus->AdvertiseName(g_wellKnownName.c_str(), qos, disposition);
         if ((ER_OK != status) || (disposition != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS)) {
             status = (status == ER_OK) ? ER_FAIL : status;
             QCC_LogError(status, ("Sending org.alljoyn.Bus.Advertise failed (disposition=%d)", disposition));
@@ -532,6 +544,7 @@ class LocalTestObject : public BusObject {
     qcc::String prop_ro_str;
     int32_t prop_int_val;
     SessionId sessionId;
+    QosInfo qos;
 };
 
 
@@ -543,13 +556,16 @@ Mutex LocalTestObject::DelayedResponse::delayedResponseLock;
 
 static void usage(void)
 {
-    printf("Usage: bbservice [-i] [-h <name>]\n\n");
+    printf("Usage: bbservice [-h <name>] [-e] [-x] [-i #] [-n <name>] [-b] [t] [-l]\n\n");
     printf("Options:\n");
     printf("   -h         = Print this help message\n");
     printf("   -e         = Echo received signals back to sender\n");
     printf("   -x         = Compress signals echoed back to sender\n");
     printf("   -i #       = Signal report interval (number of signals rx per update; default = 1000)\n");
     printf("   -n <name>  = Well-known name to advertise\n");
+    printf("   -b         = Advertise over Bluetooth (enables selective advertising)\n");
+    printf("   -t         = Advertise over TCP (enables selective advertising)\n");
+    printf("   -l         = Advertise locally (enables selective advertising)\n");
 }
 
 /** Main entry point */
@@ -558,6 +574,7 @@ int main(int argc, char** argv)
     QStatus status = ER_OK;
     unsigned long reportInterval = 1000;
     qcc::String listenSpec;
+    QosInfo qos(QosInfo::TRAFFIC_MESSAGES, QosInfo::PROXIMITY_ANY, 0);
 
 #ifdef _WIN32
     WSADATA wsaData;
@@ -598,12 +615,23 @@ int main(int argc, char** argv)
             } else {
                 g_wellKnownName = argv[i];
             }
+        } else if (0 == strcmp("-b", argv[i])) {
+            qos.transports |= QosInfo::TRANSPORT_BLUETOOTH;
+        } else if (0 == strcmp("-t", argv[i])) {
+            qos.transports |= QosInfo::TRANSPORT_WLAN;
+        } else if (0 == strcmp("-l", argv[i])) {
+            qos.transports |= QosInfo::TRANSPORT_LOCAL;
         } else {
             status = ER_FAIL;
             printf("Unknown option %s\n", argv[i]);
             usage();
             exit(1);
         }
+    }
+
+    /* If no transport option was specifie, then make QoS very open */
+    if (qos.transports == 0) {
+        qos.transports = QosInfo::TRANSPORT_ANY;
     }
 
     /* Get env vars */
@@ -657,11 +685,11 @@ int main(int argc, char** argv)
 
     if (ER_OK == status) {
         /* Create a bus listener to be used to accept incoming session requests */
-        BusListener* myBusListener = new MyBusListener();
+        BusListener* myBusListener = new MyBusListener(qos);
         g_msgBus->RegisterBusListener(*myBusListener);
 
         /* Register local objects and connect to the daemon */
-        LocalTestObject testObj(*g_msgBus, ::org::alljoyn::alljoyn_test::ObjectPath, reportInterval);
+        LocalTestObject testObj(*g_msgBus, ::org::alljoyn::alljoyn_test::ObjectPath, reportInterval, qos);
         g_msgBus->RegisterBusObject(testObj);
 
         g_msgBus->EnablePeerSecurity("ALLJOYN_SRP_KEYX ALLJOYN_RSA_KEYX ALLJOYN_SRP_LOGON", new MyAuthListener());

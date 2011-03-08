@@ -425,6 +425,7 @@ class BusAttachment : public MessageReceiver {
      * and interprets the response.
      *
      * @param[in]  name          the well-known name to advertise. (Must be owned by the caller via RequestName).
+     * @param[in]  qos           Quality of Service to advertise.
      * @param[out] disposition   ALLJOYN_ADVERTISEDNAME_REPLY_* constant from AllJoynStd.h
      *
      * @return
@@ -432,7 +433,7 @@ class BusAttachment : public MessageReceiver {
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus AdvertiseName(const char* name, uint32_t& disposition);
+    QStatus AdvertiseName(const char* name, const QosInfo& qos, uint32_t& disposition);
 
     /**
      * Stop advertising the existence of a well-known name to other AllJoyn daemons.

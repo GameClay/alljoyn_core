@@ -232,7 +232,8 @@ int main(int argc, char** argv, char** envArg)
     /* Advertise name */
     if (ER_OK == status) {
         uint32_t disposition = 0;
-        status = g_msgBus->AdvertiseName(SERVICE_NAME, disposition);
+        QosInfo qos(QosInfo::TRAFFIC_MESSAGES, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
+        status = g_msgBus->AdvertiseName(SERVICE_NAME, qos, disposition);
         if ((status != ER_OK) || (disposition != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS)) {
             printf("Failed to advertise name %s (%s) (disposition=%d)\n", SERVICE_NAME, QCC_StatusText(status), disposition);
             status = (status == ER_OK) ? ER_FAIL : status;

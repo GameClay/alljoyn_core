@@ -36,6 +36,7 @@ struct QosInfo {
     /** Traffic type */
     // {@
     typedef uint8_t TrafficType;
+    static const TrafficType TRAFFIC_ANY            = 0xFF;
     static const TrafficType TRAFFIC_MESSAGES       = 0x01;
     static const TrafficType TRAFFIC_RAW_UNRELIABLE = 0x02;
     static const TrafficType TRAFFIC_RAW_RELIABLE   = 0x04;
@@ -45,9 +46,10 @@ struct QosInfo {
     /** Proximity */
     // {@
     typedef uint8_t Proximity;
-    static const Proximity PROXIMITY_ANY      = 0xFF;
-    static const Proximity PROXIMITY_PHYSICAL = 0x01;
-    static const Proximity PROXIMITY_NETWORK  = 0x02;
+    static const Proximity PROXIMITY_NONE        = 0x00;
+    static const Proximity PROXIMITY_ANY         = 0xFF;
+    static const Proximity PROXIMITY_PHYSICAL    = 0x01;
+    static const Proximity PROXIMITY_NETWORK     = 0x02;
     Proximity proximity;
     // @}
 
@@ -55,9 +57,10 @@ struct QosInfo {
     // @{
     typedef uint16_t Transport;
     static const Transport TRANSPORT_ANY       = 0xFFFF;
-    static const Transport TRANSPORT_BLUETOOTH = 0x0001;
-    static const Transport TRANSPORT_WLAN      = 0x0002;
-    static const Transport TRANSPORT_WWAN      = 0x0004;
+    static const Transport TRANSPORT_LOCAL     = 0x0001;
+    static const Transport TRANSPORT_BLUETOOTH = 0x0002;
+    static const Transport TRANSPORT_WLAN      = 0x0004;
+    static const Transport TRANSPORT_WWAN      = 0x0008;
     Transport transports;
     // @}
 

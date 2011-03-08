@@ -472,9 +472,10 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      *
      * @param uniqueName         Name of endpoint requesting end of advertising
      * @param advertiseName      Well-known name whose advertising is to be canceled.
+     * @param advQos             Qos used in call to AdvertiseName.
      * @return ER_OK if successful.
      */
-    QStatus ProcCancelAdvertise(const qcc::String& uniqueName, const qcc::String& advertiseName);
+    QStatus ProcCancelAdvertise(const qcc::String& uniqueName, const qcc::String& advertiseName, const QosInfo* advQos);
 
     /**
      * Process a request to cancel discovery of a name prefix from a given (locally-connected) endpoint.

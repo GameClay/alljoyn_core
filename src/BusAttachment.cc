@@ -702,17 +702,17 @@ QStatus BusAttachment::CancelFindAdvertisedName(const char* namePrefix, uint32_t
     return status;
 }
 
-QStatus BusAttachment::AdvertiseName(const char* name, uint32_t& disposition)
+QStatus BusAttachment::AdvertiseName(const char* name, const QosInfo& qos, uint32_t& disposition)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
     }
 
     Message reply(*this);
-    MsgArg args[1];
+    MsgArg args[2];
     size_t numArgs = ArraySize(args);
 
-    MsgArg::Set(args, numArgs, "s", name);
+    MsgArg::Set(args, numArgs, "s"QOSINFO_SIG, name, qos.traffic, qos.proximity, qos.transports);
 
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
     QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "AdvertiseName", args, numArgs, reply);
@@ -941,7 +941,7 @@ QStatus BusAttachment::GetSessionFd(SessionId sessionId, SocketFd& sockFd)
     } else {
         String errMsg;
         const char* errName = reply->GetErrorName(&errMsg);
-        QCC_LogError(status, ("%s.LeaveSession returned ERROR_MESSAGE (error=%s, \"%s\")",
+        QCC_LogError(status, ("%s.GetSessionFd returned ERROR_MESSAGE (error=%s, \"%s\")",
                               org::alljoyn::Bus::InterfaceName,
                               errName,
                               errMsg.c_str()));

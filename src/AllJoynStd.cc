@@ -66,7 +66,7 @@ QStatus org::alljoyn::CreateInterfaces(BusAttachment& bus)
         ifc->AddMethod("CreateSession",            "sb"QOSINFO_SIG, "uu",            "sessionName,isMulticast,qos,disposition,sessionId",      0);
         ifc->AddMethod("JoinSession",              "s"QOSINFO_SIG,  "uu"QOSINFO_SIG, "sName,qos,disp,sessionId,qos",               0);
         ifc->AddMethod("LeaveSession",             "u",             "u",             "sessionId,disposition",                      0);
-        ifc->AddMethod("AdvertiseName",            "s",             "u",             "name,disposition",                           0);
+        ifc->AddMethod("AdvertiseName",            "s"QOSINFO_SIG,  "u",             "name,disposition",                           0);
         ifc->AddMethod("CancelAdvertiseName",      "s",             "u",             "name,disposition",                           0);
         ifc->AddMethod("FindAdvertisedName",       "s",             "u",             "name,disposition",                           0);
         ifc->AddMethod("CancelFindAdvertisedName", "s",             "u",             "name,disposition",                           0);

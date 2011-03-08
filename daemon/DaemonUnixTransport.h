@@ -193,21 +193,24 @@ class DaemonUnixTransport : public Transport, public RemoteEndpoint::EndpointLis
     void DisableDiscovery(const char* namePrefix) { }
 
     /**
-     * @brief Provide an empty implementation of a discovery function not used
-     * by the Unix daemon transport.
+     * Start advertising a well-known name with a given quality of service.
      *
-     * @param advertiseName Unused parameter.
+     * @param advertiseName   Well-known name to add to list of advertised names.
+     * @param advQos          Quality of service for advertisement.
+     * @return
+     *      - ER_OK if successful.
+     *      - an error status otherwise.
      */
-    void EnableAdvertisement(const qcc::String& advertiseName) { }
+    QStatus EnableAdvertisement(const qcc::String& advertiseName, const QosInfo& advQos) { return ER_BUS_INCOMPATIBLE_QOS; }
 
     /**
-     * @brief Provide an empty implementation of a discovery function not used
-     * by the Unix daemon transport.
+     * Stop advertising a well-known name with a given quality of service.
      *
-     * @param advertiseName Unused parameter.
-     * @param nameListEmpty Unuxed parameter.
+     * @param advertiseName   Well-known name to remove from list of advertised names.
+     * @param advQos          Quality of service for advertisement (NULL indicates all/any qos).
+     * @param nameListEmpty   Indicates whether advertise name list is completely empty (safe to disable OTA advertising).
      */
-    void DisableAdvertisement(const qcc::String& advertiseName, bool nameListEmpty) { }
+    void DisableAdvertisement(const qcc::String& advertiseName, const QosInfo* advQos, bool nameListEmpty) { }
 
     /**
      * Returns the name of this transport

@@ -197,7 +197,9 @@ class Transport {
     virtual void SetListener(TransportListener* listener) = 0;
 
     /**
-     * Start discovering busses.
+     * Start discovering remotely advertised names that match prefix.
+     *
+     * @param namePrefix    Well-known name prefix.
      *
      * @return
      *      - ER_OK if successful.
@@ -206,24 +208,33 @@ class Transport {
     virtual void EnableDiscovery(const char* namePrefix) = 0;
 
     /**
-     * Stop discovering busses to connect to
+     * Stop discovering remotely advertised names that match prefix.
+     *
+     * @param namePrefix    Well-known name prefix.
+     *
      */
     virtual void DisableDiscovery(const char* namePrefix) = 0;
 
     /**
-     * Start advertising AllJoyn capability.
+     * Start advertising a well-known name with the given quality of service.
      *
      * @param advertiseName   Well-known name to add to list of advertised names.
+     * @param advQos          Quality of service for advertisement.
+     *
+     * @return
+     *      - ER_OK if successful.
+     *      - an error status otherwise.
      */
-    virtual void EnableAdvertisement(const qcc::String& advertiseName) = 0;
+    virtual QStatus EnableAdvertisement(const qcc::String& advertiseName, const QosInfo& advQos) = 0;
 
     /**
-     * Stop advertising AllJoyn capability.
+     * Stop advertising a well-known name with a given quality of service.
      *
      * @param advertiseName   Well-known name to remove from list of advertised names.
+     * @param advQos          Quality of service for advertisement (NULL indicates all/any qos).
      * @param nameListEmpty   Indicates whether advertise name list is completely empty (safe to disable OTA advertising).
      */
-    virtual void DisableAdvertisement(const qcc::String& advertsizeName, bool nameListEmpty) = 0;
+    virtual void DisableAdvertisement(const qcc::String& advertiseName, const QosInfo* advQos, bool nameListEmpty) = 0;
 
     /**
      * Returns the name of the transport

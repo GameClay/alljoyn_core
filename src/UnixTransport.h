@@ -189,19 +189,24 @@ class UnixTransport : public Transport, public RemoteEndpoint::EndpointListener,
      * @brief Provide an empty implementation of a discovery function not used
      * by clients or services.
      *
-     * @param advertiseName unused parameter.
+     * @param advertiseName   Well-known name to be advertised.
+     * @param qos             Quality of service for advertisment.
+     * @return
+     *      - ER_OK if successful.
+     *      - an error status otherwise.
      */
-    void EnableAdvertisement(const qcc::String& advertiseName) { }
+    QStatus EnableAdvertisement(const qcc::String& advertiseName, const QosInfo& qos) { return ER_BUS_INCOMPATIBLE_QOS; }
 
     /**
      * @internal
      * @brief Provide an empty implementation of a discovery function not used
      * by clients or services.
      *
-     * @param advertiseName unused parameter.
-     * @param nameListEmpty unused parameter.
+     * @param advertiseName Well-known name to be advertised.
+     * @param qos           Quality of service for advertisement or NULL to indicate all/any QoS.
+     * @param nameListEmpty true iff this is the last exiting advertisement.
      */
-    void DisableAdvertisement(const qcc::String& advertiseName, bool nameListEmpty) { }
+    void DisableAdvertisement(const qcc::String& advertiseName, const QosInfo* qos, bool nameListEmpty) { }
 
     /**
      * Returns the name of this transport

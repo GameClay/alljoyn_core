@@ -1100,33 +1100,41 @@ void DaemonTCPTransport::EnableDiscovery(const char* namePrefix)
     }
 }
 
-void DaemonTCPTransport::EnableAdvertisement(const qcc::String& advertiseName)
+QStatus DaemonTCPTransport::EnableAdvertisement(const qcc::String& advertiseName, const QosInfo& advQos)
 {
-    /*
-     * Give the provided name to the name service and have it start advertising
-     * the name on the network as reachable through the daemon having this
-     * transport.  The name service handles periodic retransmission of the name
-     * and manages the coming and going of network interfaces for us.
-     */
-    assert(m_ns);
-    QStatus status = m_ns->Advertise(advertiseName);
-    if (status != ER_OK) {
-        QCC_LogError(status, ("Failure advertise \"%s\" for TCP", advertiseName.c_str()));
+    QStatus status = ER_BUS_INCOMPATIBLE_QOS;
+
+    // TODO: This filtering is too simplistic. Need to consider WWAN and other TCP types
+    if (advQos.transports & QosInfo::TRANSPORT_WLAN) {
+        /*
+         * Give the provided name to the name service and have it start advertising
+         * the name on the network as reachable through the daemon having this
+         * transport.  The name service handles periodic retransmission of the name
+         * and manages the coming and going of network interfaces for us.
+         */
+        assert(m_ns);
+        status = m_ns->Advertise(advertiseName);
+        if (status != ER_OK) {
+            QCC_LogError(status, ("DaemonTCPTransport::EnableAdvertisment(%s) failure", advertiseName.c_str()));
+        }
     }
+    return status;
 }
 
-void DaemonTCPTransport::DisableAdvertisement(const qcc::String& advertiseName, bool nameListEmpty)
+void DaemonTCPTransport::DisableAdvertisement(const qcc::String& advertiseName, const QosInfo* advQos, bool nameListEmpty)
 {
-    /*
-     * Tell the name service to stop advertising the provided name on the
-     * network as reachable through the daemon having this transport.  The name
-     * service sends out a no-longer-here message and stops periodic
-     * retransmission of the name as a result of the Cancel() call.
-     */
-    assert(m_ns);
-    QStatus status = m_ns->Cancel(advertiseName);
-    if (status != ER_OK) {
-        QCC_LogError(status, ("Failure stop advertising \"%s\" for TCP", advertiseName.c_str()));
+    if (!advQos || (advQos->transports & QosInfo::TRANSPORT_WLAN)) {
+        /*
+         * Tell the name service to stop advertising the provided name on the
+         * network as reachable through the daemon having this transport.  The name
+         * service sends out a no-longer-here message and stops periodic
+         * retransmission of the name as a result of the Cancel() call.
+         */
+        assert(m_ns);
+        QStatus status = m_ns->Cancel(advertiseName);
+        if (status != ER_OK) {
+            QCC_LogError(status, ("Failure stop advertising \"%s\" for TCP", advertiseName.c_str()));
+        }
     }
 }
 

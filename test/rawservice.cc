@@ -191,7 +191,8 @@ int main(int argc, char** argv)
     /* Begin Advertising the well-known name */
     if (status == ER_OK) {
         uint32_t disposition = 0;
-        status = g_msgBus->AdvertiseName(g_wellKnownName.c_str(), disposition);
+        QosInfo qos(QosInfo::TRAFFIC_RAW_RELIABLE, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
+        status = g_msgBus->AdvertiseName(g_wellKnownName.c_str(), qos, disposition);
         if ((status != ER_OK) || (disposition != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS)) {
             status = (status == ER_OK) ? ER_FAIL : status;
             QCC_LogError(status, ("AdvertiseName failed (disposition=%d)", disposition));

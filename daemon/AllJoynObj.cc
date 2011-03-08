@@ -959,22 +959,29 @@ void AllJoynObj::AdvertiseName(const InterfaceDescription::Member* member, Messa
 
     /* Get the name being advertised */
     msg->GetArgs(numArgs, args);
-    assert((numArgs == 1) && (args[0].typeId == ALLJOYN_STRING));
-    qcc::String advertiseName = args[0].v_string.str;
+    assert(numArgs == 2);
+    const char* advertiseName;
+    QosInfo qos;
+    QStatus status = MsgArg::Get(args, numArgs, "s"QOSINFO_SIG, &advertiseName, &qos.traffic, &qos.proximity, &qos.transports);
+    if (status != ER_OK) {
+        QCC_LogError(status, ("Invalid AdvertiseName args"));
+        return;
+    }
 
-    QCC_DbgTrace(("AllJoynObj::AdvertiseName(%s)", advertiseName.c_str()));
+    QCC_DbgTrace(("AllJoynObj::AdvertiseName(%s)", advertiseName));
 
     /* Get the sender name */
     qcc::String sender = msg->GetSender();
 
     /* Check to see if the advertise name is valid and well formed */
-    if (IsLegalBusName(advertiseName.c_str())) {
+    if (IsLegalBusName(advertiseName)) {
 
         /* Check to see if advertiseName is already being advertised */
         advertiseMapLock.Lock();
-        multimap<qcc::String, qcc::String>::const_iterator it = advertiseMap.find(advertiseName);
+        String advertiseNameStr = advertiseName;
+        multimap<qcc::String, qcc::String>::const_iterator it = advertiseMap.find(advertiseNameStr);
 
-        while (it != advertiseMap.end() && (it->first == advertiseName)) {
+        while (it != advertiseMap.end() && (it->first == advertiseNameStr)) {
             if (it->second == sender) {
                 replyCode = ALLJOYN_ADVERTISENAME_REPLY_ALREADY_ADVERTISING;
                 break;
@@ -984,14 +991,16 @@ void AllJoynObj::AdvertiseName(const InterfaceDescription::Member* member, Messa
 
         if (ALLJOYN_ADVERTISENAME_REPLY_SUCCESS == replyCode) {
             /* Add to advertise map */
-            advertiseMap.insert(pair<qcc::String, qcc::String>(advertiseName, sender));
+            advertiseMap.insert(pair<qcc::String, qcc::String>(advertiseNameStr, sender));
 
-            /* Advertise on all transports */
+            /* Try Advertise on all transports. Transports that do not support QoS will return ER_BUS_INCOMPATIBLE_QOS */
             TransportList& transList = bus.GetInternal().GetTransportList();
+            status = ER_BUS_INCOMPATIBLE_QOS;
             for (size_t i = 0; i < transList.GetNumTransports(); ++i) {
                 Transport* trans = transList.GetTransport(i);
                 if (trans) {
-                    trans->EnableAdvertisement(advertiseName);
+                    QStatus tStatus = trans->EnableAdvertisement(advertiseNameStr, qos);
+                    status = (status == ER_BUS_INCOMPATIBLE_QOS) ? tStatus : status;
                 } else {
                     QCC_LogError(ER_BUS_TRANSPORT_NOT_AVAILABLE, ("NULL transport pointer found in transportList"));
                 }
@@ -1004,12 +1013,21 @@ void AllJoynObj::AdvertiseName(const InterfaceDescription::Member* member, Messa
     }
 
     QCC_DbgPrintf(("Advertise: sender = \"%s\", advertiseName = \"%s\", replyCode= %u",
-                   sender.c_str(), advertiseName.c_str(), replyCode));
+                   sender.c_str(), advertiseName, replyCode));
 
     /* Reply to request */
     replyArg.Set("u", replyCode);
-    QStatus status = MethodReply(msg, &replyArg, 1);
-    QCC_DbgPrintf(("AllJoynObj::Advertise(%s) returned %d (status=%s)", advertiseName.c_str(), replyCode, QCC_StatusText(status)));
+    status = MethodReply(msg, &replyArg, 1);
+    QCC_DbgPrintf(("AllJoynObj::Advertise(%s) returned %d (status=%s)", advertiseName, replyCode, QCC_StatusText(status)));
+
+    /* Add advertisement to local nameMap so local discoverers can see this advertisement */
+    if ((replyCode == ALLJOYN_ADVERTISENAME_REPLY_SUCCESS) && (qos.transports & QosInfo::TRANSPORT_LOCAL)) {
+        vector<String> names;
+        names.push_back(advertiseName);
+        discoverMapLock.Lock();
+        FoundNames("local:", bus.GetGlobalGUIDString(), qos, &names, numeric_limits<uint8_t>::max());
+        discoverMapLock.Unlock();
+    }
 
     /* Log error if reply could not be sent */
     if (ER_OK != status) {
@@ -1019,34 +1037,52 @@ void AllJoynObj::AdvertiseName(const InterfaceDescription::Member* member, Messa
 
 void AllJoynObj::CancelAdvertiseName(const InterfaceDescription::Member* member, Message& msg)
 {
-    QCC_DbgTrace(("AllJoynObj::CancelAdvertise()"));
-
-    size_t numArgs;
     const MsgArg* args;
+    size_t numArgs;
 
     /* Get the name being advertised */
     msg->GetArgs(numArgs, args);
-    assert((numArgs == 1) && (args[0].typeId == ALLJOYN_STRING));
+    const char* advertiseName;
+    QosInfo qos;
+    QStatus status = MsgArg::Get(args, numArgs, "s"QOSINFO_SIG, &advertiseName, &qos.traffic, &qos.proximity, &qos.transports);
+    if (status != ER_OK) {
+        QCC_LogError(status, ("CancelAdvertiseName: bad arg types"));
+        return;
+    }
 
+    QCC_DbgTrace(("AllJoynObj::CancelAdvertiseName(%s, <%x, %x, %x>)", advertiseName, qos.traffic, qos.proximity, qos.transports));
+    
     /* Cancel advertisement */
-    QStatus status = ProcCancelAdvertise(msg->GetSender(), args[0].v_string.str);
+    status = ProcCancelAdvertise(msg->GetSender(), advertiseName, &qos);
     uint32_t replyCode = (ER_OK == status) ? ALLJOYN_CANCELADVERTISENAME_REPLY_SUCCESS : ALLJOYN_CANCELADVERTISENAME_REPLY_FAILED;
 
     /* Reply to request */
     MsgArg replyArg("u", replyCode);
     status = MethodReply(msg, &replyArg, 1);
-    // QCC_DbgPrintf(("AllJoynObj::CancelAdvertise(%s) returned %d (status=%s)", args[0].v_string.str, replyCode, QCC_StatusText(status)));
 
+    /* Remove advertisement from local nameMap so local discoverers are notified of advertisement going away */
+    if ((replyCode == ALLJOYN_ADVERTISENAME_REPLY_SUCCESS) && (qos.transports & QosInfo::TRANSPORT_LOCAL)) {
+        vector<String> names;
+        names.push_back(advertiseName);
+        discoverMapLock.Lock();
+        FoundNames("local:", bus.GetGlobalGUIDString(), qos, &names, 0);
+        discoverMapLock.Unlock();
+    }
+    
     /* Log error if reply could not be sent */
     if (ER_OK != status) {
         QCC_LogError(status, ("Failed to respond to org.alljoyn.Bus.CancelAdvertise"));
     }
 }
 
-QStatus AllJoynObj::ProcCancelAdvertise(const qcc::String& sender, const qcc::String& advertiseName)
+QStatus AllJoynObj::ProcCancelAdvertise(const qcc::String& sender, const qcc::String& advertiseName, const QosInfo* qos)
 {
-    QCC_DbgTrace(("AllJoynObj::ProcCancelAdvertise(sender = \"%s\", advertiseName = \"%s\")",
-                  sender.c_str(), advertiseName.c_str()));
+    QCC_DbgTrace(("AllJoynObj::ProcCancelAdvertise(%s, %s, <%x, %x, %x>)",
+                  sender.c_str(),
+                  advertiseName.c_str(),
+                  qos ? qos->traffic : (int) QosInfo::TRAFFIC_ANY,
+                  qos ? qos->proximity : (int) QosInfo::PROXIMITY_ANY, 
+                  qos ? qos->transports : (int) QosInfo::TRANSPORT_ANY));
 
     QStatus status = ER_OK;
 
@@ -1073,7 +1109,7 @@ QStatus AllJoynObj::ProcCancelAdvertise(const qcc::String& sender, const qcc::St
         for (size_t i = 0; i < transList.GetNumTransports(); ++i) {
             Transport* trans = transList.GetTransport(i);
             if (trans) {
-                trans->DisableAdvertisement(advertiseName, advertiseMap.empty());
+                trans->DisableAdvertisement(advertiseName, qos, advertiseMap.empty());
             } else {
                 QCC_LogError(ER_BUS_TRANSPORT_NOT_AVAILABLE, ("NULL transport pointer found in transportList"));
             }
@@ -1110,7 +1146,7 @@ void AllJoynObj::FindAdvertisedName(const InterfaceDescription::Member* member, 
     assert((numArgs == 1) && (args[0].typeId == ALLJOYN_STRING));
     String namePrefix = args[0].v_string.str;
 
-    QCC_DbgTrace(("AllJoynObj::FindAdvertisedName( <namePrefix = \"%s\"> )", namePrefix.c_str()));
+    QCC_DbgTrace(("AllJoynObj::FindAdvertisedName(%s)", namePrefix.c_str()));
 
 
     /* Check to see if this endpoint is already discovering this prefix */
@@ -1678,6 +1714,20 @@ void AllJoynObj::NameOwnerChanged(const qcc::String& alias, const qcc::String* o
             ++it;
         }
         b2bEndpointsLock.Unlock();
+
+        /* If a local well-known name dropped, then remove any nameMap entry */
+        if ((NULL == newOwner) && (alias[0] != ':')) {
+            multimap<String,NameMapEntry>::const_iterator it = nameMap.lower_bound(alias);
+            while ((it != nameMap.end()) && (it->first == alias)) {
+                if (it->second.qos.transports & QosInfo::TRANSPORT_LOCAL) {
+                    vector<String> names;
+                    names.push_back(alias);
+                    FoundNames("local:", it->second.guid, it->second.qos, &names, 0);
+                    break;
+                }
+                ++it;
+            }
+        }
         router.UnlockNameTable();
 
         /* If a local unique name dropped, then remove any refs it had in the connnect, advertise and discover maps */
@@ -1714,7 +1764,7 @@ void AllJoynObj::NameOwnerChanged(const qcc::String& alias, const qcc::String* o
             while (it != advertiseMap.end()) {
                 if (it->second == *oldOwner) {
                     last = it++->first;
-                    QStatus status = ProcCancelAdvertise(*oldOwner, last);
+                    QStatus status = ProcCancelAdvertise(*oldOwner, last, NULL);
                     if (ER_OK != status) {
                         QCC_LogError(status, ("Failed to cancel advertise for name \"%s\"", last.c_str()));
                     }
