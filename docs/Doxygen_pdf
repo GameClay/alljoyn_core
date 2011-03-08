@@ -574,13 +574,14 @@ INPUT                  = ../inc/ \
                          ../../common/inc/qcc/Log.h \
                          ../../common/inc/qcc/ManagedObj.h \
                          ../../common/inc/qcc/platform.h \
+                         ../../common/inc/qcc/SocketWrapper.h \
                          ../../common/inc/qcc/String.h \
                          ../../common/inc/qcc/windows/atomic.h \
                          ../../common/inc/qcc/windows/mapping.h \
-                         ../../common/inc/qcc/windows/splice_types.h \
+                         ../../common/inc/qcc/windows/platform_types.h \
                          ../../common/inc/qcc/windows/unicode.h \
                          ../../common/inc/qcc/posix/atomic.h \
-                         ../../common/inc/qcc/posix/splice_types.h \
+                         ../../common/inc/qcc/posix/platform_types.h \
                          ../../common/inc/qcc/posix/unicode.h
                          
 # This tag can be used to specify the character encoding of the source files
