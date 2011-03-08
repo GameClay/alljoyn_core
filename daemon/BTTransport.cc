@@ -464,9 +464,9 @@ void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
 
 
 void BTTransport::DeviceChange(const BDAddress& adBdAddr,
-                              uint32_t newUUIDRev,
-                              uint32_t oldUUIDRev,
-                              bool lost)
+                               uint32_t newUUIDRev,
+                               uint32_t oldUUIDRev,
+                               bool lost)
 {
     if (btmActive) {
         btController->ProcessDeviceChange(adBdAddr, newUUIDRev, oldUUIDRev, lost);
@@ -476,38 +476,40 @@ void BTTransport::DeviceChange(const BDAddress& adBdAddr,
 
 /********************************************************/
 
-void BTTransport::StartFind(uint32_t ignoreUUIDRev, uint32_t duration)
+QStatus BTTransport::StartFind(uint32_t ignoreUUIDRev, uint32_t duration)
 {
-    btAccessor->StartDiscovery(ignoreUUIDRev, duration);
+    return btAccessor->StartDiscovery(ignoreUUIDRev, duration);
 }
 
 
-void BTTransport::StopFind()
+QStatus BTTransport::StopFind()
 {
-    btAccessor->StopDiscovery();
+    return btAccessor->StopDiscovery();
 }
 
 
-void BTTransport::StartAdvertise(uint32_t uuidRev,
-                                 const BDAddress& bdAddr,
-                                 uint8_t channel,
-                                 uint16_t psm,
-                                 const AdvertiseInfo& adInfo,
-                                 uint32_t duration)
+QStatus BTTransport::StartAdvertise(uint32_t uuidRev,
+                                    const BDAddress& bdAddr,
+                                    uint8_t channel,
+                                    uint16_t psm,
+                                    const AdvertiseInfo& adInfo,
+                                    uint32_t duration)
 {
     QStatus status = btAccessor->SetSDPInfo(uuidRev, bdAddr, channel, psm, adInfo);
     if (status == ER_OK) {
-        btAccessor->StartDiscoverability(duration);
+        status = btAccessor->StartDiscoverability(duration);
     }
+    return status;
 }
 
 
-void BTTransport::StopAdvertise()
+QStatus BTTransport::StopAdvertise()
 {
     BDAddress bdAddr;
     AdvertiseInfo adInfo;
     btAccessor->SetSDPInfo(BTController::INVALID_UUIDREV, bdAddr, BTController::INVALID_CHANNEL, BTController::INVALID_PSM, adInfo);
     btAccessor->StopDiscoverability();
+    return ER_OK;  // This will ensure that the topology manager stays in the right state.
 }
 
 
@@ -667,68 +669,5 @@ QStatus BTTransport::Disconnect(const BDAddress& bdAddr)
 
     return status;
 }
-
-
-#if 0
-QStatus BTTransport::MoveConnection(const BDAddress& oldDev,
-                                    const BDAddress& newDev,
-                                    uint8_t channel,
-                                    uint16_t psm)
-{
-    return ER_NOT_IMPLEMENTED;
-    if (!btmActive) {
-        return ER_BUS_TRANSPORT_NOT_AVAILABLE;
-    }
-
-    QStatus status;
-    qcc::String authName;
-    bool isDaemon = bus.GetInternal().GetRouter().IsDaemon();
-    bool allowRemote = bus.GetInternal().AllowRemoteMessages();
-
-    RemoteEndpoint* conn = btAccessor->Connect(bus, newDev, channel, psm);
-
-    if (!conn) {
-        status = ER_FAIL;
-        goto exit;
-    }
-
-    threadListLock.Lock();
-    threadList.push_back(conn);
-    threadListLock.Unlock();
-    QCC_DbgPrintf(("BTTransport::Connect: Calling conn->Establish() [moving from %s to %s]",
-                   oldDev.ToString().c_str(), newDev.ToString().c_str()));
-    status = conn->Establish("ANONYMOUS", authName, isDaemon, allowRemote);
-    if (ER_OK != status) {
-        QCC_LogError(status, ("BTEndpoint::Establish failed"));
-        goto exit;
-    }
-
-    QCC_DbgPrintf(("Starting endpoint [moving from %s to %s]", oldDev.ToString().c_str(), newDev.ToString().c_str()));
-    /* Start the endpoint */
-    conn->SetListener(this);
-    status = conn->Start(isDaemon, allowRemote);
-    if (ER_OK != status) {
-        QCC_LogError(status, ("BTEndpoint::Start failed"));
-        goto exit;
-    }
-
-    /* If transport is closing, then don't allow any new endpoints */
-    if (transportIsStopping) {
-        status = ER_BUS_TRANSPORT_NOT_STARTED;
-    }
-
-exit:
-
-    /* Cleanup if failed */
-    if (status != ER_OK) {
-        if (conn) {
-            EndpointExit(conn);
-        }
-    } else {
-        btAccessor->Disconnect(oldDev);
-    }
-    return status;
-}
-#endif
 
 }

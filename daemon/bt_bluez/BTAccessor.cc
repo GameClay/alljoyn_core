@@ -537,7 +537,7 @@ QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::StartConnectable()"));
 
-    QStatus status;
+    QStatus status = ER_OK;
     L2CAP_SOCKADDR l2capAddr;
     RFCOMM_SOCKADDR rfcommAddr;
     int ret;
@@ -1124,18 +1124,23 @@ void BTTransport::BTAccessor::AlarmTriggered(const Alarm& alarm, QStatus reason)
             DefaultAdapterChanged(static_cast<AdapterDispatchInfo*>(op)->adapterPath.c_str());
             break;
 
-        case DispatchInfo::DEVICE_FOUND:
         case DispatchInfo::DEVICE_LOST:
+            if (true) {
+                deviceLock.Lock();
+                FoundInfoMap::iterator foundInfo = foundDevices.find(static_cast<DeviceDispatchInfo*>(op)->addr);
+                if ((foundInfo != foundDevices.end()) &&
+                    (foundInfo->second.timestamp >= (GetTimestamp() + FOUND_DEVICE_INFO_TIMEOUT))) {
+                    foundDevices.erase(foundInfo);
+                }
+                deviceLock.Unlock();
+            }
+            // Fall through
+
+        case DispatchInfo::DEVICE_FOUND:
             transport->DeviceChange(static_cast<DeviceDispatchInfo*>(op)->addr,
                                     static_cast<DeviceDispatchInfo*>(op)->newUUIDRev,
                                     static_cast<DeviceDispatchInfo*>(op)->oldUUIDRev,
                                     op->operation == DispatchInfo::DEVICE_LOST);
-            break;
-
-        case DispatchInfo::ADD_RECORD:
-            break;
-
-        case DispatchInfo::REMOVE_RECORD:
             break;
         }
     }
@@ -1208,7 +1213,8 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
         bool found = FindAllJoynUUID(uuids, listSize, newUUIDRev);
 
         if (found && (newUUIDRev != busUUIDRev)) {
-            QCC_DbgHLPrintf(("Found AllJoyn device: %s  UUIDRev = %08x", addrStr, newUUIDRev));
+            QCC_DbgHLPrintf(("Found AllJoyn device: %s  newUUIDRev = %08x (our uuidRev = %08x)",
+                             addrStr, newUUIDRev, busUUIDRev));
 
             deviceLock.Lock();
             FoundInfo& foundInfo = foundDevices[addr];
@@ -1227,6 +1233,7 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
                 DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_FOUND, addr, newUUIDRev, oldUUIDRev));
             }
 
+            foundInfo.timestamp = GetTimestamp();
             foundInfo.alarm = DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_LOST, addr, BTController::INVALID_UUIDREV, newUUIDRev),
                                                 FOUND_DEVICE_INFO_TIMEOUT);
 
@@ -1436,7 +1443,7 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                         BluetoothDeviceInterface::_AdvertiseInfo::const_iterator node;
                         for (node = (*adInfo)->begin(); node != (*adInfo)->end(); ++node) {
                             QCC_DbgPrintf(("       %s", node->first.c_str()));
-                            BluetoothDeviceInterface::AdvertiseNames:: const_iterator name;
+                            BluetoothDeviceInterface::AdvertiseNames::const_iterator name;
                             for (name = node->second.begin(); name != node->second.end(); ++name) {
                                 QCC_DbgPrintf(("           \"%s\"", name->c_str()));
                             }
@@ -1575,16 +1582,16 @@ QStatus BTTransport::BTAccessor::GetDeviceObjPath(const BDAddress& bdAddr,
 }
 
 
-void BTTransport::BTAccessor::DiscoveryControl(uint32_t busRev, const InterfaceDescription::Member& method)
+QStatus BTTransport::BTAccessor::DiscoveryControl(uint32_t busRev, const InterfaceDescription::Member& method)
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::DiscoveryControl(busRev = %08x, method = %s)", busRev, method.name.c_str()));
+    QStatus status = ER_FAIL;
     busUUIDRev = busRev;
 
     AdapterObject adapter = GetDefaultAdapterObject();
 
     if (adapter->IsValid()) {
         Message rsp(bzBus);
-        QStatus status;
 
         status = adapter->MethodCall(method, NULL, 0, rsp, BT_DEFAULT_TO);
         if (status == ER_OK) {
@@ -1606,10 +1613,11 @@ void BTTransport::BTAccessor::DiscoveryControl(uint32_t busRev, const InterfaceD
                                   errName, errMsg.c_str()));
         }
     }
+    return status;
 }
 
 
-void BTTransport::BTAccessor::SetDiscoverabilityProperty()
+QStatus BTTransport::BTAccessor::SetDiscoverabilityProperty()
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::SetDiscoverability(%s)", discoverable ? "true" : "false"));
     QStatus status(ER_OK);
@@ -1640,6 +1648,7 @@ void BTTransport::BTAccessor::SetDiscoverabilityProperty()
                                   discoverable ? "true" : "false", (*it)->GetPath().c_str()));
         }
     }
+    return status;
 }
 
 

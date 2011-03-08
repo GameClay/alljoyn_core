@@ -334,13 +334,17 @@ class BTTransport :
      *
      * @param uuidRev   EIR UUID revision to ignore
      * @param duration  Find duration in seconds (0 = forever)
+     *
+     * @return  ER_OK if successful
      */
-    virtual void StartFind(uint32_t uuidRev, uint32_t duration = 0);
+    virtual QStatus StartFind(uint32_t uuidRev, uint32_t duration = 0);
 
     /**
      * Stop the find operation.
+     *
+     * @return  ER_OK if successful
      */
-    virtual void StopFind();
+    virtual QStatus StopFind();
 
     /**
      * Start the advertise operation for the given list of names.  A duration
@@ -355,18 +359,22 @@ class BTTransport :
      * @param psm       The L2CAP PSM number for the AllJoyn service
      * @param adInfo    The complete list of names to advertise and their associated GUIDs
      * @param duration      Find duration in seconds (0 = forever)
+     *
+     * @return  ER_OK if successful
      */
-    virtual void StartAdvertise(uint32_t uuidRev,
-                                const BDAddress& bdAddr,
-                                uint8_t channel,
-                                uint16_t psm,
-                                const BluetoothDeviceInterface::AdvertiseInfo& adInfo,
-                                uint32_t duration = 0);
+    virtual QStatus StartAdvertise(uint32_t uuidRev,
+                                   const BDAddress& bdAddr,
+                                   uint8_t channel,
+                                   uint16_t psm,
+                                   const BluetoothDeviceInterface::AdvertiseInfo& adInfo,
+                                   uint32_t duration = 0);
 
     /**
      * Stop the advertise operation.
+     *
+     * @return  ER_OK if successful
      */
-    virtual void StopAdvertise();
+    virtual QStatus StopAdvertise();
 
     /**
      * This provides the Bluetooth transport with the information needed to
@@ -392,6 +400,8 @@ class BTTransport :
      * @param addr      [OUT] BD Address of the adapter listening for connections
      * @param channel   [OUT] RFCOMM channel allocated
      * @param psm       [OUT] L2CAP PSM allocated
+     *
+     * @return  ER_OK if successful
      */
     virtual QStatus StartListen(BDAddress& addr,
                                 uint8_t& channel,
@@ -412,6 +422,8 @@ class BTTransport :
      * @param channel   [OUT] RFCOMM channel that is accepting AllJoyn connections.
      * @param psm       [OUT] L2CAP PSM that is accepting AllJoyn connections.
      * @param adInfo    [OUT] Advertisement information.
+     *
+     * @return  ER_OK if successful
      */
     virtual QStatus GetDeviceInfo(const BDAddress& addr,
                                   BDAddress& connAddr,

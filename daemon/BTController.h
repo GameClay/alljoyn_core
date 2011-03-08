@@ -64,13 +64,17 @@ class BluetoothDeviceInterface {
      *
      * @param uuidRev   EIR UUID revision to ignore
      * @param duration  Find duration in seconds (0 = forever)
+     *
+     * @return  ER_OK if successful
      */
-    virtual void StartFind(uint32_t uuidRev, uint32_t duration = 0) = 0;
+    virtual QStatus StartFind(uint32_t uuidRev, uint32_t duration = 0) = 0;
 
     /**
      * Stop the find operation.
+     *
+     * @return  ER_OK if successful
      */
-    virtual void StopFind() = 0;
+    virtual QStatus StopFind() = 0;
 
     /**
      * Start the advertise operation for the given list of names.  A duration
@@ -85,19 +89,23 @@ class BluetoothDeviceInterface {
      * @param psm       The L2CAP PSM number for the AllJoyn service
      * @param adInfo    The complete list of names to advertise and their associated GUIDs
      * @param duration  Find duration in seconds (0 = forever)
+     *
+     * @return  ER_OK if successful
      */
-    virtual void StartAdvertise(uint32_t uuidRev,
-                                const BDAddress& bdAddr,
-                                uint8_t channel,
-                                uint16_t psm,
-                                const AdvertiseInfo& adInfo,
-                                uint32_t duration = 0) = 0;
+    virtual QStatus StartAdvertise(uint32_t uuidRev,
+                                   const BDAddress& bdAddr,
+                                   uint8_t channel,
+                                   uint16_t psm,
+                                   const AdvertiseInfo& adInfo,
+                                   uint32_t duration = 0) = 0;
 
 
     /**
      * Stop the advertise operation.
+     *
+     * @return  ER_OK if successful
      */
-    virtual void StopAdvertise() = 0;
+    virtual QStatus StopAdvertise() = 0;
 
     /**
      * This provides the Bluetooth transport with the information needed to
@@ -123,6 +131,8 @@ class BluetoothDeviceInterface {
      * @param addr      [OUT] BD Address of the adapter listening for connections
      * @param channel   [OUT] RFCOMM channel allocated
      * @param psm       [OUT] L2CAP PSM allocated
+     *
+     * @return  ER_OK if successful
      */
     virtual QStatus StartListen(BDAddress& addr,
                                 uint8_t& channel,
@@ -143,6 +153,8 @@ class BluetoothDeviceInterface {
      * @param channel   [OUT] RFCOMM channel that is accepting AllJoyn connections.
      * @param psm       [OUT] L2CAP PSM that is accepting AllJoyn connections.
      * @param adInfo    [OUT] Advertisement information.
+     *
+     * @return  ER_OK if successful
      */
     virtual QStatus GetDeviceInfo(const BDAddress& addr,
                                   BDAddress& connAddr,
@@ -156,25 +168,6 @@ class BluetoothDeviceInterface {
                             uint16_t psm) = 0;
 
     virtual QStatus Disconnect(const BDAddress& bdAddr) = 0;
-
-#if 0
-    /**
-     * Tells the Bluetooth transport to first initiate a secondary connection
-     * to the bus via the new device, then disconnect from the old device if
-     * the connection to the new device was successful.
-     *
-     * @param oldDev    BD Address of the old device to disconnect from
-     * @param newDev    BD Address of the new device to connect to
-     * @param channel   RFCOMM channel of the new device to connect to
-     * @param psm       L2CAP PSM of the new device to connect to
-     *
-     * @return  ER_OK if the connection was successfully moved.
-     */
-    virtual QStatus MoveConnection(const BDAddress& oldDev,
-                                   const BDAddress& newDev,
-                                   uint8_t channel,
-                                   uint16_t psm) = 0;
-#endif
 };
 
 
@@ -246,10 +239,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      *
      * @return ER_OK if successful.
      */
-    QStatus AddAdvertiseName(const qcc::String& name)
-    {
-        return DoNameOp(name, *org.alljoyn.Bus.BTController.AdvertiseName, true, advertise);
-    }
+    QStatus AddAdvertiseName(const qcc::String& name);
 
     /**
      * Send the CancelAdvertiseName signal to the node we believe is the
@@ -259,10 +249,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      *
      * @return ER_OK if successful.
      */
-    QStatus RemoveAdvertiseName(const qcc::String& name)
-    {
-        return DoNameOp(name, *org.alljoyn.Bus.BTController.CancelAdvertiseName, false, advertise);
-    }
+    QStatus RemoveAdvertiseName(const qcc::String& name);
 
     /**
      * Send the FindName signal to the node we believe is the Master node (may
@@ -411,6 +398,14 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
             dispatcher.AddAlarm(alarm);
         }
         void StopAlarm() { dispatcher.RemoveAlarm(alarm); }
+        virtual bool UseLocal() = 0;
+        virtual void StartOp(bool restart = false);
+        void RestartOp() { assert(active); StartOp(true); }
+        virtual void StopOp();
+        virtual QStatus StartLocal() = 0;
+        virtual QStatus StopLocal() = 0;
+        QStatus SendDelegateSignal();
+
       private:
         void AlarmTriggered(const qcc::Alarm& alarm, QStatus reason);
     };
@@ -429,7 +424,11 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
         size_t Empty() const { return count == 0; }
         void SetArgs();
         void ClearArgs();
-        void SetEmptyArgs();
+        bool UseLocal() { return bto.UseLocalAdvertise(); }
+        void StartOp(bool restart = false);
+        void StopOp();
+        QStatus StartLocal();
+        QStatus StopLocal();
     };
 
     struct FindNameArgInfo : public NameArgInfo {
@@ -444,6 +443,9 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
         size_t Empty() const { return names.empty(); }
         void SetArgs();
         void ClearArgs();
+        bool UseLocal() { return bto.UseLocalFind(); }
+        QStatus StartLocal() { return bto.bt.StartFind(bto.masterUUIDRev); }
+        QStatus StopLocal() { return bto.bt.StopFind(); }
     };
 
 
@@ -460,20 +462,38 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     typedef std::multimap<uint32_t, UUIDRevCacheInfo> UUIDRevCacheMap;
 
     /**
+     * Distribute the advertised name changes to all connected nodes.
+     *
+     * @param newAdInfo     Added advertised names
+     * @param oldAdInfo     Removed advertiesd names
+     * @param bdAddr        BD Address
+     * @param channel       RFCOMM channel
+     * @param psm           L2CAP PSM
+     *
+     * @return ER_OK if successful.
+     */
+    QStatus DistributeAdvertisedNameChanges(const BluetoothDeviceInterface::AdvertiseInfo& newAdInfo,
+                                            const BluetoothDeviceInterface::AdvertiseInfo& oldAdInfo,
+                                            const BDAddress& bdAddr,
+                                            uint8_t channel,
+                                            uint16_t psm);
+
+    /**
      * Send the FoundNames signal to the node interested in one or more of the
      * names on that bus.
      *
      * @param dest     Unique name of the minion that should receive the message.
      * @param names    List of advertised names.
      * @param bdAddr   BD Address from the SDP record.
-     * @param channel  RFCOMM channel number from in the SDP record.
-     * @param psm      L2CAP PSM number from in the SDP record.
+     * @param channel  RFCOMM channel number from the SDP record.
+     * @param psm      L2CAP PSM number from the SDP record.
      * @param lost     Set to true if names are lost, false otherwise.
      *
      * @return ER_OK if successful.
      */
     QStatus SendFoundNamesChange(const char* dest,
                                  const BluetoothDeviceInterface::AdvertiseInfo& adInfo,
+                                 const qcc::String& excludeGUID,
                                  const BDAddress& bdAddr,
                                  uint8_t channel,
                                  uint16_t psm,
@@ -640,18 +660,6 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      * Extract advertisement information from a message arg into the internal
      * representation.
      *
-     * @param adInfo    Advertisement information to be filled
-     * @param nodeList  Vector of MsgArg to hold the encoded advertised names
-     *
-     * @return  ER_OK if advertisment information successfully encoded.
-     */
-    static void EncodeAdInfo(const BluetoothDeviceInterface::AdvertiseInfo& adInfo,
-                             std::vector<MsgArg>& nodeList);
-
-    /**
-     * Extract advertisement information from a message arg into the internal
-     * representation.
-     *
      * @param entries   Array of MsgArgs all with type dict entry:
      *                  - Key: Bus GUID associated with advertise names
      *                  - Value: Array of bus names advertised by device with associated Bus GUID
@@ -681,7 +689,8 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
 
     void NextDirectMinion(NodeStateMap::const_iterator& minion)
     {
-        assert(!nodeStates.empty());
+        assert(nodeStates.size() > 1);
+        assert(RotateMinions());
         NodeStateMap::const_iterator& skip = (&minion == &find.minion) ? advertise.minion : find.minion;
         NodeStateMap::const_iterator next = minion;
         do {

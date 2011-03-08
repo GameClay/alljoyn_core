@@ -75,42 +75,47 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      *
      * @param busRev    UUID revision number of the bus (will be ignored)
      */
-    void StartDiscovery(uint32_t busRev, uint32_t duration = 0)
+    QStatus StartDiscovery(uint32_t busRev, uint32_t duration = 0)
     {
-        DiscoveryControl(busRev, *org.bluez.Adapter.StartDiscovery);
+        QStatus status = DiscoveryControl(busRev, *org.bluez.Adapter.StartDiscovery);
         if (duration > 0) {
             DispatchOperation(new DispatchInfo(DispatchInfo::STOP_DISCOVERY),  duration * 1000);
         }
+        return status;
     }
 
     /**
      * Stop discovery (inquiry)
      */
-    void StopDiscovery() { DiscoveryControl(BTController::INVALID_UUIDREV, *org.bluez.Adapter.StopDiscovery); }
+    QStatus StopDiscovery() { return DiscoveryControl(BTController::INVALID_UUIDREV, *org.bluez.Adapter.StopDiscovery); }
 
     /**
      * Start discoverability (inquiry scan)
      */
-    void StartDiscoverability(uint32_t duration = 0)
+    QStatus StartDiscoverability(uint32_t duration = 0)
     {
+        QStatus status = ER_FAIL;
         discoverable = true;
         if (bluetoothAvailable) {
-            SetDiscoverabilityProperty();
+            status = SetDiscoverabilityProperty();
             if (duration > 0) {
                 DispatchOperation(new DispatchInfo(DispatchInfo::STOP_DISCOVERABILITY),  duration * 1000);
             }
         }
+        return status;
     }
 
     /**
      * Stop discoverability (inquiry scan)
      */
-    void StopDiscoverability()
+    QStatus StopDiscoverability()
     {
+        QStatus status = ER_FAIL;
         discoverable = false;
         if (bluetoothAvailable) {
-            SetDiscoverabilityProperty();
+            status = SetDiscoverabilityProperty();
         }
+        return status;
     }
 
     /**
@@ -266,8 +271,8 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
                                              BluetoothDeviceInterface::AdvertiseInfo& adInfo);
     QStatus GetDeviceObjPath(const BDAddress& bdAddr,
                              qcc::String& devObjPath);
-    void DiscoveryControl(uint32_t busRev, const InterfaceDescription::Member& method);
-    void SetDiscoverabilityProperty();
+    QStatus DiscoveryControl(uint32_t busRev, const InterfaceDescription::Member& method);
+    QStatus SetDiscoverabilityProperty();
 
     bluez::AdapterObject GetAdapterObject(const qcc::String& adapterObjPath) const
     {
@@ -322,6 +327,8 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
         uint32_t timestamp;
         qcc::Alarm alarm;
     };
+    typedef std::map<BDAddress, FoundInfo> FoundInfoMap;
+
 
     struct DispatchInfo {
         typedef enum {
@@ -331,9 +338,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
             ADAPTER_REMOVED,
             DEFAULT_ADAPTER_CHANGED,
             DEVICE_FOUND,
-            DEVICE_LOST,
-            ADD_RECORD,
-            REMOVE_RECORD
+            DEVICE_LOST
         } DispatchTypes;
         DispatchTypes operation;
 
@@ -380,7 +385,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     uint32_t recordHandle;
 
     mutable qcc::Mutex deviceLock; // Generic lock for device related objects, maps, etc.
-    std::map<BDAddress, FoundInfo> foundDevices;  // Map of found AllJoyn devices w/ UUID-Rev and expire time.
+    FoundInfoMap foundDevices;  // Map of found AllJoyn devices w/ UUID-Rev and expire time.
 
     bool bluetoothAvailable;
     bool discoverable;
