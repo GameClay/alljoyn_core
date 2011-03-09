@@ -1911,18 +1911,14 @@ QStatus AllJoynObj::SendLostAdvertisedName(const String& name,
     router.LockNameTable();
     discoverMapLock.Lock();
     if (0 < discoverMap.size()) {
-        multimap<String, String>::const_iterator dit = discoverMap.lower_bound(name);
-        if ((dit == discoverMap.end()) || (0 > ::strcmp(name.c_str(), dit->first.c_str()))) {
-            --dit;
-        }
-        while (true) {
-            bool match = false;
-            if (0 == ::strncmp(dit->first.c_str(), name.c_str(), dit->first.size())) {
+        multimap<String, String>::const_iterator dit;
+
+        for (dit = discoverMap.begin(); dit != discoverMap.end(); ++dit) {
+            if (name.compare(0, dit->first.size(), dit->first) == 0) {
                 MsgArg args[3];
                 args[0].Set("s", name.c_str());
                 args[1].Set(QOSINFO_SIG, qos.traffic, qos.proximity, qos.transports);
                 args[2].Set("s", dit->first.c_str());
-                match = true;
                 QCC_DbgPrintf(("Sending LostAdvertisedName(%s, <>, %s) to %s", name.c_str(), dit->first.c_str(), dit->second.c_str()));
                 QStatus tStatus = Signal(dit->second.c_str(), 0, *lostAdvNameSignal, args, ArraySize(args));
                 if (ER_OK != tStatus) {
@@ -1930,10 +1926,6 @@ QStatus AllJoynObj::SendLostAdvertisedName(const String& name,
                     QCC_LogError(tStatus, ("Failed to send LostAdvertisedName to %s (name=%s)", dit->second.c_str(), name.c_str()));
                 }
             }
-            if (!match || (dit == discoverMap.begin())) {
-                break;
-            }
-            --dit;
         }
     }
     discoverMapLock.Unlock();
