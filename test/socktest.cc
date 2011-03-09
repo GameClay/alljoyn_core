@@ -335,7 +335,7 @@ int main(int argc, char** argv)
             }
             if (status == ER_OK) {
                 Message reply(bus);
-                MsgArg arg("h", &handles[0]);
+                MsgArg arg("h", handles[0]);
                 status = remoteObj.MethodCall(::org::alljoyn::sock_test::Interface, "PutSock", &arg, 1, reply);
                 /* Don't need this handle anymore */
                 qcc::Close(handles[0]);

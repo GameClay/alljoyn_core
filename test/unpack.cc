@@ -103,7 +103,7 @@ int main(int argc, char** argv)
      */
     if (status == ER_OK) {
         MsgArg argList;
-        status = argList.Set("(ybnqdiuxtsoqg)", y, b, n, q, &d, i, u, &x, &t, s, o, q, g);
+        status = argList.Set("(ybnqdiuxtsoqg)", y, b, n, q, d, i, u, x, t, s, o, q, g);
         if (status == ER_OK) {
             status = argList.Get("(ybnqdiuxtsoqg)", &y, &b, &n, &q, &d, &i, &u, &x, &t, &s, &o, &q, &g);
         }
@@ -113,18 +113,18 @@ int main(int argc, char** argv)
      */
     if (status == ER_OK) {
         MsgArg argList;
-        status = argList.Set("((ydx)(its))", y, &d, &x, i, &t, s);
+        status = argList.Set("((ydx)(its))", y, d, x, i, t, s);
         if (status == ER_OK) {
             status = argList.Get("((ydx)(its))", &y, &d, &x, &i, &t, &s);
         }
     }
     if (status == ER_OK) {
         MsgArg arg;
-        status = arg.Set("((iuiu)(yd)at)", i, u, i, u, y, &d, ArraySize(at), at);
+        status = arg.Set("((iuiu)(yd)at)", i, u, i, u, y, d, ArraySize(at), at);
         if (status == ER_OK) {
             int64_t* p64;
             size_t p64len;
-            status = arg.Get("((iuiu)(yd)at)", &i, &u, &i, &u, &y, &d, &p64len, &p64);
+            status = arg.Get("((iuiu)(yd)at)", &i, &u, &i, &u, &y, d, &p64len, &p64);
         }
     }
     /*
@@ -140,7 +140,7 @@ int main(int argc, char** argv)
                 break;
 
             case 1:
-                arg.Set("v", new MsgArg("d", &d));
+                arg.Set("v", new MsgArg("d", d));
                 break;
 
             case 2:

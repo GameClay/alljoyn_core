@@ -937,7 +937,7 @@ void AllJoynObj::GetSessionFd(const InterfaceDescription::Member* member, Messag
     if (sockFd != -1) {
         /* Send the fd and transfer ownership */
         MsgArg replyArg;
-        replyArg.Set("h", &sockFd);
+        replyArg.Set("h", sockFd);
         status = MethodReply(msg, &replyArg, 1);
         qcc::Close(sockFd);
     } else {

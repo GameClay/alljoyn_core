@@ -382,18 +382,18 @@ class MsgArg {
      *              @ref ALLJOYN_DICT_ENTRY "DICT_ENTRY" or @ref ALLJOYN_VARIANT "VARIANT" a pointer to an
      *              array of MsgArgs where each MsgArg has the signature specified by the element type.
      *  - @c 'b'  A bool value
-     *  - @c 'd'  A pointer to a double (64 bits)
+     *  - @c 'd'  A double (64 bits)
      *  - @c 'g'  A pointer to a NUL terminated string (pointer must remain valid for lifetime of the MsgArg)
-     *  - @c 'h'  A pointer to a qcc::SocketFd
+     *  - @c 'h'  A qcc::SocketFd
      *  - @c 'i'  An int (32 bits)
      *  - @c 'n'  An int (16 bits)
      *  - @c 'o'  A pointer to a NUL terminated string (pointer must remain valid for lifetime of the MsgArg)
      *  - @c 'q'  A uint (16 bits)
      *  - @c 's'  A pointer to a NUL terminated string (pointer must remain valid for lifetime of the MsgArg)
-     *  - @c 't'  A pointer to a uint64_t
+     *  - @c 't'  A uint (64 bits)
      *  - @c 'u'  A uint (32 bits)
      *  - @c 'v'  Not allowed, the actual type must be provided.
-     *  - @c 'x'  A pointer to an int64_t
+     *  - @c 'x'  An int (64 bits)
      *  - @c 'y'  A byte (8 bits)
      *
      *  - @c '(' and @c ')'  The list of values that appear between the parentheses using the notation above
@@ -403,7 +403,7 @@ class MsgArg {
      *
      * Examples:
      *
-     * A struct with and uint and two string elements.
+     * A struct with a uint and two string elements.
      *
      *     @code arg.Set("(uss)", 1024, "hello", "world"); @endcode
      *

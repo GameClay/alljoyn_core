@@ -933,7 +933,7 @@ QStatus MsgArg::VBuildArgs(const char*& signature, size_t sigLen, MsgArg* arg, s
 
         case 'd':
             arg->typeId = ALLJOYN_DOUBLE;
-            arg->v_double = *(va_arg(argp, double*));
+            arg->v_double = (double)va_arg(argp, double);
             break;
 
         case 'e':
@@ -962,7 +962,7 @@ QStatus MsgArg::VBuildArgs(const char*& signature, size_t sigLen, MsgArg* arg, s
 
         case 'h':
             arg->typeId = ALLJOYN_HANDLE;
-            arg->v_handle.fd = *(va_arg(argp, qcc::SocketFd*));
+            arg->v_handle.fd = (qcc::SocketFd)va_arg(argp, qcc::SocketFd);
             break;
 
         case 'i':
@@ -1000,7 +1000,7 @@ QStatus MsgArg::VBuildArgs(const char*& signature, size_t sigLen, MsgArg* arg, s
 
         case 't':
             arg->typeId = ALLJOYN_UINT64;
-            arg->v_uint64 = *(va_arg(argp, uint64_t*));
+            arg->v_uint64 = (va_arg(argp, uint64_t));
             break;
 
         case 'u':
@@ -1015,7 +1015,7 @@ QStatus MsgArg::VBuildArgs(const char*& signature, size_t sigLen, MsgArg* arg, s
 
         case 'x':
             arg->typeId = ALLJOYN_INT64;
-            arg->v_int64 = *(va_arg(argp, int64_t*));
+            arg->v_int64 = (va_arg(argp, int64_t));
             break;
 
         case 'y':

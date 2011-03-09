@@ -517,7 +517,7 @@ QStatus MarshalTests()
      */
     if (fuzzing || (status == ER_OK)) {
         MsgArg argList;
-        status = argList.Set("(ybnqdiuxtsoqg)", y, b, n, q, &d, i, u, &x, &t, s, o, q, g);
+        status = argList.Set("(ybnqdiuxtsoqg)", y, b, n, q, d, i, u, x, t, s, o, q, g);
         if (status == ER_OK) {
             status = TestMarshal(argList.v_struct.members, argList.v_struct.numMembers);
         }
@@ -742,14 +742,14 @@ QStatus MarshalTests()
     }
     if (fuzzing || (status == ER_OK)) {
         MsgArg argList;
-        status = argList.Set("((ydx)(its))", y, &d, &x, i, &t, s);
+        status = argList.Set("((ydx)(its))", y, d, x, i, t, s);
         if (status == ER_OK) {
             status = TestMarshal(argList.v_struct.members, argList.v_struct.numMembers);
         }
     }
     if (fuzzing || (status == ER_OK)) {
         MsgArg arg;
-        status = arg.Set("((iuiu)(yd)atab)", i, u, i, u, y, &d, ArraySize(at), at, ArraySize(ab), ab);
+        status = arg.Set("((iuiu)(yd)atab)", i, u, i, u, y, d, ArraySize(at), at, ArraySize(ab), ab);
         if (status == ER_OK) {
             status = TestMarshal(&arg, 1);
         }
@@ -845,7 +845,7 @@ QStatus MarshalTests()
         beastArray.Set("a{is}", ArraySize(dict), dict);
 
         MsgArg arg;
-        status = arg.Set("(tidbsy(n(no)ai)gvasd)", &t, 1, &d, true, "hello world", 0xFF, 2, 3, "path", ArraySize(ai), ai, "signatu",
+        status = arg.Set("(tidbsy(n(no)ai)gvasd)", t, 1, d, true, "hello world", 0xFF, 2, 3, "path", ArraySize(ai), ai, "signatu",
                          &beastArray,
                          ArraySize(as), as, &d);
         if (status == ER_OK) {
@@ -879,7 +879,7 @@ QStatus MarshalTests()
      */
     if (fuzzing || (status == ER_OK)) {
         qcc::SocketFd handle = MakeHandle();
-        MsgArg arg("h", &handle);
+        MsgArg arg("h", handle);
         status = TestMarshal(&arg, 1, "*");
         qcc::Close(handle);
     }
@@ -889,7 +889,7 @@ QStatus MarshalTests()
         qcc::SocketFd h3 = MakeHandle();
         MsgArg args[3];
         size_t numArgs = ArraySize(args);
-        MsgArg::Set(args, numArgs, "hhh", &h1, &h2, &h3);
+        MsgArg::Set(args, numArgs, "hhh", h1, h2, h3);
         status = TestMarshal(args, ArraySize(args), "*");
         qcc::Close(h1);
         qcc::Close(h2);
@@ -899,7 +899,7 @@ QStatus MarshalTests()
         qcc::SocketFd h1 = MakeHandle();
         qcc::SocketFd h2 = MakeHandle();
         qcc::SocketFd h3 = MakeHandle();
-        MsgArg arg("(shshsh)", "first handle", &h1, "second handle", &h2, "third handle", &h3);
+        MsgArg arg("(shshsh)", "first handle", h1, "second handle", h2, "third handle", h3);
         status = TestMarshal(&arg, 1, "*");
         qcc::Close(h1);
         qcc::Close(h2);
@@ -910,7 +910,7 @@ QStatus MarshalTests()
         MsgArg handles[8];
         for (size_t i = 0; i < ArraySize(handles); ++i) {
             h[i] = MakeHandle();
-            handles[i].Set("h", &h);
+            handles[i].Set("h", h[i]);
         }
         MsgArg arg("ah", ArraySize(handles), handles);
         status = TestMarshal(&arg, 1, "*");
@@ -920,7 +920,7 @@ QStatus MarshalTests()
     }
     if (fuzzing || (status == ER_OK)) {
         qcc::SocketFd handle = MakeHandle();
-        MsgArg h("h", &handle);
+        MsgArg h("h", handle);
         MsgArg arg("(ivi)", 999, &h, 666);
         status = TestMarshal(&arg, 1, "*");
         qcc::Close(handle);
@@ -960,7 +960,7 @@ QStatus TestMsgUnpack()
     RemoteEndpoint ep(*gBus, false, "", stream, "dummy", false);
     ep.GetFeatures().handlePassing = true;
 
-    MsgArg::Set(args, numArgs, "usyd", 4, "hello", 8, &d);
+    MsgArg::Set(args, numArgs, "usyd", 4, "hello", 8, d);
     status = msg.MethodCall("a.b.c", "/foo/bar", "foo.bar", "test", serial, args, numArgs);
     if (status != ER_OK) {
         return status;
