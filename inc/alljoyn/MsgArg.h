@@ -444,9 +444,10 @@ class MsgArg {
      * @param signature   The signature for MsgArg values
      * @param ...         One or more values to initialize the MsgArg list.
      *
-     * @return - #ER_OK if the MsgArgs were successfully set.
-     *         - #ER_BUS_TRUNCATED if the signature was longer than expected.
-     *         - Other error status codes indicating a failure.
+     * @return
+     *       - #ER_OK if the MsgArgs were successfully set.
+     *       - #ER_BUS_TRUNCATED if the signature was longer than expected.
+     *       - Other error status codes indicating a failure.
      */
     static QStatus Set(MsgArg* args, size_t& numArgs, const char* signature, ...);
 
@@ -554,18 +555,19 @@ class MsgArg {
      * @param signature  The signature to match agains the MsgArg values
      * @param ...         Pointers to return references to the unpacked values.
      *
-     * @return - #ER_OK if the MsgArgs were successfully set.
-     *         - #ER_BUS_SIGNATURE_MISMATCH if the signature did not match.
-     *         - Other error status codes indicating a failure.
+     * @return
+     *      - #ER_OK if the MsgArgs were successfully set.
+     *      - #ER_BUS_SIGNATURE_MISMATCH if the signature did not match.
+     *      - Other error status codes indicating a failure.
      */
     static QStatus Get(const MsgArg* args, size_t numArgs, const char* signature, ...);
 
     /**
      * Helper function for accessing dictionary elements. The MsgArg must be an array of dictionary
      * elements. The second parameter is the key value, this is expressed according to the rules for
-     * %MsgArg::Set so is either a scalar, a pointer to a string, or for 64 bit values a pointer to
-     * the value. This value is matched against the dictionary array to locate the matchinge element.
-     * The third and subsequent parameters are unpacked according to the rules of %MsgArg::Get.
+     * MsgArg::Set so is either a scalar, a pointer to a string, or for 64 bit values a pointer to
+     * the value. This value is matched against the dictionary array to locate the matching element.
+     * The third and subsequent parameters are unpacked according to the rules of MsgArg::Get.
      *
      * For example, where the key is a string and the values are structs:
      *
@@ -577,7 +579,7 @@ class MsgArg {
      *     @endcode
      *
      * This function is particularly useful for extracting specific properties from the array of property
-     * values returned by @ref ajn::ProxyBusObject::GetAllProperties "ProxyBusObject::GetAllProperties()".
+     * values returned by ProxyBusObject::GetAllProperties.
      *
      * @param elemSig  The expected signature for the dictionary element, e.g. "{su}"
      * @param ...      Pointers to return unpacked key values.
