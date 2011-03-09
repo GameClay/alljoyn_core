@@ -36,7 +36,7 @@ class BDAddress {
     /**
      * Default Constructor - initializes the BD Address to 00:00:00:00:00:00.
      */
-    BDAddress() : buf(0), cacheValid(false) { }
+    BDAddress() : buf(0ULL), cacheValid(false) { }
 
     /**
      * Copy Constructor
@@ -57,7 +57,7 @@ class BDAddress {
     BDAddress(const qcc::String& addr) : cacheValid(false) {
         if (FromString(addr) != ER_OK) {
             // Failed to parse the string.  Gotta intialize to something...
-            buf = 0;
+            buf = 0ULL;
         }
     }
 
@@ -71,6 +71,16 @@ class BDAddress {
     BDAddress(const uint8_t* addr, bool littleEndian = false) : cacheValid(false) {
         this->CopyFrom(addr, littleEndian);
     }
+
+    /**
+     * Constructor that initializes the BD Address from a uint64_t.
+     *
+     * @param addr  A uint64_t containing the BD Address in the lower 48 bits.
+     */
+    BDAddress(const uint64_t& addr) :
+        buf(addr & 0xffffffffffffULL),
+        cacheValid(false)
+    { }
 
     /**
      * Function to set the BD Address from an array of bytes.
@@ -147,6 +157,16 @@ class BDAddress {
         buf = betoh64(be);
         return ER_OK;
     }
+
+    /**
+     * Get the BDAddress in raw form as a uint64_t value.
+     */
+    uint64_t GetRaw() const { return buf; }
+
+    /**
+     * Set the BDAddress from a raw uint64_t value - only lower 48 bits used.
+     */
+    void SetRaw(uint64_t addr) { buf = addr & 0xffffffffffffULL; }
 
     /**
      * Assignment operator.
