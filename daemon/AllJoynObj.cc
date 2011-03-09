@@ -1852,23 +1852,14 @@ void AllJoynObj::FoundNames(const qcc::String& busAddr,
 
                 /* Send FoundAdvertisedName to anyone who is discovering *nit */
                 if (0 < discoverMap.size()) {
-                    multimap<String, String>::const_iterator dit = discoverMap.lower_bound(*nit);
-                    if ((dit == discoverMap.end()) || (0 > ::strcmp(nit->c_str(), dit->first.c_str()))) {
-                        --dit;
-                    }
-                    while (true) {
-                        bool match = false;
-                        if (0 == ::strncmp(dit->first.c_str(), nit->c_str(), dit->first.size())) {
-                            match = true;
+                    multimap<String, String>::const_iterator dit;
+                    for (dit = discoverMap.begin(); dit != discoverMap.end(); ++dit) {
+                        if (nit->compare(0, dit->first.size(), dit->first) == 0) {
                             QStatus status = SendFoundAdvertisedName(dit->second, *nit, qos, dit->first);
                             if (ER_OK != status) {
                                 QCC_LogError(status, ("Failed to send FoundAdvertisedName to %s (name=%s)", dit->second.c_str(), nit->c_str()));
                             }
                         }
-                        if (!match || (dit == discoverMap.begin())) {
-                            break;
-                        }
-                        --dit;
                     }
                 }
             } else {
