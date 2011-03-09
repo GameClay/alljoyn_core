@@ -1136,17 +1136,16 @@ void BTTransport::BTAccessor::AlarmTriggered(const Alarm& alarm, QStatus reason)
             DefaultAdapterChanged(static_cast<AdapterDispatchInfo*>(op)->adapterPath.c_str());
             break;
 
-        case DispatchInfo::DEVICE_LOST:
-            if (true) {
-                deviceLock.Lock();
-                FoundInfoMap::iterator foundInfo = foundDevices.find(static_cast<DeviceDispatchInfo*>(op)->addr);
-                if ((foundInfo != foundDevices.end()) &&
-                    (foundInfo->second.timestamp >= (GetTimestamp() + FOUND_DEVICE_INFO_TIMEOUT))) {
-                    foundDevices.erase(foundInfo);
-                }
-                deviceLock.Unlock();
+        case DispatchInfo::DEVICE_LOST: {
+            deviceLock.Lock();
+            FoundInfoMap::iterator foundInfo = foundDevices.find(static_cast<DeviceDispatchInfo*>(op)->addr);
+            if ((foundInfo != foundDevices.end()) &&
+                (foundInfo->second.timestamp >= (GetTimestamp() + FOUND_DEVICE_INFO_TIMEOUT))) {
+                foundDevices.erase(foundInfo);
             }
+            deviceLock.Unlock();
             // Fall through
+        }
 
         case DispatchInfo::DEVICE_FOUND:
             transport->DeviceChange(static_cast<DeviceDispatchInfo*>(op)->addr,

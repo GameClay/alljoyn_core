@@ -417,7 +417,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                 BluetoothDeviceInterface::AdvertiseNames::const_iterator name;
 
                 for (name = node->second.begin(); !node->second.empty() && (name != node->second.end()); ++name) {
-                    BluetoothDeviceInterface::AdvertiseNames::const_iterator oldName = oldNode->second.find(*name);
+                    BluetoothDeviceInterface::AdvertiseNames::iterator oldName = oldNode->second.find(*name);
 
                     if (oldName == oldNode->second.end()) {
                         // The name is new so add it to the new list
