@@ -29,6 +29,7 @@
 #include <qcc/XmlElement.h>
 
 #include <alljoyn/BusAttachment.h>
+#include <alljoyn/DBusStd.h>
 #include <alljoyn/Message.h>
 #include <alljoyn/ProxyBusObject.h>
 #include <alljoyn/InterfaceDescription.h>
@@ -80,8 +81,9 @@ QStatus XmlHelper::ParseInterface(const XmlElement* elem, ProxyBusObject* obj)
                 qcc::String inSig;
                 qcc::String outSig;
                 qcc::String argList;
+                uint8_t annotations = 0;
 
-                /* Iterate over args */
+                /* Iterate over member children */
                 const vector<XmlElement*>& argChildren = ifChildElem->GetChildren();
                 vector<XmlElement*>::const_iterator argIt = argChildren.begin();
                 while ((ER_OK == status) && (argIt != argChildren.end())) {
@@ -107,18 +109,26 @@ QStatus XmlHelper::ParseInterface(const XmlElement* elem, ProxyBusObject* obj)
                         } else {
                             outSig += argElem->GetAttribute("type");
                         }
+                    } else if (argElem->GetName() == "annotation") {
+                        qcc::String nameAtt = argElem->GetAttribute("name");
+                        qcc::String valueAtt = argElem->GetAttribute("value");
+
+                        if (nameAtt == org::freedesktop::DBus::AnnotateDeprecated && valueAtt == "true") {
+                            annotations |= MEMBER_ANNOTATE_DEPRECATED;
+                        } else if (nameAtt == org::freedesktop::DBus::AnnotateNoReply && valueAtt == "true") {
+                            annotations |= MEMBER_ANNOTATE_NO_REPLY;
+                        }
                     }
                 }
 
                 /* Add the member */
-                // TODO @@ annotations
                 if ((ER_OK == status) && (isMethod || isSignal)) {
                     status = intf.AddMember(isMethod ? MESSAGE_METHOD_CALL : MESSAGE_SIGNAL,
                                             memberName.c_str(),
                                             inSig.empty() ? NULL : inSig.c_str(),
                                             outSig.empty() ? NULL : outSig.c_str(),
                                             argList.empty() ? NULL : argList.c_str(),
-                                            0);
+                                            annotations);
                 }
             } else {
                 status = ER_BUS_BAD_MEMBER_NAME;
