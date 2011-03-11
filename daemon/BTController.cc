@@ -299,10 +299,6 @@ QStatus BTController::SendSetState(const qcc::String& busName)
                 listening = false;
             }
         }
-
-        if (IsDrone()) {
-            // TODO - Move minion connections to new master
-        }
     }
 
 exit:
