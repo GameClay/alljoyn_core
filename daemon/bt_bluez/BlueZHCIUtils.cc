@@ -51,6 +51,7 @@ void ConfigL2cap(SocketFd sockFd)
     int ret;
     uint8_t secOpt = BT_SECURITY_LOW;
     socklen_t optLen = secOpt;
+    uint16_t outMtu = 672; // default BT 1.0 value
     ret = setsockopt(sockFd, SOL_BLUETOOTH, BT_SECURITY, &secOpt, optLen);
     QCC_DbgPrintf(("Setting security low: %d - %d: %s", ret, errno, strerror(errno)));
 
@@ -64,10 +65,19 @@ void ConfigL2cap(SocketFd sockFd)
         if (ret == -1) {
             QCC_LogError(ER_OS_ERROR, ("Failed to set in/out MTU for L2CAP socket"));
         } else {
+            outMtu = opts.omtu;
             QCC_DbgPrintf(("Set L2CAP mtu to %d", opts.omtu));
         }
     } else {
         QCC_LogError(ER_OS_ERROR, ("Failed to get in/out MTU for L2CAP socket"));
+    }
+
+    // Only let the kernel buffer up 2 packets at a time.
+    int sndbuf = 2 * outMtu;
+
+    ret = setsockopt(sockFd, SOL_SOCKET, SO_SNDBUF, &sndbuf, sizeof(sndbuf));
+    if (ret == -1) {
+        QCC_LogError(ER_OS_ERROR, ("Failed to set send buf to %d: %d - %s", sndbuf, errno, strerror(errno)));
     }
 }
 

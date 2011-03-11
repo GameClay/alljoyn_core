@@ -591,8 +591,6 @@ QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
         }
     }
 
-    goto exit;         // short circuit creation of L2CAP channel to disable L2CAP support.
-
     l2capLFd = socket(AF_BLUETOOTH, SOCK_SEQPACKET, L2CAP_PROTOCOL_ID);
     if (l2capLFd == -1) {
         status = ER_OS_ERROR;
@@ -636,7 +634,6 @@ QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
     }
 
 
-exit:
     if (l2capLFd != -1) {
         l2capEvent = new Event(l2capLFd, Event::IO_READ, false);
     } else if (l2capEvent) {
@@ -851,6 +848,8 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
             close(sockFd);
             sockFd = -1;
             if ((errno == ECONNREFUSED) || (errno == EBADFD)) {
+                QCC_LogError(status, ("Connect failed - %s (errno: %d - %s)",
+                                      bdAddrStr.c_str(), errno, strerror(errno)));
                 qcc::Sleep(200);
                 continue;
             }
