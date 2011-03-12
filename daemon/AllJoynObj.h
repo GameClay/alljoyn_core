@@ -435,12 +435,12 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * @param inQos            Quality of service requsted by joiner
      * @param isAccepted       [OUT] true iff creator accepts session. (valid if return is ER_OK).
      */
-QStatus SendAcceptSession(const char* sessionName,
-                          SessionId sessionId,
-                          const char* creatorName,
-                          const char* joinerName,
-                          const QosInfo& inQos,
-                          bool& isAccepted);
+    QStatus SendAcceptSession(const char* sessionName,
+                              SessionId sessionId,
+                              const char* creatorName,
+                              const char* joinerName,
+                              const QosInfo& inQos,
+                              bool& isAccepted);
 
     /**
      * Add a virtual endpoint with a given unique name.
