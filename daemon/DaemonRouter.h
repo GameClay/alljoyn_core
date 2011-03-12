@@ -274,6 +274,16 @@ class DaemonRouter : public Router {
     QStatus AddSessionRoute(const char* src, SessionId id, BusEndpoint& destEp, RemoteEndpoint*& b2bEp, QosInfo* qosHint = NULL);
 
     /**
+     * Remove a (single) session route.
+     *
+     * @param  src     Unique name of route source.
+     * @param  id      Session Id.
+     * @param  destEp  BusEndpoint of route destination.
+     * @return  ER_OK if successful.
+     */
+    QStatus RemoveSessionRoute(const char* src, SessionId id, BusEndpoint& destEp);
+
+    /**
      * Remove existing session routes.
      * This method removes routes that involve uniqueName as a source or as a destination for a particular session id.
      * When sessionId is 0, all routes that involved uniqueName are removed.

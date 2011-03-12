@@ -331,7 +331,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
         RemoteEndpoint* streamingEp;
         std::vector<qcc::String> memberNames;
     };
-    std::map<SessionId, SessionMapEntry> sessionMap;     /**< Map sessionId to session info (valid on session endpoints) */
+    std::map<std::pair<SessionId, qcc::String>, SessionMapEntry> sessionMap;  /**< Map sessionId,epName to session info */
     qcc::Mutex sessionMapLock;                           /**< Protect sessionMap */
 
     const qcc::GUID& guid;                               /**< Global GUID of this daemon */
@@ -424,6 +424,23 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
                               uint32_t& replyCode,
                               SessionId& sessionId,
                               QosInfo& qosOut);
+
+    /**
+     * Utility method used to invoke AcceptSession on device local endpoint.
+     *
+     * @param sessionName      Name of session.
+     * @param sessionId        Id for session.
+     * @param creatorName      Session creator unique name.
+     * @param joinerName       Session jointer unique name.
+     * @param inQos            Quality of service requsted by joiner
+     * @param isAccepted       [OUT] true iff creator accepts session. (valid if return is ER_OK).
+     */
+QStatus SendAcceptSession(const char* sessionName,
+                          SessionId sessionId,
+                          const char* creatorName,
+                          const char* joinerName,
+                          const QosInfo& inQos,
+                          bool& isAccepted);
 
     /**
      * Add a virtual endpoint with a given unique name.
