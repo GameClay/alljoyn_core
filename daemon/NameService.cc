@@ -631,7 +631,7 @@ std::vector<qcc::String> GetInterfaces(void)
     // Multiple calls are a legacy of sockets stupidity since BSD 4.2
     //
     IP_ADAPTER_INFO info, * parray = 0, * pinfo = 0;
-    uint32_t infoLen = sizeof(info);
+    ULONG infoLen = sizeof(info);
 
     //
     // Call into Windows and it will tell us how much memory it needs, if
@@ -670,7 +670,7 @@ QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
     // interface info on them.  It's a legacy of *nix sockets since BSD 4.2
     //
     IP_ADAPTER_ADDRESSES info, * parray = 0, * pinfo = 0;
-    uint32_t infoLen = sizeof(info);
+    ULONG infoLen = sizeof(info);
 
     //
     // Call into Windows and it will tell us how much memory it needs, if
