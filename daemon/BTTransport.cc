@@ -239,7 +239,7 @@ QStatus BTTransport::Stop(void)
     }
     threadListLock.Unlock();
 
-    return ER_OK;
+    return Thread::Stop();
 }
 
 
@@ -249,8 +249,6 @@ QStatus BTTransport::Join(void)
         return ER_BUS_TRANSPORT_NOT_AVAILABLE;
     }
 
-    QStatus status = Thread::Join();
-
     /* Wait for the thread list to empty out */
     threadListLock.Lock();
     while (threadList.size() > 0) {
@@ -259,9 +257,7 @@ QStatus BTTransport::Join(void)
         threadListLock.Lock();
     }
     threadListLock.Unlock();
-    Thread::Join();
-
-    return status;
+    return Thread::Join();
 }
 
 
