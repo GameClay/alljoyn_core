@@ -805,7 +805,7 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BluetoothDeviceInter
         BluetoothDeviceInterface::_AdvertiseInfo::const_iterator node;
         // Tell ourself about the names (This is best done outside the noseStateLock just in case).
         for (node = oldAdInfo->begin(); node != oldAdInfo->end(); ++node) {
-            if (!node->second.empty()) {
+            if (!node->second.empty() && (node->first != bus.GetGlobalGUIDString())) {
                 vector<String> vectorizedNames;
                 vectorizedNames.reserve(node->second.size());
                 vectorizedNames.assign(node->second.begin(), node->second.end());
@@ -813,7 +813,7 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BluetoothDeviceInter
             }
         }
         for (node = newAdInfo->begin(); node != newAdInfo->end(); ++node) {
-            if (!node->second.empty()) {
+            if (!node->second.empty() && (node->first != bus.GetGlobalGUIDString())) {
                 vector<String> vectorizedNames;
                 vectorizedNames.reserve(node->second.size());
                 vectorizedNames.assign(node->second.begin(), node->second.end());
