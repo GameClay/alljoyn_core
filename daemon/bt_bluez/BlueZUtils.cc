@@ -25,7 +25,6 @@
 #include <errno.h>
 #include <fcntl.h>
 
-#include <qcc/ManagedObj.h>
 #include <qcc/Socket.h>
 #include <qcc/SocketStream.h>
 #include <qcc/String.h>
