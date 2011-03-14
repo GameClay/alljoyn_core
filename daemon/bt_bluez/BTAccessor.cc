@@ -353,9 +353,9 @@ void BTTransport::BTAccessor::Stop()
     QCC_DbgTrace(("BTTransport::BTAccessor::Stop()"));
     if (bluetoothAvailable) {
         DisconnectBlueZ();
-        bzBus.Stop();
-        bzBus.WaitStop();
     }
+    bzBus.Stop();
+    bzBus.WaitStop();
 }
 
 
@@ -426,7 +426,6 @@ QStatus BTTransport::BTAccessor::SetSDPInfo(uint32_t uuidRev,
                   uuidRev, bdAddr.ToString().c_str(), channel, psm));
     QStatus status = ER_OK;
 
-    //if ((uuidRev == BTController::INVALID_UUIDREV) || adInfo->empty()) {
     if (uuidRev == BTController::INVALID_UUIDREV) {
         if (recordHandle != 0) {
             QCC_DbgPrintf(("Removing record handle %x (no more records)", recordHandle));

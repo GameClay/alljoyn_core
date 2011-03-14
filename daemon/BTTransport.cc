@@ -239,7 +239,7 @@ QStatus BTTransport::Stop(void)
     }
     threadListLock.Unlock();
 
-    return Thread::Stop();
+    return ER_OK;
 }
 
 

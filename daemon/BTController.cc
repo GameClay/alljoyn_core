@@ -898,31 +898,33 @@ QStatus BTController::DoNameOp(const qcc::String& name,
 
     nameArgInfo.dirty = true;
 
-    if (IsMaster()) {
-        QCC_DbgPrintf(("Handling %s locally (we're the master)", signal.name.c_str()));
-        if (!advertise.Empty() && !listening && (directMinions < maxConnections)) {
-            status = bt.StartListen(advertise.bdAddr, advertise.channel, advertise.psm);
-            listening = (status == ER_OK);
-            if (listening) {
-                find.ignoreAddr = advertise.bdAddr;
+    if (devAvailable) {
+        if (IsMaster()) {
+            QCC_DbgPrintf(("Handling %s locally (we're the master)", signal.name.c_str()));
+            if (!advertise.Empty() && !listening && (directMinions < maxConnections)) {
+                status = bt.StartListen(advertise.bdAddr, advertise.channel, advertise.psm);
+                listening = (status == ER_OK);
+                if (listening) {
+                    find.ignoreAddr = advertise.bdAddr;
+                }
             }
-        }
 
-        UpdateDelegations(advertise, listening);
-        UpdateDelegations(find);
-        QCC_DEBUG_ONLY(DumpNodeStateTable());
+            UpdateDelegations(advertise, listening);
+            UpdateDelegations(find);
+            QCC_DEBUG_ONLY(DumpNodeStateTable());
 
-        if (advertise.Empty() && listening) {
-            bt.StopListen();
-            listening = false;
+            if (advertise.Empty() && listening) {
+                bt.StopListen();
+                listening = false;
+            }
+        } else {
+            QCC_DbgPrintf(("Sending %s to our master: %s", signal.name.c_str(), master->GetServiceName().c_str()));
+            MsgArg args[2];
+            qcc::String busName = bus.GetUniqueName();
+            args[0].Set(SIG_NAME, busName.c_str());
+            args[1].Set(SIG_NAME, name.c_str());
+            status = Signal(master->GetServiceName().c_str(), 0, signal, args, ArraySize(args));
         }
-    } else {
-        QCC_DbgPrintf(("Sending %s to our master: %s", signal.name.c_str(), master->GetServiceName().c_str()));
-        MsgArg args[2];
-        qcc::String busName = bus.GetUniqueName();
-        args[0].Set(SIG_NAME, busName.c_str());
-        args[1].Set(SIG_NAME, name.c_str());
-        status = Signal(master->GetServiceName().c_str(), 0, signal, args, ArraySize(args));
     }
     nodeStateLock.Unlock();
 
@@ -1646,9 +1648,12 @@ void BTController::AdvertiseNameArgInfo::AddName(const qcc::String& name, NodeSt
 void BTController::AdvertiseNameArgInfo::RemoveName(const qcc::String& name, NodeStateMap::iterator it)
 {
     assert(it != bto.nodeStates.end());
-    it->second.advertiseNames.erase(name);
-    --count;
-    dirty = true;
+    BTController::NameSet::iterator nit = it->second.advertiseNames.find(name);
+    if (nit != it->second.advertiseNames.end()) {
+        it->second.advertiseNames.erase(nit);
+        --count;
+        dirty = true;
+    }
 }
 
 
