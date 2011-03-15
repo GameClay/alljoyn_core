@@ -203,8 +203,9 @@ int main(int argc, char** argv)
     while ((status == ER_OK) && (!g_msgBus->IsStopping())) {
         /* Wait for someone to join our session */
         SessionId id;
-        while ((id = myBusListener.GetSessionId()) == lastSessionId) {
+        if ((id = myBusListener.GetSessionId()) == lastSessionId) {
             qcc::Sleep(100);
+            continue;
         }
         printf("Found a new joiner with session id = %u\n", id);
         lastSessionId = id;
