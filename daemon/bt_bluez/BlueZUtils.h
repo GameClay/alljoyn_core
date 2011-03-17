@@ -60,13 +60,12 @@ typedef qcc::ManagedObj<_AdapterObject> AdapterObject;
 
 class BTSocketStream : public qcc::SocketStream {
   public:
-    BTSocketStream(qcc::SocketFd sock, bool isRfcommSock);
+    BTSocketStream(qcc::SocketFd sock);
     ~BTSocketStream() { if (buffer) delete[] buffer; }
     QStatus PullBytes(void* buf, size_t reqBytes, size_t& actualBytes, uint32_t timeout = qcc::Event::WAIT_FOREVER);
     QStatus PushBytes(const void* buf, size_t numBytes, size_t& numSent);
 
   private:
-    bool isRfcommSock;
     uint8_t* buffer;
     size_t inMtu;
     size_t outMtu;

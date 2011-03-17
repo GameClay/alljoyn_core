@@ -131,13 +131,11 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      *
      * @param uuidRev   Bus UUID revision to advertise in the SDP record
      * @param bdAddr    Bluetooth device address that of the node that is connectable
-     * @param channel   RFCOMM channel number accepting connections
      * @param psm       L2CAP PSM number accepting connections
      * @param adInfo    Map of bus node GUIDs and bus names to advertise
      */
     QStatus SetSDPInfo(uint32_t uuidRev,
                        const BDAddress& bdAddr,
-                       uint8_t channel,
                        uint16_t psm,
                        const BluetoothDeviceInterface::AdvertiseInfo& adInfo);
 
@@ -145,13 +143,11 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      * Make the Bluetooth device connectable.
      *
      * @param addr      [OUT] Bluetooth device address that is connectable
-     * @param channel   [OUT] RFCOMM channel that is connectable (0xff if not connectable)
      * @param psm       [OUT] L2CAP PSM that is connectable (0 if not connectable)
      *
      * @return  ER_OK if device is now connectable
      */
     QStatus StartConnectable(BDAddress& addr,
-                             uint8_t& channel,
                              uint16_t& psm);
 
     /**
@@ -172,19 +168,17 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
 
     /**
      * Create an outgoing connection to a remote Bluetooth device.  If the
-     * RFCOMM channel and the L2CAP PSM are not specified, then an SDP query
-     * will be performed to get that information.
+     * L2CAP PSM are not specified, then an SDP query will be performed to get
+     * that information.
      *
      * @param alljoyn   BusAttachment that will be connected to the resulting endpoint
      * @param bdAddr    Bluetooth device address to connect to
-     * @param channel   RFCOMM channel to connect to
      * @param psm       L2CAP PSM to connect to
      *
      * @return  A newly instatiated remote endpoint for the Bluetooth connection (NULL indicates a failure)
      */
     RemoteEndpoint* Connect(BusAttachment& alljoyn,
                             const BDAddress& bdAddr,
-                            uint8_t channel = 0xff,
                             uint16_t psm = 0);
 
     /**
@@ -202,14 +196,12 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      * @param addr      Bluetooth device address to retrieve the SDP record from
      * @param connAddr  [OUT] Address of the Bluetooth device accepting connections.
      * @param uuidRev   [OUT] Bus UUID revision to found in the SDP record
-     * @param channel   [OUT] RFCOMM channel number accepting connections
      * @param psm       [OUT] L2CAP PSM number accepting connections
      * @param adInfo    [OUT] Map of bus node GUIDs and bus names being advertised
      */
     QStatus GetDeviceInfo(const BDAddress& addr,
                           BDAddress* connAddr,
                           uint32_t* uuidRev,
-                          uint8_t* channel,
                           uint16_t* psm,
                           BluetoothDeviceInterface::AdvertiseInfo* adInfo);
 
@@ -219,13 +211,6 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      * @return pointer to the L2CAP connect event object.
      */
     qcc::Event* GetL2CAPConnectEvent() { return l2capEvent; }
-
-    /**
-     * Accessor to get the RFCOMM connect event object.
-     *
-     * @return pointer to the RFCOMM connect event object.
-     */
-    qcc::Event* GetRFCOMMConnectEvent() { return rfcommEvent; }
 
   private:
 
@@ -273,7 +258,6 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
                                  BDAddress* connAddr,
                                  uint32_t* uuidRev,
                                  uint16_t* psm,
-                                 uint8_t* channel,
                                  BluetoothDeviceInterface::AdvertiseInfo* adInfo);
     static void ProcessXMLAdvertisementsAttr(const qcc::XmlElement* elem,
                                              BluetoothDeviceInterface::AdvertiseInfo& adInfo);
@@ -402,9 +386,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     uint32_t busUUIDRev;  // UUID revision to ignore when doing a FindBus
 
     qcc::SocketFd l2capLFd;
-    qcc::SocketFd rfcommLFd;
     qcc::Event* l2capEvent;
-    qcc::Event* rfcommEvent;
 
     struct {
         struct {

@@ -48,7 +48,6 @@ namespace ajn {
 #define ALLJOYN_BT_VERSION_NUM_ATTR    0x400
 #define ALLJOYN_BT_CONN_ADDR_ATTR      0x401
 #define ALLJOYN_BT_L2CAP_PSM_ATTR      0x402
-#define ALLJOYN_BT_RFCOMM_CH_ATTR      0x403
 #define ALLJOYN_BT_ADVERTISEMENTS_ATTR 0x404
 
 #define ALLJOYN_BT_UUID_BASE "-1c25-481f-9dfb-59193d238280"
@@ -289,20 +288,17 @@ class BTTransport :
      * Internal connect method to establish a bus connection to a given BD Address.
      *
      * @param bdAddr    BD Address of the device to connect to.
-     * @param channel   RFCOMM channel to connect to (if psm is 0).
      * @param psm       L2CAP PSM to connect to.
      *
      * @return  ER_OK if successful.
      */
     QStatus Connect(const BDAddress& bdAddr,
-                    uint8_t channel,
                     uint16_t psm,
                     RemoteEndpoint** newep);
     QStatus Connect(const BDAddress& bdAddr,
-                    uint8_t channel,
                     uint16_t psm)
     {
-        return Connect(bdAddr, channel, psm, NULL);
+        return Connect(bdAddr, psm, NULL);
     }
 
     /**
@@ -355,7 +351,6 @@ class BTTransport :
      *
      * @param uuidRev   AllJoyn Bluetooth service UUID revision
      * @param bdAddr    BD address of the connectable node
-     * @param channel   The RFCOMM channel number for the AllJoyn service
      * @param psm       The L2CAP PSM number for the AllJoyn service
      * @param adInfo    The complete list of names to advertise and their associated GUIDs
      * @param duration      Find duration in seconds (0 = forever)
@@ -364,7 +359,6 @@ class BTTransport :
      */
     virtual QStatus StartAdvertise(uint32_t uuidRev,
                                    const BDAddress& bdAddr,
-                                   uint8_t channel,
                                    uint16_t psm,
                                    const BluetoothDeviceInterface::AdvertiseInfo& adInfo,
                                    uint32_t duration = 0);
@@ -383,14 +377,12 @@ class BTTransport :
      * @param bdAddr    BD address of the connectable node
      * @param guid      Bus GUID of the discovered bus
      * @param names     The advertised names
-     * @param channel   RFCOMM channel accepting connections
      * @param psm       L2CAP PSM accepting connections
      * @param lost      Set to true if names are lost, false otherwise
      */
     virtual void FoundNamesChange(const qcc::String& guid,
                                   const std::vector<qcc::String>& names,
                                   const BDAddress& bdAddr,
-                                  uint8_t channel,
                                   uint16_t psm,
                                   bool lost);
 
@@ -398,13 +390,11 @@ class BTTransport :
      * Tells the Bluetooth transport to start listening for incoming connections.
      *
      * @param addr      [OUT] BD Address of the adapter listening for connections
-     * @param channel   [OUT] RFCOMM channel allocated
      * @param psm       [OUT] L2CAP PSM allocated
      *
      * @return  ER_OK if successful
      */
     virtual QStatus StartListen(BDAddress& addr,
-                                uint8_t& channel,
                                 uint16_t& psm);
 
     /**
@@ -419,7 +409,6 @@ class BTTransport :
      * @param addr      BD address of the device of interest.
      * @param connAddr  [OUT] Address of the Bluetooth device accepting connections.
      * @param uuidRev   [OUT] UUID revision number.
-     * @param channel   [OUT] RFCOMM channel that is accepting AllJoyn connections.
      * @param psm       [OUT] L2CAP PSM that is accepting AllJoyn connections.
      * @param adInfo    [OUT] Advertisement information.
      *
@@ -428,7 +417,6 @@ class BTTransport :
     virtual QStatus GetDeviceInfo(const BDAddress& addr,
                                   BDAddress& connAddr,
                                   uint32_t& uuidRev,
-                                  uint8_t& channel,
                                   uint16_t& psm,
                                   BluetoothDeviceInterface::AdvertiseInfo& adInfo);
 

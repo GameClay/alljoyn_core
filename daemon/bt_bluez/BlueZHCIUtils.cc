@@ -50,7 +50,7 @@ void ConfigL2cap(SocketFd sockFd)
 {
     int ret;
     uint8_t secOpt = BT_SECURITY_LOW;
-    socklen_t optLen = secOpt;
+    socklen_t optLen = sizeof(secOpt);
     uint16_t outMtu = 672; // default BT 1.0 value
     ret = setsockopt(sockFd, SOL_BLUETOOTH, BT_SECURITY, &secOpt, optLen);
     QCC_DbgPrintf(("Setting security low: %d - %d: %s", ret, errno, strerror(errno)));

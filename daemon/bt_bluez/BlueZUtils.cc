@@ -70,39 +70,30 @@ _AdapterObject::_AdapterObject(BusAttachment& bus, const qcc::String& path) :
 /******************************************************************************/
 
 
-BTSocketStream::BTSocketStream(SocketFd sock, bool isRfcommSock) :
+BTSocketStream::BTSocketStream(SocketFd sock) :
     SocketStream(sock),
-    isRfcommSock(isRfcommSock),
     buffer(NULL),
     offset(0),
     fill(0)
 {
-    if (isRfcommSock) {
-        inMtu = 32 * 1024;
-        outMtu = 32 * 1024;
+    struct l2cap_options opts;
+    socklen_t optlen = sizeof(opts);
+    int ret;
+    ret = getsockopt(sock, SOL_L2CAP, L2CAP_OPTIONS, &opts, &optlen);
+    if (ret == -1) {
+        QCC_LogError(ER_OS_ERROR, ("Failed to get in/out MTU for L2CAP socket, using default of 672"));
+        inMtu = 672;
+        outMtu = 672;
     } else {
-        struct l2cap_options opts;
-        socklen_t optlen = sizeof(opts);
-        int ret;
-        ret = getsockopt(sock, SOL_L2CAP, L2CAP_OPTIONS, &opts, &optlen);
-        if (ret == -1) {
-            QCC_LogError(ER_OS_ERROR, ("Failed to get in/out MTU for L2CAP socket, using default of 672"));
-            inMtu = 672;
-            outMtu = 672;
-        } else {
-            inMtu = opts.imtu;
-            outMtu = opts.omtu;
-        }
-        buffer = new uint8_t[inMtu];
+        inMtu = opts.imtu;
+        outMtu = opts.omtu;
     }
+    buffer = new uint8_t[inMtu];
 }
 
 
 QStatus BTSocketStream::PullBytes(void* buf, size_t reqBytes, size_t& actualBytes, uint32_t timeout)
 {
-    if (isRfcommSock) {
-        return SocketStream::PullBytes(buf, reqBytes, actualBytes, timeout);
-    }
     if (!IsConnected()) {
         return ER_FAIL;
     }
@@ -140,7 +131,16 @@ QStatus BTSocketStream::PullBytes(void* buf, size_t reqBytes, size_t& actualByte
 
 QStatus BTSocketStream::PushBytes(const void* buf, size_t numBytes, size_t& numSent)
 {
-    return SocketStream::PushBytes(buf, min(numBytes, outMtu), numSent);
+    QStatus status;
+    do {
+        status = SocketStream::PushBytes(buf, min(numBytes, outMtu), numSent);
+        if ((status == ER_OS_ERROR) && (errno = ENOMEM)) {
+            // BlueZ reports ENOMEM when it should report EBUSY or EAGAIN, just wait and try again.
+            Sleep(10);
+        }
+    } while ((status == ER_OS_ERROR) && (errno = ENOMEM));
+
+    return status;
 }
 
 

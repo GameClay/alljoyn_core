@@ -144,9 +144,6 @@ static const char sdpXmlTemplate[] =
     "    <attribute id=\"0x0402\">"
     "        <uint32 value=\"%#08x\"/>" // Filled in with dynamically determined L2CAP PSM number
     "    </attribute>"
-    "    <attribute id=\"0x0403\">"
-    "        <uint32 value=\"%#08x\"/>" // Filled in with dynamically determined RFCOMM channel number
-    "    </attribute>"
     "    <attribute id=\"0x0404\">"
     "        <sequence>%s</sequence>"  // Filled in with advertised names
     "    </attribute>"
@@ -174,9 +171,7 @@ BTTransport::BTAccessor::BTAccessor(BTTransport* transport,
     discoverable(false),
     discoveryActive(false),
     l2capLFd(-1),
-    rfcommLFd(-1),
-    l2capEvent(NULL),
-    rfcommEvent(NULL)
+    l2capEvent(NULL)
 {
     size_t tableIndex, member;
 
@@ -259,9 +254,6 @@ BTTransport::BTAccessor::~BTAccessor()
     adapterMap.clear();
     if (l2capEvent) {
         delete l2capEvent;
-    }
-    if (rfcommEvent) {
-        delete rfcommEvent;
     }
 }
 
@@ -417,12 +409,11 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
 
 QStatus BTTransport::BTAccessor::SetSDPInfo(uint32_t uuidRev,
                                             const BDAddress& bdAddr,
-                                            uint8_t channel,
                                             uint16_t psm,
                                             const BluetoothDeviceInterface::AdvertiseInfo& adInfo)
 {
-    QCC_DbgTrace(("BTTransport::BTAccessor::SetSDPInfo(uuidRev = %08x, bdAddr = %s, channel = %u, psm = %04x)",
-                  uuidRev, bdAddr.ToString().c_str(), channel, psm));
+    QCC_DbgTrace(("BTTransport::BTAccessor::SetSDPInfo(uuidRev = %08x, bdAddr = %s, psm = %04x)",
+                  uuidRev, bdAddr.ToString().c_str(), psm));
     QStatus status = ER_OK;
 
     if (uuidRev == BTController::INVALID_UUIDREV) {
@@ -454,7 +445,6 @@ QStatus BTTransport::BTAccessor::SetSDPInfo(uint32_t uuidRev,
                      GetNumericVersion(),
                      bdAddr.ToString().c_str(),
                      psm,
-                     channel,
                      nameList.c_str()) > sdpXmlSize) {
             status = ER_OUT_OF_MEMORY;
             QCC_LogError(status, ("AdvertiseBus(): Allocated SDP XML buffer too small (BUG - this should never happen)"));
@@ -531,63 +521,15 @@ void BTTransport::BTAccessor::RemoveRecord()
 
 
 QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
-                                                  uint8_t& channel,
                                                   uint16_t& psm)
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::StartConnectable()"));
 
     QStatus status = ER_OK;
     L2CAP_SOCKADDR l2capAddr;
-    RFCOMM_SOCKADDR rfcommAddr;
     int ret;
 
     addr = GetDefaultAdapterObject()->address;
-
-    rfcommLFd = socket(AF_BLUETOOTH, SOCK_STREAM, RFCOMM_PROTOCOL_ID);
-    if (rfcommLFd == -1) {
-        status = ER_OS_ERROR;
-        QCC_LogError(status, ("StartConnectable(): Bind socket failed (errno: %d - %s)", errno, strerror(errno)));
-    } else {
-        QCC_DbgPrintf(("BTTransport::BTAccessor::StartConnectable(): rfcommLFd = %d", rfcommLFd));
-
-        memset(&rfcommAddr, 0, sizeof(rfcommAddr));
-        addr.CopyTo(rfcommAddr.bdaddr.b, true);
-        rfcommAddr.sa_family = AF_BLUETOOTH;
-
-        /* Supposedly BlueZ allows binding to channel 0 to allow reserving the
-         * first available RFCOMM channel, but there's no way to know which
-         * channel it reserved, so try explicitly reserving each channel
-         * number in turn until an unused channel is found. */
-        for (channel = 1; (channel < 31); ++channel) {
-            rfcommAddr.channel = channel;
-            ret = bind(rfcommLFd, (struct sockaddr*)&rfcommAddr, sizeof(rfcommAddr));
-            if (ret != -1) {
-                break;
-            }
-        }
-        if (ret == -1) {
-            status = ER_OS_ERROR;
-            QCC_LogError(status, ("StartConnectable(): Failed to find an unused RFCOMM channel (bind errno: %d - %s)", errno, strerror(errno)));
-            QCC_DbgPrintf(("Closing rfcommLFd: %d", rfcommLFd));
-            shutdown(rfcommLFd, SHUT_RDWR);
-            close(rfcommLFd);
-            rfcommLFd = -1;
-            channel = BTController::INVALID_CHANNEL;
-        } else {
-            QCC_DbgPrintf(("Bound RFCOMM channel: %d", channel));
-
-            ret = listen(rfcommLFd, 1);
-            if (ret == -1) {
-                status = ER_OS_ERROR;
-                QCC_LogError(status, ("StartConnectable(): Listen socket failed (errno: %d - %s)", errno, strerror(errno)));
-                QCC_DbgPrintf(("Closing rfcommLFd: %d", rfcommLFd));
-                shutdown(rfcommLFd, SHUT_RDWR);
-                close(rfcommLFd);
-                rfcommLFd = -1;
-                channel = BTController::INVALID_CHANNEL;
-            }
-        }
-    }
 
     l2capLFd = socket(AF_BLUETOOTH, SOCK_SEQPACKET, L2CAP_PROTOCOL_ID);
     if (l2capLFd == -1) {
@@ -638,12 +580,6 @@ QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
         delete l2capEvent;
         l2capEvent = NULL;
     }
-    if (rfcommLFd != -1) {
-        rfcommEvent = new Event(rfcommLFd, Event::IO_READ, false);
-    } else if (rfcommEvent) {
-        delete rfcommEvent;
-        rfcommEvent = NULL;
-    }
 
     return status;
 }
@@ -652,16 +588,6 @@ QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
 void BTTransport::BTAccessor::StopConnectable()
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::StopConnectable()"));
-    if (rfcommLFd != -1) {
-        QCC_DbgPrintf(("Closing rfcommLFd: %d", rfcommLFd));
-        shutdown(rfcommLFd, SHUT_RDWR);
-        close(rfcommLFd);
-        rfcommLFd = -1;
-        if (rfcommEvent) {
-            delete rfcommEvent;
-            rfcommEvent = NULL;
-        }
-    }
     if (l2capLFd != -1) {
         QCC_DbgPrintf(("Closing l2capLFd: %d", l2capLFd));
         shutdown(l2capLFd, SHUT_RDWR);
@@ -720,7 +646,6 @@ RemoteEndpoint* BTTransport::BTAccessor::Accept(BusAttachment& alljoyn,
     BDAddress remAddr;
     QStatus status;
     int flags, ret;
-    bool isRfcommSock = connectEvent == rfcommEvent;
     SocketFd listenFd = connectEvent->GetFD();
 
     sockFd = accept(listenFd, (struct sockaddr*)&remoteAddr, &ralen);
@@ -730,8 +655,8 @@ RemoteEndpoint* BTTransport::BTAccessor::Accept(BusAttachment& alljoyn,
                               errno, strerror(errno)));
         goto exit;
     } else {
-        QCC_DbgPrintf(("BTTransport::BTAccessor::Accept(listenFd = %d - %s): sockFd = %d",
-                       listenFd, isRfcommSock ? "RFCOMM" : "L2CAP", sockFd));
+        QCC_DbgPrintf(("BTTransport::BTAccessor::Accept(listenFd = %d): sockFd = %d",
+                       listenFd, sockFd));
         uint8_t nul = 255;
         size_t recvd;
         status = qcc::Recv(sockFd, &nul, 1, recvd);
@@ -742,11 +667,7 @@ RemoteEndpoint* BTTransport::BTAccessor::Accept(BusAttachment& alljoyn,
         }
     }
 
-    if (isRfcommSock) {
-        remAddr.CopyFrom(remoteAddr.rfcomm.bdaddr.b, true);
-    } else {
-        remAddr.CopyFrom(remoteAddr.l2cap.bdaddr.b, true);
-    }
+    remAddr.CopyFrom(remoteAddr.l2cap.bdaddr.b, true);
     QCC_DbgPrintf(("Accepted connection from: %s", remAddr.ToString().c_str()));
 
     flags = fcntl(sockFd, F_GETFL);
@@ -767,7 +688,7 @@ exit:
         }
     } else {
         qcc::String connectSpec("bluetooth:addr=" + remAddr.ToString());
-        conn = new BTEndpoint(alljoyn, true, connectSpec, sockFd, remAddr, isRfcommSock);
+        conn = new BTEndpoint(alljoyn, true, connectSpec, sockFd, remAddr);
     }
 
     return conn;
@@ -776,7 +697,6 @@ exit:
 
 RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
                                                  const BDAddress& bdAddr,
-                                                 uint8_t channel,
                                                  uint16_t psm)
 {
     const qcc::String& bdAddrStr(bdAddr.ToString());
@@ -788,7 +708,6 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
     int sockFd(-1);
     BT_SOCKADDR addr;
     QStatus status = ER_OK;
-    bool usingRfcomm;
     bool resumeDiscovery = false;
 
     if (discoveryActive) {
@@ -796,8 +715,8 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
         DiscoveryControl(*org.bluez.Adapter.StopDiscovery);
     }
 
-    if ((channel == BTController::INVALID_CHANNEL) && (psm == BTController::INVALID_PSM)) {
-        status = GetDeviceInfo(bdAddr, NULL, NULL, &channel, &psm, NULL);
+    if (psm == BTController::INVALID_PSM) {
+        status = GetDeviceInfo(bdAddr, NULL, NULL, &psm, NULL);
         if (status != ER_OK) {
             if (resumeDiscovery) {
                 DiscoveryControl(*org.bluez.Adapter.StartDiscovery);
@@ -806,38 +725,25 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
         }
     }
 
-    usingRfcomm = (psm == BTController::INVALID_PSM);
-
     memset(&addr, 0, sizeof(addr));
 
-    if (usingRfcomm) {
-        addr.rfcomm.sa_family = AF_BLUETOOTH;
-        addr.rfcomm.channel = channel;
-        bdAddr.CopyTo(addr.rfcomm.bdaddr.b, true);
-    } else {
-        addr.l2cap.sa_family = AF_BLUETOOTH;
-        addr.l2cap.psm = htole16(psm);         // BlueZ requires PSM to be in little-endian format
-        bdAddr.CopyTo(addr.l2cap.bdaddr.b, true);
-    }
+    addr.l2cap.sa_family = AF_BLUETOOTH;
+    addr.l2cap.psm = htole16(psm);         // BlueZ requires PSM to be in little-endian format
+    bdAddr.CopyTo(addr.l2cap.bdaddr.b, true);
 
     for (int tries = 0; tries < MAX_CONNECT_ATTEMPTS; ++tries) {
-        if (usingRfcomm) {
-            sockFd = socket(AF_BLUETOOTH, SOCK_STREAM, RFCOMM_PROTOCOL_ID);
+        sockFd = socket(AF_BLUETOOTH, SOCK_SEQPACKET, L2CAP_PROTOCOL_ID);
+        if (sockFd != -1) {
+            ConfigL2cap(sockFd);
         } else {
-            sockFd = socket(AF_BLUETOOTH, SOCK_SEQPACKET, L2CAP_PROTOCOL_ID);
-            if (sockFd != -1) {
-                ConfigL2cap(sockFd);
-            }
-        }
-        if (sockFd == -1) {
             status = ER_OS_ERROR;
             QCC_LogError(status, ("Create socket failed - %s (errno: %d - %s)",
                                   bdAddrStr.c_str(), errno, strerror(errno)));
             qcc::Sleep(200);
             continue;
         }
-        QCC_DbgPrintf(("BTTransport::BTAccessor::Connect(%s): sockFd = %d channel = %u PSM = %#04x",
-                       bdAddrStr.c_str(), sockFd, channel, psm));
+        QCC_DbgPrintf(("BTTransport::BTAccessor::Connect(%s): sockFd = %d PSM = %#04x",
+                       bdAddrStr.c_str(), sockFd, psm));
 
         /* Attempt to connect */
         ret = connect(sockFd, (struct sockaddr*)&addr, sizeof(addr));
@@ -857,13 +763,8 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
         break;
     }
     if (status != ER_OK) {
-        if (usingRfcomm) {
-            QCC_LogError(status, ("Connect to %s (channel %u) failed (errno: %d - %s)",
-                                  bdAddrStr.c_str(), addr.rfcomm.channel, errno, strerror(errno)));
-        } else {
-            QCC_LogError(status, ("Connect to %s (PSM %#04x) failed (errno: %d - %s)",
-                                  bdAddrStr.c_str(), addr.l2cap.psm, errno, strerror(errno)));
-        }
+        QCC_LogError(status, ("Connect to %s (PSM %#04x) failed (errno: %d - %s)",
+                              bdAddrStr.c_str(), addr.l2cap.psm, errno, strerror(errno)));
         goto exit;
     }
     /*
@@ -874,11 +775,7 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
     for (int tries = 0; tries < MAX_CONNECT_WAITS; ++tries) {
         uint8_t opt[8];
         socklen_t optLen = sizeof(opt);
-        if (usingRfcomm) {
-            ret = getsockopt(sockFd, SOL_RFCOMM, RFCOMM_CONNINFO, opt, &optLen);
-        } else {
-            ret = getsockopt(sockFd, SOL_L2CAP, L2CAP_CONNINFO, opt, &optLen);
-        }
+        ret = getsockopt(sockFd, SOL_L2CAP, L2CAP_CONNINFO, opt, &optLen);
         if (ret == -1) {
             if (errno == ENOTCONN) {
                 qcc::Sleep(100);
@@ -895,11 +792,7 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
                 QCC_LogError(status, ("Failed to send nul byte (errno: %d - %s)", errno, strerror(errno)));
                 goto exit;
             }
-            if (usingRfcomm) {
-                QCC_DbgPrintf(("BTTransport::BTAccessor::Connect() success sockFd = %d channel = %d", sockFd, channel));
-            } else {
-                QCC_DbgPrintf(("BTTransport::BTAccessor::Connect() success sockFd = %d psm = %#04x", sockFd, psm));
-            }
+            QCC_DbgPrintf(("BTTransport::BTAccessor::Connect() success sockFd = %d psm = %#04x", sockFd, psm));
             break;
         }
     }
@@ -916,9 +809,8 @@ exit:
 
     if (status == ER_OK) {
         qcc::String connectSpec("bluetooth:addr=" + bdAddr.ToString() +
-                                ",channel=" + U32ToString(channel) +
                                 ",psm=0x" + U32ToString(psm, 16));
-        conn = new BTEndpoint(alljoyn, false, connectSpec, sockFd, bdAddr, usingRfcomm);
+        conn = new BTEndpoint(alljoyn, false, connectSpec, sockFd, bdAddr);
     } else {
         if (sockFd > 0) {
             QCC_DbgPrintf(("Closing sockFd: %d", sockFd));
@@ -1274,7 +1166,6 @@ bool BTTransport::BTAccessor::FindAllJoynUUID(const MsgArg* uuids,
 QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
                                                BDAddress* connAddr,
                                                uint32_t* uuidRev,
-                                               uint8_t* channel,
                                                uint16_t* psm,
                                                BluetoothDeviceInterface::AdvertiseInfo* adInfo)
 {
@@ -1312,9 +1203,9 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
                 StringSource rawXmlSrc(record);
                 XmlParseContext xmlctx(rawXmlSrc);
 
-                status = ProcessSDPXML(xmlctx, connAddr, uuidRev, psm, channel, adInfo);
+                status = ProcessSDPXML(xmlctx, connAddr, uuidRev, psm, adInfo);
                 if (status == ER_OK) {
-                    QCC_DbgPrintf(("Found AllJoyn UUID: psm %#04x channel %d", *psm, *channel));
+                    QCC_DbgPrintf(("Found AllJoyn UUID: psm %#04x", *psm));
                     break;
                 }
             }
@@ -1333,13 +1224,12 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                                                BDAddress* connAddr,
                                                uint32_t* uuidRev,
                                                uint16_t* psm,
-                                               uint8_t* channel,
                                                BluetoothDeviceInterface::AdvertiseInfo* adInfo)
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::ProcessSDPXML()"));
     bool foundConnAddr = !connAddr;
     bool foundUUIDRev = !uuidRev;
-    bool foundPSMChannel = !psm && !channel;
+    bool foundPSM = !psm;
     bool foundAdInfo = !adInfo;
     QStatus status;
 
@@ -1427,27 +1317,7 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                         if ((*psm < 0x1001) || ((*psm & 0x1) != 0x1) || (*psm > 0x8fff)) {
                             *psm = BTController::INVALID_PSM;
                         }
-                        foundPSMChannel = true;
-                    }
-                    break;
-
-                case ALLJOYN_BT_RFCOMM_CH_ATTR:
-                    if (channel) {
-                        while ((valElem != valElements.end()) && ((*valElem)->GetName().compare("uint32") != 0)) {
-                            ++valElem;
-                        }
-                        if (valElem == valElements.end()) {
-                            status = ER_FAIL;
-                            QCC_LogError(status, ("Missing uint32 value for PSM number"));
-                            goto exit;
-                        }
-                        qcc::String channelStr = (*valElem)->GetAttributes().find("value")->second;
-                        QCC_DbgPrintf(("    Attribute ID: %04x  ALLJOYN_BT_RFCOMM_CH_ATTR: %s", attrId, channelStr.c_str()));
-                        *channel = StringToU32(channelStr);
-                        if ((*channel < 1) || (*channel > 31)) {
-                            *channel = BTController::INVALID_CHANNEL;
-                        }
-                        foundPSMChannel = true;
+                        foundPSM = true;
                     }
                     break;
 
@@ -1477,9 +1347,8 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
             }
         }
 
-        if (((!channel || (*channel == BTController::INVALID_CHANNEL)) &&
-             (!psm || (*psm == BTController::INVALID_PSM))) ||
-            (!foundConnAddr || !foundUUIDRev || !foundPSMChannel || !foundAdInfo)) {
+        if (((!psm || (*psm == BTController::INVALID_PSM))) ||
+            (!foundConnAddr || !foundUUIDRev || !foundPSM || !foundAdInfo)) {
             status = ER_FAIL;
         }
     } else {

@@ -85,7 +85,6 @@ class BluetoothDeviceInterface {
      *
      * @param uuidRev   AllJoyn Bluetooth service UUID revision
      * @param bdAddr    BD address of the connectable node
-     * @param channel   The RFCOMM channel number for the AllJoyn service
      * @param psm       The L2CAP PSM number for the AllJoyn service
      * @param adInfo    The complete list of names to advertise and their associated GUIDs
      * @param duration  Find duration in seconds (0 = forever)
@@ -94,7 +93,6 @@ class BluetoothDeviceInterface {
      */
     virtual QStatus StartAdvertise(uint32_t uuidRev,
                                    const BDAddress& bdAddr,
-                                   uint8_t channel,
                                    uint16_t psm,
                                    const AdvertiseInfo& adInfo,
                                    uint32_t duration = 0) = 0;
@@ -114,14 +112,12 @@ class BluetoothDeviceInterface {
      * @param bdAddr    BD address of the connectable node
      * @param guid      Bus GUID of the discovered bus
      * @param names     The advertised names
-     * @param channel   RFCOMM channel accepting connections
      * @param psm       L2CAP PSM accepting connections
      * @param lost      Set to true if names are lost, false otherwise
      */
     virtual void FoundNamesChange(const qcc::String& guid,
                                   const std::vector<qcc::String>& names,
                                   const BDAddress& bdAddr,
-                                  uint8_t channel,
                                   uint16_t psm,
                                   bool lost) = 0;
 
@@ -129,13 +125,11 @@ class BluetoothDeviceInterface {
      * Tells the Bluetooth transport to start listening for incoming connections.
      *
      * @param addr      [OUT] BD Address of the adapter listening for connections
-     * @param channel   [OUT] RFCOMM channel allocated
      * @param psm       [OUT] L2CAP PSM allocated
      *
      * @return  ER_OK if successful
      */
     virtual QStatus StartListen(BDAddress& addr,
-                                uint8_t& channel,
                                 uint16_t& psm) = 0;
 
     /**
@@ -150,7 +144,6 @@ class BluetoothDeviceInterface {
      * @param addr      BD address of the device of interest.
      * @param connAddr  [OUT] BD address of the connectable device.
      * @param uuidRev   [OUT] UUID revision number.
-     * @param channel   [OUT] RFCOMM channel that is accepting AllJoyn connections.
      * @param psm       [OUT] L2CAP PSM that is accepting AllJoyn connections.
      * @param adInfo    [OUT] Advertisement information.
      *
@@ -159,12 +152,10 @@ class BluetoothDeviceInterface {
     virtual QStatus GetDeviceInfo(const BDAddress& addr,
                                   BDAddress& connAddr,
                                   uint32_t& uuidRev,
-                                  uint8_t& channel,
                                   uint16_t& psm,
                                   AdvertiseInfo& adInfo) = 0;
 
     virtual QStatus Connect(const BDAddress& bdAddr,
-                            uint8_t channel,
                             uint16_t psm) = 0;
 
     virtual QStatus Disconnect(const BDAddress& bdAddr) = 0;
@@ -179,7 +170,6 @@ class BluetoothDeviceInterface {
 class BTController : public BusObject, public NameListener, public qcc::AlarmListener {
   public:
     static const uint32_t INVALID_UUIDREV = 0;      /**< Invalid UUID Revsision number */
-    static const uint8_t INVALID_CHANNEL = 0xff;    /**< Invalid RFCOMM channel value */
     static const uint16_t INVALID_PSM = 0;          /**< Invalid L2CAP PSM value */
 
     typedef std::set<qcc::String> NameSet;
@@ -323,14 +313,12 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      * us.
      *
      * @param bdAddr   BD Address of device to connect to
-     * @param channel  RFCOMM channel number
      * @param psm      L2CAP PSM number
      * @param delegate [OUT] Unique name of the node the proxy connect was sent to
      *
      * @return ER_OK if successful.
      */
     QStatus ProxyConnect(const BDAddress& bdAddr,
-                         uint8_t channel,
                          uint16_t psm,
                          qcc::String* delegate);
 
@@ -412,12 +400,11 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
 
     struct AdvertiseNameArgInfo : public NameArgInfo {
         BDAddress bdAddr;
-        uint8_t channel;
         uint16_t psm;
         std::vector<MsgArg> adInfoArgs;
         size_t count;
         AdvertiseNameArgInfo(BTController& bto, qcc::Timer& dispatcher) :
-            NameArgInfo(bto, 6, dispatcher), count(0)
+            NameArgInfo(bto, 5, dispatcher), count(0)
         { }
         void AddName(const qcc::String& name, NodeStateMap::iterator it);
         void RemoveName(const qcc::String& name, NodeStateMap::iterator it);
@@ -453,7 +440,6 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
         BDAddress adAddr;       /**< Advertising BDAddress */
         uint32_t uuidRev;       /**< Advertised UUID Revision */
         BDAddress connAddr;     /**< Connection BDAddress */
-        uint8_t channel;        /**< RFCOMM channel */
         uint16_t psm;           /**< L2CAP PSM */
         BluetoothDeviceInterface::AdvertiseInfo adInfo;    /**< Advertised names */
         UUIDRevCacheInfo() : uuidRev(INVALID_UUIDREV) { }
@@ -467,7 +453,6 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      * @param newAdInfo     Added advertised names
      * @param oldAdInfo     Removed advertiesd names
      * @param bdAddr        BD Address
-     * @param channel       RFCOMM channel
      * @param psm           L2CAP PSM
      *
      * @return ER_OK if successful.
@@ -475,7 +460,6 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     QStatus DistributeAdvertisedNameChanges(const BluetoothDeviceInterface::AdvertiseInfo& newAdInfo,
                                             const BluetoothDeviceInterface::AdvertiseInfo& oldAdInfo,
                                             const BDAddress& bdAddr,
-                                            uint8_t channel,
                                             uint16_t psm);
 
     /**
@@ -485,7 +469,6 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      * @param dest     Unique name of the minion that should receive the message.
      * @param names    List of advertised names.
      * @param bdAddr   BD Address from the SDP record.
-     * @param channel  RFCOMM channel number from the SDP record.
      * @param psm      L2CAP PSM number from the SDP record.
      * @param lost     Set to true if names are lost, false otherwise.
      *
@@ -495,7 +478,6 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
                                  const BluetoothDeviceInterface::AdvertiseInfo& adInfo,
                                  const qcc::String& excludeGUID,
                                  const BDAddress& bdAddr,
-                                 uint8_t channel,
                                  uint16_t psm,
                                  bool lost);
 
@@ -562,10 +544,9 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      *
      * @param member        Member.
      * @param sourcePath    Object path of signal sender.
-     * @param msg           The incoming message - "ssyqas":
+     * @param msg           The incoming message - "ssqas":
      *                        - Bluetooth UUID
      *                        - BD Address
-     *                        - RFCOMM channel number
      *                        - L2CAP PSM
      *                        - List of names to advertise
      */
@@ -578,10 +559,9 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      *
      * @param member        Member.
      * @param sourcePath    Object path of signal sender.
-     * @param msg           The incoming message - "assyq":
+     * @param msg           The incoming message - "assq":
      *                        - List of advertised names
      *                        - BD Address
-     *                        - RFCOMM channel number
      *                        - L2CAP PSM
      */
     void HandleFoundNamesChange(const InterfaceDescription::Member* member,
@@ -605,9 +585,8 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      * Handle the incoming ProxyConnect method call.
      *
      * @param member    Member.
-     * @param msg       The incoming message - "syq":
+     * @param msg       The incoming message - "sq":
      *                    - BD Address of device to connect to
-     *                    - RFCOMM channel number
      *                    - L2CAP PSM number
      */
     void HandleProxyConnect(const InterfaceDescription::Member* member,

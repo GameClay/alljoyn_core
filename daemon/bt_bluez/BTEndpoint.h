@@ -45,10 +45,9 @@ class BTEndpoint : public RemoteEndpoint {
                bool incoming,
                const qcc::String& connectSpec,
                qcc::SocketFd sockFd,
-               const BDAddress& addr,
-               bool isRfcommSock) :
+               const BDAddress& addr) :
         RemoteEndpoint(bus, incoming, connectSpec, sockStream, "bluetooth"),
-        sockStream(sockFd, isRfcommSock), addr(addr)
+        sockStream(sockFd), addr(addr)
     { }
 
     const BDAddress& GetBDAddress() const { return addr; }
