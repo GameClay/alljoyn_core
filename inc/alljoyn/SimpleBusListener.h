@@ -45,7 +45,7 @@ class SimpleBusListener : public BusListener {
     static const uint32_t LOST_ADVERTISED_NAME  = 0x0002;
     static const uint32_t NAME_OWNER_CHANGED    = 0x0004;
     static const uint32_t SESSION_LOST          = 0x0008;
-    static const uint32_t ACCEPT_SESSION        = 0x0010;
+    static const uint32_t ACCEPT_SESSION_JOINER = 0x0010;
     static const uint32_t ALL_EVENTS            = 0x00FF;
     static const uint32_t NO_EVENT              = 0x0000;
 
@@ -96,7 +96,7 @@ class SimpleBusListener : public BusListener {
                 SessionId id;            ///< Id of session.
                 const char* joiner;      ///< Unique name of potential joiner.
                 const QosInfo* qos;      ///< Incoming quality of service.
-            } acceptSession;
+            } acceptSessionJoiner;
         };
 
         /**
@@ -142,11 +142,11 @@ class SimpleBusListener : public BusListener {
 
     /**
      * On receiving an ACCEPT_SESSION busEvent the application must call this function to accept or
-     * rejct the session request. Calling WaitForEvent will automatically reject the session request.
+     * reject the session request. Calling WaitForEvent will automatically reject the session request.
      *
      * @param accept  Select or reject this session request.
      */
-    QStatus AcceptSession(bool accept);
+    QStatus AcceptSessionJoiner(bool accept);
 
     /**
      * Desctructor.
@@ -168,7 +168,8 @@ class SimpleBusListener : public BusListener {
     void LostAdvertisedName(const char* name, const char* namePrefix);
     void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner);
     void SessionLost(const SessionId& sessionId);
-    bool AcceptSession(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos);
+    bool AcceptSessionJoiner(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos);
+    void SessionJoined(const char* sessionName, SessionId id, const char* joiner);
 
     /**
      * @internal

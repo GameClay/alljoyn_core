@@ -79,12 +79,12 @@ SimpleBusListener::BusEvent& SimpleBusListener::BusEvent::operator=(const BusEve
         sessionLost.sessionId = other.sessionLost.sessionId;
         break;
 
-    case ACCEPT_SESSION:
-        acceptSession.sessionName = CopyIn(strings[0], other.acceptSession.sessionName);
-        acceptSession.id = other.acceptSession.id;
-        acceptSession.joiner = CopyIn(strings[1], other.acceptSession.joiner);
-        qosInfo = *other.acceptSession.qos;
-        acceptSession.qos = &qosInfo;
+    case ACCEPT_SESSION_JOINER:
+        acceptSessionJoiner.sessionName = CopyIn(strings[0], other.acceptSessionJoiner.sessionName);
+        acceptSessionJoiner.id = other.acceptSessionJoiner.id;
+        acceptSessionJoiner.joiner = CopyIn(strings[1], other.acceptSessionJoiner.joiner);
+        qosInfo = *other.acceptSessionJoiner.qos;
+        acceptSessionJoiner.qos = &qosInfo;
         break;
 
     default:
@@ -161,15 +161,15 @@ void SimpleBusListener::SessionLost(const SessionId& sessionId)
     }
 }
 
-bool SimpleBusListener::AcceptSession(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
+bool SimpleBusListener::AcceptSessionJoiner(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
 {
-    if (enabled & ACCEPT_SESSION) {
+    if (enabled & ACCEPT_SESSION_JOINER) {
         BusEvent busEvent;
-        busEvent.eventType = ACCEPT_SESSION;
-        busEvent.acceptSession.sessionName = sessionName;
-        busEvent.acceptSession.id = id;
-        busEvent.acceptSession.joiner = joiner;
-        busEvent.acceptSession.qos = &qos;
+        busEvent.eventType = ACCEPT_SESSION_JOINER;
+        busEvent.acceptSessionJoiner.sessionName = sessionName;
+        busEvent.acceptSessionJoiner.id = id;
+        busEvent.acceptSessionJoiner.joiner = joiner;
+        busEvent.acceptSessionJoiner.qos = &qos;
         internal.lock.Lock();
         internal.QueueEvent(busEvent);
         if (!internal.acceptEvent) {
@@ -187,28 +187,47 @@ bool SimpleBusListener::AcceptSession(const char* sessionName, SessionId id, con
     return false;
 }
 
-QStatus SimpleBusListener::AcceptSession(bool accept)
+QStatus SimpleBusListener::AcceptSessionJoiner(bool accept)
 {
-    QStatus status = ER_OK;
-    internal.lock.Lock();
-    if (internal.acceptEvent) {
-        internal.accepted = accept;
-        internal.acceptEvent->SetEvent();
-        internal.acceptEvent = NULL;
-    } else {
-        status = ER_BUS_NO_SESSION;
+    QStatus status = ER_BUS_NO_SESSION;
+    if (enabled & ACCEPT_SESSION_JOINER) {
+        internal.lock.Lock();
+        ++internal.numWaiters;
+        internal.waitEvent.ResetEvent();
+        if (internal.acceptEvent) {
+            internal.accepted = accept;
+            internal.acceptEvent->SetEvent();
+            internal.acceptEvent = NULL;
+            status = ER_OK;
+        }
+        /*
+         * If we accepted the session joiner wait for the join to complete
+         */
+        if ((status == ER_OK) && accept) {
+            internal.lock.Unlock();
+            status = Event::Wait(internal.waitEvent, 10000);
+            internal.lock.Lock();
+            internal.waitEvent.ResetEvent();
+        }
+        --internal.numWaiters;
+        internal.lock.Unlock();
     }
-    internal.lock.Unlock();
     return status;
 }
 
+void SimpleBusListener::SessionJoined(const char* sessionName, SessionId id, const char* joiner)
+{
+    if (enabled & ACCEPT_SESSION_JOINER) {
+        internal.waitEvent.SetEvent();
+    }
+}
 
 void SimpleBusListener::SetFilter(uint32_t enabled)
 {
     internal.lock.Lock();
     this->enabled = enabled;
     if (internal.acceptEvent) {
-        AcceptSession(false);
+        AcceptSessionJoiner(false);
     }
     /*
      * Save all queued events that pass the filter.
@@ -250,7 +269,7 @@ QStatus SimpleBusListener::WaitForEvent(BusEvent& busEvent, uint32_t timeout)
     }
     if (internal.acceptEvent) {
         status = ER_BUS_WAIT_FAILED;
-        QCC_LogError(status, ("An ACCEPT_SESSION event has not been accepted"));
+        QCC_LogError(status, ("An ACCEPT_SESSION_JOINER event has not been accepted"));
         goto ExitWait;
     }
     if (internal.eventQueue.empty() && timeout) {

@@ -850,16 +850,25 @@ void AllJoynPeerObj::AcceptSession(const InterfaceDescription::Member* member, M
 
         if (status == ER_OK) {
             MsgArg replyArg;
+            qcc::String sessionName = args[0].v_string.str;
+            qcc::String joiner = args[2].v_string.str;
+            SessionId sessionId =  args[1].v_uint32;
 
             /* Call bus listeners */
-            bool isAccepted = bus.GetInternal().CallAcceptListeners(args[0].v_string.str,
-                                                                    args[1].v_uint32,
-                                                                    args[2].v_string.str,
+            bool isAccepted = bus.GetInternal().CallAcceptListeners(sessionName.c_str(),
+                                                                    sessionId,
+                                                                    joiner.c_str(),
                                                                     qos);
 
             /* Reply to AcceptSession */
             replyArg.Set("b", isAccepted);
             status = MethodReply(msg, &replyArg, 1);
+            if ((status == ER_OK) && isAccepted) {
+                /* Let listeners know the join was successfully accepted */
+                bus.GetInternal().CallJoinedListeners(sessionName.c_str(),
+                                                      sessionId,
+                                                      joiner.c_str());
+            }
         }
         if (ER_OK != status) {
             QCC_LogError(status, ("AllJoynPeerObj::AcceptSession failed"));

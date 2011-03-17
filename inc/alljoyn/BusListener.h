@@ -95,7 +95,8 @@ class BusListener {
     virtual void SessionLost(const SessionId& sessionId) { }
 
     /**
-     * Accept or reject an incoming JoinSession request.
+     * Accept or reject an incoming JoinSession request. The session does not exist until this
+     * after this function returns.
      *
      * @param sessionName    Name of session.
      * @param id             Id of session.
@@ -103,10 +104,19 @@ class BusListener {
      * @param qos            Incoming quality of service.
      * @return   Return true if JoinSession request is accepted. false if rejected.
      */
-    virtual bool AcceptSession(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
+    virtual bool AcceptSessionJoiner(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
     {
         return false;
     }
+
+    /**
+     * Called by the bus when a session has been successfully joined. The session is now fully up.
+     *
+     * @param sessionName    Name of session.
+     * @param id             Id of session.
+     * @param joiner         Unique name of the joiner.
+     */
+    virtual void SessionJoined(const char* sessionName, SessionId id, const char* joiner) { }
 
     /**
      * Called when a bus this listener is registered with is stopping.

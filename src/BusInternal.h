@@ -193,6 +193,15 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
     bool CallAcceptListeners(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos);
 
     /**
+     * Inform BusListeners of a successful JoinSession.
+     *
+     * @param sessionName    Name of session.
+     * @param id             Session id.
+     * @param joiner         Unique name of sucessful joiner.
+     */
+    void CallJoinedListeners(const char* sessionName, SessionId id, const char* joiner);
+
+    /**
      * This function puts a message on the dispatch thread and deliver it to the specified alarm listener.
      *
      * @param listener  The alarm listener to receive the message.
