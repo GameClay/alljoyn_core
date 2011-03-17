@@ -228,7 +228,7 @@ class MyBusListener : public BusListener {
   public:
     MyBusListener(const QosInfo& qos) : BusListener(), qos(qos) { }
 
-    bool AcceptSession(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
+    bool AcceptSessionJoiner(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
     {
         if (qos.IsCompatible(this->qos)) {
             /* Allow the join attempt */

@@ -79,7 +79,7 @@ class MyBusListener : public BusListener {
   public:
     MyBusListener() : BusListener(), sessionId(0) { }
 
-    bool AcceptSession(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
+    bool AcceptSessionJoiner(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
     {
         QCC_SyncPrintf("Accepting JoinSession request from %s (sessionId=%u) \n", joiner, id);
         sessionId = id;

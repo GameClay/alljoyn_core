@@ -12,8 +12,6 @@
  */
 
 /******************************************************************************
- *
- *
  * Copyright 2010-2011, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
@@ -160,7 +158,7 @@ class MyBusListener : public BusListener {
         }
     }
 
-    bool AcceptSession(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
+    bool AcceptSessionJoiner(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
     {
         printf("Accepting join session request from %s (qos.proximity=%x, qos.traffic=%x, qos.transports=%x)\n",
                joiner, qos.proximity, qos.traffic, qos.transports);
