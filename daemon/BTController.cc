@@ -461,10 +461,12 @@ void BTController::PrepConnect()
          * response which will result in one side or the other taking control
          * of who performs the find operation.
          */
-        QCC_DbgPrintf(("Stopping find..."));
-        assert(find.active);
-        bt.StopFind();
-        find.active = false;
+        if (!find.Empty()) {
+            QCC_DbgPrintf(("Stopping find..."));
+            assert(find.active);
+            bt.StopFind();
+            find.active = false;
+        }
     }
     if (UseLocalAdvertise() && advertise.active) {
         /*
@@ -473,9 +475,11 @@ void BTController::PrepConnect()
          * response which will result in one side or the other taking control
          * of who performs the advertise operation.
          */
-        QCC_DbgPrintf(("Stopping advertise..."));
-        bt.StopAdvertise();
-        advertise.active = false;
+        if (!advertise.Empty()) {
+            QCC_DbgPrintf(("Stopping advertise..."));
+            bt.StopAdvertise();
+            advertise.active = false;
+        }
     }
     nodeStateLock.Unlock();
 }
@@ -493,22 +497,26 @@ void BTController::PostConnect(QStatus status, const RemoteEndpoint* ep)
              * Gotta restart the find operation since the connect failed and
              * we need to do the find for ourself.
              */
-            QCC_DbgPrintf(("Starting find..."));
-            assert(!find.active);
-            bt.StartFind(masterUUIDRev);
-            find.active = true;
+            if (!find.Empty()) {
+                QCC_DbgPrintf(("Starting find..."));
+                assert(!find.active);
+                bt.StartFind(masterUUIDRev);
+                find.active = true;
+            }
         }
         if (UseLocalAdvertise()) {
             /*
              * Gotta restart the advertise operation since the connect failed and
              * we need to do the advertise for ourself.
              */
-            BluetoothDeviceInterface::AdvertiseInfo adInfo;
-            status = ExtractAdInfo(&advertise.adInfoArgs.front(), advertise.adInfoArgs.size(), adInfo);
-            QCC_DbgPrintf(("Starting advertise..."));
-            assert(!advertise.active);
-            bt.StartAdvertise(masterUUIDRev, advertise.bdAddr, advertise.channel, advertise.psm, adInfo);
-            advertise.active = true;
+            if (!advertise.Empty()) {
+                BluetoothDeviceInterface::AdvertiseInfo adInfo;
+                status = ExtractAdInfo(&advertise.adInfoArgs.front(), advertise.adInfoArgs.size(), adInfo);
+                QCC_DbgPrintf(("Starting advertise..."));
+                assert(!advertise.active);
+                bt.StartAdvertise(masterUUIDRev, advertise.bdAddr, advertise.channel, advertise.psm, adInfo);
+                advertise.active = true;
+            }
         }
         nodeStateLock.Unlock();
     }
