@@ -1986,7 +1986,7 @@ void AllJoynObj::FoundNames(const qcc::String& busAddr,
                 /* Send FoundAdvertisedName to anyone who is discovering *nit */
                 if (0 < discoverMap.size()) {
                     multimap<String, String>::const_iterator dit = discoverMap.lower_bound((*nit)[0]);
-                    while ((dit != discoverMap.end()) && (dit->first.compare(*nit) < 0)) {
+                    while ((dit != discoverMap.end()) && (dit->first.compare(*nit) <= 0)) {
                         if (nit->compare(0, dit->first.size(), dit->first) == 0) {
                             QStatus status = SendFoundAdvertisedName(dit->second, *nit, qos, dit->first);
                             if (ER_OK != status) {
