@@ -72,7 +72,7 @@ static String g_wellKnownName = ::org::alljoyn::alljoyn_test::DefaultWellKnownNa
 class MyBusListener : public BusListener {
   public:
 
-    MyBusListener() : BusListener(), sessionId(0) { }
+    MyBusListener(bool stopDiscover) : BusListener(), sessionId(0), stopDiscover(stopDiscover) { }
 
     void FoundAdvertisedName(const char* name, const QosInfo& qos, const char* namePrefix)
     {
@@ -82,7 +82,16 @@ class MyBusListener : public BusListener {
             /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
             uint32_t disposition = 0;
             QosInfo qosIn = qos;
-            QStatus status = g_msgBus->JoinSession(name, disposition, sessionId, qosIn);
+            QStatus status;
+
+            if (stopDiscover) {
+                status = g_msgBus->CancelFindAdvertisedName(g_wellKnownName.c_str(), disposition);
+                if ((ER_OK != status) || (ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_SUCCESS != disposition)) {
+                    QCC_LogError(status, ("CancelFindAdvertisedName(%s) failed (%u)", name, disposition));
+                }
+            }
+
+            status = g_msgBus->JoinSession(name, disposition, sessionId, qosIn);
             if ((ER_OK != status) || (ALLJOYN_JOINSESSION_REPLY_SUCCESS != disposition)) {
                 QCC_LogError(status, ("JoinSession(%s) failed (%u)", name, disposition));
             }
@@ -111,6 +120,7 @@ class MyBusListener : public BusListener {
 
   private:
     SessionId sessionId;
+    bool stopDiscover;
 };
 
 /** Static bus listener */
@@ -129,7 +139,7 @@ static void SigIntHandler(int sig)
 
 static void usage(void)
 {
-    printf("Usage: bbclient [-h] [-c <count>] [-i] [-e] [-r #] [-l | -la | -d] [-n <well-known name>] [-t[a] <delay> [<interval>] | -rt]\n\n");
+    printf("Usage: bbclient [-h] [-c <count>] [-i] [-e] [-r #] [-l | -la | -d[s]] [-n <well-known name>] [-t[a] <delay> [<interval>] | -rt]\n\n");
     printf("Options:\n");
     printf("   -h                    = Print this help message\n");
     printf("   -c [count]            = Number of pings to send to the server\n");
@@ -141,6 +151,7 @@ static void usage(void)
     printf("   -la                   = launch bbservice if not already running using auto-launch\n");
     printf("   -n <well-known name>  = Well-known bus name advertised by bbservice\n");
     printf("   -d                    = discover remote bus with test service\n");
+    printf("   -ds                   = discover remote bus with test service and cancel discover when found\n");
     printf("   -t                    = Call delayed_ping with <delay> and repeat at <interval> if -c given\n");
     printf("   -ta                   = Like -t except calls asynchronously\n");
     printf("   -rt                   = Round trip timer\n");
@@ -307,6 +318,7 @@ int main(int argc, char** argv)
     bool startService = false;
     bool autoStartService = false;
     bool discoverRemote = false;
+    bool stopDiscover = false;
     bool waitForService = true;
     bool asyncPing = false;
     uint32_t pingDelay = 0;
@@ -407,6 +419,9 @@ int main(int argc, char** argv)
             autoStartService = true;
         } else if (0 == strcmp("-d", argv[i])) {
             discoverRemote = true;
+        } else if (0 == strcmp("-ds", argv[i])) {
+            discoverRemote = true;
+            stopDiscover = true;
         } else if (0 == strcmp("-w", argv[i])) {
             waitForService = false;
         } else if ((0 == strcmp("-t", argv[i])) || (0 == strcmp("-ta", argv[i]))) {
@@ -487,7 +502,7 @@ int main(int argc, char** argv)
 
     /* Register a bus listener in order to get discovery indications */
     if (ER_OK == status) {
-        g_busListener = new MyBusListener();
+        g_busListener = new MyBusListener(stopDiscover);
         g_msgBus->RegisterBusListener(*g_busListener);
     }
 
@@ -588,7 +603,10 @@ int main(int argc, char** argv)
 
             MyMessageReceiver msgReceiver;
             size_t cnt = 0;
+            uint64_t sample = 0;
             uint64_t timeSum = 0;
+            uint64_t max_delta = 0;
+            uint64_t min_delta = ~0;
 
             /* Call the remote method */
             while ((ER_OK == status) && pings--) {
@@ -638,8 +656,6 @@ int main(int argc, char** argv)
                         if (roundtrip) {
                             Timespec now;
                             GetTimeNow(&now);
-                            static uint64_t max_delta = 0;
-                            static uint64_t min_delta = ~0;
                             uint64_t delta = ((static_cast<uint64_t>(now.seconds) * 1000ULL + now.mseconds) -
                                               (static_cast<uint64_t>(reply->GetArg(0)->v_uint32) * 1000ULL + reply->GetArg(1)->v_uint16));
                             if (delta > max_delta) {
@@ -655,7 +671,8 @@ int main(int argc, char** argv)
                             } else {
                                 timeSum += delta;
                             }
-                            QCC_SyncPrintf("DELTA: %llu\n", delta);
+                            QCC_SyncPrintf("DELTA: %llu %llu\n", sample, delta);
+                            ++sample;
                         } else {
                             QCC_SyncPrintf("%s.%s ( path=%s ) returned \"%s\"\n",
                                            g_wellKnownName.c_str(),
@@ -678,8 +695,10 @@ int main(int argc, char** argv)
             }
 
             if (roundtrip) {
-                QCC_SyncPrintf("Average round trip time: %llu.%03u ms\n",
-                               timeSum / pingCount, ((timeSum % pingCount) * 1000) / pingCount);
+                QCC_SyncPrintf("Round trip time MIN/AVG/MAX: %llu/%llu.%03u/%llu ms\n",
+                               min_delta,
+                               timeSum / pingCount, ((timeSum % pingCount) * 1000) / pingCount,
+                               max_delta);
             }
 
             /* Get the test property */
