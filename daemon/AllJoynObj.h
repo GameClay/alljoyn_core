@@ -330,6 +330,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
         qcc::SocketFd fd;
         RemoteEndpoint* streamingEp;
         std::vector<qcc::String> memberNames;
+        SessionMapEntry() : id(0), qos(QosInfo::TRAFFIC_ANY, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY), isMulticast(false), fd(-1), streamingEp(NULL) { }
     };
     std::map<std::pair<SessionId, qcc::String>, SessionMapEntry> sessionMap;  /**< Map sessionId,epName to session info */
     qcc::Mutex sessionMapLock;                           /**< Protect sessionMap */
