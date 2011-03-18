@@ -95,14 +95,14 @@ SimpleBusListener::BusEvent& SimpleBusListener::BusEvent::operator=(const BusEve
 
 class SimpleBusListener::Internal {
   public:
-    Internal() : bus(NULL), acceptEvent(NULL), accepted(false), numWaiters(0) { }
+    Internal() : bus(NULL), acceptEvent(NULL), accepted(false), waiter(false) { }
     Event waitEvent;
     qcc::Mutex lock;
     std::queue<BusEvent> eventQueue;
     BusAttachment* bus;
     Event* acceptEvent;
     bool accepted;
-    uint32_t numWaiters;
+    bool waiter;
 
     void QueueEvent(BusEvent& ev) {
         lock.Lock();
@@ -192,7 +192,7 @@ QStatus SimpleBusListener::AcceptSessionJoiner(bool accept)
     QStatus status = ER_BUS_NO_SESSION;
     if (enabled & ACCEPT_SESSION_JOINER) {
         internal.lock.Lock();
-        ++internal.numWaiters;
+        internal.waiter = true;
         internal.waitEvent.ResetEvent();
         if (internal.acceptEvent) {
             internal.accepted = accept;
@@ -209,7 +209,7 @@ QStatus SimpleBusListener::AcceptSessionJoiner(bool accept)
             internal.lock.Lock();
             internal.waitEvent.ResetEvent();
         }
-        --internal.numWaiters;
+        internal.waiter = false;
         internal.lock.Unlock();
     }
     return status;
@@ -262,7 +262,7 @@ QStatus SimpleBusListener::WaitForEvent(BusEvent& busEvent, uint32_t timeout)
         QCC_LogError(status, ("Bus is not running"));
         goto ExitWait;
     }
-    if (internal.numWaiters > 0) {
+    if (internal.waiter) {
         status = ER_BUS_WAIT_FAILED;
         QCC_LogError(status, ("Another thread is already waiting"));
         goto ExitWait;
@@ -273,12 +273,12 @@ QStatus SimpleBusListener::WaitForEvent(BusEvent& busEvent, uint32_t timeout)
         goto ExitWait;
     }
     if (internal.eventQueue.empty() && timeout) {
-        ++internal.numWaiters;
+        internal.waiter = true;
         internal.lock.Unlock();
         status = Event::Wait(internal.waitEvent, (timeout == 0xFFFFFFFF) ? Event::WAIT_FOREVER : timeout);
         internal.lock.Lock();
         internal.waitEvent.ResetEvent();
-        --internal.numWaiters;
+        internal.waiter = false;
     }
     if (!internal.eventQueue.empty()) {
         busEvent = internal.eventQueue.front();
@@ -293,18 +293,12 @@ ExitWait:
 void SimpleBusListener::BusStopping()
 {
     /*
-     * Check there are no threads waiting
+     * Unblock any waiting thread
      */
-    internal.lock.Lock();
-    while (internal.numWaiters > 0) {
-        internal.waitEvent.SetEvent();
-        internal.lock.Unlock();
-        internal.lock.Lock();
-    }
+    internal.waitEvent.SetEvent();
     if (internal.acceptEvent) {
         internal.acceptEvent->SetEvent();
     }
-    internal.lock.Unlock();
 }
 
 void SimpleBusListener::ListenerUnRegistered()
@@ -324,15 +318,10 @@ void SimpleBusListener::ListenerRegistered(BusAttachment* bus)
 SimpleBusListener::~SimpleBusListener()
 {
     /*
-     * Check there are no threads waiting
+     * Unblock any threads waiting
      */
     internal.lock.Lock();
-    while (internal.numWaiters > 0) {
-        internal.waitEvent.SetEvent();
-        internal.lock.Unlock();
-        qcc::Sleep(5);
-        internal.lock.Lock();
-    }
+    internal.waitEvent.SetEvent();
     if (internal.acceptEvent) {
         internal.acceptEvent->SetEvent();
     }
