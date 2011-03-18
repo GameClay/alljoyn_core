@@ -284,7 +284,8 @@ class AllJoynPeerObj : public BusObject, public BusListener {
     typedef enum {
         SECURE_PEER,
         AUTH_CHALLENGE,
-        EXPAND_HEADER
+        EXPAND_HEADER,
+        ACCEPT_SESSION
     } RequestType;
 
     /**

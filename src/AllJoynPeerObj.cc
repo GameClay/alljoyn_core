@@ -767,6 +767,10 @@ qcc::ThreadReturn AllJoynPeerObj::RequestThread::Run(void* args)
                 peerObj.AuthAdvance(req.msg);
                 break;
 
+            case ACCEPT_SESSION:
+                peerObj.AcceptSession(NULL, req.msg);
+                break;
+
             case EXPAND_HEADER:
                 peerObj.ExpandHeader(req.msg, req.data);
                 break;
@@ -839,42 +843,52 @@ void AllJoynPeerObj::NameOwnerChanged(const char* busName, const char* previousO
 
 void AllJoynPeerObj::AcceptSession(const InterfaceDescription::Member* member, Message& msg)
 {
-    size_t na;
+    QStatus status;
+
+    /*
+     * Use the request thread.
+     */
+    if (member) {
+        status = requestThread.QueueRequest(msg, ACCEPT_SESSION);
+        if (status != ER_OK) {
+            MethodReply(msg, status);
+        }
+        return;
+    }
+
+    size_t numArgs;
     const MsgArg* args;
     QosInfo qos;
 
-    if (msg->GetType() == MESSAGE_METHOD_CALL) {
-        msg->GetArgs(na, args);
-        assert(na == 5);
-        QStatus status = args[4].Get(QOSINFO_SIG, &qos.traffic, &qos.proximity, &qos.transports);
+    msg->GetArgs(numArgs, args);
+    if (numArgs == 5) {
+        status = args[4].Get(QOSINFO_SIG, &qos.traffic, &qos.proximity, &qos.transports);
+    } else {
+        status = ER_FAIL;
+    }
+    if (status == ER_OK) {
+        MsgArg replyArg;
+        qcc::String sessionName = args[0].v_string.str;
+        qcc::String joiner = args[2].v_string.str;
+        SessionId sessionId =  args[1].v_uint32;
 
-        if (status == ER_OK) {
-            MsgArg replyArg;
-            qcc::String sessionName = args[0].v_string.str;
-            qcc::String joiner = args[2].v_string.str;
-            SessionId sessionId =  args[1].v_uint32;
+        /* Call bus listeners */
+        bool isAccepted = bus.GetInternal().CallAcceptListeners(sessionName.c_str(),
+                                                                sessionId,
+                                                                joiner.c_str(),
+                                                                qos);
 
-            /* Call bus listeners */
-            bool isAccepted = bus.GetInternal().CallAcceptListeners(sessionName.c_str(),
-                                                                    sessionId,
-                                                                    joiner.c_str(),
-                                                                    qos);
-
-            /* Reply to AcceptSession */
-            replyArg.Set("b", isAccepted);
-            status = MethodReply(msg, &replyArg, 1);
-            if ((status == ER_OK) && isAccepted) {
-                /* Let listeners know the join was successfully accepted */
-                bus.GetInternal().CallJoinedListeners(sessionName.c_str(),
-                                                      sessionId,
-                                                      joiner.c_str());
-            }
-        }
-        if (ER_OK != status) {
-            QCC_LogError(status, ("AllJoynPeerObj::AcceptSession failed"));
+        /* Reply to AcceptSession */
+        replyArg.Set("b", isAccepted);
+        status = MethodReply(msg, &replyArg, 1);
+        if ((status == ER_OK) && isAccepted) {
+            /* Let listeners know the join was successfully accepted */
+            bus.GetInternal().CallJoinedListeners(sessionName.c_str(),
+                                                  sessionId,
+                                                  joiner.c_str());
         }
     } else {
-        QCC_LogError(ER_FAIL, ("Unexpected message type"));
+        MethodReply(msg, status);
     }
 }
 
