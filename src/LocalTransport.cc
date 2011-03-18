@@ -743,9 +743,16 @@ QStatus LocalEndpoint::HandleMethodReply(Message& message)
 
 void LocalEndpoint::BusIsConnected()
 {
-    if (IncrementAndFetch(&refCount) > 1) {
-        /* Call ObjectRegistered callbacks on another thread */
-        bus.GetInternal().GetTimer().AddAlarm(Alarm(0, this));
+    if (!bus.GetInternal().GetTimer().HasAlarm(Alarm(0, this))) {
+        if (IncrementAndFetch(&refCount) > 1) {
+            /* Call ObjectRegistered callbacks on another thread */
+            QStatus status = bus.GetInternal().GetTimer().AddAlarm(Alarm(0, this));
+            if (status != ER_OK) {
+                DecrementAndFetch(&refCount);
+            }
+        } else {
+            DecrementAndFetch(&refCount);
+        }
     }
 }
 
