@@ -133,5 +133,5 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
   <status name="ER_BUS_NOT_A_DICTIONARY" value="0x9071" comment="MsgArg was not an array of dictionary elements"/>
   <status name="ER_BUS_WAIT_FAILED" value="0x9072" comment="Wait failed"/>
   <status name="ER_BUS_INVALID_MEDIA_TYPE" value="0x9073" comment="Unexpected mimetype for the media"/>
-  <status name="ER_BUS_INCOMPATIBLE_QOS" value="0x9074" comment="QoS constraints are incompatible with request"/>
+  <status name="ER_BUS_BAD_SESSION_OPTS" value="0x9074" comment="Session options are bad incompatible"/>
 </status_block>

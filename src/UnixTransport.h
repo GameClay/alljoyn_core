@@ -190,12 +190,12 @@ class UnixTransport : public Transport, public RemoteEndpoint::EndpointListener,
      * by clients or services.
      *
      * @param advertiseName   Well-known name to be advertised.
-     * @param qos             Quality of service for advertisment.
+     * @param opts            Session options.
      * @return
      *      - ER_OK if successful.
      *      - an error status otherwise.
      */
-    QStatus EnableAdvertisement(const qcc::String& advertiseName, const QosInfo& qos) { return ER_BUS_INCOMPATIBLE_QOS; }
+    QStatus EnableAdvertisement(const qcc::String& advertiseName) { return ER_FAIL; }
 
     /**
      * @internal
@@ -203,15 +203,21 @@ class UnixTransport : public Transport, public RemoteEndpoint::EndpointListener,
      * by clients or services.
      *
      * @param advertiseName Well-known name to be advertised.
-     * @param qos           Quality of service for advertisement or NULL to indicate all/any QoS.
      * @param nameListEmpty true iff this is the last exiting advertisement.
      */
-    void DisableAdvertisement(const qcc::String& advertiseName, const QosInfo* qos, bool nameListEmpty) { }
+    void DisableAdvertisement(const qcc::String& advertiseName, bool nameListEmpty) { }
 
     /**
      * Returns the name of this transport
      */
     const char* GetTransportName()  { return TransportName(); }
+
+    /**
+     * Get the transport mask for this transport
+     *
+     * @return the TransportMask for this transport.
+     */
+    TransportMask GetTransportMask() { return TRANSPORT_NONE; }
 
     /**
      * Indicates whether this transport may be used for a connection between

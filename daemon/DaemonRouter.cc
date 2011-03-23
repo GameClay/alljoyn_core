@@ -405,7 +405,7 @@ void DaemonRouter::UnregisterEndpoint(BusEndpoint& endpoint)
     }
 }
 
-QStatus DaemonRouter::AddSessionRoute(const char* src, SessionId id, BusEndpoint& destEp, RemoteEndpoint*& b2bEp, QosInfo* qosHint)
+QStatus DaemonRouter::AddSessionRoute(const char* src, SessionId id, BusEndpoint& destEp, RemoteEndpoint*& b2bEp, SessionOpts* optsHint)
 {
     QStatus status = ER_OK;
     if (id == 0) {
@@ -413,8 +413,8 @@ QStatus DaemonRouter::AddSessionRoute(const char* src, SessionId id, BusEndpoint
     } else if (destEp.GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL) {
         if (b2bEp) {
             status = static_cast<VirtualEndpoint&>(destEp).AddSessionRef(id, *b2bEp);
-        } else if (qosHint) {
-            status = static_cast<VirtualEndpoint&>(destEp).AddSessionRef(id, qosHint, b2bEp);
+        } else if (optsHint) {
+            status = static_cast<VirtualEndpoint&>(destEp).AddSessionRef(id, optsHint, b2bEp);
         }
     }
 

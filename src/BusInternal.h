@@ -184,22 +184,21 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
     /**
      * Inform BusListeners of incoming JoinSession attempt.
      *
-     * @param sessionName    Name of session.
-     * @param id             Session id.
+     * @param sessionPort    SessionPort specified in join request.
      * @param joiner         Unique name of potential joiner.
-     * @param qos            Incoming quality of service.
+     * @param opts           Session options requested by joiner.
      * @return   Return true if JoinSession request is accepted. false if rejected.
      */
-    bool CallAcceptListeners(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos);
+    bool CallAcceptListeners(SessionPort sessionPort, const char* joiner, const SessionOpts& opts);
 
     /**
      * Inform BusListeners of a successful JoinSession.
      *
-     * @param sessionName    Name of session.
+     * @param sessionPort    SessionPort specified by joiner.
      * @param id             Session id.
      * @param joiner         Unique name of sucessful joiner.
      */
-    void CallJoinedListeners(const char* sessionName, SessionId id, const char* joiner);
+    void CallJoinedListeners(SessionPort sessionPort, SessionId id, const char* joiner);
 
     /**
      * This function puts a message on the dispatch thread and deliver it to the specified alarm listener.

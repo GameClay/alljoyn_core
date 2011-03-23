@@ -26,12 +26,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+using namespace ajn;
+
 /* constants */
 static const char* CHAT_SERVICE_INTERFACE_NAME = "org.alljoyn.bus.samples.chat";
 static const char* NAME_PREFIX = "org.alljoyn.bus.samples.chat.";
 static const char* CHAT_SERVICE_OBJECT_PATH = "/chatService";
-
-using namespace ajn;
+static const SessionPort CHAT_PORT = 25;
 
 /* forward declaration */
 class ChatObject;
@@ -97,15 +98,15 @@ class ChatObject : public BusObject {
 };
 
 class MyBusListener : public BusListener {
-    void FoundAdvertisedName(const char* name, const QosInfo& advQos, const char* namePrefix)
+    void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
     {
         const char* convName = name + strlen(NAME_PREFIX);
         printf("Discovered chat conversation: \"%s\"\n", convName);
 
         /* Join the conversation */
         uint32_t disposition;
-        QosInfo qos = advQos;
-        QStatus status = s_bus->JoinSession(name, disposition, s_sessionId, qos);
+        SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+        QStatus status = s_bus->JoinSession(name, CHAT_PORT, disposition, s_sessionId, opts);
         if ((ER_OK == status) && (ALLJOYN_JOINSESSION_REPLY_SUCCESS == disposition)) {
             printf("Joined conversation \"%s\"\n", convName);
         } else {
@@ -119,11 +120,21 @@ class MyBusListener : public BusListener {
         printf("NameOwnerChanged: name=%s, oldOwner=%s, newOwner=%s\n", busName, previousOwner ? previousOwner : "<none>",
                newOwner ? newOwner : "<none>");
     }
-    bool AcceptSessionJoiner(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
+    bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
     {
-        printf("Accepting join session request from %s (qos.proximity=%x, qos.traffic=%x, qos.transports=%x)\n",
-               joiner, qos.proximity, qos.traffic, qos.transports);
+        if (sessionPort != CHAT_PORT) {
+            printf("Rejecting join attempt on non-chat session port %d\n", sessionPort);
+            return false;
+        }
+
+        printf("Accepting join session request from %s (opts.proximity=%x, opts.traffic=%x, opts.transports=%x)\n",
+               joiner, opts.proximity, opts.traffic, opts.transports);
         return true;
+    }
+
+    void SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner)
+    {
+        printf("SessionJoined with %s (id=%d)\n", joiner, id);
     }
 };
 
@@ -235,24 +246,24 @@ int main(int argc, char** argv)
             status = (status == ER_OK) ? ER_FAIL : status;
         }
 
-        /* Create session */
+        /* Bind the session port*/
+        SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
         if (ER_OK == status) {
             uint32_t disposition = 0;
-            QosInfo qos(QosInfo::TRAFFIC_MESSAGES, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
-            status = s_bus->CreateSession(s_advertisedName.c_str(), true, qos, disposition, s_sessionId);
+            SessionPort sp = CHAT_PORT;
+            status = s_bus->BindSessionPort(sp, true, opts, disposition);
             if (ER_OK != status) {
-                printf("CreateSession failed (%s)\n", QCC_StatusText(status));
+                printf("BindSessionPort failed (%s)\n", QCC_StatusText(status));
             } else if (disposition != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
                 status = ER_FAIL;
-                printf("CreateSession returned failed disposition (%u)\n", disposition);
+                printf("BindSessionPort returned failed disposition (%u)\n", disposition);
             }
         }
 
         /* Advertise name */
         if (ER_OK == status) {
             uint32_t disposition = 0;
-            QosInfo qos(QosInfo::TRAFFIC_MESSAGES, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
-            status = s_bus->AdvertiseName(s_advertisedName.c_str(), qos, disposition);
+            status = s_bus->AdvertiseName(s_advertisedName.c_str(), opts.transports, disposition);
             if ((status != ER_OK) || (disposition != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS)) {
                 printf("Failed to advertise name %s (%s) (disposition=%d)\n", s_advertisedName.c_str(), QCC_StatusText(status), disposition);
                 status = (status == ER_OK) ? ER_FAIL : status;

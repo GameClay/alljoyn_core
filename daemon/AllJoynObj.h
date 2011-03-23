@@ -81,8 +81,9 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * Respond to a bus request to create a session.
      *
      * The input Message (METHOD_CALL) is expected to contain the following parameters:
-     *   sessionName  string   Globally unique name for session.
-     *   qos          QosInfo  Quality of Service requirements for potential session joiners.
+     *   sessionName  string       Globally unique name for session.
+     *   isMultipoint bool         true iff sessionPort is multipoint
+     *   opts         SessionOpts  SessionOpts that must be agreeable to any joiner.
      *
      * The output Message (METHOD_REPLY) contains the following parameters:
      *   resultCode   uint32   A ALLJOYN_CREATESESSION_* reply code (see AllJoynStd.h).
@@ -91,7 +92,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * @param member  Member.
      * @param msg     The incoming message.
      */
-    void CreateSession(const InterfaceDescription::Member* member, Message& msg);
+    void BindSessionPort(const InterfaceDescription::Member* member, Message& msg);
 
     /**
      * Respond to a bus request to join an existing session.
@@ -100,9 +101,9 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      *   sessionName  string   Name of session to join.
      *
      * The output Message (METHOD_REPLY) contains the following parameters:
-     *   resultCode   uint32   A ALLJOYN_JOINSESSION_* reply code (see AllJoynStd.h).
-     *   sessionId    uint32   Session identifier.
-     *   qos          QosInfo  Quality of service for session.
+     *   resultCode   uint32        A ALLJOYN_JOINSESSION_* reply code (see AllJoynStd.h).
+     *   sessionId    uint32        Session identifier.
+     *   opts         SessionOpts   Session options.
      *
      * @param member  Member.
      * @param msg     The incoming message.
@@ -213,15 +214,15 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * Respond to a remote daemon request to attach a session through this daemon.
      *
      * The input Message (METHOD_CALL) is expected to contain the following parameters:
-     *   sessionName   string    The name of the session.
-     *   joiner        string    The unique name of the session joiner.
-     *   creator       string    The name of the session creator.
-     *   qosIn         QosInfo   The quality of service requested by the joiner.
+     *   sessionName   string       The name of the session.
+     *   joiner        string       The unique name of the session joiner.
+     *   creator       string       The name of the session creator.
+     *   optsIn        SesionOpts   The session options requested by the joiner.
      *
      * The output Message (METHOD_REPLY) contains the following parameters:
-     *   resultCode    uint32    A ALLJOYN_JOINSESSION_* reply code (see AllJoynStd.h).
-     *   sessionId     uint32    The session id (valid if resultCode indicates success).
-     *   qosOut        QonsInfo  The actual QoS for the session.
+     *   resultCode    uint32       A ALLJOYN_JOINSESSION_* reply code (see AllJoynStd.h).
+     *   sessionId     uint32       The session id (valid if resultCode indicates success).
+     *   opts          SessionOpts  The actual (final) session options.
      *
      * @param member  Member.
      * @param msg     The incoming message.
@@ -272,12 +273,12 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      *
      * @param   busAddr   Address of discovered bus.
      * @param   guid      GUID of daemon that sent the advertisment.
-     * @param   qos       Advertised quality of service
+     * @param   transport Transport that received the advertisment.
      * @param   names     Vector of bus names advertised by the discovered bus.
      * @param   ttl       Number of seconds before this advertisment expires
      *                    (0 means expire immediately, numeric_limits<uint8_t>::max() means never expire)
      */
-    void FoundNames(const qcc::String& busAddr, const qcc::String& guid, const QosInfo& qos, const std::vector<qcc::String>* names, uint8_t ttl);
+    void FoundNames(const qcc::String& busAddr, const qcc::String& guid, TransportMask transport, const std::vector<qcc::String>* names, uint8_t ttl);
 
     /**
      * Called when a transport gets a surprise disconnect from a remote bus.
@@ -312,27 +313,39 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     struct NameMapEntry {
         qcc::String busAddr;
         qcc::String guid;
-        QosInfo qos;
+        TransportMask transport;
         uint32_t timestamp;
         uint32_t ttl;
-        NameMapEntry(const qcc::String& busAddr, const qcc::String& guid, const QosInfo& qos, uint32_t ttl) : busAddr(busAddr), guid(guid), qos(qos), timestamp(qcc::GetTimestamp()), ttl(ttl) { }
 
+        NameMapEntry(const qcc::String& busAddr, const qcc::String& guid, TransportMask transport, uint32_t ttl) :
+            busAddr(busAddr),
+            guid(guid),
+            transport(transport),
+            timestamp(qcc::GetTimestamp()),
+            ttl(ttl) { }
     };
     std::multimap<qcc::String, NameMapEntry> nameMap;
 
     /* Session map */
     struct SessionMapEntry {
-        qcc::String name;
-        SessionId id;
         qcc::String endpointName;
-        QosInfo qos;
-        bool isMulticast;
+        SessionId id;
+        qcc::String sessionHost;
+        SessionPort sessionPort;
+        SessionOpts opts;
+        bool isMultipoint;
         qcc::SocketFd fd;
         RemoteEndpoint* streamingEp;
         std::vector<qcc::String> memberNames;
-        SessionMapEntry() : id(0), qos(QosInfo::TRAFFIC_ANY, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY), isMulticast(false), fd(-1), streamingEp(NULL) { }
+        SessionMapEntry() :
+            id(0),
+            sessionPort(0),
+            opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY),
+            isMultipoint(false),
+            fd(-1),
+            streamingEp(NULL) { }
     };
-    std::map<std::pair<SessionId, qcc::String>, SessionMapEntry> sessionMap;  /**< Map sessionId,epName to session info */
+    std::map<std::pair<qcc::String, SessionId>, SessionMapEntry> sessionMap;  /**< Map (endpointName,sessionId) to session info */
     qcc::Mutex sessionMapLock;                           /**< Protect sessionMap */
 
     const qcc::GUID& guid;                               /**< Global GUID of this daemon */
@@ -384,63 +397,62 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      *
      * @param dest        Unique name of destination.
      * @param name        Well-known name that was found.
-     * @param advQos      Advertised quality of service for name.
+     * @param transport   The transport that received the advertisment.
      * @param namePrefix  Well-known name prefix used in call to FindName() that triggered this notification.
      * @return ER_OK if succssful.
      */
     QStatus SendFoundAdvertisedName(const qcc::String& dest,
                                     const qcc::String& name,
-                                    const QosInfo& advQos,
+                                    TransportMask transport,
                                     const qcc::String& namePrefix);
 
     /**
      * Utility function used to send LostAdvertisedName signals to each "interested" local endpoint.
      *
-     * @param name        Well-known name that was found.
-     * @param advQos      Advertised quality of service for name.
+     * @param name        Well-known name whose advertisment was lost.
+     * @param transport   Transport whose advertisment for name has gone away.
      * @return ER_OK if succssful.
      */
-    QStatus SendLostAdvertisedName(const qcc::String& name,
-                                   const QosInfo& advQos);
+    QStatus SendLostAdvertisedName(const qcc::String& name, TransportMask transport);
 
     /**
      * Utility method used to invoke SessionAttach remote method.
      *
-     * @param sessionName      Name of session.
+     * @param sessionPort      SessionPort used in join request.
      * @param src              Unique name of session joiner.
      * @param dest             Unique name of session creator.
      * @param remoteB2BName    Unique name of directly connected (next hop) B2B endpoint.
      * @param remoteControllerName  Unique name of bus controller at next hop.
-     * @param qosIn            QoS requested by joiner.
+     * @param optsIn           Session options requested by joiner.
      * @param replyCode        [OUT] SessionAttach response code
      * @param sessionId        [OUT] session id if reply code indicates success.
-     * @param qosOut           [OUT] QoS dictated by the creator.
+     * @param optsOut          [OUT] Acutal (final) session options.
      */
-    QStatus SendAttachSession(const char* sessionName,
+    QStatus SendAttachSession(SessionPort sessionPort,
                               const char* src,
                               const char* dest,
                               const char* remoteB2BName,
                               const char* remoteControllerName,
-                              const QosInfo& qosIn,
+                              const SessionOpts& optsIn,
                               uint32_t& replyCode,
                               SessionId& sessionId,
-                              QosInfo& qosOut);
+                              SessionOpts& optsOut);
 
     /**
      * Utility method used to invoke AcceptSession on device local endpoint.
      *
-     * @param sessionName      Name of session.
-     * @param sessionId        Id for session.
+     * @param sessionPort      SessionPort that received the join request.
+     * @param sessionId        Id for new session (if accepted).
      * @param creatorName      Session creator unique name.
-     * @param joinerName       Session jointer unique name.
-     * @param inQos            Quality of service requsted by joiner
+     * @param joinerName       Session joiner unique name.
+     * @param opts             Session options requsted by joiner
      * @param isAccepted       [OUT] true iff creator accepts session. (valid if return is ER_OK).
      */
-    QStatus SendAcceptSession(const char* sessionName,
+    QStatus SendAcceptSession(SessionPort sessionPort,
                               SessionId sessionId,
                               const char* creatorName,
                               const char* joinerName,
-                              const QosInfo& inQos,
+                              const SessionOpts& opts,
                               bool& isAccepted);
 
     /**
@@ -490,10 +502,10 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      *
      * @param uniqueName         Name of endpoint requesting end of advertising
      * @param advertiseName      Well-known name whose advertising is to be canceled.
-     * @param advQos             Qos used in call to AdvertiseName.
+     * @param transports         Set of transports that should cancel the advertisment.
      * @return ER_OK if successful.
      */
-    QStatus ProcCancelAdvertise(const qcc::String& uniqueName, const qcc::String& advertiseName, const QosInfo* advQos);
+    QStatus ProcCancelAdvertise(const qcc::String& uniqueName, const qcc::String& advertiseName, TransportMask transportMask);
 
     /**
      * Process a request to cancel discovery of a name prefix from a given (locally-connected) endpoint.

@@ -27,7 +27,6 @@
 #endif
 
 #include <alljoyn/Session.h>
-#include <alljoyn/QosInfo.h>
 #include <alljoyn/BusListener.h>
 
 namespace ajn {
@@ -75,9 +74,9 @@ class SimpleBusListener : public BusListener {
         uint32_t eventType;             ///< The busEvent type identifies which variant from the union applies.
         union {
             struct {
-                const char* name;       ///< well known name that the remote bus is advertising that is of interest to this attachment.
-                const QosInfo* advQos;  ///< Advertised quality of service.
-                const char* namePrefix; ///< The well-known name prefix used in call to FindAdvertisedName that triggered the busEvent.
+                const char* name;               ///< well known name that the remote bus is advertising that is of interest to this attachment.
+                TransportMask transport;        ///< Transport that received the advertisment.
+                const char* namePrefix;         ///< The well-known name prefix used in call to FindAdvertisedName that triggered the busEvent.
             } foundAdvertisedName;
             struct {
                 const char* name;       ///< A well known name that the remote bus is advertising that is of interest to this attachment.
@@ -92,10 +91,9 @@ class SimpleBusListener : public BusListener {
                 SessionId sessionId;     ///< Id of session that was lost.
             } sessionLost;
             struct {
-                const char* sessionName; ///< Name of session.
-                SessionId id;            ///< Id of session.
-                const char* joiner;      ///< Unique name of potential joiner.
-                const QosInfo* qos;      ///< Incoming quality of service.
+                SessionPort sessionPort;        ///< Name of session.
+                const char* joiner;             ///< Unique name of potential joiner.
+                const SessionOpts* sessionOpts; ///< Incoming session options.
             } acceptSessionJoiner;
         };
 
@@ -121,9 +119,9 @@ class SimpleBusListener : public BusListener {
          */
         qcc::String strings[3];
         /**
-         * @internal  Storage for quality of service information.
+         * @internal  Storage for session options.
          */
-        QosInfo qosInfo;
+        SessionOpts sessionOpts;
     };
 
     /**
@@ -164,12 +162,12 @@ class SimpleBusListener : public BusListener {
     void ListenerUnRegistered();
     void BusStopping();
 
-    void FoundAdvertisedName(const char* name, const QosInfo& advQos, const char* namePrefix);
+    void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix);
     void LostAdvertisedName(const char* name, const char* namePrefix);
     void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner);
     void SessionLost(const SessionId& sessionId);
-    bool AcceptSessionJoiner(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos);
-    void SessionJoined(const char* sessionName, SessionId id, const char* joiner);
+    bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts);
+    void SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner);
 
     /**
      * @internal

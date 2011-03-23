@@ -49,19 +49,12 @@ using namespace std;
 using namespace qcc;
 using namespace ajn;
 
-namespace org {
-namespace alljoyn {
-namespace raw_test {
-const char* InterfaceName = "org.alljoyn.raw_test";
-const char* DefaultWellKnownName = "org.alljoyn.raw_test";
-const char* ObjectPath = "/org/alljoyn/raw_test";
-}
-}
-}
+/** Sample constants */
+static const SessionPort SESSION_PORT = 33;
 
 /** Static top level message bus object */
 static BusAttachment* g_msgBus = NULL;
-static String g_wellKnownName = ::org::alljoyn::raw_test::DefaultWellKnownName;
+static String g_wellKnownName = "org.alljoyn.raw_test";
 
 /** Signal handler */
 static void SigIntHandler(int sig)
@@ -79,13 +72,22 @@ class MyBusListener : public BusListener {
   public:
     MyBusListener() : BusListener(), sessionId(0) { }
 
-    bool AcceptSessionJoiner(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
+    bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
     {
-        QCC_SyncPrintf("Accepting JoinSession request from %s (sessionId=%u) \n", joiner, id);
-        sessionId = id;
+        if (sessionPort != SESSION_PORT) {
+            printf("Rejecting join request for unknown session port %d from %s\n", sessionPort, joiner);
+            return false;
+        }
 
         /* Allow the join attempt */
+        printf("Accepting JoinSession request from %s\n", joiner);
         return true;
+    }
+
+    void SessionJoined(SessionPort sessionPort, SessionId sessionId, const char* joiner)
+    {
+        printf("SessionJoined with %s (id=%d)\n", joiner, sessionId);
+        this->sessionId = sessionId;
     }
 
     SocketFd GetSessionId() { return sessionId; }
@@ -178,21 +180,20 @@ int main(int argc, char** argv)
         }
     }
 
-    /* Create a session */
-    QosInfo qos(QosInfo::TRAFFIC_RAW_RELIABLE, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
+    /* Bind the session port */
+    SessionOpts opts(SessionOpts::TRAFFIC_RAW_RELIABLE, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
     uint32_t replyCode = 0;
-    SessionId sessionId;
-    status = g_msgBus->CreateSession(g_wellKnownName.c_str(), false, qos, replyCode, sessionId);
-    if ((status != ER_OK) || (replyCode != ALLJOYN_CREATESESSION_REPLY_SUCCESS)) {
+    SessionPort sp = SESSION_PORT;
+    status = g_msgBus->BindSessionPort(sp, false, opts, replyCode);
+    if ((status != ER_OK) || (replyCode != ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS)) {
         status = (status == ER_OK) ? ER_BUS_ERROR_RESPONSE : status;
-        QCC_LogError(status, ("CreateSession(%s,<>) failed (%d)", g_wellKnownName.c_str(), replyCode));
+        QCC_LogError(status, ("BindSessionOpts failed (%d)", replyCode));
     }
 
     /* Begin Advertising the well-known name */
     if (status == ER_OK) {
         uint32_t disposition = 0;
-        QosInfo qos(QosInfo::TRAFFIC_RAW_RELIABLE, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
-        status = g_msgBus->AdvertiseName(g_wellKnownName.c_str(), qos, disposition);
+        status = g_msgBus->AdvertiseName(g_wellKnownName.c_str(), opts.transports, disposition);
         if ((status != ER_OK) || (disposition != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS)) {
             status = (status == ER_OK) ? ER_FAIL : status;
             QCC_LogError(status, ("AdvertiseName failed (disposition=%d)", disposition));
@@ -202,8 +203,8 @@ int main(int argc, char** argv)
     SessionId lastSessionId = 0;
     while ((status == ER_OK) && (!g_msgBus->IsStopping())) {
         /* Wait for someone to join our session */
-        SessionId id;
-        if ((id = myBusListener.GetSessionId()) == lastSessionId) {
+        SessionId id = myBusListener.GetSessionId();
+        if (id == lastSessionId) {
             qcc::Sleep(100);
             continue;
         }

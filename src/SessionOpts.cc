@@ -1,6 +1,6 @@
 /**
  * @file
- * Class for encapsulating Quality of Service information.
+ * Class for encapsulating Session option information.
  */
 
 /******************************************************************************
@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 #include <qcc/platform.h>
-#include <alljoyn/QosInfo.h>
+#include <alljoyn/Session.h>
 
 #define QCC_MODULE "ALLJOYN"
 
@@ -28,19 +28,19 @@ using namespace std;
 
 namespace ajn {
 
-bool QosInfo::IsCompatible(const QosInfo& other) const
+bool SessionOpts::IsCompatible(const SessionOpts& other) const
 {
-    /* No overlapping transports means qos are not compatible */
+    /* No overlapping transports means opts are not compatible */
     if (0 == (transports & other.transports)) {
         return false;
     }
 
-    /* Not overlapping traffic types means qos are not compatible */
+    /* Not overlapping traffic types means opts are not compatible */
     if (0 == (traffic & other.traffic)) {
         return false;
     }
 
-    /* Not overlapping proximities means qos are not compatible */
+    /* Not overlapping proximities means opts are not compatible */
     if (0 == (proximity & other.proximity)) {
         return false;
     }

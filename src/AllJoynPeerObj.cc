@@ -34,7 +34,7 @@
 #include <alljoyn/DBusStd.h>
 #include <alljoyn/Message.h>
 #include <alljoyn/MessageReceiver.h>
-#include <alljoyn/QosInfo.h>
+#include <alljoyn/Session.h>
 
 #include "KeyStore.h"
 #include "BusEndpoint.h"
@@ -844,7 +844,6 @@ void AllJoynPeerObj::NameOwnerChanged(const char* busName, const char* previousO
 void AllJoynPeerObj::AcceptSession(const InterfaceDescription::Member* member, Message& msg)
 {
     QStatus status;
-
     /*
      * Use the request thread.
      */
@@ -858,34 +857,26 @@ void AllJoynPeerObj::AcceptSession(const InterfaceDescription::Member* member, M
 
     size_t numArgs;
     const MsgArg* args;
-    QosInfo qos;
 
     msg->GetArgs(numArgs, args);
-    if (numArgs == 5) {
-        status = args[4].Get(QOSINFO_SIG, &qos.traffic, &qos.proximity, &qos.transports);
-    } else {
-        status = ER_FAIL;
-    }
+    SessionPort sessionPort;
+    SessionId sessionId;
+    const char* joiner;
+    SessionOpts opts;
+    status = MsgArg::Get(args, numArgs, "qus"SESSIONOPTS_SIG, &sessionPort, &sessionId, &joiner, &opts.traffic, &opts.proximity, &opts.transports);
+
     if (status == ER_OK) {
         MsgArg replyArg;
-        qcc::String sessionName = args[0].v_string.str;
-        qcc::String joiner = args[2].v_string.str;
-        SessionId sessionId =  args[1].v_uint32;
 
         /* Call bus listeners */
-        bool isAccepted = bus.GetInternal().CallAcceptListeners(sessionName.c_str(),
-                                                                sessionId,
-                                                                joiner.c_str(),
-                                                                qos);
+        bool isAccepted = bus.GetInternal().CallAcceptListeners(sessionPort, joiner, opts);
 
         /* Reply to AcceptSession */
         replyArg.Set("b", isAccepted);
         status = MethodReply(msg, &replyArg, 1);
         if ((status == ER_OK) && isAccepted) {
             /* Let listeners know the join was successfully accepted */
-            bus.GetInternal().CallJoinedListeners(sessionName.c_str(),
-                                                  sessionId,
-                                                  joiner.c_str());
+            bus.GetInternal().CallJoinedListeners(sessionPort, sessionId, joiner);
         }
     } else {
         MethodReply(msg, status);

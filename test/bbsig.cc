@@ -59,6 +59,7 @@ namespace alljoyn_test {
 const char* InterfaceName = "org.alljoyn.alljoyn_test";
 const char* DefaultWellKnownName = "org.alljoyn.alljoyn_test";
 const char* ObjectPath = "/org/alljoyn/alljoyn_test";
+const SessionPort SessionPort = 11;   /**< Well-known session port value for bbsig */
 }
 }
 }
@@ -77,16 +78,16 @@ static unsigned long timeToLive = 0;
 /** AllJoynListener receives discovery events from AllJoyn */
 class MyBusListener : public BusListener {
   public:
-    void FoundAdvertisedName(const char* name, const char* namePrefix)
+    void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
     {
-        QCC_SyncPrintf("FoundAdvertisedName(name=%s, prefix=%s)\n", name, namePrefix);
+        QCC_SyncPrintf("FoundAdvertisedName(name=%s, transport=0x%x, prefix=%s)\n", name, transport, namePrefix);
 
         if (0 == strcmp(name, g_wellKnownName.c_str())) {
             /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
             uint32_t disposition;
             SessionId sessionId;
-            QosInfo qos;
-            QStatus status = g_msgBus->JoinSession(name, disposition, sessionId, qos);
+            SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+            QStatus status = g_msgBus->JoinSession(name, ::org::alljoyn::alljoyn_test::SessionPort, disposition, sessionId, opts);
             if ((ER_OK == status) && (ALLJOYN_JOINSESSION_REPLY_SUCCESS == disposition)) {
                 /* Release main thread */
                 g_discoverEvent.SetEvent();
@@ -224,7 +225,7 @@ class LocalTestObject : public BusObject {
         const ProxyBusObject& dbusObj = bus.GetDBusProxyObj();
         MsgArg args[2];
         args[0].Set("s", g_wellKnownName.c_str());
-        args[1].Set("u", 6);
+        args[1].Set("u", DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_DO_NOT_QUEUE);
         QStatus status = dbusObj.MethodCallAsync(ajn::org::freedesktop::DBus::InterfaceName,
                                                  "RequestName",
                                                  this,

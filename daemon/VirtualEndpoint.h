@@ -141,22 +141,22 @@ class VirtualEndpoint : public BusEndpoint {
     QStatus AddSessionRef(SessionId sessionId, RemoteEndpoint& b2bEp);
 
     /**
-     * Map a session id to the best of this VirtualEndpoint's B2B endpoints that match qos.
+     * Map a session id to the best of this VirtualEndpoint's B2B endpoints that match session opts.
      *
      * @param sessionId  The session id.
-     * @param qos        Qualifying qos for B2B endpoint or NULL to indicate no constraints.
+     * @param opts       Qualifying session opts for B2B endpoint or NULL to indicate no constraints.
      * @param b2bEp      [OUT] Written with B2B chosen for session.
      * @return  ER_OK if successful.
      */
-    QStatus AddSessionRef(SessionId sessionId, QosInfo* qos, RemoteEndpoint*& b2bEp);
+    QStatus AddSessionRef(SessionId sessionId, SessionOpts* opts, RemoteEndpoint*& b2bEp);
 
     /**
-     * Return the "best" matching B2B endpoint for qos.
+     * Return the "best" matching B2B endpoint for session opts.
      *
-     * @param qos   QoS to use for measuring acceptibility of B2B endpoints.
-     * @return      QoS compatibile B2B endpoint or NULL if none is found.
+     * @param opts   Session options to use for measuring acceptibility of B2B endpoints.
+     * @return       Session options compatibile B2B endpoint or NULL if none is found.
      */
-    RemoteEndpoint* GetQosCompatibleB2B(const QosInfo& qos);
+    RemoteEndpoint* GetSessionCompatibleB2B(const SessionOpts& opts);
 
     /**
      * Remove (counted) mapping of sessionId to B2B endpoint.
@@ -190,8 +190,8 @@ class VirtualEndpoint : public BusEndpoint {
 
     /** B2BInfo is a data container that holds B2B endpoint selection criteria */
     struct B2BInfo {
-        QosInfo qos;     /**< Qos for B2BEndpoint */
-        uint32_t hops;   /**< Currently unused hop count from local daemon to final destination */
+        SessionOpts opts;     /**< Session options for B2BEndpoint */
+        uint32_t hops;        /**< Currently unused hop count from local daemon to final destination */
     };
     mutable qcc::Mutex m_b2bEndpointsLock;                     /**< Lock that protects m_b2bEndpoints */
 };

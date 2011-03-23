@@ -56,6 +56,7 @@ namespace alljoyn_test {
 const char* InterfaceName = "org.alljoyn.alljoyn_test";
 const char* DefaultWellKnownName = "org.alljoyn.alljoyn_test";
 const char* ObjectPath = "/org/alljoyn/alljoyn_test";
+const SessionPort SessionPort = 24;   /**< Well-known session port value for bbclient/bbservice */
 namespace values {
 const char* InterfaceName = "org.alljoyn.alljoyn_test.values";
 }
@@ -74,14 +75,14 @@ class MyBusListener : public BusListener {
 
     MyBusListener(bool stopDiscover) : BusListener(), sessionId(0), stopDiscover(stopDiscover) { }
 
-    void FoundAdvertisedName(const char* name, const QosInfo& qos, const char* namePrefix)
+    void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
     {
-        QCC_SyncPrintf("FoundAdvertisedName(name=%s, prefix=%s)\n", name, namePrefix);
+        QCC_SyncPrintf("FoundAdvertisedName(name=%s, transport=0x%x, prefix=%s)\n", name, transport, namePrefix);
 
-        if (0 == strcmp(name, g_wellKnownName.c_str())) {
+        if (0 == ::strcmp(name, g_wellKnownName.c_str())) {
             /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
             uint32_t disposition = 0;
-            QosInfo qosIn = qos;
+            SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, transport);
             QStatus status;
 
             if (stopDiscover) {
@@ -91,7 +92,7 @@ class MyBusListener : public BusListener {
                 }
             }
 
-            status = g_msgBus->JoinSession(name, disposition, sessionId, qosIn);
+            status = g_msgBus->JoinSession(name, ::org::alljoyn::alljoyn_test::SessionPort, disposition, sessionId, opts);
             if ((ER_OK != status) || (ALLJOYN_JOINSESSION_REPLY_SUCCESS != disposition)) {
                 QCC_LogError(status, ("JoinSession(%s) failed (%u)", name, disposition));
             }

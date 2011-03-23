@@ -27,7 +27,6 @@
 #endif
 
 #include <alljoyn/Session.h>
-#include <alljoyn/QosInfo.h>
 
 namespace ajn {
 
@@ -64,19 +63,20 @@ class BusListener {
      * Called by the bus when an external bus is discovered that is advertising a well-known name
      * that this attachment has registered interest in via a DBus call to org.alljoyn.Bus.FindAdvertisedName
      *
-     * @param name         A well known name that the remote bus is advertising that is of interest to this attachment.
-     * @param advQos       Advertised quality of service.
+     * @param name         A well known name that the remote bus is advertising.
+     * @param transport    Transport that received the advertisment.
      * @param namePrefix   The well-known name prefix used in call to FindAdvertisedName that triggered this callback.
      */
-    virtual void FoundAdvertisedName(const char* name, const QosInfo& advQos, const char* namePrefix) { }
+    virtual void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix) { }
 
     /**
      * Called by the bus when an advertisement previously reported through FoundName has become unavailable.
      *
      * @param name         A well known name that the remote bus is advertising that is of interest to this attachment.
+     * @param transport    Transport that stopped receiving the given advertised name.
      * @param namePrefix   The well-known name prefix that was used in a call to FindAdvertisedName that triggered this callback.
      */
-    virtual void LostAdvertisedName(const char* name, const char* namePrefix) { }
+    virtual void LostAdvertisedName(const char* name, TransportMask transport, const char* namePrefix) { }
 
     /**
      * Called by the bus when the ownership of any well-known name changes.
@@ -98,25 +98,21 @@ class BusListener {
      * Accept or reject an incoming JoinSession request. The session does not exist until this
      * after this function returns.
      *
-     * @param sessionName    Name of session.
-     * @param id             Id of session.
+     * @param sessionPort    Session port that was joined.
      * @param joiner         Unique name of potential joiner.
-     * @param qos            Incoming quality of service.
+     * @param opts           Session options requested by the joiner.
      * @return   Return true if JoinSession request is accepted. false if rejected.
      */
-    virtual bool AcceptSessionJoiner(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
-    {
-        return false;
-    }
+    virtual bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts) { return false; }
 
     /**
      * Called by the bus when a session has been successfully joined. The session is now fully up.
      *
-     * @param sessionName    Name of session.
+     * @param sessionPort    Session port that was joined.
      * @param id             Id of session.
      * @param joiner         Unique name of the joiner.
      */
-    virtual void SessionJoined(const char* sessionName, SessionId id, const char* joiner) { }
+    virtual void SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner) { }
 
     /**
      * Called when a bus this listener is registered with is stopping.

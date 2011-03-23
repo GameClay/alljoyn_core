@@ -36,8 +36,6 @@
 #include <qcc/SocketStream.h>
 #include <qcc/time.h>
 
-#include <alljoyn/QosInfo.h>
-
 #include "Transport.h"
 #include "RemoteEndpoint.h"
 
@@ -193,10 +191,9 @@ class TCPTransport : public Transport, public RemoteEndpoint::EndpointListener {
      * by clients or services.
      *
      * @param advertiseName unused parameter.
-     * @param qos unused parameter.
      * @return ER_OK if successful
      */
-    QStatus EnableAdvertisement(const qcc::String& advertiseName, const QosInfo& qos) { return ER_NOT_IMPLEMENTED; }
+    QStatus EnableAdvertisement(const qcc::String& advertiseName) { return ER_NOT_IMPLEMENTED; }
 
     /**
      * @internal
@@ -204,15 +201,21 @@ class TCPTransport : public Transport, public RemoteEndpoint::EndpointListener {
      * by clients or services.
      *
      * @param advertiseName unused parameter.
-     * @param qos unused parameter.
      * @param nameListEmpty unused parameter.
      */
-    void DisableAdvertisement(const qcc::String& advertiseName, const QosInfo* qos, bool nameListEmpty) { }
+    void DisableAdvertisement(const qcc::String& advertiseName, bool nameListEmpty) { }
 
     /**
      * Returns the name of this transport
      */
     const char* GetTransportName()  { return TransportName(); }
+
+    /**
+     * Get the transport mask for this transport
+     *
+     * @return the TransportMask for this transport.
+     */
+    TransportMask GetTransportMask() { return TRANSPORT_WLAN; }
 
     /**
      * Indicates whether this transport may be used for a connection between

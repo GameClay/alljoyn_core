@@ -201,26 +201,31 @@ class DaemonTCPTransport : public Transport, public RemoteEndpoint::EndpointList
      * Start advertising a well-known name with the given quality of service.
      *
      * @param advertiseName   Well-known name to add to list of advertised names.
-     * @param advQos          Quality of service for advertisement.
      * @return
      *      - ER_OK if successful.
      *      - an error status otherwise.
      */
-    QStatus EnableAdvertisement(const qcc::String& advertiseName, const QosInfo& advQos);
+    QStatus EnableAdvertisement(const qcc::String& advertiseName);
 
     /**
      * Stop advertising a well-known name with a given quality of service.
      *
      * @param advertiseName   Well-known name to remove from list of advertised names.
-     * @param advQos          Quality of service for advertisement (NULL indicates all/any qos).
      * @param nameListEmpty   Indicates whether advertise name list is completely empty (safe to disable OTA advertising).
      */
-    void DisableAdvertisement(const qcc::String& advertiseName, const QosInfo* advQos, bool nameListEmpty);
+    void DisableAdvertisement(const qcc::String& advertiseName, bool nameListEmpty);
 
     /**
      * Returns the name of this transport
      */
     const char* GetTransportName()  { return TransportName(); }
+
+    /**
+     * Get the transport mask for this transport
+     *
+     * @return the TransportMask for this transport.
+     */
+    TransportMask GetTransportMask() { return TRANSPORT_WLAN; }
 
     /**
      * Indicates whether this transport may be used for a connection between

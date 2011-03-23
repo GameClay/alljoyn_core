@@ -31,7 +31,7 @@
 #include <map>
 #include <vector>
 #include <alljoyn/Message.h>
-#include <alljoyn/QosInfo.h>
+#include <alljoyn/TransportMask.h>
 #include <Status.h>
 
 namespace ajn {
@@ -53,16 +53,16 @@ class TransportListener {
     /**
      * Called when a transport has found a bus to connect to with a set of bus names.
      *
-     * @param busAddr  The address of the bus formatted as a string that can be passed to
-     *                 createEndpoint
-     * @param guid     GUID associated with this advertisement.
-     * @param qos      Quality of service being advertised.
+     * @param busAddr   The address of the bus formatted as a string that can be passed to
+     *                  createEndpoint
+     * @param guid      GUID associated with this advertisement.
+     * @param transport Transport that sent the advertisment.
      * @param names    The list of bus names that the bus has advertised or NULL if transport cannot determine list.
      * @param timer    Time to live for this set of names. (0 implies that the name is gone.)
      */
     virtual void FoundNames(const qcc::String& busAddr,
                             const qcc::String& guid,
-                            const QosInfo& qos,
+                            TransportMask transport,
                             const std::vector<qcc::String>* names,
                             uint8_t timer) = 0;
 
@@ -128,6 +128,13 @@ class Transport {
      * @return  Returns true if the transport is running.
      */
     virtual bool IsRunning() = 0;
+
+    /**
+     * Get the transport mask for this transport
+     *
+     * @return the TransportMask for this transport.
+     */
+    virtual TransportMask GetTransportMask() = 0;
 
     /**
      * Normalize a transport specification.
@@ -219,22 +226,20 @@ class Transport {
      * Start advertising a well-known name with the given quality of service.
      *
      * @param advertiseName   Well-known name to add to list of advertised names.
-     * @param advQos          Quality of service for advertisement.
      *
      * @return
      *      - ER_OK if successful.
      *      - an error status otherwise.
      */
-    virtual QStatus EnableAdvertisement(const qcc::String& advertiseName, const QosInfo& advQos) = 0;
+    virtual QStatus EnableAdvertisement(const qcc::String& advertiseName) = 0;
 
     /**
      * Stop advertising a well-known name with a given quality of service.
      *
      * @param advertiseName   Well-known name to remove from list of advertised names.
-     * @param advQos          Quality of service for advertisement (NULL indicates all/any qos).
      * @param nameListEmpty   Indicates whether advertise name list is completely empty (safe to disable OTA advertising).
      */
-    virtual void DisableAdvertisement(const qcc::String& advertiseName, const QosInfo* advQos, bool nameListEmpty) = 0;
+    virtual void DisableAdvertisement(const qcc::String& advertiseName, bool nameListEmpty) = 0;
 
     /**
      * Returns the name of the transport

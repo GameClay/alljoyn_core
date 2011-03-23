@@ -59,8 +59,7 @@ SimpleBusListener::BusEvent& SimpleBusListener::BusEvent::operator=(const BusEve
     switch (eventType) {
     case FOUND_ADVERTISED_NAME:
         foundAdvertisedName.name = CopyIn(strings[0], other.foundAdvertisedName.name);
-        qosInfo = *other.foundAdvertisedName.advQos;
-        foundAdvertisedName.advQos = &qosInfo;
+        foundAdvertisedName.transport = other.foundAdvertisedName.transport;
         foundAdvertisedName.namePrefix = CopyIn(strings[1], other.foundAdvertisedName.namePrefix);
         break;
 
@@ -80,11 +79,10 @@ SimpleBusListener::BusEvent& SimpleBusListener::BusEvent::operator=(const BusEve
         break;
 
     case ACCEPT_SESSION_JOINER:
-        acceptSessionJoiner.sessionName = CopyIn(strings[0], other.acceptSessionJoiner.sessionName);
-        acceptSessionJoiner.id = other.acceptSessionJoiner.id;
+        acceptSessionJoiner.sessionPort = other.acceptSessionJoiner.sessionPort;
         acceptSessionJoiner.joiner = CopyIn(strings[1], other.acceptSessionJoiner.joiner);
-        qosInfo = *other.acceptSessionJoiner.qos;
-        acceptSessionJoiner.qos = &qosInfo;
+        sessionOpts = *other.acceptSessionJoiner.sessionOpts;
+        acceptSessionJoiner.sessionOpts = &sessionOpts;
         break;
 
     default:
@@ -116,13 +114,13 @@ SimpleBusListener::SimpleBusListener(uint32_t enabled) : enabled(enabled), inter
 {
 }
 
-void SimpleBusListener::FoundAdvertisedName(const char* name, const QosInfo& advQos, const char* namePrefix)
+void SimpleBusListener::FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
 {
     if (enabled & FOUND_ADVERTISED_NAME) {
         BusEvent busEvent;
         busEvent.eventType = FOUND_ADVERTISED_NAME;
         busEvent.foundAdvertisedName.name = name;
-        busEvent.foundAdvertisedName.advQos = &advQos;
+        busEvent.foundAdvertisedName.transport = transport;
         busEvent.foundAdvertisedName.namePrefix = namePrefix;
         internal.QueueEvent(busEvent);
     }
@@ -161,15 +159,15 @@ void SimpleBusListener::SessionLost(const SessionId& sessionId)
     }
 }
 
-bool SimpleBusListener::AcceptSessionJoiner(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
+bool SimpleBusListener::AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
 {
+    bool ret = false;
     if (enabled & ACCEPT_SESSION_JOINER) {
         BusEvent busEvent;
         busEvent.eventType = ACCEPT_SESSION_JOINER;
-        busEvent.acceptSessionJoiner.sessionName = sessionName;
-        busEvent.acceptSessionJoiner.id = id;
+        busEvent.acceptSessionJoiner.sessionPort = sessionPort;
         busEvent.acceptSessionJoiner.joiner = joiner;
-        busEvent.acceptSessionJoiner.qos = &qos;
+        busEvent.acceptSessionJoiner.sessionOpts = &opts;
         internal.lock.Lock();
         internal.QueueEvent(busEvent);
         if (!internal.acceptEvent) {
@@ -177,7 +175,7 @@ bool SimpleBusListener::AcceptSessionJoiner(const char* sessionName, SessionId i
             internal.acceptEvent = &acceptEvent;
             internal.lock.Unlock();
             Event::Wait(acceptEvent);
-            return internal.accepted;
+            ret = internal.accepted;
         } else {
             internal.acceptEvent->SetEvent();
             internal.acceptEvent = NULL;
@@ -215,7 +213,7 @@ QStatus SimpleBusListener::AcceptSessionJoiner(bool accept)
     return status;
 }
 
-void SimpleBusListener::SessionJoined(const char* sessionName, SessionId id, const char* joiner)
+void SimpleBusListener::SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner)
 {
     if (enabled & ACCEPT_SESSION_JOINER) {
         internal.waitEvent.SetEvent();

@@ -55,6 +55,7 @@ namespace alljoyn_test {
 const char* InterfaceName = "org.alljoyn.alljoyn_test";
 const char* DefaultWellKnownName = "org.alljoyn.alljoyn_test";
 const char* ObjectPath = "/org/alljoyn/alljoyn_test";
+const SessionPort SessionPort = 24;    /**< Well-knwon session port value for bbclient/bbservice */
 namespace values {
 const char* InterfaceName = "org.alljoyn.alljoyn_test.values";
 }
@@ -226,23 +227,34 @@ class MyAuthListener : public AuthListener {
 class MyBusListener : public BusListener {
 
   public:
-    MyBusListener(const QosInfo& qos) : BusListener(), qos(qos) { }
+    MyBusListener(const SessionOpts& opts) : BusListener(), opts(opts) { }
 
-    bool AcceptSessionJoiner(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
+    bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
     {
-        if (qos.IsCompatible(this->qos)) {
+        /* Reject join attetmpt to unknwown session port */
+        if (sessionPort != ::org::alljoyn::alljoyn_test::SessionPort) {
+            QCC_SyncPrintf("Received JoinSession request for non-bound port\n");
+            return false;
+        }
+
+        if (this->opts.IsCompatible(opts)) {
             /* Allow the join attempt */
             QCC_SyncPrintf("Accepting JoinSession request from %s\n", joiner);
             return true;
         } else {
-            /* Reject incompatible qos */
-            QCC_SyncPrintf("Rejecting joiner %s with incompatible QoS\n", joiner);
+            /* Reject incompatible transports */
+            QCC_SyncPrintf("Rejecting joiner %s with incompatible session options\n", joiner);
             return false;
         }
     }
 
+    void SessionJoined(SessionPort sessionPort, SessionId sessionId, const char* joiner)
+    {
+        QCC_SyncPrintf("Session Established: joiner=%s, sessionId=%d", joiner, sessionId);
+    }
+
   private:
-    QosInfo qos;
+    SessionOpts opts;
 };
 
 class LocalTestObject : public BusObject {
@@ -341,14 +353,13 @@ class LocalTestObject : public BusObject {
 
   public:
 
-    LocalTestObject(BusAttachment& bus, const char* path, unsigned long reportInterval, const QosInfo& qos) :
+    LocalTestObject(BusAttachment& bus, const char* path, unsigned long reportInterval, const SessionOpts& opts) :
         BusObject(bus, path),
         reportInterval(reportInterval),
         prop_str_val("hello world"),
         prop_ro_str("I cannot be written"),
         prop_int_val(100),
-        sessionId(0),
-        qos(qos)
+        opts(opts)
     {
         QStatus status;
 
@@ -399,19 +410,20 @@ class LocalTestObject : public BusObject {
 
         /* Create a session for incoming client connections */
         uint32_t replyCode = 0;
-        status = bus.CreateSession(g_wellKnownName.c_str(), true, qos, replyCode, sessionId);
+        SessionPort sessionPort = ::org::alljoyn::alljoyn_test::SessionPort;
+        status = bus.BindSessionPort(sessionPort, false, opts, replyCode);
         if (status != ER_OK) {
-            QCC_LogError(status, ("CreateSession(%s,<>) failed", g_wellKnownName.c_str()));
+            QCC_LogError(status, ("BindSessionPort failed"));
             return;
-        } else if (replyCode != ALLJOYN_CREATESESSION_REPLY_SUCCESS) {
+        } else if (replyCode != ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS) {
             status = ER_FAIL;
-            QCC_LogError(status, ("CreateSession(%s) returned failed status %d", g_wellKnownName.c_str(), replyCode));
+            QCC_LogError(status, ("BindSessionPort returned failed status %d", replyCode));
             return;
         }
 
         /* Begin Advertising the well-known name */
         disposition = 0;
-        status = g_msgBus->AdvertiseName(g_wellKnownName.c_str(), qos, disposition);
+        status = g_msgBus->AdvertiseName(g_wellKnownName.c_str(), opts.transports, disposition);
         if ((ER_OK != status) || (disposition != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS)) {
             status = (status == ER_OK) ? ER_FAIL : status;
             QCC_LogError(status, ("Sending org.alljoyn.Bus.Advertise failed (disposition=%d)", disposition));
@@ -441,7 +453,7 @@ class LocalTestObject : public BusObject {
             if (g_compress) {
                 flags |= ALLJOYN_FLAG_COMPRESSED;
             }
-            QStatus status = Signal(msg->GetSender(), sessionId, *member, &arg, 1, 0, flags);
+            QStatus status = Signal(msg->GetSender(), msg->GetSessionId(), *member, &arg, 1, 0, flags);
             if (status != ER_OK) {
                 QCC_LogError(status, ("Failed to send Signal"));
             }
@@ -543,8 +555,7 @@ class LocalTestObject : public BusObject {
     qcc::String prop_str_val;
     qcc::String prop_ro_str;
     int32_t prop_int_val;
-    SessionId sessionId;
-    QosInfo qos;
+    SessionOpts opts;
 };
 
 
@@ -574,7 +585,7 @@ int main(int argc, char** argv)
     QStatus status = ER_OK;
     unsigned long reportInterval = 1000;
     qcc::String listenSpec;
-    QosInfo qos(QosInfo::TRAFFIC_MESSAGES, QosInfo::PROXIMITY_ANY, 0);
+    SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, TRANSPORT_NONE);
 
 #ifdef _WIN32
     WSADATA wsaData;
@@ -616,11 +627,11 @@ int main(int argc, char** argv)
                 g_wellKnownName = argv[i];
             }
         } else if (0 == strcmp("-b", argv[i])) {
-            qos.transports |= QosInfo::TRANSPORT_BLUETOOTH;
+            opts.transports |= TRANSPORT_BLUETOOTH;
         } else if (0 == strcmp("-t", argv[i])) {
-            qos.transports |= QosInfo::TRANSPORT_WLAN;
+            opts.transports |= TRANSPORT_WLAN;
         } else if (0 == strcmp("-l", argv[i])) {
-            qos.transports |= QosInfo::TRANSPORT_LOCAL;
+            opts.transports |= TRANSPORT_LOCAL;
         } else {
             status = ER_FAIL;
             printf("Unknown option %s\n", argv[i]);
@@ -629,9 +640,9 @@ int main(int argc, char** argv)
         }
     }
 
-    /* If no transport option was specifie, then make QoS very open */
-    if (qos.transports == 0) {
-        qos.transports = QosInfo::TRANSPORT_ANY;
+    /* If no transport option was specifie, then make session options very open */
+    if (opts.transports == 0) {
+        opts.transports = TRANSPORT_ANY;
     }
 
     /* Get env vars */
@@ -685,11 +696,11 @@ int main(int argc, char** argv)
 
     if (ER_OK == status) {
         /* Create a bus listener to be used to accept incoming session requests */
-        BusListener* myBusListener = new MyBusListener(qos);
+        BusListener* myBusListener = new MyBusListener(opts);
         g_msgBus->RegisterBusListener(*myBusListener);
 
         /* Register local objects and connect to the daemon */
-        LocalTestObject testObj(*g_msgBus, ::org::alljoyn::alljoyn_test::ObjectPath, reportInterval, qos);
+        LocalTestObject testObj(*g_msgBus, ::org::alljoyn::alljoyn_test::ObjectPath, reportInterval, opts);
         g_msgBus->RegisterBusObject(testObj);
 
         g_msgBus->EnablePeerSecurity("ALLJOYN_SRP_KEYX ALLJOYN_RSA_KEYX ALLJOYN_SRP_LOGON", new MyAuthListener());

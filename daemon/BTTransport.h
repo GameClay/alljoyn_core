@@ -34,8 +34,6 @@
 #include <qcc/String.h>
 #include <qcc/Thread.h>
 
-#include <alljoyn/QosInfo.h>
-
 #include "BDAddress.h"
 #include "BTController.h"
 #include "RemoteEndpoint.h"
@@ -73,6 +71,13 @@ class BTTransport :
      * Returns the name of this transport
      */
     static const char* TransportName()  { return "bluetooth"; }
+
+    /**
+     * Get the transport mask for this transport
+     *
+     * @return the TransportMask for this transport.
+     */
+    TransportMask GetTransportMask() { return TRANSPORT_BLUETOOTH; }
 
     /**
      * Normalize a bluetooth transport specification.
@@ -231,21 +236,19 @@ class BTTransport :
      * Start advertising a well-known name with the given quality of service.
      *
      * @param advertiseName   Well-known name to add to list of advertised names.
-     * @param advQos          Quality of service for advertisement.
      * @return
      *      - ER_OK if successful.
      *      - an error status otherwise.
      */
-    QStatus EnableAdvertisement(const qcc::String& advertiseName, const QosInfo& advQos);
+    QStatus EnableAdvertisement(const qcc::String& advertiseName);
 
     /**
      * Stop advertising a well-known name with a given quality of service.
      *
      * @param advertiseName   Well-known name to remove from list of advertised names.
-     * @param advQos          Quality of service for advertisement (NULL indicates all/any qos).
      * @param nameListEmpty   Indicates whether advertise name list is completely empty (safe to disable OTA advertising).
      */
-    void DisableAdvertisement(const qcc::String& advertiseName, const QosInfo* advQos, bool nameListEmpty);
+    void DisableAdvertisement(const qcc::String& advertiseName, bool nameListEmpty);
 
     /**
      * Returns the name of this transport
@@ -429,7 +432,6 @@ class BTTransport :
     qcc::Mutex threadListLock;                     /**< Mutex that protects threadList */
     TransportListener* listener;
     bool transportIsStopping;                      /**< The transport has recevied a stop request */
-    QosInfo btQos;                                 /**< Hardcoded qos for bluetooth links */
     bool btmActive;                                /**< Indicates if the Bluetooth Topology Manager is registered */
 };
 

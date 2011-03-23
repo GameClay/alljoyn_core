@@ -30,12 +30,14 @@
 #include <assert.h>
 #include <stdio.h>
 
+
+using namespace ajn;
+
 /* constants */
 static const char* CHAT_SERVICE_INTERFACE_NAME = "org.alljoyn.bus.samples.chat";
 static const char* NAME_PREFIX = "org.alljoyn.bus.samples.chat";
 static const char* CHAT_SERVICE_OBJECT_PATH = "/chatService";
-
-using namespace ajn;
+static const SessionPort CHAT_PORT = 10;  /**< Well-known session port for autochat */
 
 /* forward declaration */
 class ChatObject;
@@ -189,14 +191,14 @@ class ChatObject : public BusObject {
 };
 
 class MyBusListener : public BusListener {
-    void FoundAdvertisedName(const char* name, const QosInfo& advQos, const char* namePrefix)
+    void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
     {
         printf("FoundName signal received for %s\n", name);
 
         /* We found a remote bus that is advertising autochat's well-known name so connect to it */
         uint32_t disposition;
-        QosInfo qos = advQos;
-        QStatus status = s_bus->JoinSession(name, disposition, sessionId, qos);
+        SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, transport);
+        QStatus status = s_bus->JoinSession(name, CHAT_PORT, disposition, sessionId, opts);
         if ((ER_OK == status) && (ALLJOYN_JOINSESSION_REPLY_SUCCESS == disposition)) {
             printf("Joined session %s with id %d\n", name, sessionId);
             connections.insert(name);

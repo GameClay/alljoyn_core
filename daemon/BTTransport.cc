@@ -31,7 +31,6 @@
 #include <qcc/String.h>
 
 #include <alljoyn/BusAttachment.h>
-#include <alljoyn/QosInfo.h>
 
 #include "BDAddress.h"
 #include "BTController.h"
@@ -67,10 +66,6 @@ BTTransport::BTTransport(BusAttachment& bus) :
     transportIsStopping(false),
     btmActive(false)
 {
-    btQos.proximity = QosInfo::PROXIMITY_PHYSICAL;
-    btQos.traffic = QosInfo::TRAFFIC_MESSAGES;
-    btQos.transports = QosInfo::TRANSPORT_BLUETOOTH;
-
     btController = new BTController(bus, *this);
     QStatus status = btController->Init();
     if (status == ER_OK) {
@@ -284,44 +279,31 @@ void BTTransport::DisableDiscovery(const char* namePrefix)
 }
 
 
-QStatus BTTransport::EnableAdvertisement(const qcc::String& advertiseName, const QosInfo& advQos)
+QStatus BTTransport::EnableAdvertisement(const qcc::String& advertiseName)
 {
-    QCC_DbgTrace(("BTTransport::EnableAdvertisement(%s, <%x, %x, %x>)", advertiseName.c_str(), advQos.traffic, advQos.proximity, advQos.transports));
+    QCC_DbgTrace(("BTTransport::EnableAdvertisement(%s)", advertiseName.c_str()));
     if (!btmActive) {
         return ER_FAIL;
     }
 
-    /* Do nothing if qos doesn't include bluetooth */
-    QStatus status = ER_BUS_INCOMPATIBLE_QOS;
-    if (btQos.IsCompatible(advQos)) {
-        if (advQos.IsCompatible(btQos)) {
-            status = btController->AddAdvertiseName(advertiseName);
-
-            if (status != ER_OK) {
-                QCC_LogError(status, ("BTTransport::EnableAdvertisement"));
-            }
-        }
+    QStatus status = btController->AddAdvertiseName(advertiseName);
+    if (status != ER_OK) {
+        QCC_LogError(status, ("BTTransport::EnableAdvertisement"));
     }
     return status;
 }
 
 
-void BTTransport::DisableAdvertisement(const qcc::String& advertiseName, const QosInfo* advQos, bool nameListEmpty)
+void BTTransport::DisableAdvertisement(const qcc::String& advertiseName, bool nameListEmpty)
 {
     QCC_DbgTrace(("BTTransport::DisableAdvertisement(advertiseName = %s, nameListEmpty = %s)", advertiseName.c_str(), nameListEmpty ? "true" : "false"));
     if (!btmActive) {
         return;
     }
 
-    /* Do nothing if qos doesn't include bluetooth */
-    if (!advQos || advQos->IsCompatible(btQos)) {
-        QStatus status;
-
-        status = btController->RemoveAdvertiseName(advertiseName);
-
-        if (status != ER_OK) {
-            QCC_LogError(status, ("BTTransport::DisableAdvertisement"));
-        }
+    QStatus status = btController->RemoveAdvertiseName(advertiseName);
+    if (status != ER_OK) {
+        QCC_LogError(status, ("BTTransport::DisableAdvertisement"));
     }
 }
 
@@ -503,7 +485,7 @@ void BTTransport::FoundNamesChange(const qcc::String& guid,
         qcc::String busAddr("bluetooth:addr=" + bdAddr.ToString() +
                             ",psm=0x" + U32ToString(psm, 16));
 
-        listener->FoundNames(busAddr, guid, btQos, &names, lost ? 0 : BUS_NAME_TTL);
+        listener->FoundNames(busAddr, guid, TRANSPORT_BLUETOOTH, &names, lost ? 0 : BUS_NAME_TTL);
     }
 }
 

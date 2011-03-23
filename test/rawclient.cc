@@ -49,20 +49,13 @@ using namespace qcc;
 using namespace ajn;
 
 /** Sample constants */
-namespace org {
-namespace alljoyn {
-namespace raw_test {
-const char* InterfaceName = "org.alljoyn.raw_test";
-const char* DefaultWellKnownName = "org.alljoyn.raw_test";
-const char* ObjectPath = "/org/alljoyn/raw_test";
-}
-}
-}
+static const char* INTERFACE_NAME = "org.alljoyn.raw_test";
+static const SessionPort SESSION_PORT = 33;
 
 /** Static data */
 static BusAttachment* g_msgBus = NULL;
 static Event g_discoverEvent;
-static String g_wellKnownName = ::org::alljoyn::raw_test::DefaultWellKnownName;
+static String g_wellKnownName = "org.alljoyn.raw_test";
 
 /** AllJoynListener receives discovery events from AllJoyn */
 class MyBusListener : public BusListener {
@@ -70,15 +63,15 @@ class MyBusListener : public BusListener {
 
     MyBusListener() : BusListener(), sessionId(0) { }
 
-    void FoundAdvertisedName(const char* name, const QosInfo& qos, const char* namePrefix)
+    void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
     {
-        QCC_SyncPrintf("FoundAdvertisedName(name=%s, prefix=%s)\n", name, namePrefix);
+        QCC_SyncPrintf("FoundAdvertisedName(name=%s, transport=0x%x, prefix=%s)\n", name, transport, namePrefix);
 
         if (0 == strcmp(name, g_wellKnownName.c_str())) {
             /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
             uint32_t disposition = 0;
-            QosInfo qosIn = qos;
-            QStatus status = g_msgBus->JoinSession(name, disposition, sessionId, qosIn);
+            SessionOpts opts(SessionOpts::TRAFFIC_RAW_RELIABLE, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+            QStatus status = g_msgBus->JoinSession(name, SESSION_PORT, disposition, sessionId, opts);
             if ((ER_OK != status) || (ALLJOYN_JOINSESSION_REPLY_SUCCESS != disposition)) {
                 QCC_LogError(status, ("JoinSession(%s) failed (%u)", name, disposition));
             } else {
@@ -88,9 +81,9 @@ class MyBusListener : public BusListener {
         }
     }
 
-    void LostAdvertisedName(const char* name, const char* guid, const char* prefix, const char* busAddress)
+    void LostAdvertisedName(const char* name, TransportMask transport, const char* prefix)
     {
-        QCC_SyncPrintf("LostAdvertisedName(name=%s, guid=%s, prefix=%s, addr=%s)\n", name, guid, prefix, busAddress);
+        QCC_SyncPrintf("LostAdvertisedName(name=%s, transport=0x%x, prefix=%s)\n", name, transport, prefix);
     }
 
     void NameOwnerChanged(const char* name, const char* previousOwner, const char* newOwner)
@@ -198,7 +191,7 @@ int main(int argc, char** argv)
         uint32_t disposition = 0;
         status = g_msgBus->FindAdvertisedName(g_wellKnownName.c_str(), disposition);
         if ((status != ER_OK) || (disposition != ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS)) {
-            QCC_LogError(status, ("%s.FindAdvertisedName failed", ::ajn::org::alljoyn::Bus::InterfaceName));
+            QCC_LogError(status, ("%s.FindAdvertisedName failed", INTERFACE_NAME));
             status = (status == ER_OK) ? ER_FAIL : status;
         }
     }

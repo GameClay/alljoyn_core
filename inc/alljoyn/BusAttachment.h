@@ -34,7 +34,6 @@
 #include <alljoyn/BusObject.h>
 #include <alljoyn/ProxyBusObject.h>
 #include <alljoyn/InterfaceDescription.h>
-#include <alljoyn/QosInfo.h>
 #include <alljoyn/Session.h>
 #include <Status.h>
 
@@ -60,9 +59,6 @@ class BusAttachment : public MessageReceiver {
 
     /**
      * Create an interface description with a given name.
-     *
-     * This method informs AllJoyn of a new interface that will (presumably) be implemented
-     * by one or more local or remote bus objects.
      *
      * Typically, interfaces that are implemented by BusObjects are created here.
      * Interfaces that are implemented by remote objects are added automatically by
@@ -425,7 +421,7 @@ class BusAttachment : public MessageReceiver {
      * and interprets the response.
      *
      * @param[in]  name          the well-known name to advertise. (Must be owned by the caller via RequestName).
-     * @param[in]  qos           Quality of Service to advertise.
+     * @param[in]  transports    Set of transports to use for sending advertisment.
      * @param[out] disposition   ALLJOYN_ADVERTISEDNAME_REPLY_* constant from AllJoynStd.h
      *
      * @return
@@ -433,7 +429,7 @@ class BusAttachment : public MessageReceiver {
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus AdvertiseName(const char* name, const QosInfo& qos, uint32_t& disposition);
+    QStatus AdvertiseName(const char* name, TransportMask transports, uint32_t& disposition);
 
     /**
      * Stop advertising the existence of a well-known name to other AllJoyn daemons.
@@ -484,41 +480,62 @@ class BusAttachment : public MessageReceiver {
     QStatus CancelFindAdvertisedName(const char* namePrefix, uint32_t& disposition);
 
     /**
-     * Create a session.
-     * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.CreateSession method call to the local daemon
-     * and interprets the response.
+     * Make a SessionPort available for external BusAttachments to join.
      *
-     * @param[in]  sessionName   Name for session. Must be globally unique.
-     * @param[in]  isMultipoint  true if this session can be joined multiple times to form a single multipoint session.
-     *                           When false, each join attempt creates a new point-to-point session.
-     * @param[in]  qos           QoS requirements that potential joiners must meet in order to successfully join the session.
-     * @param[out] disposition   @ref CreateSessionReplyAnchor "ALLJOYN_CREATESESSION_REPLY_*" constant from AllJoynStd.h
-     * @param[out] sessionId     Daemon assigned unique identifier for session. Valid if disposition is ALLJOYN_CREATESESSION_REPLY_SUCCESS.
+     * Each BusAttachment binds its own set of SessionPorts. Session joiners use the bound session
+     * port along with the name of the attachement to create a persistent logical connection (called
+     * a Session) with the original BusAttachment.
+     *
+     * A SessionPort and bus name form a unique identifier that BusAttachments use when joining a
+     * session.
+     *
+     * SessionPort values can be pre-arranged between AllJoyn services and their clients (well-known
+     * SessionPorts).
+     *
+     * Once a session is joined using one of the service's well-known SessionPorts, the service may
+     * bind additional SessionPorts (dyanamically) and share these SessionPorts with the joiner over
+     * the original session. The joiner can then create additional sessions with the service by
+     * calling JoinSession with these dynamic SessionPort ids.
+     *
+     * @param[in/out] sessionPort   SessionPort value to bind or SESSION_PORT_ANY to allow this method
+     *                              to choose an available port. On successful return, this value
+     *                              contains the chosen SessionPort.
+     *
+     * @param[in]     isMultipoint  true if this session can be joined multiple times to form a single
+     *                              multipoint session. When false, each join attempt creates a new
+     *                              point-to-point session.
+     *
+     * @param[in]     opts          Session options that joiners must agree to in order to
+     *                              successfully join the session.
+     *
+     * @param[out]    disposition   ALLJOYN_CREATESESSION_REPLY_*" constant from AllJoynStd.h
+     *
      * @return
      *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus CreateSession(const char* sessionName, bool isMultipoint, const QosInfo& qos, uint32_t& disposition, SessionId& sessionId);
+    QStatus BindSessionPort(SessionPort& sessionPort, bool isMultipoint, const SessionOpts& opts, uint32_t& disposition);
 
     /**
-     * Join an existing session.
+     * Join a session.
      * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.JoinSession method call to the local daemon
      * and interprets the response.
      *
-     * @param[in]  sessionName   Name of existing session that caller wants to join.
-     * @param[out] disposition   @ref JoinSessionReplyAnchor "ALLJOYN_JOINSESSION_REPLY_*" constant from AllJoynStd.h.
-     * @param[out] sessionId     Daemon assigned unique identifier for session. Valid if disposition is ALLJOYN_CREATESESSION_REPLY_SUCCESS.
-     * @param[out] qos           Quality of Service for session.
+     * @param[in]  sessionHost   Bus name of attachment that is hosting the session to be joined.
+     * @param[in]  sessionPort   SessionPort of sessionHost to be joined.
+     * @param[out] disposition   ALLJOYN_JOINSESSION_REPLY_*" constant from AllJoynStd.h.
+     * @param[out] sessionId     Unique identifier for session. Valid if disposition is ALLJOYN_CREATESESSION_REPLY_SUCCESS.
+     * @param[out] opts          Session options.
      * @return
      *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus JoinSession(const char* sessionName, uint32_t& disposition, SessionId& sessionId, QosInfo& qos);
+    QStatus JoinSession(const char* sessionHost, SessionPort sessionPort, uint32_t& disposition, SessionId& sessionId, SessionOpts& opts);
 
     /**
-     * Leave a previously joined or created session.
+     * Leave an existing session.
      * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.LeaveSession method call to the local daemon
      * and interprets the response.
      *
@@ -532,7 +549,7 @@ class BusAttachment : public MessageReceiver {
     QStatus LeaveSession(const SessionId& sessionId, uint32_t& disposition);
 
     /**
-     * Get the file descriptor for a streaming (non-message based) session.
+     * Get the file descriptor for a raw (non-message based) session.
      *
      * @param sessionId   Id of an existing streamming session.
      * @param sockFd      [OUT] Socket file descriptor for session.

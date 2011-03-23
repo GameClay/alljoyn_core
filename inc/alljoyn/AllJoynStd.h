@@ -76,46 +76,46 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
 }
 
 /**
- * @anchor CreateSessionReplyAnchor
- * @name org.alljoyn.Bus.CreateSession
+ * @anchor BindSessionPortReplyAnchor
+ * @name org.alljoyn.Bus.BindSessionPort
  *  Interface: org.alljoyn.Bus
- *  Method: UINT32 status, UINT64 sessionId CreateSession(String sessionName, QoSInfo requiredQos)
+ *  Method: UINT32 disposition SessionPort outPort BindSessionPort(SessionPort inPort, bool isMultipoint, SessionOpts opts)
  *
  * Create a named session for other bus nodes to join.
  *
  * In params:
- *  sessionName - Globally unique name for session.
- *  isMulticast - true iff session supports more than two participants.
- *  requiredQos - Quality of service requirements for session joiners.
+ *  inPort       - Session Port number to bind to or SESSION_PORT_ANY to have daemon allocate an available port number.
+ *  isMultipoint - true iff session supports more than two participants.
+ *  opts         - Session options
  *
  * Out params:
- *  status      - CreateSession return value (see below).
- *  sessionId   - Bus assigned session id (valid if status == SUCCESS).
+ *  disposition  - BindSessionPort return value (see below).
+ *  outPort      - Bound Session port. (equal to inPort if inPort != SESSION_PORT_ANY)
  */
 // @{
-/* org.alljoyn.Bus.CreateSession */
-#define ALLJOYN_CREATESESSION_REPLY_SUCCESS     1   /**< CreateSession reply: Success */
-#define ALLJOYN_CREATESESSION_REPLY_NOT_OWNER   2   /**< CreateSession reply: Caller doesn't own well-known name of session */
-#define ALLJOYN_CREATESESSION_REPLY_FAILED      3   /**< CreateSession reply: Failed */
+/* org.alljoyn.Bus.BindSessionPort */
+#define ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS         1   /**< BindSessionPort reply: Success */
+#define ALLJOYN_BINDSESSIONPORT_REPLY_ALREADY_EXISTS  2   /**< BindSessionPort reply: SessionPort already exists */
+#define ALLJOYN_BINDSESSIONPORT_REPLY_FAILED          3   /**< BindSessionPort reply: Failed */
 // @}
 
 /**
  * @anchor JoinSessionReplyAnchor
  * @name org.alljoyn.Bus.JoinSession
  *  Interface: org.alljoyn.Bus
- *  Method: UINT32 status, UINT64 sessionId JoinSession(String sessionName, QosInfo preferredQoS, QosInfo requiredQoS)
+ *  Method: UINT32 status, UINT32 sessionId, SessionOpts outOpts JoinSession(String sessionHost, SessionPort sessionPort, SessionOptions inOpts)
  *
- * Join an existing session.
+ * Send a JoinSession request to a remote bus name.
  *
  * In params:
- *  sessionName  - Name of session to join.
- *  desiredQos   - Desired quality of service.
- *  requiredQos  - Required quality of service.
+ *  sessionHost   - Bus name of endpoint that is hosting the session.
+ *  sessionPort   - Session port number bound by sessionHost.
+ *  inOpts - Desired session options.
  *
  * Out params:
  *  status      - JoinSession return value (see below).
  *  sessionId   - Session id.
- *  qos         - Quality of service for session.
+ *  outOpts     - Acutal (final) session options.
  */
 // @{
 /* org.alljoyn.Bus.JoinSession */
@@ -124,7 +124,7 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
 #define ALLJOYN_JOINSESSION_REPLY_UNREACHABLE          3   /**< JoinSession reply: Failed to find suitable transport */
 #define ALLJOYN_JOINSESSION_REPLY_CONNECT_FAILED       4   /**< JoinSession reply: Connect to advertised address */
 #define ALLJOYN_JOINSESSION_REPLY_REJECTED             5   /**< JoinSession reply: The session creator rejected the join req */
-#define ALLJOYN_JOINSESSION_REPLY_BAD_QOS              6   /**< JoinSession reply: Failed due to qos incompatibilities */
+#define ALLJOYN_JOINSESSION_REPLY_BAD_SESSION_OPTS     6   /**< JoinSession reply: Failed due to session option incompatibilities */
 #define ALLJOYN_JOINSESSION_REPLY_FAILED              10   /**< JoinSession reply: Failed for unknown reason */
 // @}
 
@@ -132,7 +132,7 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
  * @anchor LeaveSessionReplyAnchor
  * @name org.alljoyn.Bus.LeaveSession
  *  Interface: org.alljoyn.Bus
- *  Method: void LeaveSession(UINT64 sessionId)
+ *  Method: void LeaveSession(UINT32 sessionId)
  *
  * Leave a previously joined session.
  *
@@ -228,8 +228,7 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
  *  sessionId - Existing sessionId for a streaming (non-message based) session.
  *
  *  Get the socket descriptor for an existing session that was created or joined with
- *  traffic type equal to QosInfo::TRAFFIC_STREAMING_UNRELIABLE or
- *  QosInfo::TRAFFIC_STREAMING_RELIABLE.
+ *  traffic type equal to RAW_UNRELIABLE or RAW_RELIABLE.
  *
  *  Returns the socket descriptor request or an error response
  */

@@ -136,7 +136,7 @@ QStatus VirtualEndpoint::AddSessionRef(SessionId id, RemoteEndpoint& b2bEp)
     return canUse ? ER_OK : ER_FAIL;
 }
 
-QStatus VirtualEndpoint::AddSessionRef(SessionId id, QosInfo* qos, RemoteEndpoint*& b2bEp)
+QStatus VirtualEndpoint::AddSessionRef(SessionId id, SessionOpts* opts, RemoteEndpoint*& b2bEp)
 {
     RemoteEndpoint* bestEp = NULL;
     //uint32_t hops = 1000;
@@ -144,18 +144,18 @@ QStatus VirtualEndpoint::AddSessionRef(SessionId id, QosInfo* qos, RemoteEndpoin
     m_b2bEndpointsLock.Lock();
 
 #if 0
-    /* Look for best B2B that matches QOS */
+    /* Look for best B2B that matches SessionOpts */
     multimap<SessionId, RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
     while ((it != m_b2bEndpoints.end()) && (it->first == 0)) {
         map<RemoteEndpoint*, B2BInfo>::const_iterator bit = m_b2bInfos.find(it->second);
-        if ((bit != m_b2bInfos.end()) && (!qos || bit->second.qos.IsCompatible(*qos)) && (bit->second.hops < hops)) {
+        if ((bit != m_b2bInfos.end()) && (!opts || bit->second.opts.IsCompatible(*opts)) && (bit->second.hops < hops)) {
             bestEp = it->second;
             hops = bit->second.hops;
         }
         ++it;
     }
 #else
-    /* TODO: Placeholder until we exchange QoS and hop count via ExchangeNames */
+    /* TODO: Placeholder until we exchange session opts and hop count via ExchangeNames */
     multimap<SessionId, RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
     if ((it != m_b2bEndpoints.end()) && (it->first == 0)) {
         bestEp = it->second;
@@ -202,13 +202,13 @@ bool VirtualEndpoint::CanUseRoute(const RemoteEndpoint& b2bEndpoint) const
     return isFound;
 }
 
-RemoteEndpoint* VirtualEndpoint::GetQosCompatibleB2B(const QosInfo& qos)
+RemoteEndpoint* VirtualEndpoint::GetSessionCompatibleB2B(const SessionOpts& opts)
 {
     RemoteEndpoint* ret = NULL;
     m_b2bEndpointsLock.Lock();
     multimap<SessionId, RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
     while ((it != m_b2bEndpoints.end()) && (it->first == 0)) {
-        // TODO: Need to qualify endpoint with qos
+        // TODO: Need to qualify endpoint with opts
         ret = it->second;
         break;
     }

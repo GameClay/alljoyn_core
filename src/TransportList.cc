@@ -202,13 +202,13 @@ QStatus TransportList::RegisterListener(TransportListener* listener)
 
 void TransportList::FoundNames(const qcc::String& busAddr,
                                const qcc::String& guid,
-                               const QosInfo& qos,
+                               TransportMask transport,
                                const vector<qcc::String>* names,
                                uint8_t ttl)
 {
     if (isStarted) {
         for (size_t i = 0; i < listeners.size(); ++i) {
-            listeners[i]->FoundNames(busAddr, guid, qos, names, ttl);
+            listeners[i]->FoundNames(busAddr, guid, transport, names, ttl);
         }
     }
 }

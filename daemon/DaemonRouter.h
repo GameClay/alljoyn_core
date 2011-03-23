@@ -264,14 +264,14 @@ class DaemonRouter : public Router {
     /**
      * Add a session route.
      *
-     * @param  src     Unique name of route source.
-     * @param  id      Session Id.
-     * @param  destEp  BusEndpoint of route destination.
-     * @param  b2bEp   [IN/OUT] If passed in as NULL, attemp to use qosHint to choose b2bEp and return selected b2bEp.
-     * @param  qosHint Optional quality of service constraint for selection of b2bEp if not explicitly specified.
+     * @param  src       Unique name of route source.
+     * @param  id        Session Id.
+     * @param  destEp    BusEndpoint of route destination.
+     * @param  b2bEp     [IN/OUT] If passed in as NULL, attemp to use qosHint to choose b2bEp and return selected b2bEp.
+     * @param  optsHint  Optional session options constraint for selection of b2bEp if not explicitly specified.
      * @return  ER_OK if successful.
      */
-    QStatus AddSessionRoute(const char* src, SessionId id, BusEndpoint& destEp, RemoteEndpoint*& b2bEp, QosInfo* qosHint = NULL);
+    QStatus AddSessionRoute(const char* src, SessionId id, BusEndpoint& destEp, RemoteEndpoint*& b2bEp, SessionOpts* optsHint = NULL);
 
     /**
      * Remove a (single) session route.

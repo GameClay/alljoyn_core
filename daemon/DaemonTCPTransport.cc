@@ -27,7 +27,7 @@
 #include <qcc/StringUtil.h>
 
 #include <alljoyn/BusAttachment.h>
-#include <alljoyn/QosInfo.h>
+#include <alljoyn/TransportMask.h>
 
 #include "BusInternal.h"
 #include "RemoteEndpoint.h"
@@ -1100,41 +1100,34 @@ void DaemonTCPTransport::EnableDiscovery(const char* namePrefix)
     }
 }
 
-QStatus DaemonTCPTransport::EnableAdvertisement(const qcc::String& advertiseName, const QosInfo& advQos)
+QStatus DaemonTCPTransport::EnableAdvertisement(const qcc::String& advertiseName)
 {
-    QStatus status = ER_BUS_INCOMPATIBLE_QOS;
-
-    // TODO: This filtering is too simplistic. Need to consider WWAN and other TCP types
-    if (advQos.transports & QosInfo::TRANSPORT_WLAN) {
-        /*
-         * Give the provided name to the name service and have it start advertising
-         * the name on the network as reachable through the daemon having this
-         * transport.  The name service handles periodic retransmission of the name
-         * and manages the coming and going of network interfaces for us.
-         */
-        assert(m_ns);
-        status = m_ns->Advertise(advertiseName);
-        if (status != ER_OK) {
-            QCC_LogError(status, ("DaemonTCPTransport::EnableAdvertisment(%s) failure", advertiseName.c_str()));
-        }
+    /*
+     * Give the provided name to the name service and have it start advertising
+     * the name on the network as reachable through the daemon having this
+     * transport.  The name service handles periodic retransmission of the name
+     * and manages the coming and going of network interfaces for us.
+     */
+    assert(m_ns);
+    QStatus status = m_ns->Advertise(advertiseName);
+    if (status != ER_OK) {
+        QCC_LogError(status, ("DaemonTCPTransport::EnableAdvertisment(%s) failure", advertiseName.c_str()));
     }
     return status;
 }
 
-void DaemonTCPTransport::DisableAdvertisement(const qcc::String& advertiseName, const QosInfo* advQos, bool nameListEmpty)
+void DaemonTCPTransport::DisableAdvertisement(const qcc::String& advertiseName, bool nameListEmpty)
 {
-    if (!advQos || (advQos->transports & QosInfo::TRANSPORT_WLAN)) {
-        /*
-         * Tell the name service to stop advertising the provided name on the
-         * network as reachable through the daemon having this transport.  The name
-         * service sends out a no-longer-here message and stops periodic
-         * retransmission of the name as a result of the Cancel() call.
-         */
-        assert(m_ns);
-        QStatus status = m_ns->Cancel(advertiseName);
-        if (status != ER_OK) {
-            QCC_LogError(status, ("Failure stop advertising \"%s\" for TCP", advertiseName.c_str()));
-        }
+    /*
+     * Tell the name service to stop advertising the provided name on the
+     * network as reachable through the daemon having this transport.  The name
+     * service sends out a no-longer-here message and stops periodic
+     * retransmission of the name as a result of the Cancel() call.
+     */
+    assert(m_ns);
+    QStatus status = m_ns->Cancel(advertiseName);
+    if (status != ER_OK) {
+        QCC_LogError(status, ("Failure stop advertising \"%s\" for TCP", advertiseName.c_str()));
     }
 }
 
@@ -1188,15 +1181,8 @@ void DaemonTCPTransport::FoundCallback::Found(const qcc::String& busAddr, const 
         return;
     }
 
-    // TODO: Qos for TCP is currenlty fixed (hardcoded). However, this may change once tcp transport
-    //       can be used for both local and global (Internet-wide) connections
-    QosInfo qos;
-    qos.traffic = QosInfo::TRAFFIC_MESSAGES | QosInfo::TRAFFIC_RAW_RELIABLE;
-    qos.proximity = QosInfo::PROXIMITY_ANY;
-    qos.transports = QosInfo::TRANSPORT_WLAN;
-
     if (m_listener) {
-        m_listener->FoundNames(busAddr, guid, qos, &nameList, timer);
+        m_listener->FoundNames(busAddr, guid, TRANSPORT_WLAN, &nameList, timer);
     }
 }
 
