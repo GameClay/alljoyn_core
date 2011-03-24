@@ -25,13 +25,14 @@
 
 namespace ajn {
 
+/** Bitmask of all transport types */
 typedef uint16_t TransportMask;
 
 const TransportMask TRANSPORT_NONE      = 0x0000;   /**< no transports */
 const TransportMask TRANSPORT_ANY       = 0xFFFF;   /**< ANY transport */
 const TransportMask TRANSPORT_LOCAL     = 0x0001;   /**< Local (same device) transport */
 const TransportMask TRANSPORT_BLUETOOTH = 0x0002;   /**< Bluetooth transport */
-const TransportMask TRANSPORT_WLAN      = 0x0004;;   /**< Wireless local-area network transport */
+const TransportMask TRANSPORT_WLAN      = 0x0004;   /**< Wireless local-area network transport */
 const TransportMask TRANSPORT_WWAN      = 0x0008;   /**< Wireless wide-area network transport */
 
 }

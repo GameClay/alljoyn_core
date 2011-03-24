@@ -134,6 +134,7 @@ class MyBusListener : public BusListener {
 
     void SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner)
     {
+        s_sessionId = id;
         printf("SessionJoined with %s (id=%d)\n", joiner, id);
     }
 };
