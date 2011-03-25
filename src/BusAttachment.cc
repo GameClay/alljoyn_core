@@ -846,7 +846,7 @@ QStatus BusAttachment::JoinSession(const char* sessionHost, SessionPort sessionP
     MsgArg args[3];
     size_t numArgs = ArraySize(args);
 
-    MsgArg::Set(args, numArgs, "su"SESSIONOPTS_SIG, sessionHost, sessionPort, opts.traffic, opts.proximity, opts.transports);
+    MsgArg::Set(args, numArgs, "sq"SESSIONOPTS_SIG, sessionHost, sessionPort, opts.traffic, opts.proximity, opts.transports);
 
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
     QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "JoinSession", args, numArgs, reply);

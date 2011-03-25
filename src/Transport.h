@@ -32,6 +32,7 @@
 #include <vector>
 #include <alljoyn/Message.h>
 #include <alljoyn/TransportMask.h>
+#include <alljoyn/Session.h>
 #include <Status.h>
 
 namespace ajn {
@@ -135,6 +136,14 @@ class Transport {
      * @return the TransportMask for this transport.
      */
     virtual TransportMask GetTransportMask() = 0;
+
+    /**
+     * Get the listen spec for a given set of session options.
+     *
+     * @return listenSpec (busAddr) to use for given session options (empty string if
+     *         session opts are incompatible with this transport.
+     */
+    virtual qcc::String GetListenAddress(const SessionOpts& opts) { return ""; }
 
     /**
      * Normalize a transport specification.

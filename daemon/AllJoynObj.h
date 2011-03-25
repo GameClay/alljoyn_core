@@ -78,16 +78,16 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     void ObjectRegistered(void);
 
     /**
-     * Respond to a bus request to create a session.
+     * Respond to a bus request to bind a SessionPort.
      *
      * The input Message (METHOD_CALL) is expected to contain the following parameters:
-     *   sessionName  string       Globally unique name for session.
-     *   isMultipoint bool         true iff sessionPort is multipoint
-     *   opts         SessionOpts  SessionOpts that must be agreeable to any joiner.
+     *   sessionPort  sessionPort    SessionPort identifier.
+     *   isMultipoint bool           true iff sessionPort is multipoint
+     *   opts         SessionOpts    SessionOpts that must be agreeable to any joiner.
      *
      * The output Message (METHOD_REPLY) contains the following parameters:
      *   resultCode   uint32   A ALLJOYN_CREATESESSION_* reply code (see AllJoynStd.h).
-     *   sessionId    uint32   Session identifier.
+     *   sessionPort  uint16   SessionPort (same as input sessionPort unless SESSION_PORT_ANY was specified)
      *
      * @param member  Member.
      * @param msg     The incoming message.
@@ -98,12 +98,14 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * Respond to a bus request to join an existing session.
      *
      * The input Message (METHOD_CALL) is expected to contain the following parameters:
-     *   sessionName  string   Name of session to join.
+     *   creatorName  string        Name of session creator.
+     *   sessionPort  SessionPort   SessionPort targeted for join request.
+     *   opts         SessionOpts   Session options requested by the joiner.
      *
      * The output Message (METHOD_REPLY) contains the following parameters:
      *   resultCode   uint32        A ALLJOYN_JOINSESSION_* reply code (see AllJoynStd.h).
      *   sessionId    uint32        Session identifier.
-     *   opts         SessionOpts   Session options.
+     *   opts         SessionOpts   Final (negociated) session options.
      *
      * @param member  Member.
      * @param msg     The incoming message.
@@ -214,7 +216,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * Respond to a remote daemon request to attach a session through this daemon.
      *
      * The input Message (METHOD_CALL) is expected to contain the following parameters:
-     *   sessionName   string       The name of the session.
+     *   sessionPort   SessionPort  The session port.
      *   joiner        string       The unique name of the session joiner.
      *   creator       string       The name of the session creator.
      *   optsIn        SesionOpts   The session options requested by the joiner.
@@ -228,6 +230,23 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * @param msg     The incoming message.
      */
     void AttachSession(const InterfaceDescription::Member* member, Message& msg);
+
+    /**
+     * Respond to a remote daemon request to get session info from this daemon.
+     *
+     * The input Message (METHOD_CALL) is expected to contain the following parameters:
+     *   creator       string       Name of attachment that bound the session port.
+     *   sessionPort   SessionPort  The sessionPort whose info is being requested.
+     *   opts          SesionOpts   The session options requested by the joiner.
+     *
+     * The output Message (METHOD_REPLY) contains the following parameters:
+     *   busAddr       string       The bus address to use when attempting to create
+     *                              a connection for the purpose of joining the given session.
+     *
+     * @param member  Member.
+     * @param msg     The incoming message.
+     */
+    void GetSessionInfo(const InterfaceDescription::Member* member, Message& msg);
 
     /**
      * Process incoming ExchangeNames signals from remote daemons.
@@ -454,6 +473,20 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
                               const char* joinerName,
                               const SessionOpts& opts,
                               bool& isAccepted);
+
+    /**
+     * Utility method used to invoke GetSessionInfo remote method.
+     *
+     * @param       creatorName    Bus name of session creator.
+     * @param       sessionPort    Session port value.
+     * @param       opts           Requested session options.
+     * @param[out]  busAddr        Returned busAddr for session (if return value is ER_OK)
+     * @return  ER_OK if successful.
+     */
+    QStatus SendGetSessionInfo(const char* creatorName,
+                               SessionPort sessionPort,
+                               const SessionOpts& opts,
+                               qcc::String& busAddr);
 
     /**
      * Add a virtual endpoint with a given unique name.

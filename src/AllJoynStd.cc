@@ -64,7 +64,7 @@ QStatus org::alljoyn::CreateInterfaces(BusAttachment& bus)
         }
         ifc->AddMethod("BusHello",                 "su",                "ssu",               "GUIDC,protoVerC,GUIDS,uniqueName,protoVerS",   0);
         ifc->AddMethod("BindSessionPort",          "qb"SESSIONOPTS_SIG, "uq",                "portIn,isMulticast,opts,disposition,portOut",  0);
-        ifc->AddMethod("JoinSession",              "su"SESSIONOPTS_SIG, "uu"SESSIONOPTS_SIG, "sessionHost,port,opts,disp,sessionId,opts",    0);
+        ifc->AddMethod("JoinSession",              "sq"SESSIONOPTS_SIG, "uu"SESSIONOPTS_SIG, "sessionHost,port,opts,disp,sessionId,opts",    0);
         ifc->AddMethod("LeaveSession",             "u",                 "u",                 "sessionId,disposition",                        0);
         ifc->AddMethod("AdvertiseName",            "sq",                "u",                 "name,transports,disposition",                  0);
         ifc->AddMethod("CancelAdvertiseName",      "sq",                "u",                 "name,transports,disposition",                  0);
@@ -89,6 +89,7 @@ QStatus org::alljoyn::CreateInterfaces(BusAttachment& bus)
             return status;
         }
         ifc->AddMethod("AttachSession",  "ysss"SESSIONOPTS_SIG, "uu"SESSIONOPTS_SIG, "port,joiner,creator,b2b,optsIn,status,id,optsOut", 0);
+        ifc->AddMethod("GetSessionInfo", "sq"SESSIONOPTS_SIG, "s", "creator,port,opts,busAddr", 0);
         ifc->AddSignal("DetachSession",  "us",     "sessionId,joiner",       0);
         ifc->AddSignal("ExchangeNames",  "a(sas)", "uniqueName,aliases",     0);
         ifc->AddSignal("NameChanged",    "sss",    "name,oldOwner,newOwner", 0);
