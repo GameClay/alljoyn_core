@@ -497,7 +497,7 @@ class BusAttachment : public MessageReceiver {
      * the original session. The joiner can then create additional sessions with the service by
      * calling JoinSession with these dynamic SessionPort ids.
      *
-     * @param[in/out] sessionPort   SessionPort value to bind or SESSION_PORT_ANY to allow this method
+     * @param[in,out] sessionPort   SessionPort value to bind or SESSION_PORT_ANY to allow this method
      *                              to choose an available port. On successful return, this value
      *                              contains the chosen SessionPort.
      *
@@ -508,7 +508,8 @@ class BusAttachment : public MessageReceiver {
      * @param[in]     opts          Session options that joiners must agree to in order to
      *                              successfully join the session.
      *
-     * @param[out]    disposition   ALLJOYN_CREATESESSION_REPLY_*" constant from AllJoynStd.h
+     * @param[out]    disposition   @ref BindSessionPortReplyAnchor "ALLJOYN_BINDSESSIONPORT_REPLY_*"
+     *                              constant from AllJoynStd.h
      *
      * @return
      *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
@@ -524,7 +525,7 @@ class BusAttachment : public MessageReceiver {
      *
      * @param[in]  sessionHost   Bus name of attachment that is hosting the session to be joined.
      * @param[in]  sessionPort   SessionPort of sessionHost to be joined.
-     * @param[out] disposition   ALLJOYN_JOINSESSION_REPLY_*" constant from AllJoynStd.h.
+     * @param[out] disposition   @ref JoinSessionReplyAnchor "ALLJOYN_JOINSESSION_REPLY_*" constant from AllJoynStd.h.
      * @param[out] sessionId     Unique identifier for session. Valid if disposition is ALLJOYN_CREATESESSION_REPLY_SUCCESS.
      * @param[out] opts          Session options.
      * @return

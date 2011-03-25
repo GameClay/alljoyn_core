@@ -55,9 +55,9 @@ class SessionOpts {
         TRAFFIC_RAW_UNRELIABLE = 0x02,   /**< Session carries an unreliable (lossy) byte stream */
         TRAFFIC_RAW_RELIABLE   = 0x04    /**< Session carries a reliable byte stream */
     } TrafficType;
-    TrafficType traffic;
+    TrafficType traffic; /**< holds the Traffic type for this SessionOpt*/
 
-    /** Proximity */
+    /**@name Proximity */
     // {@
     typedef uint8_t Proximity;
     static const Proximity PROXIMITY_ANY      = 0xFF;
@@ -95,6 +95,13 @@ class SessionOpts {
      */
     bool IsCompatible(const SessionOpts& other) const;
 
+    /**
+     * Compare SessionOpts
+     *
+     * @param other the SessionOpts being compared against
+     * @return true if all of the SessionOpts parameters are the same
+     *
+     */
     bool operator==(const SessionOpts& other) const
     {
         return (traffic == other.traffic) && (proximity == other.proximity) && (transports == other.transports);
@@ -103,6 +110,22 @@ class SessionOpts {
     /**
      * Rather arbitrary less-than operator to allow containers holding SessionOpts
      * to be sorted.
+     * Traffic takes precedence when sorting SessionOpts.
+     *
+     * #TRAFFIC_MESSAGES \< #TRAFFIC_RAW_UNRELIABLE \< #TRAFFIC_RAW_RELIABLE
+     *
+     * If traffic is equal then Proximity takes next level of precedence.
+     *
+     * PROXIMITY_PHYSICAL \< PROXIMITY_NETWORK \< PROXIMITY_ANY
+     *
+     * last transports.
+     *
+     * #TRANSPORT_LOCAL \< #TRANSPORT_BLUETOOTH \< #TRANSPORT_WLAN \< #TRANSPORT_WWAN \< #TRANSPORT_ANY
+     *
+     *
+     * @param other the SessionOpts being compared against
+     * @return true if this SessionOpts is designated as less than the SessionOpts
+     *         being compared against.
      */
     bool operator<(const SessionOpts& other) const
     {
