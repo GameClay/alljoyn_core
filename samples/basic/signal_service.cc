@@ -58,6 +58,7 @@ static MyBusListener* s_busListener = NULL;
 static const char* INTERFACE_NAME = "org.alljoyn.Bus.signal_sample";
 static const char* SERVICE_NAME = "org.alljoyn.Bus.signal_sample";
 static const char* SERVICE_PATH = "/";
+static const SessionPort SERVICE_PORT = 25;
 
 /**
  * Signal handler
@@ -107,7 +108,7 @@ class BasicSampleObject : public BusObject {
         printf("Emiting Name Changed Signal.\n");
         assert(nameChangedMember);
         if (0 == s_sessionId) {
-            printf("Sending Chat signal without a session id\n");
+            printf("Sending NameChanged signal without a session id\n");
         }
         MsgArg arg("s", newName.c_str());
         uint8_t flags = ALLJOYN_FLAG_GLOBAL_BROADCAST;
@@ -158,11 +159,14 @@ class MyBusListener : public BusListener {
         }
     }
 
-    bool AcceptSessionJoiner(const char* sessionName, SessionId id, const char* joiner, const QosInfo& qos)
+    bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
     {
-        printf("Accepting join session request from %s (qos.proximity=%x, qos.traffic=%x, qos.transports=%x)\n",
-               joiner, qos.proximity, qos.traffic, qos.transports);
-        printf("Session name=%s, id=%d\n", sessionName, id);
+        if (sessionPort != SERVICE_PORT) {
+            printf("Rejecting join attempt on unexpected session port %d\n", sessionPort);
+            return false;
+        }
+        printf("Accepting join session request from %s (opts.proximity=%x, opts.traffic=%x, opts.transports=%x)\n",
+               joiner, opts.proximity, opts.traffic, opts.transports);
         return true;
     }
 };
@@ -235,25 +239,25 @@ int main(int argc, char** argv, char** envArg) {
     }
 
     /* Create session */
+    SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
     if (ER_OK == status) {
-        uint32_t disposition = 0;
-        QosInfo qos(QosInfo::TRAFFIC_MESSAGES, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
-        status = g_msgBus->CreateSession(SERVICE_NAME, true, qos, disposition, s_sessionId);
+        uint32_t returnValue = 0;
+        SessionPort sp = SERVICE_PORT;
+        status = g_msgBus->BindSessionPort(sp, false, opts, returnValue);
         if (ER_OK != status) {
-            printf("CreateSession failed (%s)\n", QCC_StatusText(status));
-        } else if (disposition != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
+            printf("BindSessionPort failed (%s)\n", QCC_StatusText(status));
+        } else if (returnValue != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
             status = ER_FAIL;
-            printf("CreateSession returned failed disposition (%u)\n", disposition);
+            printf("BindSessionPort returned failed returnValue (%u)\n", returnValue);
         }
     }
 
     /* Advertise name */
     if (ER_OK == status) {
-        uint32_t disposition = 0;
-        QosInfo qos(QosInfo::TRAFFIC_MESSAGES, QosInfo::PROXIMITY_ANY, QosInfo::TRANSPORT_ANY);
-        status = g_msgBus->AdvertiseName(SERVICE_NAME, qos, disposition);
-        if ((status != ER_OK) || (disposition != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS)) {
-            printf("Failed to advertise name %s (%s) (disposition=%d)\n", SERVICE_NAME, QCC_StatusText(status), disposition);
+        uint32_t returnValue = 0;
+        status = g_msgBus->AdvertiseName(SERVICE_NAME, opts.transports, returnValue);
+        if ((status != ER_OK) || (returnValue != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS)) {
+            printf("Failed to advertise name %s (%s) (returnValue=%d)\n", SERVICE_NAME, QCC_StatusText(status), returnValue);
             status = (status == ER_OK) ? ER_FAIL : status;
         }
     }

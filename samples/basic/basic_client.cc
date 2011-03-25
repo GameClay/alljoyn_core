@@ -45,8 +45,10 @@ static BusAttachment* g_msgBus = NULL;
 static const char* INTERFACE_NAME = "org.alljoyn.Bus.method_sample";
 static const char* SERVICE_NAME = "org.alljoyn.Bus.method_sample";
 static const char* SERVICE_PATH = "/method_sample";
+static const SessionPort SERVICE_PORT = 25;
 
 static bool s_joinComplete = false;
+static SessionId s_sessionId = 0;
 
 /** Signal handler */
 static void SigIntHandler(int sig)
@@ -63,22 +65,18 @@ static void SigIntHandler(int sig)
 /** AllJoynListener receives discovery events from AllJoyn */
 class MyBusListener : public BusListener {
   public:
-
-    MyBusListener() : BusListener(), sessionId(0) { }
-
-    void FoundAdvertisedName(const char* name, const QosInfo& advQos, const char* namePrefix)
+    void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
     {
         printf("FoundAdvertisedName(name=%s, prefix=%s)\n", name, namePrefix);
         if (0 == strcmp(name, SERVICE_NAME)) {
-            //printf("FoundAdvertisedName(name=%s, prefix=%s)\n", name, namePrefix);
             /* We found a remote bus that is advertising basic sercice's  well-known name so connect to it */
-            uint32_t disposition;
-            QosInfo qos;
-            QStatus status = g_msgBus->JoinSession(name, disposition, sessionId, qos);
-            if ((ER_OK != status) || (ALLJOYN_JOINSESSION_REPLY_SUCCESS != disposition)) {
-                printf("JoinSession failed (status=%s, disposition=%d)\n", QCC_StatusText(status), disposition);
+            uint32_t returnValue;
+            SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+            QStatus status = g_msgBus->JoinSession(name, SERVICE_PORT, returnValue, s_sessionId, opts);
+            if ((ER_OK != status) || (ALLJOYN_JOINSESSION_REPLY_SUCCESS != returnValue)) {
+                printf("JoinSession failed (status=%s, returnValue=%d)\n", QCC_StatusText(status), returnValue);
             } else {
-                printf("JoinSession SUCCESS (Session id=%d)\n", sessionId);
+                printf("JoinSession SUCCESS (Session id=%d)\n", s_sessionId);
             }
         }
         s_joinComplete = true;
@@ -93,11 +91,6 @@ class MyBusListener : public BusListener {
                    newOwner ? newOwner : "<none>");
         }
     }
-
-    SessionId GetSessionId() const { return sessionId; }
-
-  private:
-    SessionId sessionId;
 };
 
 /** Static bus listener */
@@ -167,10 +160,10 @@ int main(int argc, char** argv, char** envArg)
 
     /* Begin discovery on the well-known name of the service to be called */
     if (ER_OK == status) {
-        uint32_t disposition = 0;
-        status = g_msgBus->FindAdvertisedName(SERVICE_NAME, disposition);
-        if ((status != ER_OK) || (disposition != ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS)) {
-            printf("org.alljoyn.Bus.FindAdvertisedName failed (%s) (disposition=%d)\n", QCC_StatusText(status), disposition);
+        uint32_t returnValue = 0;
+        status = g_msgBus->FindAdvertisedName(SERVICE_NAME, returnValue);
+        if ((status != ER_OK) || (returnValue != ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS)) {
+            printf("org.alljoyn.Bus.FindAdvertisedName failed (%s) (returnValue=%d)\n", QCC_StatusText(status), returnValue);
             status = (status == ER_OK) ? ER_FAIL : status;
         }
     }
@@ -186,7 +179,7 @@ int main(int argc, char** argv, char** envArg)
 
     ProxyBusObject remoteObj;
     if (ER_OK == status) {
-        remoteObj = ProxyBusObject(*g_msgBus, SERVICE_NAME, SERVICE_PATH, g_busListener.GetSessionId());
+        remoteObj = ProxyBusObject(*g_msgBus, SERVICE_NAME, SERVICE_PATH, s_sessionId);
         const InterfaceDescription* alljoynTestIntf = g_msgBus->GetInterface(INTERFACE_NAME);
         assert(alljoynTestIntf);
         remoteObj.AddInterface(*alljoynTestIntf);

@@ -17,13 +17,13 @@ Import('env')
 clientDistDir = '$DISTDIR/samples/basic'
 
 # Sample Programs
-#progs = [
-#    env.Program('basic_service',  ['basic_service.cc']),
-#    env.Program('basic_client',   ['basic_client.cc']),
-#    env.Program('signal_service', ['signal_service.cc']),
-#    env.Program('nameChange_client', ['nameChange_client.cc']),
-#    env.Program('signalConsumer_client', ['signalConsumer_client.cc'])
-#    ]
+progs = [
+    env.Program('basic_service',  ['basic_service.cc']),
+    env.Program('basic_client',   ['basic_client.cc']),
+    env.Program('signal_service', ['signal_service.cc']),
+    env.Program('nameChange_client', ['nameChange_client.cc']),
+    env.Program('signalConsumer_client', ['signalConsumer_client.cc'])
+    ]
 
-#if 'linux' == env['OS']:
-#    env.Install('$DISTDIR/bin/samples/basic', env.Glob('progs'))
+if 'linux' == env['OS']:
+    env.Install('$DISTDIR/bin/samples/basic', env.Glob('progs'))
