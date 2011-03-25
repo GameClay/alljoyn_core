@@ -589,7 +589,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             /* If a raw sesssion was requested, then teardown the new b2bEp to use it for a raw stream */
             if ((replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) && (optsOut.traffic != SessionOpts::TRAFFIC_MESSAGES)) {
                 ajObj.sessionMapLock.Lock();
-                multimap<pair<String, SessionId>, SessionMapEntry>::iterator it = ajObj.sessionMap.find(key);
+                map<pair<String, SessionId>, SessionMapEntry>::iterator it = ajObj.sessionMap.find(key);
                 if (it != ajObj.sessionMap.end()) {
                     status = ajObj.ShutdownEndpoint(*b2bEp, it->second.fd);
                     if (status != ER_OK) {
