@@ -21,41 +21,64 @@
 #define LOG_TAG "bus-daemon-jni"
 
 //
-// The AllJoyn test program bbdaemon has an alternate personality in that it is
-// built as a static library, somewhat redundantly, libbbdaemon-lib.a.  In
-// this case, the entry point main() is replaced by the function DaemonMain
-// that takes the same parameters.  Calling DaemonMain() here essentially
-// runs the bbdaemon program with its default parameters.
+// The AllJoyn daemon has an alternate personality in that it is built as a
+// static library, liballjoyn-daemon.a.  In this case, the entry point main() is
+// replaced by a function called DaemonMain.  Calling DaemonMain() here
+// essentially runs the AllJoyn daemon like it had been run on the command line.
 //
-// The fact that the daemon is run with its default parameters is very
-// important as this defines how services or clients must connect to it
-// (the unix domain sockets) and which TCP port it uses to communicate with
-// other daemons.  Neither of these is a shared resource, so this ulitmately
-// means that only one of these services can run on a phone at any given
-// time.
-//
-extern int DaemonMain(int argc, char** argv);
+extern int DaemonMain(int argc, char** argv, char* config, char*logLevels);
 
-void Java_org_alljoyn_bus_daemonservice_DaemonService_runDaemon(JNIEnv* env, jobject thiz)
+void do_log(const char* format, ...)
 {
-    char const* name = "bus-daemon-jni";
+    va_list arglist;
+
+    va_start(arglist, format);
+    __android_log_vprint(ANDROID_LOG_DEBUG, LOG_TAG, format, arglist);
+    va_end(arglist);
+
+    return;
+}
+
+
+void Java_org_alljoyn_bus_daemonservice_DaemonService_runDaemon(JNIEnv* env, jobject thiz, jobjectArray jargv, jstring jconfig, jstring jloglevels)
+{
+    int i;
+    jsize argc;
+
+    do_log("runDaemon()\n");
+
+    argc = (*env)->GetArrayLength(env, jargv);
+    do_log("runDaemon(): argc = %d\n", argc);
+
+    int nBytes = argc * sizeof(char*);
+    do_log("runDaemon(): nBytes = %d\n", nBytes);
+
+    do_log("runDaemon(): malloc(%d)\n", nBytes);
+    char const** argv  = (char const**)malloc(nBytes);
+
+    for (i = 0; i < argc; ++i) {
+        do_log("runDaemon(): copy out string %d\n", i);
+        jstring jstr = (*env)->GetObjectArrayElement(env, jargv, i);
+        do_log("runDaemon(): set pointer in argv[%d]\n", i);
+        argv[i] = (*env)->GetStringUTFChars(env, jstr, 0);
+        do_log("runDaemon(): argv[%d] = %s\n", i, argv[i]);
+    }
+
+    char const* config = (*env)->GetStringUTFChars(env, jconfig, 0);
+    do_log("runDaemon(): config = %s\n", config);
+
+    char const* loglevels = (*env)->GetStringUTFChars(env, jloglevels, 0);
+    do_log("runDaemon(): config = %s\n", loglevels);
 
     //
-    // Make a log entry saying that the daemon was run.
+    // Run the alljoyn-daemon providing the array of environment strings as the
+    // (shell) environment for the daemon.
     //
-    __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "runDaemon(): calling DaemonMain()\n");
+    do_log("runDaemon(): calling DaemonMain()\n");
+    int rc = DaemonMain(argc, (char**)argv, (char*)config, (char*)loglevels);
 
-    //
-    // Run the bbdaemon test program with no arguments.
-    //
-    int rc = DaemonMain(1, (char**)&name);
+    (*env)->ReleaseStringUTFChars(env, jloglevels, loglevels);
+    (*env)->ReleaseStringUTFChars(env, jconfig, config);
 
-    //
-    // Make a log entry saying that the daemon has returned.  We don't expect
-    // this to happen unless bbdaemon detects an error and shuts down, so we
-    // take care to log the return code.  If Android decides to kill the
-    // service, we expect it will do so via a SIGKILL, and we will never know
-    // it happened.
-    //
-    __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, "runDaemon(): back from DaemonMain(): returned %d\n", rc);
+    free(argv);
 }

@@ -20,6 +20,8 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
 
+import java.util.ArrayList;
+
 //
 // We expect that clients of the Android Bus Daemon Service will ask the
 // Android runtime to instantiate the service using an Intent.  When the
@@ -39,12 +41,11 @@ import android.os.IBinder;
 //     Intent intent = new Intent("org.alljoyn.bus.daemonservice.START_DAEMON");
 //     this.startService(intent);
 //
-// Since we declare android:process="bbdaemon" in our manifest, the Android
-// system will, in response to the startService() call, create a process for
-// our service, launch it and call our onStartCommand() method.  (We require a
-// 2.0 or greater platform to enable this behavior so we can return START_STICKY.
-// This means that our service will be explicitly stopped and will therefore
-// run for arbitrary lengths of time.
+// The Android system will, in response to the startService() call, create a
+// process for our service, launch it and call our onStartCommand() method.
+// (We require a 2.0 or greater platform to enable this behavior so we can
+// return START_STICKY.  This means that our service must be explicitly stopped
+// and will therefore run for arbitrary lengths of time.
 //
 // Once a service has been started, the Android system will try to keep it
 // running.  If we return START_STICKY, the service will be kept around until
@@ -86,13 +87,13 @@ import android.os.IBinder;
 //
 public class DaemonService extends Service {
     //
-    // Load the JNI library that holds all of the AllJoyn code.  The test program,
-    // bbdaemon has been made into a static library that exports the function
+    // Load the JNI library that holds all of the AllJoyn code.  The alljoyn
+	// daemon has been made into a static library that exports the function
     // DaemonMain() instead of being an executable with a main() entry point.
     // Our JNI code links against this static library and produces a dynamic
     // library that exports a function (runDaemon) that simply calls into the
-    // static libbbdaemon-lib.a library.  This effectively runs bbdaemon with
-    // its default parameters when the Android system detects a need for the
+    // static liballjoyn-daemon.a library.  This effectively runs alljoyn-daemon
+    // when the Android system detects a need for the
     // "org.alljoyn.bus.daemonservice.START_DAEMON" Action to be serviced.
     //
     static {
@@ -102,7 +103,7 @@ public class DaemonService extends Service {
     //
     // Declaration of the JNI function that will actually run the daemon.
     //
-    public static native int runDaemon();
+    public static native int runDaemon(Object[] argv, String config, String loglevels);
 
     //
     // Execute the daemon main "program" in a thread in case we somehow get
@@ -116,25 +117,21 @@ public class DaemonService extends Service {
     // system (perhaps due to the low memory killer, perhaps due to another
     // kill request).
     //
+    // We pass the mEnvironment array which consists of a number of environment
+    // variables and values which ultimately came from the intent that caused
+    // the service to be run.
+    //
     class DaemonThread extends Thread {
-
         public void run()
         {
-            runDaemon();
+        	runDaemon(mArgv.toArray(), mConfig, mLoglevels);
         }
     }
 
-    //
-    // This method is called the first time the service is launched.  We just
-    // spin up a thread to run the bbdaemon library main function and return.
-    //
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        thread = new DaemonThread();
-        thread.start();
-    }
-
+    private ArrayList<String> mArgv;
+    private String mConfig;
+    private String mLoglevels;
+    
     //
     // We need to override this method so we can return START_STICKY.  This
     // may be called multiple times whenever a new service user pops up.
@@ -142,7 +139,20 @@ public class DaemonService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId)
     {
-        //
+    	//
+    	// We allow the activity that starts our service to pass an array
+    	// of strings as an extra which we will interpret as environment
+    	// variables and associated values.  For example, "ER_DEBUG_NS=7" and/or
+    	// "BUS_SERVER_ADDRESSES=unix:abstract=yadda,tcp:addr=0.0.0.0,port=9954"
+    	//
+    	mArgv = intent.getStringArrayListExtra("argv");
+    	mConfig = intent.getStringExtra("config");
+    	mLoglevels = intent.getStringExtra("loglevels");
+    	
+        thread = new DaemonThread();
+        thread.start();
+    	
+    	//
         // START_STICKY means that the service is expected to run for arbitrary
         // lengths of time and will be explicitly started and stopped.
         //

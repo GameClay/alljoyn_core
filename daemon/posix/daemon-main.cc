@@ -39,6 +39,7 @@
 #include <qcc/StringUtil.h>
 #include <qcc/Environ.h>
 #include <qcc/FileStream.h>
+#include <qcc/Log.h>
 #include <qcc/Logger.h>
 #include <qcc/Util.h>
 
@@ -130,7 +131,7 @@ class OptParse {
     OptParse(int argc, char** argv) :
         argc(argc), argv(argv), fork(false), noFork(false), noBT(false), noTCP(false),
         printAddressFd(-1), printPidFd(-1),
-        session(false), system(false), internal(false), verbosity(LOG_WARNING)
+        session(false), system(false), internal(false), configService(false), verbosity(LOG_WARNING)
     { }
 
     ParseResultCode ParseResult();
@@ -144,6 +145,7 @@ class OptParse {
     int GetPrintPidFd() const { return printPidFd; }
     int GetVerbosity() const { return verbosity; }
     bool GetInternalConfig() const { return internal; }
+    bool GetServiceConfig() const { return configService; }
 
   private:
     int argc;
@@ -159,6 +161,7 @@ class OptParse {
     bool session;
     bool system;
     bool internal;
+    bool configService;
     int verbosity;
 
     void PrintUsage();
@@ -181,6 +184,10 @@ void OptParse::PrintUsage()
             "        Use the standard configuration for the system message bus.\n\n"
             "    --internal\n"
             "        Use a basic internally defined message bus for AllJoyn.\n\n"
+#if defined(QCC_OS_ANDROID) && defined(DAEMON_LIB)
+            "    --config-service\n"
+            "        Use a configuration passed from the calling service.\n\n"
+#endif
             "    --config-file=FILE\n"
             "        Use the specified configuration file.\n\n"
             "    --print-address[=DESCRIPTOR]\n"
@@ -263,6 +270,14 @@ OptParse::ParseResultCode OptParse::ParseResult()
                 goto exit;
             }
             configFile = arg.substr(sizeof("--config-file"));
+#if defined(QCC_OS_ANDROID) && defined(DAEMON_LIB)
+        } else if (arg.compare(0, sizeof("--config-service") - 1, "--config-service") == 0) {
+            if (!configFile.empty() || internal) {
+                result = PR_OPTION_CONFLICT;
+                goto exit;
+            }
+            configService = true;
+#endif
         } else if (arg.compare(0, sizeof("--print-address") - 1, "--print-address") == 0) {
             if (arg[sizeof("--print-address") - 1] == '=') {
                 printAddressFd = StringToI32(arg.substr(sizeof("--print-address")), 10, -2);
@@ -526,11 +541,25 @@ int daemon(OptParse& opts)
     return DAEMON_EXIT_OK;
 }
 
-
+//
+// This code can be run as a native executable, in which case the linker arranges to
+// call main(), or it can be run as an Android Service.  In this case, the daemon
+// is implemented as a static library which is linked into a JNI dynamic library and
+// called from the Java service code.
+//
+#if defined(DAEMON_LIB)
+extern "C" int DaemonMain(int argc, char** argv, char* serviceConfig, char* logLevels)
+#else
 int main(int argc, char** argv, char** env)
+#endif
 {
-#ifdef QCC_OS_ANDROID
-    // Initialize the environment for Andriod
+//
+// Initialize the environment for Android if we use the command line to run the
+// daemon.  If we are using the Android service launcher, there is no environment
+// there, so we use arguments and a passed-in config file which we deal with in
+// a bit.
+//
+#if defined(QCC_OS_ANDROID) && !defined(DAEMON_LIB)
     environ = env;
 #endif
 
@@ -555,9 +584,19 @@ int main(int argc, char** argv, char** env)
 
     loggerSettings->SetLevel(opts.GetVerbosity());
 
+#if defined(QCC_OS_ANDROID) && defined(DAEMON_LIB)
+    QCC_SetLogLevels(logLevels);
+    QCC_UseOSLogging(true);
+#endif
+
     if (opts.GetInternalConfig()) {
         StringSource src(internalConfig);
         config->LoadSource(src);
+#if defined(QCC_OS_ANDROID) && defined(DAEMON_LIB)
+    } else if (opts.GetServiceConfig()) {
+        StringSource src(serviceConfig);
+        config->LoadSource(src);
+#endif
     } else {
         config->SetConfigFile(opts.GetConfigFile());
         if (!config->LoadConfigFile()) {
