@@ -503,8 +503,8 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             /* Step 2: Send a session attach */
             if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
                 const String nextControllerName = b2bEp->GetRemoteName();
-                status = ajObj.SendAttachSession(sessionPort, msg->GetSender(), sessionHost,
-                                                 b2bEpName.c_str(), nextControllerName.c_str(), optsIn, replyCode, id, optsOut);
+                status = ajObj.SendAttachSession(sessionPort, msg->GetSender(), sessionHost, b2bEpName.c_str(),
+                                                 nextControllerName.c_str(), busAddr.c_str(), optsIn, replyCode, id, optsOut);
                 if (status != ER_OK) {
                     QCC_LogError(status, ("AttachSession to %s failed", nextControllerName.c_str()));
                     replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
@@ -740,35 +740,34 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     const char* src;
     const char* dest;
     const char* srcB2B;
+    const char* busAddr;
     SessionOpts optsIn;
+    RemoteEndpoint* srcB2BEp = NULL;
 
     size_t na;
     const MsgArg* args;
     msg->GetArgs(na, args);
-    QStatus status = MsgArg::Get(args, na, "ysss"SESSIONOPTS_SIG, &sessionPort, &src, &dest, &srcB2B, &optsIn.traffic, &optsIn.proximity, &optsIn.transports);
+    QStatus status = MsgArg::Get(args, na, "yssss"SESSIONOPTS_SIG, &sessionPort, &src, &dest, &srcB2B, &busAddr, 
+                                 &optsIn.traffic, &optsIn.proximity, &optsIn.transports);
 
-    if (status == ER_OK) {
-        QCC_DbgTrace(("AllJoynObj::AttachSession(%d, %s, %s, %s, <%x, %x, %x>)", sessionPort, src, dest, srcB2B, optsIn.traffic, optsIn.proximity, optsIn.transports));
-    } else {
+    if (status != ER_OK) {
         QCC_DbgTrace(("AllJoynObj::AttachSession(<bad args>)"));
         replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-    }
+    } else {
+        QCC_DbgTrace(("AllJoynObj::AttachSession(%d, %s, %s, %s, %s, <%x, %x, %x>)", sessionPort, src, dest, srcB2B, busAddr,
+                      optsIn.traffic, optsIn.proximity, optsIn.transports));
 
-    router.LockNameTable();
-    discoverMapLock.Lock();
+        router.LockNameTable();
+        discoverMapLock.Lock();
+        virtualEndpointsLock.Lock();
 
-    RemoteEndpoint* srcB2BEp = NULL;
-    if (status == ER_OK) {
         BusEndpoint* destEp = router.FindEndpoint(dest);
-
+        
         /* Determine if the dest is local to this daemon */
-        if (!destEp) {
-            /* no route */
-            replyCode = ALLJOYN_JOINSESSION_REPLY_UNREACHABLE;
-        } else if ((destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_REMOTE) ||
-                   (destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_LOCAL)) {
+        if (destEp && ((destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_REMOTE) ||
+                       (destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_LOCAL))) {
             /* This daemon serves dest directly */
-
+            
             /* Check for a session in the session map */
             SessionMapEntry sme;
             bool foundSessionMapEntry = false;
@@ -814,6 +813,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                         }
 
                         /* Give the receiver a chance to accept or reject the new member */
+                        virtualEndpointsLock.Unlock();
                         discoverMapLock.Unlock();
                         router.UnlockNameTable();
                         bool isAccepted = false;
@@ -823,6 +823,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                         }
                         router.LockNameTable();
                         discoverMapLock.Lock();
+                        virtualEndpointsLock.Lock();
 
                         if (isAccepted) {
                             /* Add new joiner to members */
@@ -859,43 +860,89 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                     QCC_LogError(status, ("Cannot locate srcEp or srcB2BEp"));
                 }
             }
-        } else if (destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL) {
-            /* This daemon routes indirectly to dest */
+        } else {
+            /* This daemon will attempt to route indirectly to dest */
 
-            /* Get a session compatible b2b ep for dest */
-            VirtualEndpoint* vDestEp = static_cast<VirtualEndpoint*>(destEp);
-            RemoteEndpoint* destB2B = vDestEp->GetSessionCompatibleB2B(optsIn);
-            if (destB2B) {
+            /* Ask the transport for an endpoint */
+            virtualEndpointsLock.Unlock();
+            discoverMapLock.Unlock();
+            router.UnlockNameTable();
+            RemoteEndpoint* b2bEp = NULL;
+            String b2bEpName;
+            TransportList& transList = bus.GetInternal().GetTransportList();
+            Transport* trans = transList.GetTransport(busAddr);
+            if (trans == NULL) {
+                replyCode = ALLJOYN_JOINSESSION_REPLY_UNREACHABLE;
+            } else {
+                status = trans->Connect(busAddr, &b2bEp);
+                if (status == ER_OK) {
+                    b2bEpName = b2bEp->GetUniqueName();
+                } else {
+                    QCC_LogError(status, ("trans->Connect(%s) failed", busAddr));
+                    replyCode = ALLJOYN_JOINSESSION_REPLY_CONNECT_FAILED;
+                }
+            }
+
+            if (!b2bEpName.empty()) {
                 /* Forward AttachSession to next hop */
                 SessionId tempId;
                 SessionOpts tempOpts;
-                const String b2bEpName = destB2B->GetUniqueName();
-                const String nextControllerName = destB2B->GetRemoteName();
+                const String nextControllerName = b2bEp->GetRemoteName();
 
                 /* Unlock in preparation for sync method call. Ep pointers are unsafe after this operation */
-                discoverMapLock.Unlock();
-                router.UnlockNameTable();
-                status = SendAttachSession(sessionPort, src, dest, b2bEpName.c_str(), nextControllerName.c_str(), optsIn, replyCode, tempId, tempOpts);
-
-                /* Re-lock */
-                router.LockNameTable();
-                discoverMapLock.Lock();
+                status = SendAttachSession(sessionPort, src, dest, b2bEpName.c_str(), nextControllerName.c_str(), busAddr, 
+                                           optsIn, replyCode, tempId, tempOpts);
 
                 /* If successful, add bi-directional session routes */
                 if ((status == ER_OK) && (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS)) {
+
+                    /* Wait for dest to appear with a route through b2bEp */
+                    uint32_t startTime = GetTimestamp();
+                    router.LockNameTable();
+                    discoverMapLock.Lock();
+                    virtualEndpointsLock.Lock();
+                    VirtualEndpoint* vDestEp = NULL;
+                    while (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
+                        /* Does vSessionEp route through b2bEp? If so, we're done */
+                        BusEndpoint* ep = router.FindEndpoint(dest);
+                        vDestEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
+                        b2bEp = static_cast<RemoteEndpoint*>(router.FindEndpoint(b2bEpName));
+                        if (!b2bEp) {
+                            QCC_LogError(ER_FAIL, ("B2B endpoint disappeared during AttachSession"));
+                            replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+                            break;
+                        } else if (vDestEp && vDestEp->CanUseRoute(*b2bEp)) {
+                            break;
+                        }
+                        /* Otherwise wait */
+                        uint32_t now = GetTimestamp();
+                        if (now > (startTime + 10000)) {
+                            replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+                            QCC_LogError(ER_FAIL, ("AttachSession timed out waiting for destination to appear"));
+                            break;
+                        } else {
+                            /* Give up the locks while waiting */
+                            virtualEndpointsLock.Unlock();
+                            discoverMapLock.Unlock();
+                            router.UnlockNameTable();
+                            qcc::Sleep(10);
+                            router.LockNameTable();
+                            discoverMapLock.Lock();
+                            virtualEndpointsLock.Lock();
+                        }
+                    }
+                    
                     BusEndpoint* ep = router.FindEndpoint(srcB2B);
                     RemoteEndpoint* srcB2BEp2 = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
                     ep = router.FindEndpoint(src);
                     VirtualEndpoint* srcEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
-                    vDestEp = static_cast<VirtualEndpoint*>(router.FindEndpoint(dest));
-                    destB2B = vDestEp ? vDestEp->GetSessionCompatibleB2B(optsIn) : NULL;
-
-                    if (srcB2BEp2 && srcEp && vDestEp && destB2B) {
+                    /* Add bi-directional session routes */
+                    if (srcB2BEp2 && srcEp && vDestEp && b2bEp) {
                         id = tempId;
                         optsOut = tempOpts;
                         status = router.AddSessionRoute(dest, id, *srcEp, srcB2BEp2);
                         if (status == ER_OK) {
-                            status = router.AddSessionRoute(src, id, *vDestEp, destB2B);
+                            status = router.AddSessionRoute(src, id, *vDestEp, b2bEp);
                             if (status != ER_OK) {
                                 router.RemoveSessionRoute(dest, id, *srcEp);
                                 QCC_LogError(status, ("AddSessionRoute(%s, %u) failed", src, id));
@@ -914,10 +961,15 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                     replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
                     QCC_LogError(status, ("AttachSession failed"));
                 }
+            } else {
+                router.LockNameTable();
+                discoverMapLock.Lock();
+                virtualEndpointsLock.Lock();
             }
         }
     }
 
+    virtualEndpointsLock.Unlock();
     discoverMapLock.Unlock();
     router.UnlockNameTable();
 
@@ -1003,25 +1055,28 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
                                       const char* dest,
                                       const char* remoteB2BName,
                                       const char* remoteControllerName,
+                                      const char* busAddr,
                                       const SessionOpts& optsIn,
                                       uint32_t& replyCode,
                                       SessionId& id,
                                       SessionOpts& optsOut)
 {
     Message reply(bus);
-    MsgArg attachArgs[5];
+    MsgArg attachArgs[6];
     attachArgs[0].Set("y", sessionPort);
     attachArgs[1].Set("s", src);
     attachArgs[2].Set("s", dest);
     attachArgs[3].Set("s", remoteB2BName);
-    attachArgs[4].Set(SESSIONOPTS_SIG, optsIn.traffic, optsIn.proximity, optsIn.transports);
+    attachArgs[4].Set("s", busAddr);
+    attachArgs[5].Set(SESSIONOPTS_SIG, optsIn.traffic, optsIn.proximity, optsIn.transports);
     ProxyBusObject controllerObj(bus, remoteControllerName, org::alljoyn::Daemon::ObjectPath, 0);
     controllerObj.AddInterface(*daemonIface);
-    QCC_DbgPrintf(("Sending AttachSession(%d, %s, %s, %s, <%x, %x, %x>) to %s",
+    QCC_DbgPrintf(("Sending AttachSession(%u, %s, %s, %s, %s, <%x, %x, %x>) to %s",
                    attachArgs[0].v_uint16,
                    attachArgs[1].v_string.str,
                    attachArgs[2].v_string.str,
                    attachArgs[3].v_string.str,
+                   attachArgs[4].v_string.str,
                    optsIn.proximity, optsIn.traffic, optsIn.transports,
                    remoteControllerName));
 
