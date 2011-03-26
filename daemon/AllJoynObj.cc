@@ -260,7 +260,7 @@ void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Mes
     } else {
         QCC_DbgTrace(("AllJoynObj::BindSession(%s, %d, %s, <%x, %x, %x>)", sender.c_str(), sessionPort,
                       isMultipoint ? "true" : "false", opts.traffic, opts.proximity, opts.transports));
-        
+
         /* Assign or check uniqueness of sessionPort */
         sessionMapLock.Lock();
         if (sessionPort == SESSION_PORT_ANY) {
@@ -291,7 +291,7 @@ void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Mes
                 ++it;
             }
         }
-        
+
         if (replyCode == ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS) {
             /* Assign a session id and store the session information */
             SessionMapEntry entry;
@@ -349,10 +349,10 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
         BusEndpoint* ep = sessionHost ? ajObj.router.FindEndpoint(sessionHost) : NULL;
         VirtualEndpoint* vSessionEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
         RemoteEndpoint* rSessionEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_REMOTE)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
-        
+
         if (rSessionEp) {
             /* Session is with another locally connected attachment */
-            
+
             /* Find creator in session map */
             ajObj.sessionMapLock.Lock();
             String creatorName = rSessionEp->GetUniqueName();
@@ -377,7 +377,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                             newSessionId = qcc::Rand32();
                         } while (newSessionId == 0);
                     }
-                    
+
                     /* Ask creator to accept session */
                     status = ajObj.SendAcceptSession(sit->second.sessionPort, newSessionId, sessionHost, msg->GetSender(), optsIn, isAccepted);
                     if (status != ER_OK) {
@@ -410,7 +410,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                                 sme.id = newSessionId;
                                 ajObj.sessionMap[pair < String, SessionId > (sme.endpointName, sme.id)] = sme;
                             }
-                            
+
                             /* Create a joiner side entry in sessionMap */
                             SessionMapEntry sme = sit->second;
                             sme.endpointName = msg->GetSender();
@@ -428,7 +428,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                             sme.id = newSessionId;
                             sme.fd = fds[0];
                             ajObj.sessionMap[pair < String, SessionId > (sme.endpointName, sme.id)] = sme;
-                            
+
                             /* Create a joiner side entry in sessionMap */
                             sme.endpointName = msg->GetSender();
                             sme.fd = fds[1];
@@ -449,7 +449,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             ajObj.sessionMapLock.Unlock();
         } else {
             /* Session is with a connected or unconnected remote device */
-            
+
             /* Step 1: If there is a busAddr from advertsement use it to (possibly) create a physical connection */
             ajObj.router.LockNameTable();
             ajObj.discoverMapLock.Lock();
@@ -466,10 +466,10 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             ajObj.virtualEndpointsLock.Unlock();
             ajObj.discoverMapLock.Unlock();
             ajObj.router.UnlockNameTable();
-            
+
             /*
-             * Step 1b: If no advertisment (busAddr) and we are connected to the sesionHost, then ask it directly 
-             * for the busAddr 
+             * Step 1b: If no advertisment (busAddr) and we are connected to the sesionHost, then ask it directly
+             * for the busAddr
              */
             if (vSessionEp && busAddr.empty()) {
                 status = ajObj.SendGetSessionInfo(sessionHost, sessionPort, optsIn, busAddr);
@@ -499,7 +499,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                 /* No advertisment or existing route to session creator */
                 replyCode = ALLJOYN_JOINSESSION_REPLY_NO_SESSION;
             }
-            
+
             /* Step 2: Send a session attach */
             if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
                 const String nextControllerName = b2bEp->GetRemoteName();
@@ -528,7 +528,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                 } else if (vSessionEp && vSessionEp->CanUseRoute(*b2bEp)) {
                     break;
                 }
-                        
+
                 /* Otherwise wait */
                 uint32_t now = GetTimestamp();
                 if (now > (startTime + 10000)) {
@@ -546,7 +546,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                     ajObj.virtualEndpointsLock.Lock();
                 }
             }
-            
+
             /* If session was successful, Add two-way session routes to the table */
             if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
                 BusEndpoint* joinerEp = ajObj.router.FindEndpoint(msg->GetSender());
@@ -569,7 +569,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                     QCC_LogError(ER_BUS_NO_ENDPOINT, ("Cannot find joiner endpoint %s", msg->GetSender()));
                 }
             }
-            
+
             /* Create session map entry */
             pair<String, SessionId> key(msg->GetSender(), id);
             bool sessionMapEntryCreated = false;
@@ -585,7 +585,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                 ajObj.sessionMapLock.Unlock();
                 sessionMapEntryCreated = true;
             }
-            
+
             /* If a raw sesssion was requested, then teardown the new b2bEp to use it for a raw stream */
             if ((replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) && (optsOut.traffic != SessionOpts::TRAFFIC_MESSAGES)) {
                 ajObj.sessionMapLock.Lock();
@@ -602,19 +602,19 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                 }
                 ajObj.sessionMapLock.Unlock();
             }
-            
+
             /* If session was unsuccessful, cleanup sessionMap */
             if (sessionMapEntryCreated && (replyCode != ALLJOYN_JOINSESSION_REPLY_SUCCESS)) {
                 ajObj.sessionMapLock.Lock();
                 ajObj.sessionMap.erase(key);
                 ajObj.sessionMapLock.Unlock();
             }
-            
+
             /* If session was unsuccessful, we need to cleanup any b2b ep that was created */
             if (replyCode != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
                 b2bEp->DecrementRef();
             }
-            
+
             ajObj.virtualEndpointsLock.Unlock();
             ajObj.discoverMapLock.Unlock();
             ajObj.router.UnlockNameTable();
@@ -747,7 +747,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     size_t na;
     const MsgArg* args;
     msg->GetArgs(na, args);
-    QStatus status = MsgArg::Get(args, na, "yssss"SESSIONOPTS_SIG, &sessionPort, &src, &dest, &srcB2B, &busAddr, 
+    QStatus status = MsgArg::Get(args, na, "yssss"SESSIONOPTS_SIG, &sessionPort, &src, &dest, &srcB2B, &busAddr,
                                  &optsIn.traffic, &optsIn.proximity, &optsIn.transports);
 
     if (status != ER_OK) {
@@ -762,12 +762,12 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
         virtualEndpointsLock.Lock();
 
         BusEndpoint* destEp = router.FindEndpoint(dest);
-        
+
         /* Determine if the dest is local to this daemon */
         if (destEp && ((destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_REMOTE) ||
                        (destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_LOCAL))) {
             /* This daemon serves dest directly */
-            
+
             /* Check for a session in the session map */
             SessionMapEntry sme;
             bool foundSessionMapEntry = false;
@@ -890,7 +890,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                 const String nextControllerName = b2bEp->GetRemoteName();
 
                 /* Unlock in preparation for sync method call. Ep pointers are unsafe after this operation */
-                status = SendAttachSession(sessionPort, src, dest, b2bEpName.c_str(), nextControllerName.c_str(), busAddr, 
+                status = SendAttachSession(sessionPort, src, dest, b2bEpName.c_str(), nextControllerName.c_str(), busAddr,
                                            optsIn, replyCode, tempId, tempOpts);
 
                 /* If successful, add bi-directional session routes */
@@ -931,7 +931,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                             virtualEndpointsLock.Lock();
                         }
                     }
-                    
+
                     BusEndpoint* ep = router.FindEndpoint(srcB2B);
                     RemoteEndpoint* srcB2BEp2 = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
                     ep = router.FindEndpoint(src);
@@ -1151,7 +1151,7 @@ QStatus AllJoynObj::SendGetSessionInfo(const char* creatorName,
     sendArgs[2].Set(SESSIONOPTS_SIG, &opts.traffic, &opts.proximity, &opts.transports);
 
     String controllerName(creatorName);
-    controllerName = controllerName.substr(0, controllerName.find_first_of('.')+1);
+    controllerName = controllerName.substr(0, controllerName.find_first_of('.') + 1);
     controllerName.append('1');
 
     ProxyBusObject rObj(bus, controllerName.c_str(), org::alljoyn::Daemon::ObjectPath, 0);
