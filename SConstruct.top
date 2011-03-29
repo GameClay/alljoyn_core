@@ -20,9 +20,6 @@ env = SConscript(['build_core/SConscript'])
 
 # Add/remove projects from build
 env.SConscript(['alljoyn_core/SConscript'])
-###
-### 20110222, awallace: do not build the java code unless/until the API changes
-###                     to support "sessions" are in alljoyn_java
-### env.SConscript(['alljoyn_java/SConscript'])
+env.SConscript(['alljoyn_java/SConscript'])
 
 
