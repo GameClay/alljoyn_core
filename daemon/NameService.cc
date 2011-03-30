@@ -2725,6 +2725,13 @@ void NameService::HandleProtocolMessage(uint8_t const* buffer, uint32_t nbytes, 
         return;
     }
 
+    //
+    // We only understand version zero packets for now.
+    //
+    if (header.GetVersion() != 0) {
+        QCC_DbgPrintf(("NameService::HandleProtocolMessage(): Unknown version: Error\n"));
+        return;
+    }
 
     //
     // If the received packet contains questions, see if we can answer them.
