@@ -52,6 +52,7 @@ class _AdapterObject : public ProxyBusObject {
     _AdapterObject() { }
     _AdapterObject(BusAttachment& bus,
                    const qcc::String& path);
+    bool operator==(const _AdapterObject& other) const { return address == other.address; }
 };
 
 typedef qcc::ManagedObj<_AdapterObject> AdapterObject;
