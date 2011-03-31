@@ -28,8 +28,8 @@
 
 #include <alljoyn/BusAttachment.h>
 
-#include "BDAddress.h"
 #include "BlueZUtils.h"
+#include "BTNodeDB.h"
 #include "RemoteEndpoint.h"
 
 
@@ -43,18 +43,17 @@ class BTEndpoint : public RemoteEndpoint {
      */
     BTEndpoint(BusAttachment& bus,
                bool incoming,
-               const qcc::String& connectSpec,
                qcc::SocketFd sockFd,
-               const BDAddress& addr) :
-        RemoteEndpoint(bus, incoming, connectSpec, sockStream, "bluetooth"),
+               const BTBusAddress& addr) :
+        RemoteEndpoint(bus, incoming, addr.ToSpec(), sockStream, "bluetooth"),
         sockStream(sockFd), addr(addr)
     { }
 
-    const BDAddress& GetBDAddress() const { return addr; }
+    const BTBusAddress& GetBDAddress() const { return addr; }
 
   private:
     bluez::BTSocketStream sockStream;
-    BDAddress addr;
+    BTBusAddress addr;
 };
 
 } // namespace ajn

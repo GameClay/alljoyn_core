@@ -36,6 +36,7 @@
 
 #include "BDAddress.h"
 #include "BTController.h"
+#include "BTNodeDB.h"
 #include "RemoteEndpoint.h"
 #include "Transport.h"
 
@@ -203,6 +204,16 @@ class BTTransport :
     void BTDeviceAvailable(bool avail) { btController->BTDeviceAvailable(avail); }
 
     /**
+     * Check if it is OK to accept the incoming connection from the specified
+     * address.
+     *
+     * @param addr  BT device address to check
+     *
+     * @return  true if OK to accept the connection, false otherwise.
+     */
+    bool CheckIncomingAddress(const BDAddress& addr) const { return btController->CheckIncomingAddress(addr); }
+
+    /**
      * Callback for BTEndpoint thead exit.
      *
      * @param endpoint   BTEndpoint instance that has exited.
@@ -295,14 +306,9 @@ class BTTransport :
      *
      * @return  ER_OK if successful.
      */
-    QStatus Connect(const BDAddress& bdAddr,
-                    uint16_t psm,
+    QStatus Connect(const BTBusAddress& addr,
                     RemoteEndpoint** newep);
-    QStatus Connect(const BDAddress& bdAddr,
-                    uint16_t psm)
-    {
-        return Connect(bdAddr, psm, NULL);
-    }
+    QStatus Connect(const BTBusAddress& addr) { return Connect(addr, NULL); }
 
     /**
      * Internal disconnect method to remove a bus connection from a given BD Address.
@@ -311,7 +317,7 @@ class BTTransport :
      *
      * @return  ER_OK if successful.
      */
-    QStatus Disconnect(const BDAddress& bdAddr);
+    QStatus Disconnect(const BTBusAddress& addr);
 
     /**
      * Called by BTAccessor to inform transport of an AllJoyn capable device.
@@ -356,14 +362,14 @@ class BTTransport :
      * @param bdAddr    BD address of the connectable node
      * @param psm       The L2CAP PSM number for the AllJoyn service
      * @param adInfo    The complete list of names to advertise and their associated GUIDs
-     * @param duration      Find duration in seconds (0 = forever)
+     * @param duration  Find duration in seconds (0 = forever)
      *
      * @return  ER_OK if successful
      */
     virtual QStatus StartAdvertise(uint32_t uuidRev,
                                    const BDAddress& bdAddr,
                                    uint16_t psm,
-                                   const BluetoothDeviceInterface::AdvertiseInfo& adInfo,
+                                   const BTNodeDB& adInfo,
                                    uint32_t duration = 0);
 
     /**
@@ -410,25 +416,25 @@ class BTTransport :
      * establish a connection and get the list of advertised names.
      *
      * @param addr      BD address of the device of interest.
-     * @param connAddr  [OUT] Address of the Bluetooth device accepting connections.
      * @param uuidRev   [OUT] UUID revision number.
-     * @param psm       [OUT] L2CAP PSM that is accepting AllJoyn connections.
+     * @param connAddr  [OUT] Address of the Bluetooth device accepting connections.
+     * @param connPSM   [OUT] L2CAP PSM that is accepting AllJoyn connections.
      * @param adInfo    [OUT] Advertisement information.
      *
      * @return  ER_OK if successful
      */
     virtual QStatus GetDeviceInfo(const BDAddress& addr,
-                                  BDAddress& connAddr,
                                   uint32_t& uuidRev,
+                                  BDAddress& connAddr,
                                   uint16_t& psm,
-                                  BluetoothDeviceInterface::AdvertiseInfo& adInfo);
+                                  BTNodeDB& adInfo);
 
 
     BusAttachment& bus;                            /**< The message bus for this transport */
     BTAccessor* btAccessor;                        /**< Object for accessing the Bluetooth device */
     BTController* btController;                    /**< Bus Object that manages the BT topology */
     std::map<qcc::String, qcc::String> serverArgs; /**< Map of server configuration args */
-    std::vector<RemoteEndpoint*> threadList;           /**< List of active BT endpoints */
+    std::vector<RemoteEndpoint*> threadList;       /**< List of active BT endpoints */
     qcc::Mutex threadListLock;                     /**< Mutex that protects threadList */
     TransportListener* listener;
     bool transportIsStopping;                      /**< The transport has recevied a stop request */

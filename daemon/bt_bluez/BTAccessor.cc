@@ -106,6 +106,7 @@ static const char alljoynUUIDBase[] = ALLJOYN_BT_UUID_BASE;
 #define ALLJOYN_BT_UUID_REV_SIZE (sizeof("12345678") - 1)
 #define ALLJOYN_BT_UUID_BASE_SIZE (sizeof(alljoynUUIDBase) - 1)
 
+
 static const char sdpXmlTemplate[] =
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
     "<record>"
@@ -142,10 +143,10 @@ static const char sdpXmlTemplate[] =
     "        <text value=\"%s\"/>"      // Filled in with dynamically determined BD Address
     "    </attribute>"
     "    <attribute id=\"0x0402\">"
-    "        <uint32 value=\"%#08x\"/>" // Filled in with dynamically determined L2CAP PSM number
+    "        <uint16 value=\"%#08x\"/>" // Filled in with dynamically determined L2CAP PSM number
     "    </attribute>"
     "    <attribute id=\"0x0404\">"
-    "        <sequence>%s</sequence>"  // Filled in with advertised names
+    "        <sequence>%s</sequence>"  // Filled in with advertisement information
     "    </attribute>"
     "    <attribute id=\"0x0100\">"
     "        <text value=\"AllJoyn\"/>"
@@ -410,7 +411,7 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
 QStatus BTTransport::BTAccessor::SetSDPInfo(uint32_t uuidRev,
                                             const BDAddress& bdAddr,
                                             uint16_t psm,
-                                            const BluetoothDeviceInterface::AdvertiseInfo& adInfo)
+                                            const BTNodeDB& adInfo)
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::SetSDPInfo(uuidRev = %08x, bdAddr = %s, psm = %04x)",
                   uuidRev, bdAddr.ToString().c_str(), psm));
@@ -423,14 +424,25 @@ QStatus BTTransport::BTAccessor::SetSDPInfo(uint32_t uuidRev,
         }
     } else {
         qcc::String nameList;
-        BluetoothDeviceInterface::_AdvertiseInfo::const_iterator aiit;
-        for (aiit = adInfo->begin(); aiit != adInfo->end(); ++aiit) {
-            BluetoothDeviceInterface::AdvertiseNames::const_iterator anit;
-            nameList += "<sequence><text value=\"" + aiit->first + "\"/><sequence>";
-            for (anit = aiit->second.begin(); anit != aiit->second.end(); ++anit) {
-                nameList += "<text value=\"" + *anit + "\"/>";
+        BTNodeDB::const_iterator nodeit;
+        QCC_DbgPrintf(("Setting SDP record contents:"));
+        for (nodeit = adInfo.Begin(); nodeit != adInfo.End(); ++nodeit) {
+            const BTNodeInfo& node = *nodeit;
+            NameSet::const_iterator nameit;
+            QCC_DbgPrintf(("    %s-%04x:", node->nodeAddr.addr.ToString().c_str(), node->nodeAddr.psm));
+            nameList +=
+                "<sequence>"
+                "  <text value=\"" + node->guid + "\"/>"
+                "  <uint64 value=\"" + U64ToString(node->nodeAddr.addr.GetRaw()) + "\"/>"
+                "  <uint16 value=\"" + U32ToString(node->nodeAddr.psm) + "\"/>"
+                "  <sequence>";
+            for (nameit = node->GetAdvertiseNamesBegin(); nameit != node->GetAdvertiseNamesEnd(); ++nameit) {
+                QCC_DbgPrintf(("        %s", nameit->c_str()));
+                nameList += "<text value=\"" + *nameit + "\"/>";
             }
-            nameList += "</sequence></sequence>";
+            nameList +=
+                "  </sequence>"
+                "</sequence>";
         }
 
         const int sdpXmlSize = (sizeof(sdpXmlTemplate) +
@@ -556,7 +568,7 @@ QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
             shutdown(l2capLFd, SHUT_RDWR);
             close(l2capLFd);
             l2capLFd = -1;
-            psm = BTController::INVALID_PSM;
+            psm = BTBusAddress::INVALID_PSM;
         } else {
             QCC_DbgPrintf(("Bound PSM: %#04x", psm));
             ConfigL2cap(l2capLFd);
@@ -568,7 +580,7 @@ QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
                 shutdown(l2capLFd, SHUT_RDWR);
                 close(l2capLFd);
                 l2capLFd = -1;
-                psm = BTController::INVALID_PSM;
+                psm = BTBusAddress::INVALID_PSM;
             }
         }
     }
@@ -668,6 +680,12 @@ RemoteEndpoint* BTTransport::BTAccessor::Accept(BusAttachment& alljoyn,
     }
 
     remAddr.CopyFrom(remoteAddr.l2cap.bdaddr.b, true);
+    if (!transport->CheckIncomingAddress(remAddr)) {
+        status = ER_BUS_CONNECTION_REJECTED;
+        QCC_DbgPrintf(("Rejected connection from: %s", remAddr.ToString().c_str()));
+        goto exit;
+    }
+
     QCC_DbgPrintf(("Accepted connection from: %s", remAddr.ToString().c_str()));
 
     flags = fcntl(sockFd, F_GETFL);
@@ -676,7 +694,6 @@ RemoteEndpoint* BTTransport::BTAccessor::Accept(BusAttachment& alljoyn,
         status = ER_OS_ERROR;
         QCC_LogError(status, ("Could not set L2CAP socket to non-blocking"));
     }
-
 
 exit:
     if (status != ER_OK) {
@@ -687,8 +704,8 @@ exit:
             sockFd = -1;
         }
     } else {
-        qcc::String connectSpec("bluetooth:addr=" + remAddr.ToString());
-        conn = new BTEndpoint(alljoyn, true, connectSpec, sockFd, remAddr);
+        BTBusAddress dummyAddr;
+        conn = new BTEndpoint(alljoyn, true, sockFd, dummyAddr);
     }
 
     return conn;
@@ -696,17 +713,19 @@ exit:
 
 
 RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
-                                                 const BDAddress& bdAddr,
-                                                 uint16_t psm)
+                                                 const BTBusAddress& addr)
 {
-    const qcc::String& bdAddrStr(bdAddr.ToString());
-    QCC_DbgTrace(("BTTransport::BTAccessor::Connect(bdAddr = %s)", bdAddrStr.c_str()));
+    QCC_DbgTrace(("BTTransport::BTAccessor::Connect(addr = %s-%04x)", addr.addr.ToString().c_str(), addr.psm));
+
+    if (!addr.IsValid()) {
+        return NULL;
+    }
 
     BTEndpoint* conn(NULL);
     int ret;
     int flags;
     int sockFd(-1);
-    BT_SOCKADDR addr;
+    BT_SOCKADDR skaddr;
     QStatus status = ER_OK;
     bool resumeDiscovery = false;
 
@@ -715,21 +734,11 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
         DiscoveryControl(*org.bluez.Adapter.StopDiscovery);
     }
 
-    if (psm == BTController::INVALID_PSM) {
-        status = GetDeviceInfo(bdAddr, NULL, NULL, &psm, NULL);
-        if (status != ER_OK) {
-            if (resumeDiscovery) {
-                DiscoveryControl(*org.bluez.Adapter.StartDiscovery);
-            }
-            return NULL;
-        }
-    }
+    memset(&skaddr, 0, sizeof(skaddr));
 
-    memset(&addr, 0, sizeof(addr));
-
-    addr.l2cap.sa_family = AF_BLUETOOTH;
-    addr.l2cap.psm = htole16(psm);         // BlueZ requires PSM to be in little-endian format
-    bdAddr.CopyTo(addr.l2cap.bdaddr.b, true);
+    skaddr.l2cap.sa_family = AF_BLUETOOTH;
+    skaddr.l2cap.psm = htole16(addr.psm);         // BlueZ requires PSM to be in little-endian format
+    addr.addr.CopyTo(skaddr.l2cap.bdaddr.b, true);
 
     for (int tries = 0; tries < MAX_CONNECT_ATTEMPTS; ++tries) {
         sockFd = socket(AF_BLUETOOTH, SOCK_SEQPACKET, L2CAP_PROTOCOL_ID);
@@ -737,23 +746,23 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
             ConfigL2cap(sockFd);
         } else {
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("Create socket failed - %s (errno: %d - %s)",
-                                  bdAddrStr.c_str(), errno, strerror(errno)));
+            QCC_LogError(status, ("Create socket failed - %s-%04x (errno: %d - %s)",
+                                  addr.addr.ToString().c_str(), addr.psm, errno, strerror(errno)));
             qcc::Sleep(200);
             continue;
         }
-        QCC_DbgPrintf(("BTTransport::BTAccessor::Connect(%s): sockFd = %d PSM = %#04x",
-                       bdAddrStr.c_str(), sockFd, psm));
+        QCC_DbgPrintf(("BTTransport::BTAccessor::Connect(%s-%04x): sockFd = %d",
+                       addr.addr.ToString().c_str(), addr.psm, sockFd));
 
         /* Attempt to connect */
-        ret = connect(sockFd, (struct sockaddr*)&addr, sizeof(addr));
+        ret = connect(sockFd, (struct sockaddr*)&skaddr, sizeof(skaddr));
         if (ret == -1) {
             status = ER_BUS_CONNECT_FAILED;
             close(sockFd);
             sockFd = -1;
             if ((errno == ECONNREFUSED) || (errno == EBADFD)) {
-                QCC_LogError(status, ("Connect failed - %s (errno: %d - %s)",
-                                      bdAddrStr.c_str(), errno, strerror(errno)));
+                QCC_LogError(status, ("Connect failed - %s-%04x (errno: %d - %s)",
+                                      addr.addr.ToString().c_str(), addr.psm, errno, strerror(errno)));
                 qcc::Sleep(200);
                 continue;
             }
@@ -763,8 +772,8 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
         break;
     }
     if (status != ER_OK) {
-        QCC_LogError(status, ("Connect to %s (PSM %#04x) failed (errno: %d - %s)",
-                              bdAddrStr.c_str(), addr.l2cap.psm, errno, strerror(errno)));
+        QCC_LogError(status, ("Connect to %s-%04x failed (errno: %d - %s)",
+                              addr.addr.ToString().c_str(), addr.psm, errno, strerror(errno)));
         goto exit;
     }
     /*
@@ -792,7 +801,8 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
                 QCC_LogError(status, ("Failed to send nul byte (errno: %d - %s)", errno, strerror(errno)));
                 goto exit;
             }
-            QCC_DbgPrintf(("BTTransport::BTAccessor::Connect() success sockFd = %d psm = %#04x", sockFd, psm));
+            QCC_DbgPrintf(("BTTransport::BTAccessor::Connect() success sockFd = %d addr = %s%04x",
+                           sockFd, addr.addr.ToString().c_str(), addr.psm));
             break;
         }
     }
@@ -808,9 +818,7 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
 exit:
 
     if (status == ER_OK) {
-        qcc::String connectSpec("bluetooth:addr=" + bdAddr.ToString() +
-                                ",psm=0x" + U32ToString(psm, 16));
-        conn = new BTEndpoint(alljoyn, false, connectSpec, sockFd, bdAddr);
+        conn = new BTEndpoint(alljoyn, false, sockFd, addr);
     } else {
         if (sockFd > 0) {
             QCC_DbgPrintf(("Closing sockFd: %d", sockFd));
@@ -828,9 +836,9 @@ exit:
 }
 
 
-QStatus BTTransport::BTAccessor::Disconnect(const BDAddress& addr)
+QStatus BTTransport::BTAccessor::Disconnect(const BTBusAddress& addr)
 {
-    QCC_DbgTrace(("BTTransport::BTAccessor::Disconnect(addr = \"%s\")", addr.ToString().c_str()));
+    QCC_DbgTrace(("BTTransport::BTAccessor::Disconnect(addr = %s-%04x)", addr.addr.ToString().c_str(), addr.psm));
     QStatus status(ER_BUS_BAD_TRANSPORT_ARGS);
 
     RemoteEndpoint* ep(NULL);
@@ -1164,10 +1172,10 @@ bool BTTransport::BTAccessor::FindAllJoynUUID(const MsgArg* uuids,
 
 
 QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
-                                               BDAddress* connAddr,
                                                uint32_t* uuidRev,
-                                               uint16_t* psm,
-                                               BluetoothDeviceInterface::AdvertiseInfo* adInfo)
+                                               BDAddress* connAddr,
+                                               uint16_t* connPSM,
+                                               BTNodeDB* adInfo)
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::GetDeviceInfo(addr = %s, ...)", addr.ToString().c_str()));
     QStatus status;
@@ -1203,9 +1211,9 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
                 StringSource rawXmlSrc(record);
                 XmlParseContext xmlctx(rawXmlSrc);
 
-                status = ProcessSDPXML(xmlctx, connAddr, uuidRev, psm, adInfo);
+                status = ProcessSDPXML(xmlctx, uuidRev, connAddr, connPSM, adInfo);
                 if (status == ER_OK) {
-                    QCC_DbgPrintf(("Found AllJoyn UUID: psm %#04x", *psm));
+                    QCC_DbgPrintf(("Found AllJoyn UUID: psm %#04x", *connPSM));
                     break;
                 }
             }
@@ -1221,15 +1229,15 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
 
 
 QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
-                                               BDAddress* connAddr,
                                                uint32_t* uuidRev,
-                                               uint16_t* psm,
-                                               BluetoothDeviceInterface::AdvertiseInfo* adInfo)
+                                               BDAddress* connAddr,
+                                               uint16_t* connPSM,
+                                               BTNodeDB* adInfo)
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::ProcessSDPXML()"));
     bool foundConnAddr = !connAddr;
     bool foundUUIDRev = !uuidRev;
-    bool foundPSM = !psm;
+    bool foundPSM = !connPSM;
     bool foundAdInfo = !adInfo;
     QStatus status;
 
@@ -1302,20 +1310,20 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                     break;
 
                 case ALLJOYN_BT_L2CAP_PSM_ATTR:
-                    if (psm) {
-                        while ((valElem != valElements.end()) && ((*valElem)->GetName().compare("uint32") != 0)) {
+                    if (connPSM) {
+                        while ((valElem != valElements.end()) && ((*valElem)->GetName().compare("uint16") != 0)) {
                             ++valElem;
                         }
                         if (valElem == valElements.end()) {
                             status = ER_FAIL;
-                            QCC_LogError(status, ("Missing uint32 value for PSM number"));
+                            QCC_LogError(status, ("Missing uint16 value for PSM number"));
                             goto exit;
                         }
                         qcc::String psmStr = (*valElem)->GetAttributes().find("value")->second;
                         QCC_DbgPrintf(("    Attribute ID: %04x  ALLJOYN_BT_L2CAP_PSM_ATTR: %s", attrId, psmStr.c_str()));
-                        *psm = StringToU32(psmStr);
-                        if ((*psm < 0x1001) || ((*psm & 0x1) != 0x1) || (*psm > 0x8fff)) {
-                            *psm = BTController::INVALID_PSM;
+                        *connPSM = StringToU32(psmStr);
+                        if ((*connPSM < 0x1001) || ((*connPSM & 0x1) != 0x1) || (*connPSM > 0x8fff)) {
+                            *connPSM = BTBusAddress::INVALID_PSM;
                         }
                         foundPSM = true;
                     }
@@ -1326,13 +1334,14 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                         ProcessXMLAdvertisementsAttr(*valElem, *adInfo);
                         foundAdInfo = true;
 
-                        QCC_DbgPrintf(("    Attribute ID: %04x  ALLJOYN_BT_ADVERTISEMENTS_ATTR:", attrId));
 #ifndef NDEBUG
-                        BluetoothDeviceInterface::_AdvertiseInfo::const_iterator node;
-                        for (node = (*adInfo)->begin(); node != (*adInfo)->end(); ++node) {
-                            QCC_DbgPrintf(("       %s", node->first.c_str()));
-                            BluetoothDeviceInterface::AdvertiseNames::const_iterator name;
-                            for (name = node->second.begin(); name != node->second.end(); ++name) {
+                        QCC_DbgPrintf(("    Attribute ID: %04x  ALLJOYN_BT_ADVERTISEMENTS_ATTR:", attrId));
+                        BTNodeDB::const_iterator nodeit;
+                        for (nodeit = adInfo->Begin(); nodeit != adInfo->End(); ++nodeit) {
+                            const BTNodeInfo& node = *nodeit;
+                            QCC_DbgPrintf(("       %s-%04x", node->nodeAddr.addr.ToString().c_str(), node->nodeAddr.psm));
+                            NameSet::const_iterator name;
+                            for (name = node->GetAdvertiseNamesBegin(); name != node->GetAdvertiseNamesEnd(); ++name) {
                                 QCC_DbgPrintf(("           \"%s\"", name->c_str()));
                             }
                         }
@@ -1347,7 +1356,7 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
             }
         }
 
-        if (((!psm || (*psm == BTController::INVALID_PSM))) ||
+        if (((!connPSM || (*connPSM == BTBusAddress::INVALID_PSM))) ||
             (!foundConnAddr || !foundUUIDRev || !foundPSM || !foundAdInfo)) {
             status = ER_FAIL;
         }
@@ -1361,7 +1370,7 @@ exit:
 }
 
 
-void BTTransport::BTAccessor::ProcessXMLAdvertisementsAttr(const XmlElement* elem, BluetoothDeviceInterface::AdvertiseInfo& adInfo)
+void BTTransport::BTAccessor::ProcessXMLAdvertisementsAttr(const XmlElement* elem, BTNodeDB& adInfo)
 {
     /*
      * The levels of sequence tags is a bit confusing when parsing.  The first
@@ -1373,36 +1382,55 @@ void BTTransport::BTAccessor::ProcessXMLAdvertisementsAttr(const XmlElement* ele
 
     if (elem && (elem->GetName().compare("sequence") == 0)) {
         // This sequence is essentially just a list of nodes.
-        const vector<XmlElement*>& nodes = elem->GetChildren();
+        const vector<XmlElement*>& xmlNodes = elem->GetChildren();
 
-        adInfo->clear();
+        for (size_t i = 0; i < xmlNodes.size(); ++i) {
+            const XmlElement* xmlNode = xmlNodes[i];
 
-        for (size_t i = 0; i < nodes.size(); ++i) {
-            const XmlElement* node = nodes[i];
-
-            if (node && (node->GetName().compare("sequence") == 0)) {
+            if (xmlNode && (xmlNode->GetName().compare("sequence") == 0)) {
                 // This sequence is a map between bus GUIDs and the advertised names for the given node.
-                const vector<XmlElement*>& tupleElements = node->GetChildren();
+                const vector<XmlElement*>& tupleElements = xmlNode->GetChildren();
+                bool gotGUID = false;
+                bool gotBDAddr = false;
+                bool gotPSM = false;
+                bool gotNames = false;
+                BTNodeInfo nodeInfo;
 
-                if ((tupleElements.size() == 2) && tupleElements[0] && tupleElements[1] &&
-                    (tupleElements[0]->GetName().compare("text") == 0) &&
-                    (tupleElements[1]->GetName().compare("sequence") == 0)) {
-                    // Only 2 elements in this sequence: the GUID and another sequence
-                    const qcc::String guid = tupleElements[0]->GetAttribute("value");
-
-                    // This sequence is just the list of advertised names for the given node.
-                    const vector<XmlElement*>& nameList = tupleElements[1]->GetChildren();
-
-                    // A bug in BlueZ adds a space to the end of our text string.
-                    BluetoothDeviceInterface::AdvertiseNames& names = (*adInfo)[Trim(guid)];
-                    names.clear();
-                    for (size_t j = 0; j < nameList.size(); ++j) {
-                        if (nameList[j] && (nameList[j]->GetName().compare("text") == 0)) {
-                            const qcc::String name = nameList[j]->GetAttribute("value");
-                            // A bug in BlueZ adds a space to the end of our text string.
-                            names.insert(Trim(name));
+                for (size_t j = 0; j < tupleElements.size(); ++j) {
+                    if (tupleElements[j]) {
+                        if (tupleElements[j]->GetName().compare("text") == 0) {
+                            String guidStr = tupleElements[j]->GetAttribute("value");
+                            nodeInfo->guid = Trim(guidStr);
+                            QCC_DbgPrintf(("        GUID: %s", nodeInfo->guid.c_str()));
+                            gotGUID = true;
+                        } else if (tupleElements[j]->GetName().compare("uint64") == 0) {
+                            String addrStr = Trim(tupleElements[j]->GetAttribute("value"));
+                            nodeInfo->nodeAddr.addr.SetRaw(StringToU64(addrStr, 0));
+                            QCC_DbgPrintf(("        BDAddress: %s", nodeInfo->nodeAddr.addr.ToString().c_str()));
+                            gotBDAddr = true;
+                        } else if (tupleElements[j]->GetName().compare("uint16") == 0) {
+                            String psmStr = Trim(tupleElements[j]->GetAttribute("value"));
+                            nodeInfo->nodeAddr.psm = StringToU32(psmStr, 0, BTBusAddress::INVALID_PSM);
+                            QCC_DbgPrintf(("        PSM: %#04x", nodeInfo->nodeAddr.psm));
+                            gotPSM = true;
+                        } else if (tupleElements[j]->GetName().compare("sequence") == 0) {
+                            // This sequence is just the list of advertised names for the given node.
+                            const vector<XmlElement*>& nameList = tupleElements[j]->GetChildren();
+                            QCC_DbgPrintf(("        Advertise Names:"));
+                            for (size_t k = 0; k < nameList.size(); ++k) {
+                                if (nameList[k] && (nameList[k]->GetName().compare("text") == 0)) {
+                                    // A bug in BlueZ adds a space to the end of our text string.
+                                    const qcc::String name = Trim(nameList[k]->GetAttribute("value"));
+                                    QCC_DbgPrintf(("            %s", name.c_str()));
+                                    nodeInfo->AddAdvertiseName(name);
+                                }
+                            }
+                            gotNames = true;
                         }
                     }
+                }
+                if (gotGUID && gotBDAddr && gotPSM && gotNames) {
+                    adInfo.AddNode(nodeInfo);
                 }
             }
         }

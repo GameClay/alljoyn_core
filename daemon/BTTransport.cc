@@ -109,8 +109,8 @@ QStatus BTTransport::NormalizeTransportSpec(const char* inSpec, qcc::String& out
             it = argMap.find("psm");
             outSpec.append(",psm=");
             if (it == argMap.end()) {
-                outSpec.append("0x");
-                outSpec += U32ToString(BTController::INVALID_PSM, 16);
+                status = ER_FAIL;
+                QCC_LogError(status, ("'psm=' must be specified for 'bluetooth:'"));
             } else {
                 outSpec += it->second;
             }
@@ -315,43 +315,10 @@ QStatus BTTransport::Connect(const char* connectSpec, RemoteEndpoint** newep)
         return ER_BUS_TRANSPORT_NOT_AVAILABLE;
     }
 
-    QStatus status;
+    String spec(connectSpec);
+    BTBusAddress addr(spec);
 
-    map<qcc::String, qcc::String> argMap;
-    qcc::String normSpec;
-    qcc::String addrArg;
-
-    BDAddress bdAddr;
-    uint16_t psm;
-
-    /* Parse connectSpec */
-    status = NormalizeTransportSpec(connectSpec, normSpec, argMap);
-    if (ER_OK != status) {
-        QCC_LogError(status, ("parsing bluetooth arguments: \"%s\"", connectSpec));
-        goto exit;
-    }
-
-    addrArg = argMap["addr"];
-
-    if (addrArg.empty()) {
-        status = ER_BUS_BAD_TRANSPORT_ARGS;
-        QCC_LogError(status, ("Address not specified."));
-        goto exit;
-    }
-
-    status = bdAddr.FromString(addrArg);
-    if (status != ER_OK) {
-        status = ER_BUS_BAD_TRANSPORT_ARGS;
-        QCC_LogError(status, ("Badly formed Bluetooth device address \"%s\"", argMap["addr"].c_str()));
-        goto exit;
-    }
-
-    psm = StringToU32(argMap["psm"], 0, BTController::INVALID_PSM);
-
-    status = Connect(bdAddr, psm, newep);
-
-exit:
-    return status;
+    return Connect(addr, newep);
 }
 
 QStatus BTTransport::Disconnect(const char* connectSpec)
@@ -361,19 +328,10 @@ QStatus BTTransport::Disconnect(const char* connectSpec)
         return ER_BUS_TRANSPORT_NOT_AVAILABLE;
     }
 
-    /* Normalize and parse the connect spec */
     qcc::String spec;
-    map<qcc::String, qcc::String> argMap;
-    QStatus status = NormalizeTransportSpec(connectSpec, spec, argMap);
+    BTBusAddress addr(spec);
 
-    if (ER_OK == status) {
-        if (argMap.find("addr") != argMap.end()) {
-            BDAddress addr(argMap["addr"]);
-
-            status = Disconnect(addr);
-        }
-    }
-    return status;
+    return Disconnect(addr);
 }
 
 // @@ TODO
@@ -454,7 +412,7 @@ QStatus BTTransport::StopFind()
 QStatus BTTransport::StartAdvertise(uint32_t uuidRev,
                                     const BDAddress& bdAddr,
                                     uint16_t psm,
-                                    const AdvertiseInfo& adInfo,
+                                    const BTNodeDB& adInfo,
                                     uint32_t duration)
 {
     QStatus status = btAccessor->SetSDPInfo(uuidRev, bdAddr, psm, adInfo);
@@ -468,8 +426,8 @@ QStatus BTTransport::StartAdvertise(uint32_t uuidRev,
 QStatus BTTransport::StopAdvertise()
 {
     BDAddress bdAddr;
-    AdvertiseInfo adInfo;
-    btAccessor->SetSDPInfo(BTController::INVALID_UUIDREV, bdAddr, BTController::INVALID_PSM, adInfo);
+    BTNodeDB adInfo;
+    btAccessor->SetSDPInfo(BTController::INVALID_UUIDREV, bdAddr, BTBusAddress::INVALID_PSM, adInfo);
     btAccessor->StopDiscoverability();
     return ER_OK;  // This will ensure that the topology manager stays in the right state.
 }
@@ -516,86 +474,66 @@ void BTTransport::StopListen()
 }
 
 QStatus BTTransport::GetDeviceInfo(const BDAddress& addr,
-                                   BDAddress& connAddr,
                                    uint32_t& uuidRev,
-                                   uint16_t& psm,
-                                   BluetoothDeviceInterface::AdvertiseInfo& adInfo)
+                                   BDAddress& connAddr,
+                                   uint16_t& connPSM,
+                                   BTNodeDB& adInfo)
 {
     if (!btmActive) {
         return ER_BUS_TRANSPORT_NOT_AVAILABLE;
     }
 
-    return btAccessor->GetDeviceInfo(addr, &connAddr, &uuidRev, &psm, &adInfo);
+    return btAccessor->GetDeviceInfo(addr, &uuidRev, &connAddr, &connPSM, &adInfo);
 }
 
 
 
-QStatus BTTransport::Connect(const BDAddress& bdAddr,
-                             uint16_t psm,
+QStatus BTTransport::Connect(const BTBusAddress& addr,
                              RemoteEndpoint** newep)
 {
     QStatus status;
     RemoteEndpoint* conn = NULL;
-    bool useLocal = btController->OKToConnect();
 
-    if (useLocal) {
-        qcc::String authName;
+    qcc::String authName;
 
-        btController->PrepConnect();
+    btController->PrepConnect();
 
-        conn = btAccessor->Connect(bus, bdAddr, psm);
-        status = conn ? ER_OK : ER_FAIL;
+    conn = btAccessor->Connect(bus, addr);
+    if (!conn) {
+        status = ER_FAIL;
+        goto exit;
+    }
 
-        if (status != ER_OK) {
-            goto exit;
-        }
+    /* Initialized the features for this endpoint */
+    conn->GetFeatures().isBusToBus = true;
+    conn->GetFeatures().allowRemote = bus.GetInternal().AllowRemoteMessages();
+    conn->GetFeatures().handlePassing = false;
 
-        /* Initialized the features for this endpoint */
-        conn->GetFeatures().isBusToBus = true;
-        conn->GetFeatures().allowRemote = bus.GetInternal().AllowRemoteMessages();
-        conn->GetFeatures().handlePassing = false;
+    threadListLock.Lock();
+    threadList.push_back(conn);
+    threadListLock.Unlock();
+    QCC_DbgPrintf(("BTTransport::Connect: Calling conn->Establish() [addr = %s-%04x]",
+                   addr.addr.ToString().c_str(), addr.psm));
+    status = conn->Establish("ANONYMOUS", authName);
+    if (status != ER_OK) {
+        QCC_LogError(status, ("BTEndpoint::Establish failed"));
+        EndpointExit(conn);
+        goto exit;
+    }
 
-        threadListLock.Lock();
-        threadList.push_back(conn);
-        threadListLock.Unlock();
-        QCC_DbgPrintf(("BTTransport::Connect: Calling conn->Establish() [bdAddr = %s, psm = %u]",
-                       bdAddr.ToString().c_str(), psm));
-        status = conn->Establish("ANONYMOUS", authName);
-        if (ER_OK != status) {
-            QCC_LogError(status, ("BTEndpoint::Establish failed"));
-            EndpointExit(conn);
-            goto exit;
-        }
+    QCC_DbgPrintf(("Starting endpoint [addr = %s-%04x]", addr.addr.ToString().c_str(), addr.psm));
+    /* Start the endpoint */
+    conn->SetListener(this);
+    status = conn->Start();
+    if (status != ER_OK) {
+        QCC_LogError(status, ("BTEndpoint::Start failed"));
+        EndpointExit(conn);
+        goto exit;
+    }
 
-        QCC_DbgPrintf(("Starting endpoint [bdAddr = %s, ch = %u, psm = %u]", bdAddr.ToString().c_str(), psm));
-        /* Start the endpoint */
-        conn->SetListener(this);
-        status = conn->Start();
-        if (ER_OK != status) {
-            QCC_LogError(status, ("BTEndpoint::Start failed"));
-            EndpointExit(conn);
-            goto exit;
-        }
-
-        /* If transport is closing, then don't allow any new endpoints */
-        if (transportIsStopping) {
-            status = ER_BUS_TRANSPORT_NOT_STARTED;
-        }
-    } else {
-        qcc::String delegate;
-
-        status = btController->ProxyConnect(bdAddr, psm, &delegate);
-
-        if (status == ER_OK) {
-            threadListLock.Lock();
-            std::vector<RemoteEndpoint*>::const_iterator it;
-            for (it = threadList.begin(); it != threadList.end(); ++it) {
-                if ((*it)->GetRemoteName() == delegate) {
-                    conn = *it;
-                }
-            }
-            threadListLock.Unlock();
-        }
+    /* If transport is closing, then don't allow any new endpoints */
+    if (transportIsStopping) {
+        status = ER_BUS_TRANSPORT_NOT_STARTED;
     }
 
 exit:
@@ -609,22 +547,15 @@ exit:
         }
     }
 
-    if (useLocal) {
-        btController->PostConnect(status, conn);
-    }
+    btController->PostConnect(status, conn);
 
     return status;
 }
 
 
-QStatus BTTransport::Disconnect(const BDAddress& bdAddr)
+QStatus BTTransport::Disconnect(const BTBusAddress& addr)
 {
-    QStatus status = btAccessor->Disconnect(bdAddr);
-    if (status == ER_BUS_BAD_TRANSPORT_ARGS) {
-        status = btController->ProxyDisconnect(bdAddr);
-    }
-
-    return status;
+    return btAccessor->Disconnect(addr);
 }
 
 }

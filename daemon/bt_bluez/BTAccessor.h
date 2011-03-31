@@ -36,6 +36,7 @@
 #include "BDAddress.h"
 #include "BlueZUtils.h"
 #include "BTController.h"
+#include "BTNodeDB.h"
 #include "BTTransport.h"
 
 #include <Status.h>
@@ -137,7 +138,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     QStatus SetSDPInfo(uint32_t uuidRev,
                        const BDAddress& bdAddr,
                        uint16_t psm,
-                       const BluetoothDeviceInterface::AdvertiseInfo& adInfo);
+                       const BTNodeDB& adInfo);
 
     /**
      * Make the Bluetooth device connectable.
@@ -172,14 +173,13 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      * that information.
      *
      * @param alljoyn   BusAttachment that will be connected to the resulting endpoint
-     * @param bdAddr    Bluetooth device address to connect to
+     * @param addr      Bluetooth device address to connect to
      * @param psm       L2CAP PSM to connect to
      *
      * @return  A newly instatiated remote endpoint for the Bluetooth connection (NULL indicates a failure)
      */
     RemoteEndpoint* Connect(BusAttachment& alljoyn,
-                            const BDAddress& bdAddr,
-                            uint16_t psm = 0);
+                            const BTBusAddress& addr);
 
     /**
      * Disconnect from the specified remote Bluetooth device.
@@ -188,22 +188,22 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      *
      * @return  ER_OK if successful
      */
-    QStatus Disconnect(const BDAddress& addr);
+    QStatus Disconnect(const BTBusAddress& addr);
 
     /**
      * Perform an SDP queary on the specified device to get the bus information.
      *
      * @param addr      Bluetooth device address to retrieve the SDP record from
-     * @param connAddr  [OUT] Address of the Bluetooth device accepting connections.
      * @param uuidRev   [OUT] Bus UUID revision to found in the SDP record
-     * @param psm       [OUT] L2CAP PSM number accepting connections
+     * @param connAddr  [OUT] Address of the Bluetooth device accepting connections.
+     * @param connPSM   [OUT] L2CAP PSM number accepting connections
      * @param adInfo    [OUT] Map of bus node GUIDs and bus names being advertised
      */
     QStatus GetDeviceInfo(const BDAddress& addr,
-                          BDAddress* connAddr,
                           uint32_t* uuidRev,
-                          uint16_t* psm,
-                          BluetoothDeviceInterface::AdvertiseInfo* adInfo);
+                          BDAddress* connAddr,
+                          uint16_t* connPSM,
+                          BTNodeDB* adInfo);
 
     /**
      * Accessor to get the L2CAP connect event object.
@@ -255,12 +255,12 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
                                 size_t listSize,
                                 uint32_t& uuidRev);
     static QStatus ProcessSDPXML(qcc::XmlParseContext& xmlctx,
-                                 BDAddress* connAddr,
                                  uint32_t* uuidRev,
-                                 uint16_t* psm,
-                                 BluetoothDeviceInterface::AdvertiseInfo* adInfo);
+                                 BDAddress* connAddr,
+                                 uint16_t* connPSM,
+                                 BTNodeDB* adInfo);
     static void ProcessXMLAdvertisementsAttr(const qcc::XmlElement* elem,
-                                             BluetoothDeviceInterface::AdvertiseInfo& adInfo);
+                                             BTNodeDB& adInfo);
     QStatus GetDeviceObjPath(const BDAddress& bdAddr,
                              qcc::String& devObjPath);
     QStatus DiscoveryControl(const InterfaceDescription::Member& method);

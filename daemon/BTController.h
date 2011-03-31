@@ -18,8 +18,8 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  ******************************************************************************/
-#ifndef _ALLJOYN_BLUETOOTHOBJ_H
-#define _ALLJOYN_BLUETOOTHOBJ_H
+#ifndef _ALLJOYN_BTCONTROLLER_H
+#define _ALLJOYN_BTCONTROLLER_H
 
 #include <qcc/platform.h>
 
@@ -36,21 +36,17 @@
 #include <alljoyn/MessageReceiver.h>
 
 #include "BDAddress.h"
+#include "BTNodeDB.h"
 #include "Bus.h"
 #include "NameTable.h"
 
 
 namespace ajn {
 
-//class BTController;
-
 class BluetoothDeviceInterface {
     friend class BTController;
 
   public:
-    typedef std::set<qcc::String> AdvertiseNames;
-    typedef std::map<qcc::String, AdvertiseNames> _AdvertiseInfo;
-    typedef qcc::ManagedObj<_AdvertiseInfo> AdvertiseInfo;
 
     virtual ~BluetoothDeviceInterface() { }
 
@@ -94,7 +90,7 @@ class BluetoothDeviceInterface {
     virtual QStatus StartAdvertise(uint32_t uuidRev,
                                    const BDAddress& bdAddr,
                                    uint16_t psm,
-                                   const AdvertiseInfo& adInfo,
+                                   const BTNodeDB& adInfo,
                                    uint32_t duration = 0) = 0;
 
 
@@ -142,23 +138,22 @@ class BluetoothDeviceInterface {
      * establish a connection and get the list of advertised names.
      *
      * @param addr      BD address of the device of interest.
-     * @param connAddr  [OUT] BD address of the connectable device.
      * @param uuidRev   [OUT] UUID revision number.
+     * @param connAddr  [OUT] BD address of the connectable device.
      * @param psm       [OUT] L2CAP PSM that is accepting AllJoyn connections.
      * @param adInfo    [OUT] Advertisement information.
      *
      * @return  ER_OK if successful
      */
     virtual QStatus GetDeviceInfo(const BDAddress& addr,
-                                  BDAddress& connAddr,
                                   uint32_t& uuidRev,
+                                  BDAddress& connAddr,
                                   uint16_t& psm,
-                                  AdvertiseInfo& adInfo) = 0;
+                                  BTNodeDB& adInfo) = 0;
 
-    virtual QStatus Connect(const BDAddress& bdAddr,
-                            uint16_t psm) = 0;
+    virtual QStatus Connect(const BTBusAddress& addr) = 0;
 
-    virtual QStatus Disconnect(const BDAddress& bdAddr) = 0;
+    virtual QStatus Disconnect(const BTBusAddress& addr) = 0;
 };
 
 
@@ -170,19 +165,6 @@ class BluetoothDeviceInterface {
 class BTController : public BusObject, public NameListener, public qcc::AlarmListener {
   public:
     static const uint32_t INVALID_UUIDREV = 0;      /**< Invalid UUID Revsision number */
-    static const uint16_t INVALID_PSM = 0;          /**< Invalid L2CAP PSM value */
-
-    typedef std::set<qcc::String> NameSet;
-
-    struct NodeState {
-        NameSet advertiseNames;
-        NameSet findNames;
-        qcc::String guid;
-        bool direct;
-        NodeState() : direct(false) { }
-    };
-
-    typedef std::map<qcc::String, NodeState> NodeStateMap;  // key: unique bus name
 
     /**
      * Constructor
@@ -309,31 +291,6 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     void PostConnect(QStatus status, const RemoteEndpoint* ep);
 
     /**
-     * Send a method call to have our master connect to the remote device for
-     * us.
-     *
-     * @param bdAddr   BD Address of device to connect to
-     * @param psm      L2CAP PSM number
-     * @param delegate [OUT] Unique name of the node the proxy connect was sent to
-     *
-     * @return ER_OK if successful.
-     */
-    QStatus ProxyConnect(const BDAddress& bdAddr,
-                         uint16_t psm,
-                         qcc::String* delegate);
-
-    /**
-     * Send a method call to have our master disconnect fromthe remote device
-     * for us.
-     *
-     * @param bdAddr   BD Address of device to disconnect from
-     *
-     * @return ER_OK if successful.
-     */
-    QStatus ProxyDisconnect(const BDAddress& bdAddr);
-
-
-    /**
      * Function for the BT Transport to inform a change in the
      * power/availablity of the Bluetooth device.
      *
@@ -341,6 +298,15 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      */
     void BTDeviceAvailable(bool on);
 
+    /**
+     * Check if it is OK to accept the incoming connection from the specified
+     * address.
+     *
+     * @param addr  BT device address to check
+     *
+     * @return  true if OK to accept the connection, false otherwise.
+     */
+    bool CheckIncomingAddress(const BDAddress& addr) const;
 
     void NameOwnerChanged(const qcc::String& alias,
                           const qcc::String* oldOwner,
@@ -351,7 +317,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
 
     struct NameArgInfo : public AlarmListener {
         BTController& bto;
-        NodeStateMap::const_iterator minion;
+        BTNodeInfo minion;
         MsgArg* args;
         const size_t argsSize;
         const InterfaceDescription::Member* delegateSignal;
@@ -363,22 +329,22 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
             bto(bto), argsSize(size), dispatcher(dispatcher), active(false)
         {
             args = new MsgArg[size];
-            minion = bto.nodeStates.end();
+            minion = bto.self;
         }
         virtual ~NameArgInfo() { delete[] args; }
         virtual void SetArgs() = 0;
         virtual void ClearArgs() = 0;
-        virtual void AddName(const qcc::String& name, NodeStateMap::iterator it) = 0;
-        virtual void RemoveName(const qcc::String& name, NodeStateMap::iterator it) = 0;
+        virtual void AddName(const qcc::String& name, BTNodeInfo& node) = 0;
+        virtual void RemoveName(const qcc::String& name, BTNodeInfo& node) = 0;
         virtual size_t Empty() const = 0;
         bool Changed() const { return dirty; }
         void AddName(const qcc::String& name)
         {
-            AddName(name, bto.nodeStates.find(bto.bus.GetUniqueName()));
+            AddName(name, bto.self);
         }
         void RemoveName(const qcc::String& name)
         {
-            RemoveName(name, bto.nodeStates.find(bto.bus.GetUniqueName()));
+            RemoveName(name, bto.self);
         }
         void StartAlarm()
         {
@@ -399,15 +365,13 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     };
 
     struct AdvertiseNameArgInfo : public NameArgInfo {
-        BDAddress bdAddr;
-        uint16_t psm;
         std::vector<MsgArg> adInfoArgs;
         size_t count;
         AdvertiseNameArgInfo(BTController& bto, qcc::Timer& dispatcher) :
             NameArgInfo(bto, 5, dispatcher), count(0)
         { }
-        void AddName(const qcc::String& name, NodeStateMap::iterator it);
-        void RemoveName(const qcc::String& name, NodeStateMap::iterator it);
+        void AddName(const qcc::String& name, BTNodeInfo& node);
+        void RemoveName(const qcc::String& name, BTNodeInfo& node);
         size_t Empty() const { return count == 0; }
         void SetArgs();
         void ClearArgs();
@@ -421,12 +385,13 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     struct FindNameArgInfo : public NameArgInfo {
         qcc::String resultDest;
         BDAddress ignoreAddr;
+        uint32_t ignoreUUID;
         NameSet names;
         FindNameArgInfo(BTController& bto, qcc::Timer& dispatcher) :
             NameArgInfo(bto, 4, dispatcher)
         { }
-        void AddName(const qcc::String& name, NodeStateMap::iterator it);
-        void RemoveName(const qcc::String& name, NodeStateMap::iterator it);
+        void AddName(const qcc::String& name, BTNodeInfo& node);
+        void RemoveName(const qcc::String& name, BTNodeInfo& node);
         size_t Empty() const { return names.empty(); }
         void SetArgs();
         void ClearArgs();
@@ -439,10 +404,11 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     struct UUIDRevCacheInfo {
         BDAddress adAddr;       /**< Advertising BDAddress */
         uint32_t uuidRev;       /**< Advertised UUID Revision */
-        BDAddress connAddr;     /**< Connection BDAddress */
-        uint16_t psm;           /**< L2CAP PSM */
-        BluetoothDeviceInterface::AdvertiseInfo adInfo;    /**< Advertised names */
+        BTBusAddress connAddr;
+        BTNodeDB* adInfo;
         UUIDRevCacheInfo() : uuidRev(INVALID_UUIDREV) { }
+        UUIDRevCacheInfo(const BDAddress& adAddr, uint32_t uuidRev, const BTBusAddress& connAddr, BTNodeDB* adInfo) :
+            adAddr(adAddr), uuidRev(uuidRev), connAddr(connAddr), adInfo(adInfo) { }
     };
 
     typedef std::multimap<uint32_t, UUIDRevCacheInfo> UUIDRevCacheMap;
@@ -452,33 +418,24 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      *
      * @param newAdInfo     Added advertised names
      * @param oldAdInfo     Removed advertiesd names
-     * @param bdAddr        BD Address
-     * @param psm           L2CAP PSM
      *
      * @return ER_OK if successful.
      */
-    QStatus DistributeAdvertisedNameChanges(const BluetoothDeviceInterface::AdvertiseInfo& newAdInfo,
-                                            const BluetoothDeviceInterface::AdvertiseInfo& oldAdInfo,
-                                            const BDAddress& bdAddr,
-                                            uint16_t psm);
+    QStatus DistributeAdvertisedNameChanges(const BTNodeDB& newAdInfo,
+                                            const BTNodeDB& oldAdInfo);
 
     /**
      * Send the FoundNames signal to the node interested in one or more of the
      * names on that bus.
      *
      * @param dest     Unique name of the minion that should receive the message.
-     * @param names    List of advertised names.
-     * @param bdAddr   BD Address from the SDP record.
-     * @param psm      L2CAP PSM number from the SDP record.
+     * @param adInfo   Advertise information to send.
      * @param lost     Set to true if names are lost, false otherwise.
      *
      * @return ER_OK if successful.
      */
-    QStatus SendFoundNamesChange(const char* dest,
-                                 const BluetoothDeviceInterface::AdvertiseInfo& adInfo,
-                                 const qcc::String& excludeGUID,
-                                 const BDAddress& bdAddr,
-                                 uint16_t psm,
+    QStatus SendFoundNamesChange(const qcc::String& dest,
+                                 const BTNodeDB& adInfo,
                                  bool lost);
 
     /**
@@ -582,36 +539,19 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
                                  Message& msg);
 
     /**
-     * Handle the incoming ProxyConnect method call.
-     *
-     * @param member    Member.
-     * @param msg       The incoming message - "sq":
-     *                    - BD Address of device to connect to
-     *                    - L2CAP PSM number
-     */
-    void HandleProxyConnect(const InterfaceDescription::Member* member,
-                            Message& msg);
-
-    /**
-     * Handle the incoming ProxyConnect method call.
-     *
-     * @param member    Member.
-     * @param msg       The incoming message - "s":
-     *                    - BD Address of device to disconnect from
-     */
-    void HandleProxyDisconnect(const InterfaceDescription::Member* member,
-                               Message& msg);
-
-    /**
      * Update the internal state information for other nodes based on incoming
      * message args.
      *
-     * @param num       Number of entries in the message arg list.
-     * @param entries   List of message args containing the remote node's state
-     *                  information.
-     * @param newNode   Unique bus name of the newly connected minion (drone?) node.
+     * @param nodeStateEntries  List of message args containing the remote
+     *                          node's state information.
+     * @param numNodeStates     Number of node state entries in the message arg
+     *                          list.
+     * @param addr              BT bus address of the newly connected minion
+     *                          node.
      */
-    void ImportState(size_t num, MsgArg* entries, const qcc::String& newNode);
+    void ImportState(MsgArg* nodeStateEntries,
+                     size_t numNodeStates,
+                     const BTBusAddress& addr);
 
     /**
      * Updates the find/advertise name information on the minion assigned to
@@ -626,16 +566,6 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     void UpdateDelegations(NameArgInfo& nameInfo, bool allow = true);
 
     /**
-     * Helper function to create an array of MsgArg's containing the
-     * advertised and find names.
-     *
-     * @param array     Vector of MsgArg to hold the encoded state information
-     *
-     * @return  ER_OK if advertisment information successfully encoded.
-     */
-    QStatus EncodeStateInfo(std::vector<MsgArg>& array);
-
-    /**
      * Extract advertisement information from a message arg into the internal
      * representation.
      *
@@ -647,8 +577,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      *
      * @return  ER_OK if advertisment information successfully extracted.
      */
-    static QStatus ExtractAdInfo(const MsgArg* entries, size_t size,
-                                 BluetoothDeviceInterface::AdvertiseInfo& adInfo);
+    static QStatus ExtractAdInfo(const MsgArg* entries, size_t size, BTNodeDB& adInfo);
 
 
     void AlarmTriggered(const qcc::Alarm& alarm, QStatus reason);
@@ -657,28 +586,12 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     bool IsDrone() const { return (master && (NumMinions() > 0)); }
     bool IsMinion() const { return (master && (NumMinions() == 0)); }
 
-    size_t NumMinions() const
-    {
-        size_t size;
-        nodeStateLock.Lock();
-        size = nodeStates.size();
-        nodeStateLock.Unlock();
-        return size - 1;
-    }
+    size_t NumMinions() const { return nodeDB.Size() - 1; }
 
-    void NextDirectMinion(NodeStateMap::const_iterator& minion)
+    void NextDirectMinion(BTNodeInfo& minion)
     {
-        assert(nodeStates.size() > 1);
-        assert(RotateMinions());
-        NodeStateMap::const_iterator& skip = (&minion == &find.minion) ? advertise.minion : find.minion;
-        NodeStateMap::const_iterator next = minion;
-        do {
-            ++next;
-            if (next == nodeStates.end()) {
-                next = nodeStates.begin();
-            }
-        } while ((!next->second.direct || (next == skip)) && (next != minion));
-        minion = next;
+        BTNodeInfo& skip = (minion == find.minion) ? advertise.minion : find.minion;
+        minion = nodeDB.FindDirectMinion(minion, skip);
     }
 
     bool UseLocalFind() { return directMinions == 0; }
@@ -693,6 +606,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     BluetoothDeviceInterface& bt;
 
     ProxyBusObject* master;        // Bus Object we believe is our master
+    BTNodeInfo masterNode;
 
     uint8_t maxConnects;           // Maximum number of direct connections
     uint32_t masterUUIDRev;        // Revision number for AllJoyn Bluetooth UUID
@@ -701,8 +615,14 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     bool listening;
     bool devAvailable;
 
-    NodeStateMap nodeStates;
-    mutable qcc::Mutex nodeStateLock;
+
+    BTNodeDB foundNodeDB;
+    BTNodeDB nodeDB;
+    BTNodeInfo self;
+
+    mutable qcc::Mutex lock;
+
+    BTBusAddress listenAddr;
 
     AdvertiseNameArgInfo advertise;
     FindNameArgInfo find;
@@ -719,8 +639,6 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
                     const InterfaceDescription* interface;
                     // Methods
                     const InterfaceDescription::Member* SetState;
-                    const InterfaceDescription::Member* ProxyConnect;
-                    const InterfaceDescription::Member* ProxyDisconnect;
                     // Signals
                     const InterfaceDescription::Member* FindName;
                     const InterfaceDescription::Member* CancelFindName;
