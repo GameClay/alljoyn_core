@@ -495,6 +495,9 @@ QStatus AllJoynPeerObj::SecurePeerConnection(const qcc::String& busName, bool fo
     PeerState peerState = peerStateTable->GetPeerState(busName);
     qcc::String mech;
     const InterfaceDescription* ifc = bus.GetInterface(org::alljoyn::Bus::Peer::Authentication::InterfaceName);
+    if (ifc == NULL) {
+        return ER_BUS_NO_SUCH_INTERFACE;
+    }
 
     /*
      * Clear the keys if we are forcing authentication.
