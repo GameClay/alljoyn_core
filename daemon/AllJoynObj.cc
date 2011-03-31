@@ -612,7 +612,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
 
             /* If session was unsuccessful, we need to cleanup any b2b ep that was created */
             if (replyCode != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
-                if(b2bEp) { /* check that b2bEp is not a NULL ptr*/
+                if (b2bEp) { /* check that b2bEp is not a NULL ptr*/
                     b2bEp->DecrementRef();
                 }
             }
