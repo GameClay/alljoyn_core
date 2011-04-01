@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * This file defines the class for the AllJoynKeyXSRP authentication mechanism
+ * This file defines the class for the ALLJOYN_SRP_KEYX authentication mechanism
  */
 
 /******************************************************************************
