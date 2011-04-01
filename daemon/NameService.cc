@@ -727,7 +727,7 @@ QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
 
 QStatus NameService::Init(const qcc::String& guid, bool enableIPv4, bool enableIPv6, bool loopback)
 {
-    QCC_DbgPrintf(("NameService::Init()\n"));
+    QCC_DbgHLPrintf(("NameService::Init()\n"));
 
     //
     // Can only call Init() if the object is not running or in the process
@@ -814,7 +814,7 @@ NameService::~NameService()
 // the multicast output interface is essentially selected by the system routing
 // code.  In Linux (and Android), multicast packets are sent out the interface
 // that is used for the default route (the default interface).  You can see this
-// if you type “ip ro sh”.  In Windows, the system chooses its default interface
+// if you type "ip ro sh".  In Windows, the system chooses its default interface
 // by looking for the lowest value for the routing metric for a destination IP
 // address of 224.0.0.0 in its routing table.  You can see this in the output
 // of "route print".
@@ -827,9 +827,9 @@ NameService::~NameService()
 //
 // On Linux, if you set the IP_MULTICAST_IF to 0.0.0.0 (or index 0 in IPv6)
 // and bring down the default interface or change the IP address on the
-// default interface, you will begin to fail the multicast sends with “network
-// unreachable” errors since the default route goes away when you change the
-// IP address (e.g, "sudo ifconfig eth1 10.4.108.237 netmask 255.255.255.0 up”).
+// default interface, you will begin to fail the multicast sends with "network
+// unreachable" errors since the default route goes away when you change the
+// IP address (e.g, "sudo ifconfig eth1 10.4.108.237 netmask 255.255.255.0 up�?).
 // As soon as you provide a new default route (e.g., "route add default gw
 // 10.4.108.1") the multicast packets will start flowing again.
 //
@@ -1062,7 +1062,7 @@ QStatus NameService::OpenInterface(const qcc::IPAddress& addr)
 
 QStatus NameService::CloseInterface(const qcc::String& name)
 {
-    QCC_DbgPrintf(("NameService::SloseInterface(%s)\n", name.c_str()));
+    QCC_DbgPrintf(("NameService::CloseInterface(%s)\n", name.c_str()));
 
     //
     // Can only call CloseInterface() if the object is running.
@@ -1560,7 +1560,7 @@ void NameService::LazyUpdateInterfaces(void)
 
 QStatus NameService::Locate(const qcc::String& wkn, LocatePolicy policy)
 {
-    QCC_DbgPrintf(("NameService::Locate(): %s with policy %d\n", wkn.c_str(), policy));
+    QCC_DbgHLPrintf(("NameService::Locate(): %s with policy %d\n", wkn.c_str(), policy));
 
     //
     // Send a request to the network over our multicast channel,
@@ -1618,7 +1618,7 @@ QStatus NameService::SetEndpoints(
     const qcc::String& ipv6address,
     uint16_t port)
 {
-    QCC_DbgPrintf(("NameService::SetEndpoints(%s, %s, %d)\n", ipv4address.c_str(), ipv6address.c_str(), port));
+    QCC_DbgHLPrintf(("NameService::SetEndpoints(%s, %s, %d)\n", ipv4address.c_str(), ipv6address.c_str(), port));
 
     m_mutex.Lock();
 
@@ -1693,7 +1693,7 @@ QStatus NameService::SetEndpoints(
 
 QStatus NameService::Advertise(const qcc::String& wkn)
 {
-    QCC_DbgPrintf(("NameService::Advertise(): %s\n", wkn.c_str()));
+    QCC_DbgHLPrintf(("NameService::Advertise(): %s\n", wkn.c_str()));
 
     vector<qcc::String> wknVector;
     wknVector.push_back(wkn);
@@ -1703,7 +1703,7 @@ QStatus NameService::Advertise(const qcc::String& wkn)
 
 QStatus NameService::Advertise(vector<qcc::String>& wkn)
 {
-    QCC_DbgPrintf(("NameService::Advertise()\n"));
+    QCC_DbgHLPrintf(("NameService::Advertise()\n"));
 
     if (m_state != IMPL_RUNNING) {
         QCC_DbgPrintf(("NameService::Advertise(): Not IMPL_RUNNING\n"));
@@ -2037,7 +2037,7 @@ bool Wander(void)
 
 void NameService::SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIPv4, Header& header)
 {
-    QCC_DbgPrintf(("NameService::SendProtocolMessage()\n"));
+    QCC_DbgHLPrintf(("NameService::SendProtocolMessage()\n"));
 
     //
     // Legacy 802.11 MACs do not do backoff and retransmission of packets
@@ -2529,7 +2529,7 @@ void NameService::DoPeriodicMaintenance(void)
 
 void NameService::HandleProtocolQuestion(WhoHas whoHas, qcc::IPAddress address)
 {
-    QCC_DbgPrintf(("NameService::HandleProtocolQuestion()\n"));
+    QCC_DbgHLPrintf(("NameService::HandleProtocolQuestion()\n"));
 
     //
     // There are at least two threads wandering through the advertised list.
@@ -2565,8 +2565,8 @@ void NameService::HandleProtocolQuestion(WhoHas whoHas, qcc::IPAddress address)
             // allow wildcards there.
             //
             if (WildcardMatch((*j), wkn)) {
-                QCC_DbgPrintf(("NameService::HandleProtocolQuestion(): request for %s does not match my %s\n",
-                               wkn.c_str(), (*j).c_str()));
+                QCC_DbgHLPrintf(("NameService::HandleProtocolQuestion(): request for %s does not match my %s\n",
+                                 wkn.c_str(), (*j).c_str()));
                 continue;
             } else {
                 respond = true;
@@ -2596,7 +2596,7 @@ void NameService::HandleProtocolQuestion(WhoHas whoHas, qcc::IPAddress address)
 
 void NameService::HandleProtocolAnswer(IsAt isAt, uint32_t timer, qcc::IPAddress address)
 {
-    QCC_DbgPrintf(("NameService::HandleProtocolAnswer()\n"));
+    QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer()\n"));
 
     //
     // If there are no callbacks we can't tell the user anything about what is
@@ -2604,14 +2604,14 @@ void NameService::HandleProtocolAnswer(IsAt isAt, uint32_t timer, qcc::IPAddress
     //
 
     if (m_callback == 0) {
-        QCC_DbgPrintf(("NameService::HandleProtocolAnswer(): No callback, so nothing to do\n"));
+        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): No callback, so nothing to do\n"));
         return;
     }
 
     vector<qcc::String> wkn;
 
     for (uint8_t i = 0; i < isAt.GetNumberNames(); ++i) {
-        QCC_DbgPrintf(("NameService::HandleProtocolAnswer(): Got well-known name %s\n", isAt.GetName(i).c_str()));
+        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got well-known name %s\n", isAt.GetName(i).c_str()));
         wkn.push_back(isAt.GetName(i));
     }
 
@@ -2622,7 +2622,7 @@ void NameService::HandleProtocolAnswer(IsAt isAt, uint32_t timer, qcc::IPAddress
     sort(wkn.begin(), wkn.end());
 
     qcc::String guid = isAt.GetGuid();
-    QCC_DbgPrintf(("NameService::HandleProtocolAnswer(): Got QUID %s\n", guid.c_str()));
+    QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got GUID %s\n", guid.c_str()));
 
     //
     // We always get an address since we got the message over a call to
@@ -2641,20 +2641,20 @@ void NameService::HandleProtocolAnswer(IsAt isAt, uint32_t timer, qcc::IPAddress
     qcc::String recvfromAddress, ipv4address, ipv6address;
 
     recvfromAddress = address.ToString();
-    QCC_DbgPrintf(("NameService::HandleProtocolAnswer(): Got IP %s from protocol\n", recvfromAddress.c_str()));
+    QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got IP %s from protocol\n", recvfromAddress.c_str()));
 
     if (isAt.GetIPv4Flag()) {
         ipv4address = isAt.GetIPv4();
-        QCC_DbgPrintf(("NameService::HandleProtocolAnswer(): Got IPv4 %s from message\n", ipv4address.c_str()));
+        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got IPv4 %s from message\n", ipv4address.c_str()));
     }
 
     if (isAt.GetIPv6Flag()) {
         ipv6address = isAt.GetIPv6();
-        QCC_DbgPrintf(("NameService::HandleProtocolAnswer(): Got IPv6 %s from message\n", ipv6address.c_str()));
+        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got IPv6 %s from message\n", ipv6address.c_str()));
     }
 
     uint16_t port = isAt.GetPort();
-    QCC_DbgPrintf(("NameService::HandleProtocolAnswer(): Got port %d from message\n", port));
+    QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got port %d from message\n", port));
 
     //
     // The longest bus address we can generate is going to be the larger
@@ -2668,14 +2668,18 @@ void NameService::HandleProtocolAnswer(IsAt isAt, uint32_t timer, qcc::IPAddress
     char addrbuf[60];
 
     //
-    // Call back with the address we got via recvfrom.
+    // Call back with the address we got via recvfrom unless it is overridden by the address in the
+    // message. An ipv4 address in the message overrides an ipv4 recvfrom address, an ipv6 address in
+    // the message overrides an ipv6 recvfrom address.
     //
-    snprintf(addrbuf, sizeof(addrbuf), "tcp:addr=%s,port=%d", recvfromAddress.c_str(), port);
-    QCC_DbgPrintf(("NameService::HandleProtocolAnswer(): Calling back with %s\n", addrbuf));
-    qcc::String busAddress(addrbuf);
+    if ((address.IsIPv4() && !ipv4address.size()) || (address.IsIPv6() && !ipv6address.size())) {
+        snprintf(addrbuf, sizeof(addrbuf), "tcp:addr=%s,port=%d", recvfromAddress.c_str(), port);
+        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Calling back with %s\n", addrbuf));
+        qcc::String busAddress(addrbuf);
 
-    if (m_callback) {
-        (*m_callback)(busAddress, guid, wkn, timer);
+        if (m_callback) {
+            (*m_callback)(busAddress, guid, wkn, timer);
+        }
     }
 
     //
@@ -2683,7 +2687,7 @@ void NameService::HandleProtocolAnswer(IsAt isAt, uint32_t timer, qcc::IPAddress
     //
     if (ipv4address.size()) {
         snprintf(addrbuf, sizeof(addrbuf), "tcp:addr=%s,port=%d", ipv4address.c_str(), port);
-        QCC_DbgPrintf(("NameService::HandleProtocolAnswer(): Calling back with %s\n", addrbuf));
+        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Calling back with %s\n", addrbuf));
         qcc::String busAddress(addrbuf);
 
         if (m_callback) {
@@ -2696,7 +2700,7 @@ void NameService::HandleProtocolAnswer(IsAt isAt, uint32_t timer, qcc::IPAddress
     //
     if (ipv6address.size()) {
         snprintf(addrbuf, sizeof(addrbuf), "tcp:addr=%s,port=%d", ipv6address.c_str(), port);
-        QCC_DbgPrintf(("NameService::HandleProtocolAnswer(): Calling back with %s\n", addrbuf));
+        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Calling back with %s\n", addrbuf));
         qcc::String busAddress(addrbuf);
 
         if (m_callback) {
@@ -2707,7 +2711,7 @@ void NameService::HandleProtocolAnswer(IsAt isAt, uint32_t timer, qcc::IPAddress
 
 void NameService::HandleProtocolMessage(uint8_t const* buffer, uint32_t nbytes, qcc::IPAddress address)
 {
-    QCC_DbgPrintf(("NameService::HandleProtocolMessage(0x%x, %d, %s)\n", buffer, nbytes, address.ToString().c_str()));
+    QCC_DbgHLPrintf(("NameService::HandleProtocolMessage(0x%x, %d, %s)\n", buffer, nbytes, address.ToString().c_str()));
 
 #if HAPPY_WANDERER
     if (Wander() == false) {
