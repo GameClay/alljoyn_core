@@ -24,9 +24,6 @@
 #include <qcc/platform.h>
 #include <alljoyn/TransportMask.h>
 
-/** DBus signature of SessionOpts structure */
-#define SESSIONOPTS_SIG "(yyq)"
-
 namespace ajn {
 
 /**
@@ -57,6 +54,14 @@ class SessionOpts {
     } TrafficType;
     TrafficType traffic; /**< holds the Traffic type for this SessionOpt*/
 
+    /**
+     * Multi-point session capable.
+     * A session is multi-point if it can be joined multiple times to form a single
+     * session with multi (greater than 2) endpoints. When false, each join attempt
+     * creates a new point-to-point session.
+     */
+    bool isMultipoint;
+
     /**@name Proximity */
     // {@
     typedef uint8_t Proximity;
@@ -73,11 +78,14 @@ class SessionOpts {
      * Construct a SessionOpts with specific parameters.
      *
      * @param traffic       Type of traffic.
+     * @param isMultipoint  true iff session supports multipoint (greater than two endpoints).
      * @param proximity     Proximity constraint bitmask.
      * @param transports    Allowed transport types bitmask.
+     *
      */
-    SessionOpts(SessionOpts::TrafficType traffic, SessionOpts::Proximity proximity, TransportMask transports) :
+    SessionOpts(SessionOpts::TrafficType traffic, bool isMultipoint, SessionOpts::Proximity proximity, TransportMask transports) :
         traffic(traffic),
+        isMultipoint(isMultipoint),
         proximity(proximity),
         transports(transports)
     { }
@@ -85,7 +93,7 @@ class SessionOpts {
     /**
      * Construct a default SessionOpts
      */
-    SessionOpts() : traffic(TRAFFIC_MESSAGES), proximity(PROXIMITY_ANY), transports(TRANSPORT_ANY) { }
+    SessionOpts() : traffic(TRAFFIC_MESSAGES), isMultipoint(false), proximity(PROXIMITY_ANY), transports(TRANSPORT_ANY) { }
 
     /**
      * Determine whether this SessionOpts is compatible with the SessionOpts offered by other
@@ -104,7 +112,7 @@ class SessionOpts {
      */
     bool operator==(const SessionOpts& other) const
     {
-        return (traffic == other.traffic) && (proximity == other.proximity) && (transports == other.transports);
+        return (traffic == other.traffic) && (isMultipoint == other.isMultipoint) && (proximity == other.proximity) && (transports == other.transports);
     }
 
     /**
@@ -130,8 +138,9 @@ class SessionOpts {
     bool operator<(const SessionOpts& other) const
     {
         if ((traffic < other.traffic) ||
-            ((traffic == other.traffic) && (proximity < other.proximity)) ||
-            ((traffic == other.traffic) && (proximity == other.proximity) && (transports < other.transports))) {
+            ((traffic == other.traffic) && !isMultipoint && other.isMultipoint) ||
+            ((traffic == other.traffic) && (isMultipoint == other.isMultipoint) && (proximity < other.proximity)) ||
+            ((traffic == other.traffic) && (isMultipoint == other.isMultipoint) && (proximity == other.proximity) && (transports < other.transports))) {
             return true;
         }
         return false;

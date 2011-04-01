@@ -197,7 +197,7 @@ class MyBusListener : public BusListener {
 
         /* We found a remote bus that is advertising autochat's well-known name so connect to it */
         uint32_t disposition;
-        SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, transport);
+        SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, transport);
         QStatus status = s_bus->JoinSession(name, CHAT_PORT, disposition, sessionId, opts);
         if ((ER_OK == status) && (ALLJOYN_JOINSESSION_REPLY_SUCCESS == disposition)) {
             printf("Joined session %s with id %d\n", name, sessionId);

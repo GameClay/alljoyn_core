@@ -501,10 +501,6 @@ class BusAttachment : public MessageReceiver {
      *                              to choose an available port. On successful return, this value
      *                              contains the chosen SessionPort.
      *
-     * @param[in]     isMultipoint  true if this session can be joined multiple times to form a single
-     *                              multipoint session. When false, each join attempt creates a new
-     *                              point-to-point session.
-     *
      * @param[in]     opts          Session options that joiners must agree to in order to
      *                              successfully join the session.
      *
@@ -516,7 +512,7 @@ class BusAttachment : public MessageReceiver {
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus BindSessionPort(SessionPort& sessionPort, bool isMultipoint, const SessionOpts& opts, uint32_t& disposition);
+    QStatus BindSessionPort(SessionPort& sessionPort, const SessionOpts& opts, uint32_t& disposition);
 
     /**
      * Join a session.

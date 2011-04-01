@@ -181,10 +181,10 @@ int main(int argc, char** argv)
     }
 
     /* Bind the session port */
-    SessionOpts opts(SessionOpts::TRAFFIC_RAW_RELIABLE, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+    SessionOpts opts(SessionOpts::TRAFFIC_RAW_RELIABLE, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
     uint32_t replyCode = 0;
     SessionPort sp = SESSION_PORT;
-    status = g_msgBus->BindSessionPort(sp, false, opts, replyCode);
+    status = g_msgBus->BindSessionPort(sp, opts, replyCode);
     if ((status != ER_OK) || (replyCode != ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS)) {
         status = (status == ER_OK) ? ER_BUS_ERROR_RESPONSE : status;
         QCC_LogError(status, ("BindSessionOpts failed (%d)", replyCode));

@@ -86,7 +86,7 @@ class MyBusListener : public BusListener {
             /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
             uint32_t disposition;
             SessionId sessionId;
-            SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+            SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
             QStatus status = g_msgBus->JoinSession(name, ::org::alljoyn::alljoyn_test::SessionPort, disposition, sessionId, opts);
             if ((ER_OK == status) && (ALLJOYN_JOINSESSION_REPLY_SUCCESS == disposition)) {
                 /* Release main thread */

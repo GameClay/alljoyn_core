@@ -34,8 +34,8 @@
 #include <alljoyn/DBusStd.h>
 #include <alljoyn/Message.h>
 #include <alljoyn/MessageReceiver.h>
-#include <alljoyn/Session.h>
 
+#include "SessionInternal.h"
 #include "KeyStore.h"
 #include "BusEndpoint.h"
 #include "PeerState.h"
@@ -862,11 +862,11 @@ void AllJoynPeerObj::AcceptSession(const InterfaceDescription::Member* member, M
     const MsgArg* args;
 
     msg->GetArgs(numArgs, args);
-    SessionPort sessionPort;
-    SessionId sessionId;
-    const char* joiner;
+    SessionPort sessionPort = args[0].v_uint16;
+    SessionId sessionId = args[1].v_uint32;
+    const char* joiner = args[2].v_string.str;
     SessionOpts opts;
-    status = MsgArg::Get(args, numArgs, "qus"SESSIONOPTS_SIG, &sessionPort, &sessionId, &joiner, &opts.traffic, &opts.proximity, &opts.transports);
+    status = GetSessionOpts(args[3], opts);
 
     if (status == ER_OK) {
         MsgArg replyArg;

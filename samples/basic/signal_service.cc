@@ -239,11 +239,11 @@ int main(int argc, char** argv, char** envArg) {
     }
 
     /* Create session */
-    SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+    SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
     if (ER_OK == status) {
         uint32_t returnValue = 0;
         SessionPort sp = SERVICE_PORT;
-        status = g_msgBus->BindSessionPort(sp, false, opts, returnValue);
+        status = g_msgBus->BindSessionPort(sp, opts, returnValue);
         if (ER_OK != status) {
             printf("BindSessionPort failed (%s)\n", QCC_StatusText(status));
         } else if (returnValue != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {

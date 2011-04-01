@@ -47,6 +47,7 @@
 #include "AllJoynObj.h"
 #include "TransportList.h"
 #include "BusUtil.h"
+#include "SessionInternal.h"
 
 #define QCC_MODULE "ALLJOYN_OBJ"
 
@@ -244,12 +245,11 @@ void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Mes
     uint32_t replyCode = ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS;
     size_t numArgs;
     const MsgArg* args;
-    SessionPort sessionPort = 0;
-    bool isMultipoint;
     SessionOpts opts;
 
     msg->GetArgs(numArgs, args);
-    QStatus status = MsgArg::Get(args, numArgs, "qb"SESSIONOPTS_SIG, &sessionPort, &isMultipoint, &opts.traffic, &opts.proximity, &opts.transports);
+    SessionPort sessionPort = args[0].v_uint32;
+    QStatus status = GetSessionOpts(args[1], opts);
 
     /* Get the sender */
     String sender = msg->GetSender();
@@ -259,7 +259,7 @@ void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Mes
         replyCode = ALLJOYN_BINDSESSIONPORT_REPLY_FAILED;
     } else {
         QCC_DbgTrace(("AllJoynObj::BindSession(%s, %d, %s, <%x, %x, %x>)", sender.c_str(), sessionPort,
-                      isMultipoint ? "true" : "false", opts.traffic, opts.proximity, opts.transports));
+                      opts.isMultipoint ? "true" : "false", opts.traffic, opts.proximity, opts.transports));
 
         /* Assign or check uniqueness of sessionPort */
         sessionMapLock.Lock();
@@ -300,7 +300,6 @@ void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Mes
             entry.endpointName = sender;
             entry.fd = -1;
             entry.streamingEp = NULL;
-            entry.isMultipoint = isMultipoint;
             entry.opts = opts;
             do {
                 entry.id = qcc::Rand32();
@@ -315,7 +314,7 @@ void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Mes
     replyArgs[0].Set("u", replyCode);
     replyArgs[1].Set("q", sessionPort);
     status = MethodReply(msg, replyArgs, ArraySize(replyArgs));
-    QCC_DbgPrintf(("AllJoynObj::BindSessionPort(%s, %d) returned (%d,%u) (status=%s)", sender.c_str(), sessionPort, replyCode, QCC_StatusText(status)));
+    QCC_DbgPrintf(("AllJoynObj::BindSessionPort(%s, %d) returned %d (status=%s)", sender.c_str(), sessionPort, replyCode, QCC_StatusText(status)));
 
     /* Log error if reply could not be sent */
     if (ER_OK != status) {
@@ -327,16 +326,20 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
 {
     uint32_t replyCode = ALLJOYN_JOINSESSION_REPLY_SUCCESS;
     SessionId id = 0;
-    SessionOpts optsOut(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, 0);
+    SessionOpts optsOut(SessionOpts::TRAFFIC_MESSAGES, false, SessionOpts::PROXIMITY_ANY, 0);
     size_t numArgs;
     const MsgArg* args;
+    MsgArg membersArg;
 
     /* Parse the message args */
     msg->GetArgs(numArgs, args);
     const char* sessionHost = NULL;
     SessionPort sessionPort;
     SessionOpts optsIn;
-    QStatus status = MsgArg::Get(args, numArgs, "sq"SESSIONOPTS_SIG, &sessionHost, &sessionPort, &optsIn.traffic, &optsIn.proximity, &optsIn.transports);
+    QStatus status = MsgArg::Get(args, 2, "sq", &sessionHost, &sessionPort);
+    if (status == ER_OK) {
+        status = GetSessionOpts(args[2], optsIn);
+    }
 
     if (status != ER_OK) {
         replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
@@ -372,7 +375,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                     sit = ajObj.sessionMap.end();
                 } else {
                     /* Create a new sessionId if this is not a mulit-point session */
-                    if (!sit->second.isMultipoint) {
+                    if (!sit->second.opts.isMultipoint) {
                         do {
                             newSessionId = qcc::Rand32();
                         } while (newSessionId == 0);
@@ -405,7 +408,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                         }
                         if (status == ER_OK) {
                             /* Add the creator-side entry in sessionMap if session is not multiPoint */
-                            if (!sit->second.isMultipoint) {
+                            if (!sit->second.opts.isMultipoint) {
                                 SessionMapEntry sme = sit->second;
                                 sme.id = newSessionId;
                                 ajObj.sessionMap[pair < String, SessionId > (sme.endpointName, sme.id)] = sme;
@@ -418,7 +421,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                             ajObj.sessionMap[pair < String, SessionId > (sme.endpointName, sme.id)] = sme;
                             id = sme.id;
                         }
-                    } else if ((sit->second.opts.traffic == SessionOpts::TRAFFIC_RAW_RELIABLE) && !sit->second.isMultipoint) {
+                    } else if ((sit->second.opts.traffic == SessionOpts::TRAFFIC_RAW_RELIABLE) && !sit->second.opts.isMultipoint) {
                         /* Create a raw socket pair for the two local  */
                         SocketFd fds[2];
                         status = SocketPair(fds);
@@ -467,6 +470,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             ajObj.discoverMapLock.Unlock();
             ajObj.router.UnlockNameTable();
 
+#if 0
             /*
              * Step 1b: If no advertisment (busAddr) and we are connected to the sesionHost, then ask it directly
              * for the busAddr
@@ -478,6 +482,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                     QCC_LogError(status, ("GetSessionInfo failed"));
                 }
             }
+#endif
 
             String b2bEpName;
             if (!busAddr.empty()) {
@@ -504,7 +509,8 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
                 const String nextControllerName = b2bEp->GetRemoteName();
                 status = ajObj.SendAttachSession(sessionPort, msg->GetSender(), sessionHost, b2bEpName.c_str(),
-                                                 nextControllerName.c_str(), busAddr.c_str(), optsIn, replyCode, id, optsOut);
+                                                 nextControllerName.c_str(), busAddr.c_str(), optsIn, replyCode,
+                                                 id, optsOut, membersArg);
                 if (status != ER_OK) {
                     QCC_LogError(status, ("AttachSession to %s failed", nextControllerName.c_str()));
                     replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
@@ -611,10 +617,8 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             }
 
             /* If session was unsuccessful, we need to cleanup any b2b ep that was created */
-            if (replyCode != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
-                if (b2bEp) { /* check that b2bEp is not a NULL ptr*/
-                    b2bEp->DecrementRef();
-                }
+            if ((replyCode != ALLJOYN_JOINSESSION_REPLY_SUCCESS) && b2bEp) {
+                b2bEp->DecrementRef();
             }
 
             ajObj.virtualEndpointsLock.Unlock();
@@ -627,7 +631,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
     MsgArg replyArgs[3];
     replyArgs[0].Set("u", replyCode);
     replyArgs[1].Set("u", id);
-    replyArgs[2].Set(SESSIONOPTS_SIG, optsOut.traffic, optsOut.proximity, optsOut.transports);
+    SetSessionOpts(optsOut, replyArgs[2]);
     status = ajObj.MethodReply(msg, replyArgs, ArraySize(replyArgs));
     QCC_DbgPrintf(("AllJoynObj::JoinSession(%d) returned (%d,%u) (status=%s)", sessionPort, replyCode, id, QCC_StatusText(status)));
 
@@ -732,8 +736,12 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
 {
     SessionId id = 0;
     String creatorName;
-    SessionOpts optsOut(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+    MsgArg replyArgs[4];
+    SessionOpts optsOut;
     uint32_t replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+
+    /* Default member list to empty */
+    replyArgs[3].Set("as", 0, NULL);
 
     /* Received a daemon request to establish a session route */
 
@@ -749,8 +757,11 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     size_t na;
     const MsgArg* args;
     msg->GetArgs(na, args);
-    QStatus status = MsgArg::Get(args, na, "yssss"SESSIONOPTS_SIG, &sessionPort, &src, &dest, &srcB2B, &busAddr,
-                                 &optsIn.traffic, &optsIn.proximity, &optsIn.transports);
+    assert(na == 6);
+    QStatus status = MsgArg::Get(args, 5, "yssss", &sessionPort, &src, &dest, &srcB2B, &busAddr);
+    if (status == ER_OK) {
+        status = GetSessionOpts(args[5], optsIn);
+    }
 
     if (status != ER_OK) {
         QCC_DbgTrace(("AllJoynObj::AttachSession(<bad args>)"));
@@ -780,7 +791,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                 if (sit->second.sessionPort == sessionPort) {
                     /* If this session is not multipoint, then create a new session entry */
                     sme = sit->second;
-                    if (!sit->second.isMultipoint) {
+                    if (!sit->second.opts.isMultipoint) {
                         do {
                             sme.id = qcc::Rand32();
                         } while (sme.id == 0);
@@ -814,28 +825,38 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                             sessionMapLock.Unlock();
                         }
 
-                        /* Give the receiver a chance to accept or reject the new member */
-                        virtualEndpointsLock.Unlock();
-                        discoverMapLock.Unlock();
-                        router.UnlockNameTable();
-                        bool isAccepted = false;
-                        status = SendAcceptSession(sme.sessionPort, sme.id, dest, src, optsIn, isAccepted);
-                        if (ER_OK != status) {
-                            QCC_LogError(status, ("SendAcceptSession failed"));
+                        /* If this node is the session creator, give it a chance to accept or reject the new member */
+                        bool isAccepted = true;
+                        BusEndpoint* creatorEp = router.FindEndpoint(sme.sessionHost);
+                        if (destEp == creatorEp) {
+                            virtualEndpointsLock.Unlock();
+                            discoverMapLock.Unlock();
+                            router.UnlockNameTable();
+                            status = SendAcceptSession(sme.sessionPort, sme.id, dest, src, optsIn, isAccepted);
+                            if (ER_OK != status) {
+                                QCC_LogError(status, ("SendAcceptSession failed"));
+                            }
+                            router.LockNameTable();
+                            discoverMapLock.Lock();
+                            virtualEndpointsLock.Lock();
                         }
-                        router.LockNameTable();
-                        discoverMapLock.Lock();
-                        virtualEndpointsLock.Lock();
 
+                        /* Add new joiner to members */
                         if (isAccepted) {
-                            /* Add new joiner to members */
                             sessionMapLock.Lock();
                             map<pair<String, SessionId>, SessionMapEntry>::iterator smIt = sessionMap.find(pair<String, SessionId>(sme.endpointName, sme.id));
                             if (smIt != sessionMap.end()) {
                                 id = sme.id;
-                                creatorName = sme.endpointName;
+                                creatorName = creatorEp->GetUniqueName();
                                 replyCode = ALLJOYN_JOINSESSION_REPLY_SUCCESS;
                                 smIt->second.memberNames.push_back(src);
+
+                                /* Response will contain list of members */
+                                vector<const char*> nameVec(smIt->second.memberNames.size());
+                                for (size_t i = 0; i < nameVec.size(); ++i) {
+                                    nameVec[i] = smIt->second.memberNames[i].c_str();
+                                }
+                                replyArgs[3].Set("as", nameVec.size(), &nameVec.front());
                             }
                             sessionMapLock.Unlock();
 
@@ -893,7 +914,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
 
                 /* Unlock in preparation for sync method call. Ep pointers are unsafe after this operation */
                 status = SendAttachSession(sessionPort, src, dest, b2bEpName.c_str(), nextControllerName.c_str(), busAddr,
-                                           optsIn, replyCode, tempId, tempOpts);
+                                           optsIn, replyCode, tempId, tempOpts, replyArgs[3]);
 
                 /* If successful, add bi-directional session routes */
                 if ((status == ER_OK) && (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS)) {
@@ -976,10 +997,9 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     router.UnlockNameTable();
 
     /* Reply to request */
-    MsgArg replyArgs[3];
     replyArgs[0].Set("u", replyCode);
     replyArgs[1].Set("u", id);
-    replyArgs[2].Set(SESSIONOPTS_SIG, optsOut.traffic, optsOut.proximity, optsOut.transports);
+    SetSessionOpts(optsOut, replyArgs[2]);
     status = MethodReply(msg, replyArgs, ArraySize(replyArgs));
     QCC_DbgPrintf(("AllJoynObj::AttachSession(%d) returned (%d,%u) (status=%s)", sessionPort, replyCode, id, QCC_StatusText(status)));
 
@@ -1020,7 +1040,10 @@ void AllJoynObj::GetSessionInfo(const InterfaceDescription::Member* member, Mess
     size_t na;
     const MsgArg* args;
     msg->GetArgs(na, args);
-    QStatus status = MsgArg::Get(args, na, "sq"SESSIONOPTS_SIG, &creatorName, &sessionPort, &optsIn.traffic, &optsIn.proximity, &optsIn.transports);
+    QStatus status = MsgArg::Get(args, 2, "sq", &creatorName, &sessionPort);
+    if (status == ER_OK) {
+        status = GetSessionOpts(args[2], optsIn);
+    }
 
     if (status != ER_OK) {
         QCC_DbgTrace(("AllJoynObj::GetSessionInfo(%s, %u, <%x, %x, %x>)", creatorName, sessionPort, optsIn.traffic, optsIn.proximity, optsIn.transports));
@@ -1061,7 +1084,8 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
                                       const SessionOpts& optsIn,
                                       uint32_t& replyCode,
                                       SessionId& id,
-                                      SessionOpts& optsOut)
+                                      SessionOpts& optsOut,
+                                      MsgArg& members)
 {
     Message reply(bus);
     MsgArg attachArgs[6];
@@ -1070,7 +1094,7 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
     attachArgs[2].Set("s", dest);
     attachArgs[3].Set("s", remoteB2BName);
     attachArgs[4].Set("s", busAddr);
-    attachArgs[5].Set(SESSIONOPTS_SIG, optsIn.traffic, optsIn.proximity, optsIn.transports);
+    SetSessionOpts(optsIn, attachArgs[5]);
     ProxyBusObject controllerObj(bus, remoteControllerName, org::alljoyn::Daemon::ObjectPath, 0);
     controllerObj.AddInterface(*daemonIface);
     QCC_DbgPrintf(("Sending AttachSession(%u, %s, %s, %s, %s, <%x, %x, %x>) to %s",
@@ -1091,9 +1115,19 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
         replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
         QCC_LogError(status, ("AttachSession failed"));
     } else {
-        status = reply->GetArgs("uu"SESSIONOPTS_SIG, &replyCode, &id, &optsOut.traffic, &optsOut.proximity, &optsOut.transports);
-        QCC_DbgPrintf(("Received AttachSession response: replyCode=%d, sessionId=0x%x, opts=<%x, %x, %x>",
-                       replyCode, id, optsOut.proximity, optsOut.traffic, optsOut.transports));
+        const MsgArg* replyArgs;
+        size_t numReplyArgs;
+        reply->GetArgs(numReplyArgs, replyArgs);
+        replyCode = replyArgs[0].v_uint32;
+        id = replyArgs[1].v_uint32;
+        status = GetSessionOpts(replyArgs[2], optsOut);
+        if (status == ER_OK) {
+            members = *reply->GetArg(3);
+            QCC_DbgPrintf(("Received AttachSession response: replyCode=%d, sessionId=0x%x, opts=<%x, %x, %x>",
+                           replyCode, id, optsOut.proximity, optsOut.traffic, optsOut.transports));
+        } else {
+            QCC_DbgPrintf(("Received AttachSession response: <bad_args>"));
+        }
     }
 
     return status;
@@ -1112,7 +1146,7 @@ QStatus AllJoynObj::SendAcceptSession(SessionPort sessionPort,
     acceptArgs[0].Set("q", sessionPort);
     acceptArgs[1].Set("u", sessionId);
     acceptArgs[2].Set("s", joinerName);
-    acceptArgs[3].Set(SESSIONOPTS_SIG, inOpts.traffic, inOpts.proximity, inOpts.transports);
+    SetSessionOpts(inOpts, acceptArgs[3]);
     ProxyBusObject peerObj(bus, creatorName, org::alljoyn::Bus::Peer::ObjectPath, 0);
     const InterfaceDescription* sessionIntf = bus.GetInterface(org::alljoyn::Bus::Peer::Session::InterfaceName);
     assert(sessionIntf);
@@ -1150,7 +1184,7 @@ QStatus AllJoynObj::SendGetSessionInfo(const char* creatorName,
     MsgArg sendArgs[3];
     sendArgs[0].Set("s", creatorName);
     sendArgs[1].Set("q", sessionPort);
-    sendArgs[2].Set(SESSIONOPTS_SIG, &opts.traffic, &opts.proximity, &opts.transports);
+    SetSessionOpts(opts, sendArgs[2]);
 
     String controllerName(creatorName);
     controllerName = controllerName.substr(0, controllerName.find_first_of('.') + 1);

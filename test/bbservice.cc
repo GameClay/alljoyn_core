@@ -411,7 +411,7 @@ class LocalTestObject : public BusObject {
         /* Create a session for incoming client connections */
         uint32_t replyCode = 0;
         SessionPort sessionPort = ::org::alljoyn::alljoyn_test::SessionPort;
-        status = bus.BindSessionPort(sessionPort, false, opts, replyCode);
+        status = bus.BindSessionPort(sessionPort, opts, replyCode);
         if (status != ER_OK) {
             QCC_LogError(status, ("BindSessionPort failed"));
             return;
@@ -585,7 +585,7 @@ int main(int argc, char** argv)
     QStatus status = ER_OK;
     unsigned long reportInterval = 1000;
     qcc::String listenSpec;
-    SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, TRANSPORT_NONE);
+    SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_NONE);
 
 #ifdef _WIN32
     WSADATA wsaData;

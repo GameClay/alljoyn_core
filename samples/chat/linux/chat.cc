@@ -105,7 +105,7 @@ class MyBusListener : public BusListener {
 
         /* Join the conversation */
         uint32_t disposition;
-        SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+        SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
         QStatus status = s_bus->JoinSession(name, CHAT_PORT, disposition, s_sessionId, opts);
         if ((ER_OK == status) && (ALLJOYN_JOINSESSION_REPLY_SUCCESS == disposition)) {
             printf("Joined conversation \"%s\"\n", convName);
@@ -248,11 +248,11 @@ int main(int argc, char** argv)
         }
 
         /* Bind the session port*/
-        SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+        SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
         if (ER_OK == status) {
             uint32_t disposition = 0;
             SessionPort sp = CHAT_PORT;
-            status = s_bus->BindSessionPort(sp, true, opts, disposition);
+            status = s_bus->BindSessionPort(sp, opts, disposition);
             if (ER_OK != status) {
                 printf("BindSessionPort failed (%s)\n", QCC_StatusText(status));
             } else if (disposition != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {

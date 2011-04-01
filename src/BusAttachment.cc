@@ -35,7 +35,6 @@
 #include <alljoyn/BusListener.h>
 #include <alljoyn/DBusStd.h>
 #include <alljoyn/AllJoynStd.h>
-#include <alljoyn/Session.h>
 #include "AuthMechanism.h"
 #include "AuthMechAnonymous.h"
 #include "AuthMechDBusCookieSHA1.h"
@@ -43,6 +42,7 @@
 #include "AuthMechSRP.h"
 #include "AuthMechRSA.h"
 #include "AuthMechLogon.h"
+#include "SessionInternal.h"
 #include "Transport.h"
 #include "TransportList.h"
 #include "TCPTransport.h"
@@ -798,20 +798,19 @@ QStatus BusAttachment::NameHasOwner(const char* name, bool& hasOwner)
     return status;
 }
 
-QStatus BusAttachment::BindSessionPort(SessionPort& sessionPort, bool isMultipoint, const SessionOpts& opts, uint32_t& disposition)
+QStatus BusAttachment::BindSessionPort(SessionPort& sessionPort, const SessionOpts& opts, uint32_t& disposition)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
     }
 
-    QStatus status;
     Message reply(*this);
-    MsgArg args[3];
-    size_t numArgs;
+    MsgArg args[2];
 
-    numArgs = ArraySize(args);
-    MsgArg::Set(args, numArgs, "qb"SESSIONOPTS_SIG, sessionPort, isMultipoint, opts.traffic, opts.proximity, opts.transports);
-    status = this->GetAllJoynProxyObj().MethodCall(org::alljoyn::Bus::InterfaceName, "BindSessionPort", args, ArraySize(args), reply);
+    args[0].Set("q", sessionPort);
+    SetSessionOpts(opts, args[1]);
+
+    QStatus status = this->GetAllJoynProxyObj().MethodCall(org::alljoyn::Bus::InterfaceName, "BindSessionPort", args, ArraySize(args), reply);
     if (status != ER_OK) {
         String errMsg;
         const char* errName = reply->GetErrorName(&errMsg);
@@ -844,15 +843,22 @@ QStatus BusAttachment::JoinSession(const char* sessionHost, SessionPort sessionP
 
     Message reply(*this);
     MsgArg args[3];
-    size_t numArgs = ArraySize(args);
+    size_t numArgs = 2;
 
-    MsgArg::Set(args, numArgs, "sq"SESSIONOPTS_SIG, sessionHost, sessionPort, opts.traffic, opts.proximity, opts.transports);
+    MsgArg::Set(args, numArgs, "sq", sessionHost, sessionPort);
+    SetSessionOpts(opts, args[2]);
 
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
-    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "JoinSession", args, numArgs, reply);
+    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "JoinSession", args, ArraySize(args), reply);
     if (ER_OK == status) {
-        status = reply->GetArgs("uu"SESSIONOPTS_SIG, &disposition, &sessionId, &opts.traffic, &opts.proximity, &opts.transports);
-        if (disposition != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
+        const MsgArg* replyArgs;
+        size_t na;
+        reply->GetArgs(na, replyArgs);
+        assert(na == 3);
+        disposition = replyArgs[0].v_uint32;
+        sessionId = replyArgs[1].v_uint32;
+        status = GetSessionOpts(replyArgs[2], opts);
+        if ((status != ER_OK) || (disposition != ALLJOYN_JOINSESSION_REPLY_SUCCESS)) {
             sessionId = 0;
         }
     } else {

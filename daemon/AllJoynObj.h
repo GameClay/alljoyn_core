@@ -82,11 +82,10 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      *
      * The input Message (METHOD_CALL) is expected to contain the following parameters:
      *   sessionPort  sessionPort    SessionPort identifier.
-     *   isMultipoint bool           true iff sessionPort is multipoint
      *   opts         SessionOpts    SessionOpts that must be agreeable to any joiner.
      *
      * The output Message (METHOD_REPLY) contains the following parameters:
-     *   resultCode   uint32   A ALLJOYN_CREATESESSION_* reply code (see AllJoynStd.h).
+     *   resultCode   uint32   An ALLJOYN_BINDSESSIONPORT_* reply code (see AllJoynStd.h).
      *   sessionPort  uint16   SessionPort (same as input sessionPort unless SESSION_PORT_ANY was specified)
      *
      * @param member  Member.
@@ -352,15 +351,13 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
         qcc::String sessionHost;
         SessionPort sessionPort;
         SessionOpts opts;
-        bool isMultipoint;
         qcc::SocketFd fd;
         RemoteEndpoint* streamingEp;
         std::vector<qcc::String> memberNames;
         SessionMapEntry() :
             id(0),
             sessionPort(0),
-            opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY),
-            isMultipoint(false),
+            opts(),
             fd(-1),
             streamingEp(NULL) { }
     };
@@ -447,6 +444,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * @param replyCode        [OUT] SessionAttach response code
      * @param sessionId        [OUT] session id if reply code indicates success.
      * @param optsOut          [OUT] Acutal (final) session options.
+     * @param members          [OUT] Array or session members (strings) formatted as MsgArg.
      */
     QStatus SendAttachSession(SessionPort sessionPort,
                               const char* src,
@@ -457,7 +455,8 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
                               const SessionOpts& optsIn,
                               uint32_t& replyCode,
                               SessionId& sessionId,
-                              SessionOpts& optsOut);
+                              SessionOpts& optsOut,
+                              MsgArg& members);
 
     /**
      * Utility method used to invoke AcceptSession on device local endpoint.

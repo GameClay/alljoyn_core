@@ -70,7 +70,7 @@ class MyBusListener : public BusListener {
         if (0 == strcmp(name, g_wellKnownName.c_str())) {
             /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
             uint32_t disposition = 0;
-            SessionOpts opts(SessionOpts::TRAFFIC_RAW_RELIABLE, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+            SessionOpts opts(SessionOpts::TRAFFIC_RAW_RELIABLE, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
             QStatus status = g_msgBus->JoinSession(name, SESSION_PORT, disposition, sessionId, opts);
             if ((ER_OK != status) || (ALLJOYN_JOINSESSION_REPLY_SUCCESS != disposition)) {
                 QCC_LogError(status, ("JoinSession(%s) failed (%u)", name, disposition));

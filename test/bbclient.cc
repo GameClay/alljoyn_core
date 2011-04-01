@@ -82,7 +82,7 @@ class MyBusListener : public BusListener {
         if (0 == ::strcmp(name, g_wellKnownName.c_str())) {
             /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
             uint32_t disposition = 0;
-            SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, SessionOpts::PROXIMITY_ANY, transport);
+            SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, false, SessionOpts::PROXIMITY_ANY, transport);
             QStatus status;
 
             if (stopDiscover) {
