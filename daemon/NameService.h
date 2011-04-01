@@ -585,6 +585,13 @@ class NameService : public qcc::Thread {
      */
     QStatus Cancel(std::vector<qcc::String>& wkn);
 
+    /**
+     * @brief Returns a count of the number of names currently being advertised
+     *
+     * @return  Returns the number of names currently being advertised
+     */
+    size_t NumAdvertisements() { return m_advertised.size(); }
+
   private:
     /**
      * @brief The IPv4 multicast address for the  multicast name service.
