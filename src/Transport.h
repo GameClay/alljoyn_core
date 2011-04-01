@@ -271,8 +271,6 @@ class Transport {
      */
     virtual bool ExternallyConnectable() const = 0;
 
-  protected:
-
     /**
      * Helper used to parse client/server arg strings
      *
@@ -281,9 +279,9 @@ class Transport {
      * @param argMap    [OUT] A maps or args matching the given transport name.
      * @return ER_OK if successful.
      */
-    QStatus ParseArguments(const char* transportName,
-                           const char* args,
-                           std::map<qcc::String, qcc::String>& argMap);
+    static QStatus ParseArguments(const char* transportName,
+                                  const char* args,
+                                  std::map<qcc::String, qcc::String>& argMap);
 };
 
 }
