@@ -19,6 +19,7 @@ env.Append(CPPPATH=['..'])
 
 # Test Programs
 progs = [
+    env.Program('advtunnel', ['advtunnel.cc'] + daemon_objs),
     env.Program('hci', ['hci.cc'] + daemon_objs),
     env.Program('bbdaemon', ['bbdaemon.cc'] + daemon_objs),
     env.Program('DaemonTest', ['DaemonTest.cc']),
