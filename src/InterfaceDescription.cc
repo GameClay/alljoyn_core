@@ -96,14 +96,16 @@ InterfaceDescription::InterfaceDescription(const InterfaceDescription& other) :
 
 InterfaceDescription& InterfaceDescription::operator=(const InterfaceDescription& other)
 {
-    name = other.name;
-    defs = new Definitions(other.defs->members, other.defs->properties);
-    secure = other.secure;
+    if (this != &other) {
+        name = other.name;
+        defs = new Definitions(other.defs->members, other.defs->properties);
+        secure = other.secure;
 
-    /* Update the iface pointer in each member */
-    std::map<qcc::StringMapKey, Member>::iterator mit = defs->members.begin();
-    while (mit != defs->members.end()) {
-        mit++->second.iface = this;
+        /* Update the iface pointer in each member */
+        std::map<qcc::StringMapKey, Member>::iterator mit = defs->members.begin();
+        while (mit != defs->members.end()) {
+            mit++->second.iface = this;
+        }
     }
     return *this;
 }
