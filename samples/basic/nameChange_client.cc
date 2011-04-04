@@ -180,19 +180,15 @@ int main(int argc, char** argv, char** envArg)
     }
 
     /* Stop the bus (not strictly necessary since we are going to delete it anyways) */
-    if (g_msgBus) {
-        QStatus s = g_msgBus->Stop();
-        if (ER_OK != s) {
-            printf("BusAttachment::Stop failed");
-        }
+    QStatus s = g_msgBus->Stop();
+    if (ER_OK != s) {
+        printf("BusAttachment::Stop failed");
     }
 
     /* Deallocate bus */
-    if (g_msgBus) {
-        BusAttachment* deleteMe = g_msgBus;
-        g_msgBus = NULL;
-        delete deleteMe;
-    }
+    BusAttachment* deleteMe = g_msgBus;
+    g_msgBus = NULL;
+    delete deleteMe;
 
     printf("name Change client exiting with status %d (%s)\n", status, QCC_StatusText(status));
 
