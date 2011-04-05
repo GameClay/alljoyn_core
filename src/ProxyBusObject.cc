@@ -724,13 +724,15 @@ ProxyBusObject::ProxyBusObject(const ProxyBusObject& other)
 
 ProxyBusObject& ProxyBusObject::operator=(const ProxyBusObject& other)
 {
-    components = new Components;
-    bus = other.bus;
-    path = other.path;
-    serviceName = other.serviceName;
-    sessionId = other.sessionId;
-    if (other.components) {
-        *components = *other.components;
+    if (this != &other) {
+        components = new Components;
+        bus = other.bus;
+        path = other.path;
+        serviceName = other.serviceName;
+        sessionId = other.sessionId;
+        if (other.components) {
+            *components = *other.components;
+        }
     }
     return *this;
 }
