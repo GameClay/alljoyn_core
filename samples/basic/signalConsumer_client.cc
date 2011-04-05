@@ -254,11 +254,9 @@ int main(int argc, char** argv, char** envArg)
     }
 
     /* Deallocate bus */
-    if (g_msgBus) {
-        BusAttachment* deleteMe = g_msgBus;
-        g_msgBus = NULL;
-        delete deleteMe;
-    }
+    BusAttachment* deleteMe = g_msgBus;
+    g_msgBus = NULL;
+    delete deleteMe;
 
     printf("Exiting with status %d (%s)\n", status, QCC_StatusText(status));
 
