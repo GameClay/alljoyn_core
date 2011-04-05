@@ -84,14 +84,18 @@ QStatus ProxyBusObject::GetAllProperties(const char* iface, MsgArg& value) const
         Message reply(*bus);
         MsgArg arg = MsgArg("s", iface);
         const InterfaceDescription* propIface = bus->GetInterface(org::freedesktop::DBus::Properties::InterfaceName);
-        status = MethodCall(*(propIface->GetMember("GetAll")),
-                            &arg,
-                            1,
-                            reply,
-                            DefaultCallTimeout,
-                            flags);
-        if (ER_OK == status) {
-            value = *(reply->GetArg(0));
+        if (propIface == NULL) {
+            status = ER_BUS_NO_SUCH_INTERFACE;
+        } else {
+            status = MethodCall(*(propIface->GetMember("GetAll")),
+                                &arg,
+                                1,
+                                reply,
+                                DefaultCallTimeout,
+                                flags);
+            if (ER_OK == status) {
+                value = *(reply->GetArg(0));
+            }
         }
     }
     return status;
