@@ -270,10 +270,9 @@ int main(int argc, char** argv, char** envArg) {
     }
 
     /* Clean up msg bus */
-    if (g_msgBus) {
-        BusAttachment* deleteMe = g_msgBus;
-        g_msgBus = NULL;
-        delete deleteMe;
-    }
+    BusAttachment* deleteMe = g_msgBus;
+    g_msgBus = NULL;
+    delete deleteMe;
+
     return (int) status;
 }
