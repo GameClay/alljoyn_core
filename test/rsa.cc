@@ -191,10 +191,16 @@ int main(int argc, char** argv)
         }
     }
 
+    delete [] out;
+    delete [] in;
+
     printf("!!!PASSED\n");
     return 0;
 
 FailExit:
+    delete [] out;
+    delete [] in;
+
     printf("!!!FAILED\n");
     return -1;
 
