@@ -142,12 +142,16 @@ QStatus ProxyBusObject::SetProperty(const char* iface, const char* property, Msg
         size_t numArgs = ArraySize(inArgs);
         MsgArg::Set(inArgs, numArgs, "ssv", iface, property, &value);
         const InterfaceDescription* propIface = bus->GetInterface(org::freedesktop::DBus::Properties::InterfaceName);
-        status = MethodCall(*(propIface->GetMember("Set")),
-                            inArgs,
-                            numArgs,
-                            reply,
-                            DefaultCallTimeout,
-                            flags);
+        if (propIface == NULL) {
+            status = ER_BUS_NO_SUCH_INTERFACE;
+        } else {
+            status = MethodCall(*(propIface->GetMember("Set")),
+                                inArgs,
+                                numArgs,
+                                reply,
+                                DefaultCallTimeout,
+                                flags);
+        }
     }
     return status;
 }
