@@ -65,7 +65,7 @@
 #include "BlueZIfc.h"
 #include "BTAccessor.h"
 #include "BTController.h"
-#include "BTEndpoint.h"
+#include "BlueZBTEndpoint.h"
 #include "BTTransport.h"
 
 #include <Status.h>
@@ -651,7 +651,7 @@ exit:
 RemoteEndpoint* BTTransport::BTAccessor::Accept(BusAttachment& alljoyn,
                                                 Event* connectEvent)
 {
-    BTEndpoint* conn(NULL);
+    BlueZBTEndpoint* conn(NULL);
     SocketFd sockFd;
     BT_SOCKADDR remoteAddr;
     socklen_t ralen = sizeof(remoteAddr);
@@ -705,7 +705,7 @@ exit:
         }
     } else {
         BTBusAddress dummyAddr;
-        conn = new BTEndpoint(alljoyn, true, sockFd, dummyAddr);
+        conn = new BlueZBTEndpoint(alljoyn, true, sockFd, dummyAddr);
     }
 
     return conn;
@@ -721,7 +721,7 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
         return NULL;
     }
 
-    BTEndpoint* conn(NULL);
+    BlueZBTEndpoint* conn(NULL);
     int ret;
     int flags;
     int sockFd(-1);
@@ -818,7 +818,7 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
 exit:
 
     if (status == ER_OK) {
-        conn = new BTEndpoint(alljoyn, false, sockFd, addr);
+        conn = new BlueZBTEndpoint(alljoyn, false, sockFd, addr);
     } else {
         if (sockFd > 0) {
             QCC_DbgPrintf(("Closing sockFd: %d", sockFd));
@@ -846,7 +846,7 @@ QStatus BTTransport::BTAccessor::Disconnect(const BTBusAddress& addr)
 
     transport->threadListLock.Lock();
     for (eit = transport->threadList.begin(); eit != transport->threadList.end(); ++eit) {
-        if (addr == static_cast<BTEndpoint*>(*eit)->GetBDAddress()) {
+        if (addr == static_cast<BlueZBTEndpoint*>(*eit)->GetBTBusAddress()) {
             ep = *eit;
         }
         if (ep) {

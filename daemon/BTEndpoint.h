@@ -23,12 +23,10 @@
 
 #include <qcc/platform.h>
 
-#include <qcc/Socket.h>
-#include <qcc/String.h>
+#include <qcc/Stream.h>
 
 #include <alljoyn/BusAttachment.h>
 
-#include "BlueZUtils.h"
 #include "BTNodeDB.h"
 #include "RemoteEndpoint.h"
 
@@ -43,16 +41,17 @@ class BTEndpoint : public RemoteEndpoint {
      */
     BTEndpoint(BusAttachment& bus,
                bool incoming,
-               qcc::SocketFd sockFd,
+               qcc::Stream& stream,
                const BTBusAddress& addr) :
-        RemoteEndpoint(bus, incoming, addr.ToSpec(), sockStream, "bluetooth"),
-        sockStream(sockFd), addr(addr)
+        RemoteEndpoint(bus, incoming, addr.ToSpec(), stream, "bluetooth"),
+        addr(addr)
     { }
 
-    const BTBusAddress& GetBDAddress() const { return addr; }
+    virtual ~BTEndpoint() { }
+
+    const BTBusAddress& GetBTBusAddress() const { return addr; }
 
   private:
-    bluez::BTSocketStream sockStream;
     BTBusAddress addr;
 };
 

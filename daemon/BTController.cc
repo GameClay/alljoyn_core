@@ -31,6 +31,7 @@
 #include <qcc/StringUtil.h>
 
 #include "BTController.h"
+#include "BTEndpoint.h"
 
 #define QCC_MODULE "ALLJOYN_BTC"
 
@@ -477,16 +478,26 @@ void BTController::PrepConnect()
             advertise.active = false;
         }
     }
-    //lock.Unlock();
+
+    // Unlocks in BTController::PostConnect()
 }
 
 
 void BTController::PostConnect(QStatus status, const RemoteEndpoint* ep)
 {
-    //lock.Lock();
+    // Assumes lock acquired in BTController::PrepConnect()
+
     if (status == ER_OK) {
         assert(ep);
-        SendSetState(ep->GetRemoteName());
+        BTBusAddress addr = reinterpret_cast<const BTEndpoint*>(ep)->GetBTBusAddress();
+        if (!master && !nodeDB.FindNode(addr)->IsValid()) {
+            /* Only call SendSetState for new outgoing connections.  If we
+             * have a master then the connection can't be new.  If we are the
+             * master then there should be node device with the same bus
+             * address as the endpoint.
+             */
+            SendSetState(ep->GetRemoteName());
+        }
     } else {
         if (UseLocalFind()) {
             /*
@@ -716,6 +727,7 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BTNodeDB& newAdInfo,
     lock.Unlock();
 
     if (!self->FindNamesEmpty()) {
+        QCC_DbgPrintf(("Notify ourself of the names."));
         BTNodeDB::const_iterator node;
         // Tell ourself about the names (This is best done outside the noseStateLock just in case).
         for (node = oldAdInfo.Begin(); node != oldAdInfo.End(); ++node) {

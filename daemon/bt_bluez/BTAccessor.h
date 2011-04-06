@@ -38,6 +38,7 @@
 #include "BTController.h"
 #include "BTNodeDB.h"
 #include "BTTransport.h"
+#include "RemoteEndpoint.h"
 
 #include <Status.h>
 
