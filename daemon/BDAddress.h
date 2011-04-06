@@ -36,14 +36,14 @@ class BDAddress {
     /**
      * Default Constructor - initializes the BD Address to 00:00:00:00:00:00.
      */
-    BDAddress() : buf(0ULL), cacheValid(false) { }
+    BDAddress() : buf(0ULL), separator(255) { }
 
     /**
      * Copy Constructor
      *
      * @param other     BD Address to copy from.
      */
-    BDAddress(const BDAddress& other) : buf(other.buf), cacheValid(false) { }
+    BDAddress(const BDAddress& other) : buf(other.buf), separator(255) { }
 
     /**
      * Constructor that initializes the BD Address from a string in one of the
@@ -54,7 +54,7 @@ class BDAddress {
      *
      * @param addr  BD address in a string.
      */
-    BDAddress(const qcc::String& addr) : cacheValid(false) {
+    BDAddress(const qcc::String& addr) : separator(255) {
         if (FromString(addr) != ER_OK) {
             // Failed to parse the string.  Gotta intialize to something...
             buf = 0ULL;
@@ -68,7 +68,7 @@ class BDAddress {
      * @param littleEndian  [Optional] Flag to indicate if bytes are arranged in
      *                      little-endian (BlueZ) order (default is no).
      */
-    BDAddress(const uint8_t* addr, bool littleEndian = false) : cacheValid(false) {
+    BDAddress(const uint8_t* addr, bool littleEndian = false) : separator(255) {
         this->CopyFrom(addr, littleEndian);
     }
 
@@ -77,10 +77,7 @@ class BDAddress {
      *
      * @param addr  A uint64_t containing the BD Address in the lower 48 bits.
      */
-    BDAddress(const uint64_t& addr) :
-        buf(addr & 0xffffffffffffULL),
-        cacheValid(false)
-    { }
+    BDAddress(const uint64_t& addr) : buf(addr & 0xffffffffffffULL), separator(255) { }
 
     /**
      * Function to set the BD Address from an array of bytes.
@@ -95,7 +92,7 @@ class BDAddress {
         } else {
             buf = (betoh32(*(uint32_t*)&addr[0]) << 16) | betoh16(*(uint16_t*)&addr[4]);
         }
-        cacheValid = false;
+        separator = 255;
     }
 
     /**
@@ -125,13 +122,16 @@ class BDAddress {
      * @return  A string representation of the BD Address.
      */
     const qcc::String& ToString(char separator = ':') const {
-        if (!cacheValid) {
+        /* Need to regenerate the string if a different separator is specified
+         * that the last time the cache was generated.
+         */
+        if (separator != this->separator) {
             /* Humans accustomed to reading left-to-right script tend to
              * prefer bytes to be in big endian order so that is the
              * convention used for string representations. */
             const uint64_t be = htobe64(buf);
             cache = qcc::BytesToHexString(((const uint8_t*)&be) + 2, 6, true, separator);
-            cacheValid = true;
+            this->separator = separator;
         }
         return cache;
     }
@@ -177,7 +177,7 @@ class BDAddress {
      */
     BDAddress& operator=(const BDAddress& other) {
         buf = other.buf;
-        cacheValid = false;
+        separator = 255;
         return *this;
     }
 
@@ -225,8 +225,8 @@ class BDAddress {
 
     uint64_t buf;               /**< BD Address storage. */
 
-    mutable qcc::String cache;  /** Cache storage for the string representation.  Make usage of BDAddress::ToString() easier. */
-    mutable bool cacheValid;    /**< Flag indicating if the string representation cache is valid or not. */
+    mutable qcc::String cache;  /**< Cache storage for the string representation.  Make usage of BDAddress::ToString() easier. */
+    mutable char separator;     /**< Used to check if cache is valid. */
 };
 
 }
