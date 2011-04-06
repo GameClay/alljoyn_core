@@ -147,6 +147,15 @@ QStatus _Message::ParseArray(MsgArg* arg,
                 bools[i] = (b == 1);
                 bufPos += 4;
             }
+            /*
+             * if status is set to ER_BUS_BAD_VALUE it means the for loop above
+             * found that the value was not an ALLJOYN_BOOLEAN type and deleted
+             * the array 'bools' then exited the for loop. Do not try and set
+             * the 'v_scalarArray.v_bool' to the now invalid 'bools'.
+             */
+            if (status == ER_BUS_BAD_VALUE) {
+                break;
+            }
             arg->typeId = ALLJOYN_BOOLEAN_ARRAY;
             arg->v_scalarArray.numElements = num;
             arg->v_scalarArray.v_bool = bools;
