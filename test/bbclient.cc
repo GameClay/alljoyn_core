@@ -736,15 +736,12 @@ int main(int argc, char** argv)
     }
 
     /* Deallocate bus */
-    if (g_msgBus) {
-        BusAttachment* deleteMe = g_msgBus;
-        g_msgBus = NULL;
-        delete deleteMe;
-    }
-    if (g_busListener) {
-        delete g_busListener;
-        g_busListener = NULL;
-    }
+    BusAttachment* deleteMe = g_msgBus;
+    g_msgBus = NULL;
+    delete deleteMe;
+
+    delete g_busListener;
+    g_busListener = NULL;
 
     printf("bbclient exiting with status %d (%s)\n", status, QCC_StatusText(status));
 

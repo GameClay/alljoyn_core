@@ -722,11 +722,9 @@ int main(int argc, char** argv)
     }
 
     /* Clean up msg bus */
-    if (g_msgBus) {
-        BusAttachment* deleteMe = g_msgBus;
-        g_msgBus = NULL;
-        delete deleteMe;
-    }
+    BusAttachment* deleteMe = g_msgBus;
+    g_msgBus = NULL;
+    delete deleteMe;
 
     printf("%s exiting with status %d (%s)\n", argv[0], status, QCC_StatusText(status));
 

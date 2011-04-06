@@ -208,20 +208,16 @@ int main(int argc, char** argv)
 
 
     /* Stop the bus */
-    if (g_msgBus) {
-        status = g_msgBus->Stop();
-        if (ER_OK != status) {
-            QCC_LogError(status, ("BusAttachment::Stop failed"));
-        }
+    status = g_msgBus->Stop();
+    if (ER_OK != status) {
+        QCC_LogError(status, ("BusAttachment::Stop failed"));
     }
 
 
     /* Deallocate bus */
-    if (g_msgBus) {
-        BusAttachment* deleteMe = g_msgBus;
-        g_msgBus = NULL;
-        delete deleteMe;
-    }
+    BusAttachment* deleteMe = g_msgBus;
+    g_msgBus = NULL;
+    delete deleteMe;
 
 
     printf("Client exiting with status %d (%s)\n", status, QCC_StatusText(status));
