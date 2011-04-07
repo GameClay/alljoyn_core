@@ -43,7 +43,7 @@ class BDAddress {
      *
      * @param other     BD Address to copy from.
      */
-    BDAddress(const BDAddress& other) : buf(other.buf), separator(255) { }
+    BDAddress(const BDAddress& other) : buf(other.buf & 0xffffffffffffULL), separator(255) { }
 
     /**
      * Constructor that initializes the BD Address from a string in one of the
@@ -154,7 +154,7 @@ class BDAddress {
             (HexStringToBytes(addr, ((uint8_t*)&be) + 2, ADDRESS_SIZE, ':') != ADDRESS_SIZE)) {
             return ER_FAIL;
         }
-        buf = betoh64(be);
+        buf = betoh64(be) & 0xffffffffffffULL;
         return ER_OK;
     }
 
@@ -176,7 +176,7 @@ class BDAddress {
      * @return  Reference to *this.
      */
     BDAddress& operator=(const BDAddress& other) {
-        buf = other.buf;
+        buf = other.buf & 0xffffffffffffULL;
         separator = 255;
         return *this;
     }
