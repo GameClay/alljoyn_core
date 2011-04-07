@@ -88,9 +88,9 @@ class BDAddress {
      */
     void CopyFrom(const uint8_t* addr, bool littleEndian = false) {
         if (littleEndian) {
-            buf = (letoh32(*(uint32_t*)&addr[2]) << 16) | letoh16(*(uint16_t*)&addr[0]);
+            buf = ((uint64_t)letoh32(*(uint32_t*)&addr[2]) << 16) | (uint64_t)letoh16(*(uint16_t*)&addr[0]);
         } else {
-            buf = (betoh32(*(uint32_t*)&addr[0]) << 16) | betoh16(*(uint16_t*)&addr[4]);
+            buf = ((uint64_t)betoh32(*(uint32_t*)&addr[0]) << 16) | (uint64_t)betoh16(*(uint16_t*)&addr[4]);
         }
         separator = 255;
     }
