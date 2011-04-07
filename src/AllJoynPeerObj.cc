@@ -175,7 +175,7 @@ void AllJoynPeerObj::ExpandHeader(Message& msg, const qcc::String& receivedFrom)
          */
         ProxyBusObject remotePeerObj(bus, receivedFrom.c_str(), org::alljoyn::Bus::Peer::ObjectPath, 0);
         const InterfaceDescription* ifc = bus.GetInterface(org::alljoyn::Bus::Peer::HeaderCompression::InterfaceName);
-        if ( ifc == NULL) {
+        if (ifc == NULL) {
             status = ER_BUS_NO_SUCH_INTERFACE;
         }
         if (status == ER_OK) {
