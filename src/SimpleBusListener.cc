@@ -182,7 +182,7 @@ bool SimpleBusListener::AcceptSessionJoiner(SessionPort sessionPort, const char*
             internal.lock.Unlock();
         }
     }
-    return false;
+    return ret;
 }
 
 QStatus SimpleBusListener::AcceptSessionJoiner(bool accept)
