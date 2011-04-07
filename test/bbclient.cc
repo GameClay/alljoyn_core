@@ -615,6 +615,12 @@ int main(int argc, char** argv)
                 MsgArg pingArgs[2];
                 const InterfaceDescription::Member* pingMethod;
                 const InterfaceDescription* ifc = remoteObj.GetInterface(::org::alljoyn::alljoyn_test::InterfaceName);
+                if (ifc == NULL) {
+                    status = ER_BUS_NO_SUCH_INTERFACE;
+                    QCC_SyncPrintf("Unable to Get InterfaceDecription for the %s interface\n",
+                                   ::org::alljoyn::alljoyn_test::InterfaceName);
+                    break;
+                }
                 char buf[80];
 
                 if (roundtrip) {
