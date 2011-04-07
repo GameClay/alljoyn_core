@@ -20,6 +20,8 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
 
+import android.util.Log;
+
 import java.util.ArrayList;
 
 //
@@ -86,6 +88,7 @@ import java.util.ArrayList;
 // can do anyway since we can never know what is happening.
 //
 public class DaemonService extends Service {
+    private static final String TAG = "org.alljoyn.bus.daemonservice";
     //
     // Load the JNI library that holds all of the AllJoyn code.  The alljoyn
 	// daemon has been made into a static library that exports the function
@@ -140,30 +143,72 @@ public class DaemonService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId)
     {
     	//
-    	// We allow the activity that starts our service to pass an array
-    	// of strings as an extra which we will interpret as environment
-    	// variables and associated values.  For example, "ER_DEBUG_NS=7" and/or
-    	// "BUS_SERVER_ADDRESSES=unix:abstract=yadda,tcp:addr=0.0.0.0,port=9954"
+    	// Provide some reasonable defaults
     	//
-    	mArgv = intent.getStringArrayListExtra("argv");
-    	mConfig = intent.getStringExtra("config");
-    	mLoglevels = intent.getStringExtra("loglevels");
-    	
-        thread = new DaemonThread();
-        thread.start();
+        ArrayList<String> argv = new ArrayList<String>();
+        argv.add("alljoyn-daemon-service");  // argv[0] is the name (choose one, but must be there).
+        argv.add("--internal");              // argv[1] use the internal daemon configuration.
+        argv.add("--verbosity=3");           // argv[3] set verbosity to LOG_ERR (see qcc/Logger.h)
+        mArgv = argv;
+        mConfig = "";
+        mLoglevels = "ALL=1";
+        
+    	//
+    	// The intent may be null if the service is being restarted after its
+    	// process has gone away, and it had previously returned anything
+    	// except START_STICKY_COMPATIBILITY.  We assume that if the underlying
+        // system is healthy, we will not be restarted except in dire memory
+        // exhaustion circumstances.
+    	//
+    	if (intent == null) {
+	        Log.e(TAG, String.format("onStartCommand(): unexpected null intent"));
+    	} else {
+	        Log.i(TAG, String.format("onStartCommand(): intent provided"));
+        	//
+        	// We allow the activity that starts our service to pass data
+        	// as "extras" which we will interpret as command line arguments
+    		// configuration file contents and log levels.  We'll tweak our
+    		// defaults with anything passed.
+        	//
+    		ArrayList<String> providedArgv = intent.getStringArrayListExtra("argv");
+    		if (providedArgv != null) {
+    			mArgv = providedArgv;
+    		} else {
+    	        Log.w(TAG, String.format("onStartCommand(): using default arguments"));
+    		}
+    		
+    		String providedConfig = intent.getStringExtra("config");
+        	if (providedConfig != null) {
+        		mConfig = providedConfig;
+        	} else {
+    	        Log.w(TAG, String.format("onStartCommand(): using default config"));
+        	}
+        	
+    		String providedLoglevels = intent.getStringExtra("loglevels");
+        	if (providedLoglevels != null) {
+        		mLoglevels = providedLoglevels;
+        	} else {
+    	        Log.w(TAG, String.format("onStartCommand(): using default loglevels"));
+        	}
+        	
+            thread = new DaemonThread();
+            thread.start();
+    	}
     	
     	//
-        // START_STICKY means that the service is expected to run for arbitrary
-        // lengths of time and will be explicitly started and stopped.
+    	// START_REDELIVER_INTENT means that if this service's process is
+    	// killed while it is started, then it will be scheduled for a restart
+    	// and the last delivered Intent will be re-delivered to it again.  We
+    	// need that intent since it has the parameters we will need to restart
+    	// the daemon.
         //
-        return START_STICKY;
+        return START_REDELIVER_INTENT;
     }
 
     //
     // This is where to add code to enable the priority bump due to a bound
     // foreground application.  We don't have any reason to exchange any RPC
-    // calls, but the simple act of binding implies that we get that priority
-    // bump.
+    // calls, but the act of binding implies that we get that priority bump.
     //
     @Override
     public IBinder onBind(Intent intent)

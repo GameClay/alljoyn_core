@@ -71,7 +71,7 @@ public class BusDaemonUser extends Activity {
         
         intent.putExtra("config", config);
 
-        String loglevels = "ALLJOYN=7; ALL=7";
+        String loglevels = "ALL=7";
         intent.putExtra("loglevels", loglevels);
         
         this.startService(intent);
