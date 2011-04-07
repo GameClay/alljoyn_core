@@ -827,10 +827,13 @@ QStatus BTController::DoNameOp(const qcc::String& name,
 
         } else {
             QCC_DbgPrintf(("Sending %s to our master: %s", signal.name.c_str(), master->GetServiceName().c_str()));
-            MsgArg args[2];
-            args[0].Set(SIG_NAME, bus.GetUniqueName().c_str());
-            args[1].Set(SIG_NAME, name.c_str());
-            status = Signal(master->GetServiceName().c_str(), 0, signal, args, ArraySize(args));
+            MsgArg args[3];
+            size_t argsSize = ArraySize(args);
+            MsgArg::Set(args, argsSize, SIG_NAME_OP,
+                        listenAddr.addr.GetRaw(),
+                        listenAddr.psm,
+                        name.c_str());
+            status = Signal(master->GetServiceName().c_str(), 0, signal, args, argsSize);
         }
     }
     lock.Unlock();
