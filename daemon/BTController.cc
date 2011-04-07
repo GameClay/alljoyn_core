@@ -1175,8 +1175,10 @@ void BTController::HandleFoundDeviceChange(const InterfaceDescription::Member* m
     QCC_DbgTrace(("BTController::HandleFoundDeviceChange(member = %s, sourcePath = \"%s\", msg = <>)",
                   member->name.c_str(), sourcePath));
 
-    if (nodeDB.FindNode(msg->GetSender())->directMinion) {
+    if (!nodeDB.FindNode(msg->GetSender())->directMinion) {
         // We only handle FoundDevice or LostDevice signals from our minions.
+        QCC_LogError(ER_FAIL, ("Received %s from %s who is NOT a direct minion.",
+                               msg->GetMemberName(), msg->GetSender()));
         return;
     }
 
