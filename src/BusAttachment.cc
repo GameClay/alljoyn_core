@@ -819,16 +819,15 @@ QStatus BusAttachment::BindSessionPort(SessionPort& sessionPort, const SessionOp
                               errName,
                               errMsg.c_str()));
 
-        goto Exit;
+    } else {
+        SessionPort tempPort;
+        status = reply->GetArgs("uq", &disposition, &tempPort);
+        if (disposition != ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS) {
+            status = ER_BUS_ERROR_RESPONSE;
+        } else {
+            sessionPort = tempPort;
+        }
     }
-    SessionPort tempPort;
-    status = reply->GetArgs("uq", &disposition, &tempPort);
-    if (disposition != ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS) {
-        sessionPort = tempPort;
-        status = ER_BUS_ERROR_RESPONSE;
-    }
-
-    Exit :
     return status;
 }
 
