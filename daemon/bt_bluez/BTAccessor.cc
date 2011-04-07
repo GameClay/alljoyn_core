@@ -1037,7 +1037,7 @@ void BTTransport::BTAccessor::AlarmTriggered(const Alarm& alarm, QStatus reason)
             deviceLock.Lock();
             FoundInfoMap::iterator foundInfo = foundDevices.find(static_cast<DeviceDispatchInfo*>(op)->addr);
             if ((foundInfo != foundDevices.end()) &&
-                (foundInfo->second.timestamp >= (GetTimestamp() + FOUND_DEVICE_INFO_TIMEOUT))) {
+                (foundInfo->second.timestamp <= (GetTimestamp() + FOUND_DEVICE_INFO_TIMEOUT))) {
                 foundDevices.erase(foundInfo);
             }
             deviceLock.Unlock();
