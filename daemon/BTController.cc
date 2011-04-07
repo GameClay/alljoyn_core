@@ -717,34 +717,32 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BTNodeDB& newAdInfo,
         if (!node->FindNamesEmpty() && node->IsMinionOf(self)) {
             QCC_DbgPrintf(("Notify %s-%04x of the names.", node->nodeAddr.addr.ToString().c_str(), node->nodeAddr.psm));
             if (oldAdInfo.Size() > 0) {
-                status = SendFoundNamesChange(node->uniqueName, oldAdInfo, true);
+                status = SendFoundNamesChange(node, oldAdInfo, true);
             }
             if (newAdInfo.Size() > 0) {
-                status = SendFoundNamesChange(node->uniqueName, newAdInfo, false);
+                status = SendFoundNamesChange(node, newAdInfo, false);
             }
         }
     }
     lock.Unlock();
 
-    if (!self->FindNamesEmpty()) {
-        QCC_DbgPrintf(("Notify ourself of the names."));
-        BTNodeDB::const_iterator node;
-        // Tell ourself about the names (This is best done outside the noseStateLock just in case).
-        for (node = oldAdInfo.Begin(); node != oldAdInfo.End(); ++node) {
-            if (((*node)->AdvertiseNamesSize() > 0) && (*node != self)) {
-                vector<String> vectorizedNames;
-                vectorizedNames.reserve((*node)->AdvertiseNamesSize());
-                vectorizedNames.assign((*node)->GetAdvertiseNamesBegin(), (*node)->GetAdvertiseNamesEnd());
-                bt.FoundNamesChange((*node)->guid, vectorizedNames, (*node)->nodeAddr.addr, (*node)->nodeAddr.psm, true);
-            }
+    QCC_DbgPrintf(("Notify ourself of the names."));
+    BTNodeDB::const_iterator node;
+    // Tell ourself about the names (This is best done outside the noseStateLock just in case).
+    for (node = oldAdInfo.Begin(); node != oldAdInfo.End(); ++node) {
+        if (((*node)->AdvertiseNamesSize() > 0) && (*node != self)) {
+            vector<String> vectorizedNames;
+            vectorizedNames.reserve((*node)->AdvertiseNamesSize());
+            vectorizedNames.assign((*node)->GetAdvertiseNamesBegin(), (*node)->GetAdvertiseNamesEnd());
+            bt.FoundNamesChange((*node)->guid, vectorizedNames, (*node)->nodeAddr.addr, (*node)->nodeAddr.psm, true);
         }
-        for (node = newAdInfo.Begin(); node != newAdInfo.End(); ++node) {
-            if (((*node)->AdvertiseNamesSize() > 0) && (*node != self)) {
-                vector<String> vectorizedNames;
-                vectorizedNames.reserve((*node)->AdvertiseNamesSize());
-                vectorizedNames.assign((*node)->GetAdvertiseNamesBegin(), (*node)->GetAdvertiseNamesEnd());
-                bt.FoundNamesChange((*node)->guid, vectorizedNames, (*node)->nodeAddr.addr, (*node)->nodeAddr.psm, false);
-            }
+    }
+    for (node = newAdInfo.Begin(); node != newAdInfo.End(); ++node) {
+        if (((*node)->AdvertiseNamesSize() > 0) && (*node != self)) {
+            vector<String> vectorizedNames;
+            vectorizedNames.reserve((*node)->AdvertiseNamesSize());
+            vectorizedNames.assign((*node)->GetAdvertiseNamesBegin(), (*node)->GetAdvertiseNamesEnd());
+            bt.FoundNamesChange((*node)->guid, vectorizedNames, (*node)->nodeAddr.addr, (*node)->nodeAddr.psm, false);
         }
     }
 
@@ -752,12 +750,13 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BTNodeDB& newAdInfo,
 }
 
 
-QStatus BTController::SendFoundNamesChange(const String& dest,
+QStatus BTController::SendFoundNamesChange(const BTNodeInfo& destNode,
                                            const BTNodeDB& adInfo,
                                            bool lost)
 {
-    QCC_DbgTrace(("BTController::SendFoundNamesChange(dest = \"%s\", adInfo = <>, <%s>)",
-                  dest.c_str(), lost ? "lost" : "found/changed"));
+    QCC_DbgTrace(("BTController::SendFoundNamesChange(destNode = \"%s-%04x\", adInfo = <>, <%s>)",
+                  destNode->nodeAddr.addr.ToString().c_str(), destNode->nodeAddr.psm,
+                  lost ? "lost" : "found/changed"));
 
     MsgArg args[4];
     size_t argsSize = ArraySize(args);
@@ -769,7 +768,7 @@ QStatus BTController::SendFoundNamesChange(const String& dest,
 
     for (it = adInfo.Begin(); it != adInfo.End(); ++it) {
         const BTNodeInfo& node = *it;
-        if (node->uniqueName != dest) {
+        if (node != destNode) {
             vector<const char*> nameList;
             NameSet::const_iterator name;
             nameList.reserve(node->AdvertiseNamesSize());
@@ -789,9 +788,13 @@ QStatus BTController::SendFoundNamesChange(const String& dest,
     QStatus status = MsgArg::Set(args, argsSize, SIG_FOUND_NAMES, nodeList.size(), &nodeList.front());
     if (status == ER_OK) {
         if (lost) {
-            status = Signal(dest.c_str(), 0, *org.alljoyn.Bus.BTController.LostNames, args, ArraySize(args));
+            status = Signal(destNode->uniqueName.c_str(), 0,
+                            *org.alljoyn.Bus.BTController.LostNames,
+                            args, ArraySize(args));
         } else {
-            status = Signal(dest.c_str(), 0, *org.alljoyn.Bus.BTController.FoundNames, args, ArraySize(args));
+            status = Signal(destNode->uniqueName.c_str(), 0,
+                            *org.alljoyn.Bus.BTController.FoundNames,
+                            args, ArraySize(args));
         }
     }
 
@@ -894,7 +897,19 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
                 UpdateDelegations(find);
                 QCC_DEBUG_ONLY(DumpNodeStateTable());
 
-                if (!findOp) {
+                if (findOp) {
+                    if (addName && (node->FindNamesSize() == 1)) {
+                        // Prime the name cache for our minion
+                        nodeDB.Lock();
+                        status = SendFoundNamesChange(node, nodeDB, false);
+                        nodeDB.Unlock();
+                    } else if (!addName && node->FindNamesEmpty()) {
+                        // Clear out the name cache for our minion
+                        nodeDB.Lock();
+                        status = SendFoundNamesChange(node, nodeDB, true);
+                        nodeDB.Unlock();
+                    }  // else do nothing
+                } else {
                     BTNodeDB newAdInfo;
                     BTNodeDB oldAdInfo;
                     BTNodeInfo nodeChange(node->guid, node->uniqueName, node->nodeAddr);

@@ -428,13 +428,13 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      * Send the FoundNames signal to the node interested in one or more of the
      * names on that bus.
      *
-     * @param dest     Unique name of the minion that should receive the message.
+     * @param destNode The minion that should receive the message.
      * @param adInfo   Advertise information to send.
      * @param lost     Set to true if names are lost, false otherwise.
      *
      * @return ER_OK if successful.
      */
-    QStatus SendFoundNamesChange(const qcc::String& dest,
+    QStatus SendFoundNamesChange(const BTNodeInfo& destNode,
                                  const BTNodeDB& adInfo,
                                  bool lost);
 
