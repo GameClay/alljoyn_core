@@ -844,7 +844,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     const MsgArg* args;
     msg->GetArgs(na, args);
     assert(na == 6);
-    QStatus status = MsgArg::Get(args, 5, "yssss", &sessionPort, &src, &dest, &srcB2B, &busAddr);
+    QStatus status = MsgArg::Get(args, 5, "qssss", &sessionPort, &src, &dest, &srcB2B, &busAddr);
     if (status == ER_OK) {
         status = GetSessionOpts(args[5], optsIn);
     }
@@ -1189,7 +1189,7 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
 {
     Message reply(bus);
     MsgArg attachArgs[6];
-    attachArgs[0].Set("y", sessionPort);
+    attachArgs[0].Set("q", sessionPort);
     attachArgs[1].Set("s", src);
     attachArgs[2].Set("s", dest);
     attachArgs[3].Set("s", remoteB2BName);
