@@ -251,10 +251,17 @@ static QStatus ListObjectPaths(BusAttachment& bus, ProxyBusObject& robj)
         robj.GetChildren(children, numChildren);
 
         Message rsp(bus);
+        QStatus istatus = ER_OK;
         const InterfaceDescription* ifc = bus.GetInterface(org::freedesktop::DBus::Introspectable::InterfaceName);
-        const InterfaceDescription::Member* member = ifc->GetMember("Introspect");
+        if (ifc == NULL) {
+            istatus = ER_BUS_NO_SUCH_INTERFACE;
+            QCC_LogError(istatus, ("Failed to get Introspect interface"));
+        }
+        if (istatus == ER_OK) {
+            const InterfaceDescription::Member* member = ifc->GetMember("Introspect");
 
-        QStatus istatus =  robj.MethodCall(*member, NULL, 0, rsp);
+            istatus =  robj.MethodCall(*member, NULL, 0, rsp);
+        }
 
         if (istatus == ER_OK) {
             const MsgArg* data = rsp->GetArg(0);
