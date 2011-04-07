@@ -573,14 +573,27 @@ void BTController::BTDeviceAvailable(bool on)
 
 bool BTController::CheckIncomingAddress(const BDAddress& addr) const
 {
+    QCC_DbgTrace(("BTController::CheckIncomingAddress(addr = %s)", addr.ToString().c_str()));
     if (IsMaster()) {
+        QCC_DbgPrintf(("Always accept incomming connection as Master."));
         return true;
     } else if (addr == masterNode->nodeAddr.addr) {
+        QCC_DbgPrintf(("Always accept incomming connection from Master."));
         return true;
     } else if (IsDrone()) {
         const BTNodeInfo& node = nodeDB.FindNode(addr);
+        QCC_DbgPrintf(("% incomming connection from %s %s.",
+                       (node->IsValid() && node->directMinion) ? "Accepting" : "Not Accepting",
+                       node->IsValid() ?
+                       (node->directMinion ? "direct" : "indirect") : "unknown node:",
+                       node->IsValid() ? "minion" : addr.ToString().c_str()));
         return node->IsValid() && node->directMinion;
     }
+
+    QCC_DbgPrintf(("Always reject incoming connection from %s because we are a %s (our master is %s).",
+                   addr.ToString().c_str(),
+                   IsMaster() ? "master" : (IsDrone() ? "drone" : "minion"),
+                   masterNode->nodeAddr.addr.ToString().c_str()));
     return false;
 }
 
@@ -611,6 +624,8 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
 
             delete master;
             master = NULL;
+            masterNode->nodeAddr = BTBusAddress();
+            masterNode->uniqueName = "";
 
             find.resultDest.clear();
             find.ignoreAddr = self->nodeAddr.addr;
@@ -945,6 +960,8 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     uint8_t numConnections;
     qcc::String sender = msg->GetSender();
     QStatus status;
+    uint64_t rawBDAddr;
+    uint16_t psm;
 
     lock.Lock();
     if (UseLocalFind() && find.active) {
@@ -959,6 +976,8 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
      * names from the second argument.
      */
     status = msg->GetArg(0)->Get(SIG_MINION_CNT, &numConnections);
+    status = (status != ER_OK) ? status : msg->GetArg(1)->Get(SIG_BDADDR, &rawBDAddr);
+    status = (status != ER_OK) ? status : msg->GetArg(2)->Get(SIG_PSM, &psm);
     if (status != ER_OK) {
         MethodReply(msg, "org.alljoyn.Bus.BTController.InternalError", QCC_StatusText(status));
         return;
@@ -971,6 +990,8 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     if (numConnections > directMinions) {
         // We are now a minion (or a drone if we have more than one direct connection)
         master = new ProxyBusObject(bus, sender.c_str(), bluetoothObjPath, 0);
+        masterNode->nodeAddr = BTBusAddress(rawBDAddr, psm);
+        masterNode->uniqueName = sender;
 
         vector<MsgArg> nodeStateArgsStorage;
 
@@ -985,11 +1006,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     } else {
         // We are still the master
         size_t numNodeStateArgs;
-        uint64_t rawBDAddr;
-        uint16_t psm;
 
-        status = msg->GetArg(1)->Get(SIG_BDADDR, &rawBDAddr);
-        status = msg->GetArg(2)->Get(SIG_PSM, &psm);
         status = msg->GetArg(3)->Get(SIG_NODE_STATES, &numNodeStateArgs, &nodeStateArgs);
         if (status != ER_OK) {
             MethodReply(msg, "org.alljoyn.Bus.BTController.InternalError", QCC_StatusText(status));
