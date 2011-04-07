@@ -594,9 +594,9 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
         minion = nodeDB.FindDirectMinion(minion, skip);
     }
 
-    bool UseLocalFind() { return directMinions == 0; }
-    bool UseLocalAdvertise() { return directMinions <= 1; }
-    bool RotateMinions() { return directMinions > 2; }
+    bool UseLocalFind() { return !master && (directMinions == 0); }
+    bool UseLocalAdvertise() { return !master && (directMinions <= 1); }
+    bool RotateMinions() { return !master && (directMinions > 2); }
 
 #ifndef NDEBUG
     void DumpNodeStateTable() const;

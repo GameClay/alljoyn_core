@@ -250,7 +250,7 @@ class MyBusListener : public BusListener {
 
     void SessionJoined(SessionPort sessionPort, SessionId sessionId, const char* joiner)
     {
-        QCC_SyncPrintf("Session Established: joiner=%s, sessionId=%d", joiner, sessionId);
+        QCC_SyncPrintf("Session Established: joiner=%s, sessionId=%d\n", joiner, sessionId);
     }
 
   private:
