@@ -92,6 +92,17 @@ if env['DOCS'] == 'html':
     # the target directory 'docs/tmp' is never built this will cause doxygen 
     # to run every time DOCS == 'html'
     env.Doxygen(source='docs/Doxygen_html', target=Dir('docs/tmp'))
+elif env['DOCS'] == 'dev':
+    print("*******************************************************************")
+    print("* The files created by doxygen will not be removed when using     *")
+    print("* scons' -c option. The docs/html folder must manually be deleted *")
+    print("* to remove the files created by doxygen.                         *")
+    print("*******************************************************************")
+    doxy_bld = Builder(action = 'cd ${SOURCE.dir} && doxygen ${SOURCE.file}')
+    env.Append(BUILDERS = {'Doxygen': doxy_bld})
+    # the target directory 'docs/tmp' is never built this will cause doxygen 
+    # to run every time DOCS == 'html'
+    env.Doxygen(source='docs/Doxygen_dev', target=Dir('docs/tmp'))
 elif env['DOCS'] == 'pdf':
     print("*******************************************************************")
     print("* The files created by doxygen will not be removed when using     *")
