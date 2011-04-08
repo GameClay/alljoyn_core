@@ -146,11 +146,6 @@ typedef qcc::ManagedObj<_BTNodeInfo> BTNodeInfo;
 class _BTNodeInfo {
 
   public:
-    qcc::String guid;           /**< Bus GUID of the node. */
-    qcc::String uniqueName;     /**< Unique bus name of the daemon on the node. */
-    BTBusAddress nodeAddr;      /**< Bus address of the node. */
-    bool directMinion;          /**< Flag indicating if the node is a directly connected minion or not. */
-
     /**
      * Default constructor.
      */
@@ -159,11 +154,38 @@ class _BTNodeInfo {
     /**
      * Construct that initializes certain information.
      *
-     * @param guid          Bus GUID of the node
-     * @param uniqueName    Unique bus name of the daemon on the node
      * @param nodeAddr      Bus address of the node
      */
-    _BTNodeInfo(const qcc::String& guid, const qcc::String& uniqueName, const BTBusAddress& nodeAddr) :
+    _BTNodeInfo(const BTBusAddress& nodeAddr) :
+        guid(),
+        uniqueName(),
+        nodeAddr(nodeAddr),
+        directMinion(false),
+        connectProxyNode(NULL)
+    { }
+
+    /**
+     * Construct that initializes certain information.
+     *
+     * @param nodeAddr      Bus address of the node
+     * @param uniqueName    Unique bus name of the daemon on the node
+     */
+    _BTNodeInfo(const BTBusAddress& nodeAddr, const qcc::String& uniqueName) :
+        guid(),
+        uniqueName(uniqueName),
+        nodeAddr(nodeAddr),
+        directMinion(false),
+        connectProxyNode(NULL)
+    { }
+
+    /**
+     * Construct that initializes certain information.
+     *
+     * @param nodeAddr      Bus address of the node
+     * @param uniqueName    Unique bus name of the daemon on the node
+     * @param guid          Bus GUID of the node
+     */
+    _BTNodeInfo(const BTBusAddress& nodeAddr, const qcc::String& uniqueName, const qcc::String& guid) :
         guid(guid),
         uniqueName(uniqueName),
         nodeAddr(nodeAddr),
@@ -347,6 +369,62 @@ class _BTNodeInfo {
     void RemoveFindName(NameSet::iterator& it) { findNames.erase(it); }
 
     /**
+     * Get the bus GUID.
+     *
+     * @return  String representation of the bus GUID.
+     */
+    const qcc::String& GetGUID() const { return guid; }
+
+    /**
+     * Set the bus GUID.
+     *
+     * @param guid  String representation of the bus GUID.
+     */
+    void SetGUID(const qcc::String& guid) { this->guid = guid; }
+
+    /**
+     * Get the unique name of the AllJoyn controller object.
+     *
+     * @return  The unique name of the AllJoyn controller object.
+     */
+    const qcc::String& GetUniqueName() const { return uniqueName; }
+
+    /**
+     * Set the unique name of the AllJoyn controller object.
+     *
+     * @param name  The unique name of the AllJoyn controller object.
+     */
+    void SetUniqueName(const qcc::String& name) { uniqueName = name; }
+
+    /**
+     * Get the Bluetooth bus address.
+     *
+     * @return  The Bluetooth bus address.
+     */
+    const BTBusAddress& GetBusAddress() const { return nodeAddr; }
+
+    /**
+     * Set the Bluetooth bus address.
+     *
+     * @param addr  The Bluetooth bus address.
+     */
+    void SetBusAddress(const BTBusAddress& addr) { nodeAddr = addr; }
+
+    /**
+     * Get whether this node is a direct minion or not.
+     *
+     * @return  'true' if the node is a direct minion, 'false' otherwise.
+     */
+    bool IsDirectMinion() const { return directMinion; }
+
+    /**
+     * Set whether this node is a direct minion or not.
+     *
+     * @param val   'true' if the node is a direct minion, 'false' otherwise.
+     */
+    void SetDirectMinion(bool val) { directMinion = val; }
+
+    /**
      * Equivalence operator.
      *
      * @param other     reference to the rhs of "==" for comparison
@@ -416,6 +494,11 @@ class _BTNodeInfo {
      * Private copy construct to catch potential coding errors.
      */
     _BTNodeInfo(const _BTNodeInfo& other) { }
+
+    qcc::String guid;           /**< Bus GUID of the node. */
+    qcc::String uniqueName;     /**< Unique bus name of the daemon on the node. */
+    BTBusAddress nodeAddr;      /**< Bus address of the node. */
+    bool directMinion;          /**< Flag indicating if the node is a directly connected minion or not. */
 
     BTNodeInfo* connectProxyNode; /**< Node that will accept connections for us. */
     NameSet adNames;              /**< Set of advertise names. */
@@ -500,8 +583,10 @@ class BTNodeDB {
     {
         Lock();
         nodes.insert(node);
-        addrMap[node->nodeAddr] = node;
-        nameMap[node->uniqueName] = node;
+        addrMap[node->GetBusAddress()] = node;
+        if (!node->GetUniqueName().empty()) {
+            nameMap[node->GetUniqueName()] = node;
+        }
         Unlock();
     }
 
@@ -513,9 +598,17 @@ class BTNodeDB {
     void RemoveNode(const BTNodeInfo& node)
     {
         Lock();
+        addrMap.erase(node->GetBusAddress());
+        /* It is possible to get a different instance of BTNodeInfo with the
+         * same address that does not have the uniqueName filled out so find
+         * the instance stored in the DB and use the uniqueName stored there
+         * for removal from the nameMap.
+         */
+        iterator it = nodes.find(node);
+        if ((it != nodes.end()) && !(*it)->GetUniqueName().empty()) {
+            nameMap.erase((*it)->GetUniqueName());
+        }
         nodes.erase(node);
-        addrMap.erase(node->nodeAddr);
-        nameMap.erase(node->uniqueName);
         Unlock();
     }
 

@@ -429,12 +429,12 @@ QStatus BTTransport::BTAccessor::SetSDPInfo(uint32_t uuidRev,
         for (nodeit = adInfo.Begin(); nodeit != adInfo.End(); ++nodeit) {
             const BTNodeInfo& node = *nodeit;
             NameSet::const_iterator nameit;
-            QCC_DbgPrintf(("    %s-%04x:", node->nodeAddr.addr.ToString().c_str(), node->nodeAddr.psm));
+            QCC_DbgPrintf(("    %s-%04x:", node->GetBusAddress().addr.ToString().c_str(), node->GetBusAddress().psm));
             nameList +=
                 "<sequence>"
-                "  <text value=\"" + node->guid + "\"/>"
-                "  <uint64 value=\"" + U64ToString(node->nodeAddr.addr.GetRaw()) + "\"/>"
-                "  <uint16 value=\"" + U32ToString(node->nodeAddr.psm) + "\"/>"
+                "  <text value=\"" + node->GetGUID() + "\"/>"
+                "  <uint64 value=\"" + U64ToString(node->GetBusAddress().addr.GetRaw()) + "\"/>"
+                "  <uint16 value=\"" + U32ToString(node->GetBusAddress().psm) + "\"/>"
                 "  <sequence>";
             for (nameit = node->GetAdvertiseNamesBegin(); nameit != node->GetAdvertiseNamesEnd(); ++nameit) {
                 QCC_DbgPrintf(("        %s", nameit->c_str()));
@@ -1347,7 +1347,7 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                         BTNodeDB::const_iterator nodeit;
                         for (nodeit = adInfo->Begin(); nodeit != adInfo->End(); ++nodeit) {
                             const BTNodeInfo& node = *nodeit;
-                            QCC_DbgPrintf(("       %s-%04x", node->nodeAddr.addr.ToString().c_str(), node->nodeAddr.psm));
+                            QCC_DbgPrintf(("       %s-%04x", node->GetBusAddress().addr.ToString().c_str(), node->GetBusAddress().psm));
                             NameSet::const_iterator name;
                             for (name = node->GetAdvertiseNamesBegin(); name != node->GetAdvertiseNamesEnd(); ++name) {
                                 QCC_DbgPrintf(("           \"%s\"", name->c_str()));
@@ -1403,23 +1403,25 @@ void BTTransport::BTAccessor::ProcessXMLAdvertisementsAttr(const XmlElement* ele
                 bool gotPSM = false;
                 bool gotNames = false;
                 BTNodeInfo nodeInfo;
+                BDAddress addr;
+                uint16_t psm;
 
                 for (size_t j = 0; j < tupleElements.size(); ++j) {
                     if (tupleElements[j]) {
                         if (tupleElements[j]->GetName().compare("text") == 0) {
                             String guidStr = tupleElements[j]->GetAttribute("value");
-                            nodeInfo->guid = Trim(guidStr);
-                            QCC_DbgPrintf(("        GUID: %s", nodeInfo->guid.c_str()));
+                            nodeInfo->SetGUID(Trim(guidStr));
+                            QCC_DbgPrintf(("        GUID: %s", nodeInfo->GetGUID().c_str()));
                             gotGUID = true;
                         } else if (tupleElements[j]->GetName().compare("uint64") == 0) {
                             String addrStr = Trim(tupleElements[j]->GetAttribute("value"));
-                            nodeInfo->nodeAddr.addr.SetRaw(StringToU64(addrStr, 0));
-                            QCC_DbgPrintf(("        BDAddress: %s", nodeInfo->nodeAddr.addr.ToString().c_str()));
+                            addr.SetRaw(StringToU64(addrStr, 0));
+                            QCC_DbgPrintf(("        BDAddress: %s", nodeInfo->GetBusAddress().addr.ToString().c_str()));
                             gotBDAddr = true;
                         } else if (tupleElements[j]->GetName().compare("uint16") == 0) {
                             String psmStr = Trim(tupleElements[j]->GetAttribute("value"));
-                            nodeInfo->nodeAddr.psm = StringToU32(psmStr, 0, BTBusAddress::INVALID_PSM);
-                            QCC_DbgPrintf(("        PSM: %#04x", nodeInfo->nodeAddr.psm));
+                            psm = StringToU32(psmStr, 0, BTBusAddress::INVALID_PSM);
+                            QCC_DbgPrintf(("        PSM: %#04x", nodeInfo->GetBusAddress().psm));
                             gotPSM = true;
                         } else if (tupleElements[j]->GetName().compare("sequence") == 0) {
                             // This sequence is just the list of advertised names for the given node.
@@ -1438,6 +1440,7 @@ void BTTransport::BTAccessor::ProcessXMLAdvertisementsAttr(const XmlElement* ele
                     }
                 }
                 if (gotGUID && gotBDAddr && gotPSM && gotNames) {
+                    nodeInfo->SetBusAddress(BTBusAddress(addr, psm));
                     adInfo.AddNode(nodeInfo);
                 }
             }

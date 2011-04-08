@@ -62,7 +62,7 @@ const BTBusAddress& _BTNodeInfo::GetConnectAddress() const
     while (next->connectProxyNode) {
         next = &(*(*(next->connectProxyNode)));
     }
-    return next->nodeAddr;
+    return next->GetBusAddress();
 }
 
 
@@ -86,7 +86,7 @@ const BTNodeInfo BTNodeDB::FindNode(const BDAddress& addr) const
     BTBusAddress busAddr(addr, BTBusAddress::INVALID_PSM);
     Lock();
     NodeAddrMap::const_iterator it = addrMap.lower_bound(busAddr);
-    if (it != addrMap.end() && (it->second)->nodeAddr.addr == addr) {
+    if (it != addrMap.end() && (it->second)->GetBusAddress().addr == addr) {
         node = it->second;
     }
     Unlock();
@@ -117,7 +117,7 @@ BTNodeInfo BTNodeDB::FindDirectMinion(const BTNodeInfo& start, const BTNodeInfo&
         if (next == End()) {
             next = Begin();
         }
-    } while ((!(*next)->directMinion || (*next == skip)) && ((*next) != start));
+    } while ((!(*next)->IsDirectMinion() || (*next == skip)) && ((*next) != start));
     BTNodeInfo node = *next;
     Unlock();
     assert(start->GetConnectAddress() == node->GetConnectAddress());
@@ -132,7 +132,7 @@ void BTNodeDB::FillNodeStateMsgArgs(vector<MsgArg>& arg) const
     Lock();
     for (it = Begin(); it != End(); ++it) {
         const BTNodeInfo& node = *it;
-        QCC_DbgPrintf(("    Node %s:", node->uniqueName.c_str()));
+        QCC_DbgPrintf(("    Node %s:", node->GetUniqueName().c_str()));
         NameSet::const_iterator nit;
 
         /*
@@ -159,10 +159,10 @@ void BTNodeDB::FillNodeStateMsgArgs(vector<MsgArg>& arg) const
         }
 
         arg.push_back(MsgArg("(sstqasas)", //SIG_NODE_STATE_ENTRY,
-                             node->guid.c_str(),
-                             node->uniqueName.c_str(),
-                             node->nodeAddr.addr.GetRaw(),
-                             node->nodeAddr.psm,
+                             node->GetGUID().c_str(),
+                             node->GetUniqueName().c_str(),
+                             node->GetBusAddress().addr.GetRaw(),
+                             node->GetBusAddress().psm,
                              nodeAdNames.size(), &nodeAdNames.front(),
                              nodeFindNames.size(), &nodeFindNames.front()));
     }
@@ -187,13 +187,13 @@ void BTNodeDB::Diff(const BTNodeDB& other, BTNodeDB* added, BTNodeDB* removed) c
     // Find removed names/nodes
     for (nodeit = Begin(); nodeit != End(); ++nodeit) {
         const BTNodeInfo& node = *nodeit;
-        addrit = other.addrMap.find(node->nodeAddr);
+        addrit = other.addrMap.find(node->GetBusAddress());
         if (addrit == addrMap.end()) {
             if (removed) {
                 removed->AddNode(node);
             }
         } else {
-            BTNodeInfo diffNode(node->guid, node->uniqueName, node->nodeAddr);
+            BTNodeInfo diffNode(node->GetBusAddress(), node->GetUniqueName(), node->GetGUID());
             bool include = false;
             const BTNodeInfo& onode = addrit->second;
             NameSet::const_iterator nameit;
@@ -215,13 +215,13 @@ void BTNodeDB::Diff(const BTNodeDB& other, BTNodeDB* added, BTNodeDB* removed) c
     // Find added names/nodes
     for (nodeit = other.Begin(); nodeit != other.End(); ++nodeit) {
         const BTNodeInfo& onode = *nodeit;
-        addrit = addrMap.find(onode->nodeAddr);
+        addrit = addrMap.find(onode->GetBusAddress());
         if (addrit == addrMap.end()) {
             if (added) {
                 added->AddNode(onode);
             }
         } else {
-            BTNodeInfo diffNode(onode->guid, onode->uniqueName, onode->nodeAddr);
+            BTNodeInfo diffNode(onode->GetBusAddress(), onode->GetUniqueName(), onode->GetGUID());
             bool include = false;
             const BTNodeInfo& node = addrit->second;
             NameSet::const_iterator nameit;
@@ -258,7 +258,7 @@ void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool rem
         const_iterator rit;
         for (rit = removed->Begin(); rit != removed->End(); ++rit) {
             const BTNodeInfo& rnode = *rit;
-            NodeAddrMap::iterator it = addrMap.find(rnode->nodeAddr);
+            NodeAddrMap::iterator it = addrMap.find(rnode->GetBusAddress());
             if (it != addrMap.end()) {
                 // Remove names from node
                 BTNodeInfo& node = it->second;
@@ -280,7 +280,7 @@ void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool rem
         const_iterator ait;
         for (ait = added->Begin(); ait != added->End(); ++ait) {
             const BTNodeInfo& anode = *ait;
-            NodeAddrMap::iterator it = addrMap.find(anode->nodeAddr);
+            NodeAddrMap::iterator it = addrMap.find(anode->GetBusAddress());
             if (it == addrMap.end()) {
                 // New node
                 AddNode(anode);
