@@ -62,7 +62,7 @@ using namespace std;
 static const char defaultConfig[] =
     "<busconfig>"
     "  <type>alljoyn</type>"
-    "  <listen>tcp:addr=127.0.0.1,port=9955</listen>"
+    "  <listen>tcp:addr=0.0.0.0,port=9955</listen>"
     //"  <listen>bluetooth:</listen>"
     "  <policy context=\"default\">"
     "    <!-- Allow everything to be sent -->"
