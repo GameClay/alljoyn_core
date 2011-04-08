@@ -28,6 +28,7 @@
 #include <set>
 #include <vector>
 
+#include <qcc/ManagedObj.h>
 #include <qcc/String.h>
 #include <qcc/Timer.h>
 
@@ -43,6 +44,8 @@
 
 namespace ajn {
 
+typedef qcc::ManagedObj<std::set<BDAddress> > BDAddressSet;
+
 class BluetoothDeviceInterface {
     friend class BTController;
 
@@ -56,14 +59,14 @@ class BluetoothDeviceInterface {
      * Start the find operation for AllJoyn capable devices.  A duration may
      * be specified that will result in the find operation to automatically
      * stop after the specified number of seconds.  Exclude any results from
-     * any device that includes the specified UUIDRev in its EIR.
+     * any device in the list of ignoreAddrs.
      *
-     * @param uuidRev   EIR UUID revision to ignore
-     * @param duration  Find duration in seconds (0 = forever)
+     * @param ignoreAddrs   Set of BD addresses to ignore
+     * @param duration      Find duration in seconds (0 = forever)
      *
      * @return  ER_OK if successful
      */
-    virtual QStatus StartFind(uint32_t uuidRev, uint32_t duration = 0) = 0;
+    virtual QStatus StartFind(const BDAddressSet& ignoreAddrs, uint32_t duration = 0) = 0;
 
     /**
      * Stop the find operation.
@@ -384,8 +387,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
 
     struct FindNameArgInfo : public NameArgInfo {
         qcc::String resultDest;
-        BDAddress ignoreAddr;
-        uint32_t ignoreUUID;
+        BDAddressSet ignoreAddrs;
         NameSet names;
         FindNameArgInfo(BTController& bto, qcc::Timer& dispatcher) :
             NameArgInfo(bto, 4, dispatcher)
@@ -396,7 +398,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
         void SetArgs();
         void ClearArgs();
         bool UseLocal() { return bto.UseLocalFind(); }
-        QStatus StartLocal() { return bto.bt.StartFind(bto.masterUUIDRev); }
+        QStatus StartLocal() { return bto.bt.StartFind(ignoreAddrs); }
         QStatus StopLocal() { return bto.bt.StopFind(); }
     };
 

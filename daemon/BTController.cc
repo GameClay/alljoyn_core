@@ -77,6 +77,7 @@ static const char* bluetoothTopoMgrIfcName = "org.alljoyn.Bus.BluetoothControlle
 
 #define SIG_NAME_LIST         SIG_ARRAY SIG_NAME
 #define SIG_BUSADDR           SIG_BDADDR SIG_PSM
+#define SIG_FIND_FILTER_LIST  SIG_ARRAY SIG_BDADDR
 #define SIG_AD_NAME_MAP_ENTRY "(" SIG_GUID SIG_BUSADDR SIG_NAME_LIST ")"
 #define SIG_AD_NAME_MAP       SIG_ARRAY SIG_AD_NAME_MAP_ENTRY
 #define SIG_AD_NAMES          SIG_NAME_LIST
@@ -92,7 +93,7 @@ static const char* bluetoothTopoMgrIfcName = "org.alljoyn.Bus.BluetoothControlle
 #define SIG_PROXY_DISC_OUT    SIG_STATUS
 #define SIG_NAME_OP           SIG_BUSADDR SIG_NAME
 #define SIG_DELEGATE_AD       SIG_UUIDREV SIG_BDADDR SIG_PSM SIG_AD_NAME_MAP SIG_DURATION
-#define SIG_DELEGATE_FIND     SIG_NAME SIG_UUIDREV SIG_BDADDR SIG_DURATION
+#define SIG_DELEGATE_FIND     SIG_NAME SIG_FIND_FILTER_LIST SIG_DURATION
 #define SIG_FOUND_NAMES       SIG_AD_NAME_MAP
 #define SIG_FOUND_DEV         SIG_BDADDR SIG_UUIDREV SIG_UUIDREV
 
@@ -107,7 +108,7 @@ const InterfaceDesc btmIfcTable[] = {
     { MESSAGE_SIGNAL, "AdvertiseName",       SIG_NAME_OP,       NULL, "requestorAddr,requestorPSM,adName" },
     { MESSAGE_SIGNAL, "CancelAdvertiseName", SIG_NAME_OP,       NULL, "requestorAddr,requestorPSM,adName" },
     { MESSAGE_SIGNAL, "DelegateAdvertise",   SIG_DELEGATE_AD,   NULL, "uuidRev,bdAddr,psm,adNames" },
-    { MESSAGE_SIGNAL, "DelegateFind",        SIG_DELEGATE_FIND, NULL, "resultDest,ignoreUUIDRev,bdAddr,duration" },
+    { MESSAGE_SIGNAL, "DelegateFind",        SIG_DELEGATE_FIND, NULL, "resultDest,ignoreBDAddr,duration" },
     { MESSAGE_SIGNAL, "FoundNames",          SIG_FOUND_NAMES,   NULL, "adNamesTable" },
     { MESSAGE_SIGNAL, "LostNames",           SIG_FOUND_NAMES,   NULL, "adNamesTable" },
     { MESSAGE_SIGNAL, "FoundDevice",         SIG_FOUND_DEV,     NULL, "bdAddr,newUUIDRev,oldUUIDRev" },
@@ -507,7 +508,7 @@ void BTController::PostConnect(QStatus status, const RemoteEndpoint* ep)
             if (!find.Empty()) {
                 QCC_DbgPrintf(("Starting find..."));
                 assert(!find.active);
-                bt.StartFind(masterUUIDRev);
+                bt.StartFind(find.ignoreAddrs);
                 find.active = true;
             }
         }
@@ -539,8 +540,15 @@ void BTController::BTDeviceAvailable(bool on)
             QStatus status = bt.StartListen(self->nodeAddr.addr, self->nodeAddr.psm);
             listening = (status == ER_OK);
             if (listening) {
-                find.ignoreAddr = self->nodeAddr.addr;
-                find.ignoreUUID = masterUUIDRev;
+                nodeDB.Lock();
+                BDAddressSet ignoreAddrs;
+                BTNodeDB::const_iterator it;
+                for (it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
+                    ignoreAddrs->insert((*it)->nodeAddr.addr);
+                }
+                nodeDB.Unlock();
+
+                find.ignoreAddrs = ignoreAddrs;
                 find.dirty = true;
             }
 
@@ -627,9 +635,15 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
             masterNode->nodeAddr = BTBusAddress();
             masterNode->uniqueName = "";
 
+            BDAddressSet ignoreAddrs;
+            BTNodeDB::const_iterator it;
+            nodeDB.Lock();
+            for (it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
+                ignoreAddrs->insert((*it)->nodeAddr.addr);
+            }
+            nodeDB.Unlock();
             find.resultDest.clear();
-            find.ignoreAddr = self->nodeAddr.addr;
-            find.ignoreUUID = masterUUIDRev;
+            find.ignoreAddrs = ignoreAddrs;
 
             UpdateDelegations(advertise, listening);
             UpdateDelegations(find);
@@ -639,9 +653,8 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
             // Someone else left.  If it was a minion node, remove their find/ad names.
             BTNodeInfo minion = nodeDB.FindNode(alias);
 
-            if (minion->uniqueName == alias) {
+            if (minion->IsValid()) {
                 // Remove the minion's state information.
-                nodeDB.RemoveNode(minion);
                 QCC_DbgPrintf(("One of our minions left us: %s", minion->uniqueName.c_str()));
 
                 bool wasAdvertiseMinion = minion == advertise.minion;
@@ -650,6 +663,9 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
 
                 // Advertise minion and find minion should never be the same.
                 assert(!(wasAdvertiseMinion && wasFindMinion));
+
+                nodeDB.RemoveNode(minion);
+                find.ignoreAddrs->erase(minion->nodeAddr.addr);
 
                 // Indicate name list has changed.
                 advertise.dirty = !minion->AdvertiseNamesEmpty();
@@ -1062,24 +1078,25 @@ void BTController::HandleDelegateFind(const InterfaceDescription::Member* member
     lock.Lock();
     if (IsMinion()) {
         char* resultDest;
-        uint64_t bdAddrRaw;
-        uint32_t ignoreUUID;
+        MsgArg* ignoreAddrsArg;
+        size_t numIgnoreAddrs;
         uint32_t duration;
 
-        QStatus status = msg->GetArgs(SIG_DELEGATE_FIND, &resultDest, &ignoreUUID, &bdAddrRaw, &duration);
+        QStatus status = msg->GetArgs(SIG_DELEGATE_FIND, &resultDest, &numIgnoreAddrs, &ignoreAddrsArg, &duration);
 
         if (status == ER_OK) {
-            QCC_DbgPrintf(("Delegated Find: result dest: \"%s\"  ignore UUIDRev: %08x  ignore BDAddr: %012llx",
-                           resultDest, ignoreUUID, bdAddrRaw));
-
             if (resultDest && (resultDest[0] != '\0')) {
+                size_t i;
+                BDAddressSet ignoreAddrs;
                 find.resultDest = resultDest;
-                find.ignoreAddr.SetRaw(bdAddrRaw);
-                find.ignoreUUID = ignoreUUID;
-                find.dirty = true;
+                for (i = 0; i < numIgnoreAddrs; ++i) {
+                    uint64_t bdAddrRaw;
+                    ignoreAddrsArg[i].Get(SIG_BDADDR, &bdAddrRaw);
+                    ignoreAddrs->insert(BDAddress(bdAddrRaw));
+                }
 
                 QCC_DbgPrintf(("Starting find for %u seconds...", duration));
-                bt.StartFind(ignoreUUID, duration);
+                bt.StartFind(ignoreAddrs, duration);
                 find.active = true;
             } else {
                 QCC_DbgPrintf(("Stopping find..."));
@@ -1659,11 +1676,19 @@ void BTController::FindNameArgInfo::SetArgs()
     QCC_DbgTrace(("BTController::FindNameArgInfo::SetArgs()"));
     size_t argsSize = this->argsSize;
     const char* rdest = bto.IsMaster() ? bto.bus.GetUniqueName().c_str() : resultDest.c_str();
+    vector<MsgArg> ignoreAddrs;
+
+    bto.nodeDB.Lock();
+    ignoreAddrs.reserve(bto.nodeDB.Size());
+    BTNodeDB::const_iterator it;
+    for (it = bto.nodeDB.Begin(); it != bto.nodeDB.End(); ++it) {
+        ignoreAddrs.push_back(MsgArg(SIG_BDADDR, (*it)->nodeAddr.addr.GetRaw()));
+    }
+    bto.nodeDB.Unlock();
 
     MsgArg::Set(args, argsSize, SIG_DELEGATE_FIND,
                 rdest,
-                ignoreUUID,
-                ignoreAddr.GetRaw(),
+                ignoreAddrs.size(), &ignoreAddrs.front(),
                 bto.RotateMinions() ? DELEGATE_TIME : (uint32_t)0);
     assert(argsSize == this->argsSize);
 
@@ -1677,8 +1702,7 @@ void BTController::FindNameArgInfo::ClearArgs()
     size_t argsSize = this->argsSize;
 
     MsgArg::Set(args, argsSize, SIG_DELEGATE_FIND,
-                "",
-                INVALID_UUIDREV,
+                0, NULL,
                 0ULL,
                 (uint32_t)0);
     assert(argsSize == this->argsSize);

@@ -1107,9 +1107,16 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
     BDAddress addr(addrStr);
     //QCC_DbgTrace(("BTTransport::BTAccessor::DeviceFoundSignalHandler - found addr = %s", addrStr));
 
+    if (ignoreAddrs->find(addr) != ignoreAddrs->end()) {
+        // We found the piconet/scatternet we are on so ignore the inquiry response.
+        return;
+    }
+
     const MsgArg* uuids;
     size_t listSize;
 
+    // We can safely assume that dictonary is an array of dictionary elements
+    // because the core AllJoyn code validated the args before calling us.
     status = dictionary->GetElement("{sas}", "UUIDs", &listSize, &uuids);
     if (status == ER_OK) {
         //QCC_DbgPrintf(("BTTransport::BTAccessor::DeviceFoundSignalHandler(): checking %s (%d UUIDs)",
@@ -1120,9 +1127,8 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
         uint32_t oldUUIDRev;
         bool found = FindAllJoynUUID(uuids, listSize, newUUIDRev);
 
-        if (found && (newUUIDRev != busUUIDRev)) {
-            QCC_DbgHLPrintf(("Found AllJoyn device: %s  newUUIDRev = %08x (our uuidRev = %08x)",
-                             addrStr, newUUIDRev, busUUIDRev));
+        if (found) {
+            QCC_DbgHLPrintf(("Found AllJoyn device: %s  newUUIDRev = %08x", addrStr, newUUIDRev));
 
             deviceLock.Lock();
             FoundInfo& foundInfo = foundDevices[addr];
@@ -1142,7 +1148,9 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
             }
 
             foundInfo.timestamp = GetTimestamp();
-            foundInfo.alarm = DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_LOST, addr, BTController::INVALID_UUIDREV, newUUIDRev),
+            foundInfo.alarm = DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_LOST,
+                                                                       addr, BTController::INVALID_UUIDREV,
+                                                                       newUUIDRev),
                                                 FOUND_DEVICE_INFO_TIMEOUT);
 
             deviceLock.Unlock();

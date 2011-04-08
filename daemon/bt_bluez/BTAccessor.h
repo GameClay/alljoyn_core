@@ -75,11 +75,12 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     /**
      * Start discovery (inquiry)
      *
-     * @param busRev    UUID revision number of the bus (will be ignored)
+     * @param ignoreAddrs   Set of BD Addresses to ignore
+     * @param duration      Number of seconds to discover (0 = forever, default is 0)
      */
-    QStatus StartDiscovery(uint32_t busRev, uint32_t duration = 0)
+    QStatus StartDiscovery(const BDAddressSet& ignoreAddrs, uint32_t duration = 0)
     {
-        busUUIDRev = busRev;
+        this->ignoreAddrs = ignoreAddrs;
         QStatus status = DiscoveryControl(*org.bluez.Adapter.StartDiscovery);
         if (duration > 0) {
             DispatchOperation(new DispatchInfo(DispatchInfo::STOP_DISCOVERY),  duration * 1000);
@@ -93,7 +94,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      */
     QStatus StopDiscovery()
     {
-        busUUIDRev = BTController::INVALID_UUIDREV;
+        ignoreAddrs = BDAddressSet();
         QStatus status = DiscoveryControl(*org.bluez.Adapter.StopDiscovery);
         discoveryActive = false;
         return status;
@@ -379,12 +380,11 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
 
     mutable qcc::Mutex deviceLock; // Generic lock for device related objects, maps, etc.
     FoundInfoMap foundDevices;  // Map of found AllJoyn devices w/ UUID-Rev and expire time.
+    BDAddressSet ignoreAddrs;
 
     bool bluetoothAvailable;
     bool discoverable;
     bool discoveryActive;
-
-    uint32_t busUUIDRev;  // UUID revision to ignore when doing a FindBus
 
     qcc::SocketFd l2capLFd;
     qcc::Event* l2capEvent;

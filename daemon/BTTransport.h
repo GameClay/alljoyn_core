@@ -335,14 +335,14 @@ class BTTransport :
      * Start the find operation for AllJoyn capable devices.  A duration may
      * be specified that will result in the find operation to automatically
      * stop after the specified number of seconds.  Exclude any results from
-     * any device that includes the specified UUID in its EIR.
+     * any device in the list of ignoreAddrs.
      *
-     * @param uuidRev   EIR UUID revision to ignore
-     * @param duration  Find duration in seconds (0 = forever)
+     * @param ignoreAddrs   Set of BD addresses to ignore
+     * @param duration      Find duration in seconds (0 = forever)
      *
      * @return  ER_OK if successful
      */
-    virtual QStatus StartFind(uint32_t uuidRev, uint32_t duration = 0);
+    virtual QStatus StartFind(const BDAddressSet& ignoreAddrs, uint32_t duration = 0);
 
     /**
      * Stop the find operation.

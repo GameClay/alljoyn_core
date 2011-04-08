@@ -397,9 +397,9 @@ void BTTransport::DeviceChange(const BDAddress& adBdAddr,
 
 /********************************************************/
 
-QStatus BTTransport::StartFind(uint32_t ignoreUUIDRev, uint32_t duration)
+QStatus BTTransport::StartFind(const BDAddressSet& ignoreAddrs, uint32_t duration)
 {
-    return btAccessor->StartDiscovery(ignoreUUIDRev, duration);
+    return btAccessor->StartDiscovery(ignoreAddrs, duration);
 }
 
 
