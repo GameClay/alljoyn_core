@@ -621,7 +621,7 @@ class ProxyBusObject : public MessageReceiver {
      * This method is for internal use only.
      */
     QStatus SetB2BEndpoint(const char* b2bEpName);
-     
+
     /**
      * @internal
      * Internal introspection xml parse tree type.

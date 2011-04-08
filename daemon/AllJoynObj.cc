@@ -1203,11 +1203,11 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
                        attachArgs[0].v_uint16,
                        attachArgs[1].v_string.str,
                        attachArgs[2].v_string.str,
-                   attachArgs[3].v_string.str,
+                       attachArgs[3].v_string.str,
                        attachArgs[4].v_string.str,
                        optsIn.proximity, optsIn.traffic, optsIn.transports,
                        remoteControllerName));
-        
+
         status = controllerObj.MethodCall(org::alljoyn::Daemon::InterfaceName,
                                           "AttachSession",
                                           attachArgs,
