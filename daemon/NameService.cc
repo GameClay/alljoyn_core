@@ -2321,7 +2321,7 @@ void* NameService::Run(void* arg)
                 //
                 stopEvent.ResetEvent();
             } else if (*i == &timerEvent) {
-                QCC_DbgPrintf(("NameService::Run(): Timer event fired\n"));
+                // QCC_DbgPrintf(("NameService::Run(): Timer event fired\n"));
                 //
                 // This is an event that fires every second to give us a chance
                 // to do any protocol maintenance, like retransmitting queued
