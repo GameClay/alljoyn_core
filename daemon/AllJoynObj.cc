@@ -966,7 +966,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                     }
                 } else {
                     status = ER_FAIL;
-                    QCC_LogError(status, ("Cannot locate srcEp or srcB2BEp"));
+                    QCC_LogError(status, ("Cannot locate srcEp(%p, src=%s) or srcB2BEp(%p, src=%s)", srcEp, src, srcB2BEp, srcB2B));
                 }
             }
         } else {
@@ -1197,20 +1197,24 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
     SetSessionOpts(optsIn, attachArgs[5]);
     ProxyBusObject controllerObj(bus, remoteControllerName, org::alljoyn::Daemon::ObjectPath, 0);
     controllerObj.AddInterface(*daemonIface);
-    QCC_DbgPrintf(("Sending AttachSession(%u, %s, %s, %s, %s, <%x, %x, %x>) to %s",
-                   attachArgs[0].v_uint16,
-                   attachArgs[1].v_string.str,
-                   attachArgs[2].v_string.str,
+    QStatus status = controllerObj.SetB2BEndpoint(remoteB2BName);
+    if (status == ER_OK) {
+        QCC_DbgPrintf(("Sending AttachSession(%u, %s, %s, %s, %s, <%x, %x, %x>) to %s",
+                       attachArgs[0].v_uint16,
+                       attachArgs[1].v_string.str,
+                       attachArgs[2].v_string.str,
                    attachArgs[3].v_string.str,
-                   attachArgs[4].v_string.str,
-                   optsIn.proximity, optsIn.traffic, optsIn.transports,
-                   remoteControllerName));
+                       attachArgs[4].v_string.str,
+                       optsIn.proximity, optsIn.traffic, optsIn.transports,
+                       remoteControllerName));
+        
+        status = controllerObj.MethodCall(org::alljoyn::Daemon::InterfaceName,
+                                          "AttachSession",
+                                          attachArgs,
+                                          ArraySize(attachArgs),
+                                          reply);
+    }
 
-    QStatus status = controllerObj.MethodCall(org::alljoyn::Daemon::InterfaceName,
-                                              "AttachSession",
-                                              attachArgs,
-                                              ArraySize(attachArgs),
-                                              reply);
     if (status != ER_OK) {
         replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
         QCC_LogError(status, ("AttachSession failed"));

@@ -44,6 +44,7 @@ class BusAttachment;
  */
 class ProxyBusObject : public MessageReceiver {
     friend class XmlHelper;
+    friend class AllJoynObj;
 
   public:
 
@@ -614,7 +615,13 @@ class ProxyBusObject : public MessageReceiver {
      */
     void IntrospectMethodCB(Message& message, void* context);
 
-
+    /**
+     * @internal
+     * Set the B2B endpoint to use for all communication with remote object.
+     * This method is for internal use only.
+     */
+    QStatus SetB2BEndpoint(const char* b2bEpName);
+     
     /**
      * @internal
      * Internal introspection xml parse tree type.
@@ -657,6 +664,7 @@ class ProxyBusObject : public MessageReceiver {
     qcc::String serviceName;    /**< Remote destination */
     SessionId sessionId;        /**< Session to use for communicating with remote object */
     bool hasProperties;         /**< True if proxy object implements properties */
+    RemoteEndpoint* b2bEp;      /**< B2B endpoint to use or NULL to indicates normal sessionId based routing */
 };
 
 }

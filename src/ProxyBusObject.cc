@@ -410,7 +410,11 @@ QStatus ProxyBusObject::MethodCallAsync(const InterfaceDescription::Member& meth
                                                         timeout);
         }
         if (status == ER_OK) {
-            status = bus->GetInternal().GetRouter().PushMessage(msg, localEndpoint);
+            if (b2bEp) {
+                status = b2bEp->PushMessage(msg);
+            } else {
+                status = bus->GetInternal().GetRouter().PushMessage(msg, localEndpoint);
+            }
         }
     }
     return status;
@@ -505,7 +509,11 @@ QStatus ProxyBusObject::MethodCall(const InterfaceDescription::Member& method,
         /*
          * Push the message to the router and we are done
          */
-        status = bus->GetInternal().GetRouter().PushMessage(msg, localEndpoint);
+        if (b2bEp) {
+            status = b2bEp->PushMessage(msg);
+        } else {
+            status = bus->GetInternal().GetRouter().PushMessage(msg, localEndpoint);
+        }
     } else {
         SyncReplyContext ctxt(*bus);
         /*
@@ -520,7 +528,11 @@ QStatus ProxyBusObject::MethodCall(const InterfaceDescription::Member& method,
                                                     &ctxt,
                                                     timeout);
         if (ER_OK == status) {
-            status = bus->GetInternal().GetRouter().PushMessage(msg, localEndpoint);
+            if (b2bEp) {
+                status = b2bEp->PushMessage(msg);
+            } else {
+                status = bus->GetInternal().GetRouter().PushMessage(msg, localEndpoint);
+            }
             Thread* thisThread = Thread::GetThread();
             if (ER_OK == status) {
                 components->waitingThreads.push_back(thisThread);
@@ -711,13 +723,14 @@ ProxyBusObject::ProxyBusObject(BusAttachment& bus, const char* service, const ch
     path(path),
     serviceName(service),
     sessionId(sessionId),
-    hasProperties(false)
+    hasProperties(false),
+    b2bEp(NULL)
 {
     /* The Peer interface is implicitly defined for all objects */
     AddInterface(org::freedesktop::DBus::Peer::InterfaceName);
 }
 
-ProxyBusObject::ProxyBusObject() : bus(NULL), components(NULL), sessionId(0), hasProperties(false)
+ProxyBusObject::ProxyBusObject() : bus(NULL), components(NULL), sessionId(0), hasProperties(false), b2bEp(NULL)
 {
 }
 
@@ -747,6 +760,13 @@ ProxyBusObject& ProxyBusObject::operator=(const ProxyBusObject& other)
         }
     }
     return *this;
+}
+
+QStatus ProxyBusObject::SetB2BEndpoint(const char* b2bEpName)
+{
+    BusEndpoint* ep =  bus->GetInternal().GetRouter().FindEndpoint(b2bEpName);
+    b2bEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
+    return b2bEp ? ER_OK : ER_BUS_NO_ENDPOINT;
 }
 
 }
