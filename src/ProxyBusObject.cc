@@ -677,15 +677,22 @@ QStatus ProxyBusObject::IntrospectRemoteObjectAsync(ProxyBusObject::Listener* li
 
 void ProxyBusObject::IntrospectMethodCB(Message& msg, void* context)
 {
+    QStatus status;
     QCC_DbgPrintf(("Introspection XML: %s", msg->GetArg(0)->v_string.str));
 
     _IntrospectMethodCBContext* ctx = reinterpret_cast<_IntrospectMethodCBContext*>(context);
 
-    /* Parse the XML reply to update this ProxyBusObject instance (plus any new interfaces) */
-    qcc::String ident = msg->GetSender();
-    ident += " : ";
-    ident += msg->GetObjectPath();
-    QStatus status = ParseXml(msg->GetArg(0)->v_string.str, ident.c_str());
+    if (msg->GetType() == MESSAGE_METHOD_RET) {
+        /* Parse the XML reply to update this ProxyBusObject instance (plus any new interfaces) */
+        qcc::String ident = msg->GetSender();
+        ident += " : ";
+        ident += msg->GetObjectPath();
+        status = ParseXml(msg->GetArg(0)->v_string.str, ident.c_str());
+    } else if ((msg->GetType() == MESSAGE_ERROR) && (::strcmp("org.freedesktop.DBus.Error.ServiceUnknown", msg->GetErrorName()) == 0)) {
+        status = ER_BUS_NO_SUCH_SERVICE;
+    } else {
+        status = ER_FAIL;
+    }
 
     /* Call the callback */
     (ctx->listener->*ctx->callback)(status, ctx->obj, ctx->context);
