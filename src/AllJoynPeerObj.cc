@@ -869,7 +869,7 @@ void AllJoynPeerObj::AcceptSession(const InterfaceDescription::Member* member, M
     msg->GetArgs(numArgs, args);
     SessionPort sessionPort = args[0].v_uint16;
     SessionId sessionId = args[1].v_uint32;
-    const char* joiner = args[2].v_string.str;
+    String joiner = args[2].v_string.str;
     SessionOpts opts;
     status = GetSessionOpts(args[3], opts);
 
@@ -877,14 +877,14 @@ void AllJoynPeerObj::AcceptSession(const InterfaceDescription::Member* member, M
         MsgArg replyArg;
 
         /* Call bus listeners */
-        bool isAccepted = bus.GetInternal().CallAcceptListeners(sessionPort, joiner, opts);
+        bool isAccepted = bus.GetInternal().CallAcceptListeners(sessionPort, joiner.c_str(), opts);
 
         /* Reply to AcceptSession */
         replyArg.Set("b", isAccepted);
         status = MethodReply(msg, &replyArg, 1);
         if ((status == ER_OK) && isAccepted) {
             /* Let listeners know the join was successfully accepted */
-            bus.GetInternal().CallJoinedListeners(sessionPort, sessionId, joiner);
+            bus.GetInternal().CallJoinedListeners(sessionPort, sessionId, joiner.c_str());
         }
     } else {
         MethodReply(msg, status);
