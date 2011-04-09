@@ -70,7 +70,8 @@ RemoteEndpoint::RemoteEndpoint(BusAttachment& bus,
     incoming(incoming),
     processId(-1),
     refCount(0),
-    isSocket(isSocket)
+    isSocket(isSocket),
+    armRxPause(false)
 {
 }
 
@@ -173,6 +174,13 @@ QStatus RemoteEndpoint::StopAfterTxEmpty()
     }
     txQueueLock.Unlock();
     return status;
+}
+
+QStatus RemoteEndpoint::PauseAfterRxReply()
+{
+
+    armRxPause = true;
+    return ER_OK;
 }
 
 QStatus RemoteEndpoint::Join(void)
@@ -292,6 +300,11 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
 
             default:
                 break;
+            }
+
+            /* Check pause condition. Block until stopped */
+            if (ep->armRxPause && !IsStopping() && (msg->GetType() == MESSAGE_METHOD_RET)) {
+                status = Event::Wait(Event::neverSet);
             }
         }
     }

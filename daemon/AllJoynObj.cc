@@ -1198,6 +1198,20 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
     ProxyBusObject controllerObj(bus, remoteControllerName, org::alljoyn::Daemon::ObjectPath, 0);
     controllerObj.AddInterface(*daemonIface);
     QStatus status = controllerObj.SetB2BEndpoint(remoteB2BName);
+
+    /* If the new session is raw, then arm the endpoint's RX thread to stop after reading one more message */
+    if ((status == ER_OK) && (optsIn.traffic != SessionOpts::TRAFFIC_MESSAGES)) {
+        BusEndpoint* ep = router.FindEndpoint(remoteB2BName);
+        RemoteEndpoint* b2bEp = (ep && ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS) ?  static_cast<RemoteEndpoint*>(ep) : NULL;
+        if (b2bEp) {
+            status = b2bEp->PauseAfterRxReply();
+        } else {
+            status = ER_BUS_NO_ENDPOINT;
+            QCC_LogError(status, ("Cannot find B2BEp for %s", remoteB2BName));
+        }
+    }
+
+    /* Make the method call */
     if (status == ER_OK) {
         QCC_DbgPrintf(("Sending AttachSession(%u, %s, %s, %s, %s, <%x, %x, %x>) to %s",
                        attachArgs[0].v_uint16,

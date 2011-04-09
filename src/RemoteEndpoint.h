@@ -146,6 +146,14 @@ class RemoteEndpoint : public BusEndpoint, public qcc::ThreadListener {
     QStatus StopAfterTxEmpty();
 
     /**
+     * Request endpoint to pause receiving (wihtout stopping) AFTER next METHOD_REPLY is received.
+     *
+     * @return
+     *     - ER_OK if successful.
+     */
+    QStatus PauseAfterRxReply();
+
+    /**
      * Join the endpoint.
      * Block the caller until the endpoint is stopped.
      *
@@ -363,6 +371,7 @@ class RemoteEndpoint : public BusEndpoint, public qcc::ThreadListener {
     uint32_t processId;                      /**< Process id of the process at the remote end of this endpoint */
     int32_t refCount;                        /**< Number of active users of this remote endpoint */
     bool isSocket;                           /**< True iff this endpoint contains a SockStream as its 'stream' member */
+    bool armRxPause;                         /**< Pause Rx after receiving next METHOD_REPLY message */
 };
 
 }
