@@ -729,7 +729,7 @@ QStatus BusAttachment::AdvertiseName(const char* name, TransportMask transports,
     return status;
 }
 
-QStatus BusAttachment::CancelAdvertiseName(const char* name, uint32_t& disposition)
+QStatus BusAttachment::CancelAdvertiseName(const char* name, TransportMask transports, uint32_t& disposition)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
@@ -739,7 +739,7 @@ QStatus BusAttachment::CancelAdvertiseName(const char* name, uint32_t& dispositi
     MsgArg args[1];
     size_t numArgs = ArraySize(args);
 
-    MsgArg::Set(args, numArgs, "s", name);
+    MsgArg::Set(args, numArgs, "sq", name, transports);
 
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
     QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "CancelAdvertiseName", args, numArgs, reply);

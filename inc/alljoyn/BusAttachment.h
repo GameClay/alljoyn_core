@@ -438,6 +438,7 @@ class BusAttachment : public MessageReceiver {
      * and interprets the response.
      *
      * @param[in]  name          A well-known name that was previously advertised via AdvertiseName.
+     * @param[in]  transports    Set of transports whose name advertisment will be cancelled.
      * @param[out] disposition   ALLJOYN_CANCELADVERTISENAME_REPLY_* constant from AllJoynStd.h
      *
      * @return
@@ -445,7 +446,7 @@ class BusAttachment : public MessageReceiver {
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus CancelAdvertiseName(const char* name, uint32_t& disposition);
+    QStatus CancelAdvertiseName(const char* name, TransportMask transports, uint32_t& disposition);
 
     /**
      * Register interest in a well-known name prefix for the purpose of discovery.
