@@ -65,10 +65,9 @@ void SignalTable::Remove(MessageReceiver* receiver,
     range = hashTable.equal_range(key);
     iter = range.first;
     while (iter != range.second) {
-        if (iter->second.object == receiver) {
+        if ((iter->second.object == receiver) && (iter->second.handler == handler)) {
             hashTable.erase(iter);
-            range = hashTable.equal_range(key);
-            iter = range.first;
+            break;
         } else {
             ++iter;
         }
