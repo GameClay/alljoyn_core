@@ -765,7 +765,7 @@ void AllJoynObj::JoinSession(const InterfaceDescription::Member* member, Message
 
 void AllJoynObj::LeaveSession(const InterfaceDescription::Member* member, Message& msg)
 {
-    uint32_t replyCode = ALLJOYN_LEAVESESSION_REPLY_FAILED;
+    uint32_t replyCode = ALLJOYN_LEAVESESSION_REPLY_SUCCESS;
 
     size_t numArgs;
     const MsgArg* args;
@@ -799,6 +799,7 @@ void AllJoynObj::LeaveSession(const InterfaceDescription::Member* member, Messag
         detachSessionArgs[1].Set("s", msg->GetSender());
         QStatus status = Signal(NULL, 0, *detachSessionSignal, detachSessionArgs, ArraySize(detachSessionArgs));
         if (status != ER_OK) {
+            replyCode = ALLJOYN_LEAVESESSION_REPLY_FAILED;
             QCC_LogError(status, ("Error sending org.alljoyn.Daemon.DetachSession signal"));
         }
 
