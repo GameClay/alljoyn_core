@@ -21,14 +21,14 @@
 
 #include "..\WinService\DaemonLib.h"
 
-int _tmain(int argc, char * argv[])
+int _tmain(int argc, char* argv[])
 {
-	printf("AllJoyn Daemon Windows Service Version xx \n");
-	printf("arg c=%d\n",argc);
-	for(int i=0; i < argc ; i++)
-		printf("%s \n", argv[i]); 
-	LoadDaemon(argc, argv);
-	getchar();
-	return 0;
+    printf("AllJoyn Daemon Windows Service Version xx \n");
+    printf("arg c=%d\n", argc);
+    for (int i = 0; i < argc; i++)
+        printf("%s \n", argv[i]);
+    LoadDaemon(argc, argv);
+    getchar();
+    return 0;
 }
 

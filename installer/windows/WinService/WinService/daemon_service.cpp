@@ -62,20 +62,19 @@ using namespace ajn;
 using namespace qcc;
 using namespace std;
 
-BOOL APIENTRY DllMain( HMODULE hModule,
-                       DWORD  ul_reason_for_call,
-                       LPVOID lpReserved
-					 )
+BOOL APIENTRY DllMain(HMODULE hModule,
+                      DWORD ul_reason_for_call,
+                      LPVOID lpReserved
+                      )
 {
-	switch (ul_reason_for_call)
-	{
-	case DLL_PROCESS_ATTACH:
-	case DLL_THREAD_ATTACH:
-	case DLL_THREAD_DETACH:
-	case DLL_PROCESS_DETACH:
-		break;
-	}
-	return TRUE;
+    switch (ul_reason_for_call) {
+    case DLL_PROCESS_ATTACH:
+    case DLL_THREAD_ATTACH:
+    case DLL_THREAD_DETACH:
+    case DLL_PROCESS_DETACH:
+        break;
+    }
+    return TRUE;
 }
 
 static const char defaultConfig[] =
@@ -121,7 +120,7 @@ class OptParse {
         PR_MISSING_OPTION
     };
 
-    OptParse(int argc, char ** argv) :
+    OptParse(int argc, char** argv) :
         argc(argc), argv(argv), noBT(false), printAddress(false), verbosity(LOG_WARNING)
     { }
 
@@ -134,7 +133,7 @@ class OptParse {
 
   private:
     int argc;
-    char ** argv;
+    char** argv;
 
     qcc::String configFile;
     bool noBT;
@@ -335,10 +334,10 @@ int daemon(OptParse& opts)
 
 void DaemonMain()
 {
-	// TODO: access command line and put in arg,arv format.
+    // TODO: access command line and put in arg,arv format.
 }
 
-int LoadDaemon(int argc, char ** argv)
+int LoadDaemon(int argc, char** argv)
 {
 
     LoggerSetting* loggerSettings(LoggerSetting::GetLoggerSetting(argv[0]));

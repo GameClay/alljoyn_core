@@ -235,6 +235,6 @@ int main(int argc, char** argv, char** envArg)
         g_msgBus = NULL;
         delete deleteMe;
     }
-getchar();
+    getchar();
     return (int) status;
 }

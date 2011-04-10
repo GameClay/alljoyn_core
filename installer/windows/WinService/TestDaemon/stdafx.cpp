@@ -17,7 +17,7 @@
  *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
- ******************************************************************************/// stdafx.cpp : source file that includes just the standard includes
+ ******************************************************************************/                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 // stdafx.cpp : source file that includes just the standard includes
 // TestDaemon.pch will be the pre-compiled header
 // stdafx.obj will contain the pre-compiled type information
 
