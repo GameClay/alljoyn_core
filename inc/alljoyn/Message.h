@@ -416,6 +416,17 @@ class _Message {
     }
 
     /**
+     * Accessor function to set the session id for the message.
+     *
+     * @param sessionId   The session id.
+     */
+    void SetSessionId(uint32_t sessionId) {
+        if (hdrFields.field[ALLJOYN_HDR_FIELD_SESSION_ID].typeId == ALLJOYN_UINT32) {
+            hdrFields.field[ALLJOYN_HDR_FIELD_SESSION_ID].v_uint32 = sessionId;
+        }
+    }
+
+    /**
      * If the message is an error message returns the error name and optionally the error message string
      * @param[out] errorMessage
      *                      - Return the error message string stored

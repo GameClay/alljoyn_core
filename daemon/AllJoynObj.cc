@@ -1101,6 +1101,14 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     replyArgs[0].Set("u", replyCode);
     replyArgs[1].Set("u", id);
     SetSessionOpts(optsOut, replyArgs[2]);
+
+    /* Successful AttachSession reponses MUST be returned over the new session's b2bEndpoint. Otherwise race conditions
+     * related to shutting down endpoints that are to become raw will occur.
+     */
+    if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
+        msg->SetSessionId(id);
+    }
+
     status = MethodReply(msg, replyArgs, ArraySize(replyArgs));
     QCC_DbgPrintf(("AllJoynObj::AttachSession(%d) returned (%d,%u) (status=%s)", sessionPort, replyCode, id, QCC_StatusText(status)));
 
