@@ -1441,11 +1441,13 @@ void AllJoynObj::AdvertiseName(const InterfaceDescription::Member* member, Messa
         /* Check to see if advertiseName is already being advertised */
         advertiseMapLock.Lock();
         String advertiseNameStr = advertiseName;
-        multimap<qcc::String, qcc::String>::const_iterator it = advertiseMap.find(advertiseNameStr);
+        multimap<qcc::String, pair<TransportMask, qcc::String> >::iterator it = advertiseMap.find(advertiseNameStr);
 
-        while (it != advertiseMap.end() && (it->first == advertiseNameStr)) {
-            if (it->second == sender) {
-                replyCode = ALLJOYN_ADVERTISENAME_REPLY_ALREADY_ADVERTISING;
+        while ((it != advertiseMap.end()) && (it->first == advertiseNameStr)) {
+            if (it->second.second == sender) {
+                if ((it->second.first & transports) != 0) {
+                    replyCode = ALLJOYN_ADVERTISENAME_REPLY_ALREADY_ADVERTISING;
+                }
                 break;
             }
             ++it;
@@ -1453,7 +1455,11 @@ void AllJoynObj::AdvertiseName(const InterfaceDescription::Member* member, Messa
 
         if (ALLJOYN_ADVERTISENAME_REPLY_SUCCESS == replyCode) {
             /* Add to advertise map */
-            advertiseMap.insert(pair<qcc::String, qcc::String>(advertiseNameStr, sender));
+            if (it == advertiseMap.end()) {
+                advertiseMap.insert(pair<qcc::String, pair<TransportMask, qcc::String> >(advertiseNameStr, pair<TransportMask, String>(transports, sender)));
+            } else {
+                it->second.first |= transports;
+            }
 
             /* Advertise on transports specified */
             TransportList& transList = bus.GetInternal().GetTransportList();
@@ -1551,11 +1557,16 @@ QStatus AllJoynObj::ProcCancelAdvertise(const qcc::String& sender, const qcc::St
     bool advertHasRefs = false;
 
     advertiseMapLock.Lock();
-    multimap<qcc::String, qcc::String>::iterator it = advertiseMap.find(advertiseName);
+    multimap<qcc::String, pair<TransportMask, qcc::String> >::iterator it = advertiseMap.find(advertiseName);
     while ((it != advertiseMap.end()) && (it->first == advertiseName)) {
-        if (it->second == sender) {
-            advertiseMap.erase(it++);
+        if (it->second.second == sender) {
             foundAdvert = true;
+            it->second.first &= ~transports;
+            if (it->second.first == 0) {
+                advertiseMap.erase(it++);
+            } else {
+                ++it;
+            }
         } else {
             advertHasRefs = true;
             ++it;
@@ -1583,7 +1594,7 @@ QStatus AllJoynObj::ProcCancelAdvertise(const qcc::String& sender, const qcc::St
 void AllJoynObj::GetAdvertisedNames(std::vector<qcc::String>& names)
 {
     advertiseMapLock.Lock();
-    multimap<qcc::String, qcc::String>::const_iterator it(advertiseMap.begin());
+    multimap<qcc::String, pair<TransportMask, qcc::String> >::const_iterator it(advertiseMap.begin());
     while (it != advertiseMap.end()) {
         const qcc::String& name(it->first);
         QCC_DbgPrintf(("AllJoynObj::GetAdvertisedNames - Name[%u] = %s", names.size(), name.c_str()));
@@ -2244,16 +2255,18 @@ void AllJoynObj::NameOwnerChanged(const qcc::String& alias, const qcc::String* o
 
             /* Remove endpoint refs from advertise map */
             advertiseMapLock.Lock();
-            it = advertiseMap.begin();
-            while (it != advertiseMap.end()) {
-                if (it->second == *oldOwner) {
-                    last = it++->first;
-                    QStatus status = ProcCancelAdvertise(*oldOwner, last, TRANSPORT_ANY);
+            multimap<String, pair<TransportMask, String> >::const_iterator ait = advertiseMap.begin();
+            while (ait != advertiseMap.end()) {
+                if (ait->second.second == *oldOwner) {
+                    String name = ait->first;
+                    TransportMask mask = ait->second.first;
+                    ++ait;
+                    QStatus status = ProcCancelAdvertise(*oldOwner, name, mask);
                     if (ER_OK != status) {
-                        QCC_LogError(status, ("Failed to cancel advertise for name \"%s\"", last.c_str()));
+                        QCC_LogError(status, ("Failed to cancel advertise for name \"%s\"", name.c_str()));
                     }
                 } else {
-                    ++it;
+                    ++ait;
                 }
             }
             advertiseMapLock.Unlock();

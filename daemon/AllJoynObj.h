@@ -320,7 +320,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     qcc::Mutex connectMapLock;            /**< Mutex that protects connectMap */
 
     /** Map of active advertised names to requesting local endpoint name(s) */
-    std::multimap<qcc::String, qcc::String> advertiseMap;
+    std::multimap<qcc::String, std::pair< TransportMask, qcc::String> > advertiseMap;
     qcc::Mutex advertiseMapLock;          /**< Mutex that protects advertiseMap */
 
     /** Map of active discovery names to requesting local endpoint name(s) */
