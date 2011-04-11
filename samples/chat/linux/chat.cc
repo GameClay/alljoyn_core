@@ -22,9 +22,9 @@
 #include <alljoyn/AllJoynStd.h>
 #include <qcc/Log.h>
 #include <qcc/String.h>
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
 
 using namespace ajn;
 
@@ -47,6 +47,32 @@ static qcc::String s_joinName;
 static SessionId s_sessionId = 0;
 static bool s_joinComplete = false;
 
+/*
+ * get a line of input from the the file pointer (most likely stdin).
+ * This will capture the the num-1 characters or till a newline character is
+ * entered.
+ *
+ * @param[out] str a pointer to a character array that will hold the user input
+ * @param[in]  num the size of the character array 'str'
+ * @param[in]  fp  the file pointer the sting will be read from. (most likely stdin)
+ *
+ * @return returns the same string as 'str' if there has been a read error a null
+ *                 pointer will be returned and 'str' will remain unchanged.
+ */
+char*get_line(char*str, size_t num, FILE*fp)
+{
+    char*p = fgets(str, num, fp);
+
+    // fgets will capture the '\n' character if the string entered is shorter than
+    // num. Remove the '\n' from the end of the line and replace it with nul '\0'.
+    if (p != NULL) {
+        size_t last = strlen(str) - 1;
+        if (str[last] == '\n') {
+            str[last] = '\0';
+        }
+    }
+    return p;
+}
 
 /* Bus object */
 class ChatObject : public BusObject {
@@ -224,9 +250,12 @@ int main(int argc, char** argv)
 
     /* Get env vars */
     const char* connectSpec = getenv("BUS_ADDRESS");
-    if (!connectSpec) {
-        //connectSpec = "unix:path=/var/run/dbus/system_bus_socket";
+    if (connectSpec == NULL) {
+#ifdef _WIN32
+        connectSpec = "tcp:addr=127.0.0.1,port=9955";
+#else
         connectSpec = "unix:abstract=alljoyn";
+#endif
     }
 
     /* Connect to the local daemon */
@@ -281,28 +310,26 @@ int main(int argc, char** argv)
 
         /* Wait for join session to complete */
         while (!s_joinComplete) {
+#ifdef _WIN32
+            Sleep(10);
+#else
             sleep(1);
+#endif
         }
     }
 
     /* Take input from stdin and send it as a chat messages */
-    size_t len = 0;
-    ssize_t rd;
-    char* buf = NULL;
-    while ((ER_OK == status) && (0 < (rd = getline(&buf, &len, stdin)))) {
-        buf[len - 2] = '\0';
-        chatObj.SendChatSignal(buf);
-    }
-    if (buf) {
-        delete buf;
+    const int bufSize = 1024;
+    char buf[bufSize];
+    while ((ER_OK == status) && (get_line(buf, bufSize, stdin))) {
+        status = chatObj.SendChatSignal(buf);
     }
 
     /* Cleanup */
-    if (bus) {
-        delete bus;
-        bus = NULL;
-        s_bus = NULL;
-    }
+    delete bus;
+    bus = NULL;
+    s_bus = NULL;
+
     if (NULL != s_busListener) {
         delete s_busListener;
         s_busListener = NULL;
