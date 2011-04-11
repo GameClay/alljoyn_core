@@ -1932,6 +1932,9 @@ void AllJoynObj::ExchangeNamesSignalHandler(const InterfaceDescription::Member* 
             } else if (0 == ::strncmp(uniqueName.c_str() + 1, shortGuidStr.c_str(), shortGuidStr.size())) {
                 /* Cant accept a request to change a local name */
                 continue;
+            } else if (uniqueName == msg->GetSender()) {
+                /* Ignore all bus controller object that we recieved this from since its virtual endpoint is preset (assumed) */
+                continue;
             }
 
             bool madeChange;

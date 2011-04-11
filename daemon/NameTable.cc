@@ -161,6 +161,12 @@ QStatus NameTable::AddAlias(const qcc::String& aliasName,
             aliasNames[aliasName] = deque<NameQueueEntry>(1, entry);
             disposition = DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER;
             newOwner = &uniqueName;
+            
+            /* Check to see if we are overriding a virtual (remote) name */
+            map<qcc::StringMapKey, VirtualEndpoint*>::const_iterator vit = virtualAliasNames.find(aliasName);
+            if (vit != virtualAliasNames.end()) {
+                origOwner = &vit->second->GetUniqueName();
+            }
         }
         lock.Unlock();
 
@@ -203,6 +209,11 @@ void NameTable::RemoveAlias(const qcc::String& aliasName,
                 newOwner = &queue[0].endpoint->GetUniqueName();
             } else {
                 aliasNames.erase(it);
+                /* Check to see if there is a (now unmasked) remote owner for the alias */
+                map<qcc::StringMapKey, VirtualEndpoint*>::const_iterator vit = virtualAliasNames.find(aliasName);
+                if (vit != virtualAliasNames.end()) {
+                    newOwner = &vit->second->GetUniqueName();
+                }
             }
             oldOwner = &ownerName;
             disposition = DBUS_RELEASE_NAME_REPLY_RELEASED;
@@ -360,6 +371,7 @@ bool NameTable::SetVirtualAlias(const qcc::String& alias,
     }
 
     bool madeChange = (oldOwner != newOwner);
+    bool maskingLocalName = (aliasNames.find(alias) != aliasNames.end());
 
     if (newOwner) {
         virtualAliasNames[alias] = newOwner;
@@ -368,7 +380,8 @@ bool NameTable::SetVirtualAlias(const qcc::String& alias,
     }
     lock.Unlock();
 
-    if (madeChange) {
+    /* Virtual aliases cannot override locally requested aliases */
+    if (madeChange && !maskingLocalName) {
         CallListeners(alias,
                       oldOwner ? &(oldOwner->GetUniqueName()) : NULL,
                       newOwner ? &(newOwner->GetUniqueName()) : NULL);
