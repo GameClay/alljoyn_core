@@ -103,12 +103,18 @@ class OptParse {
     };
 
     OptParse(int argc, char** argv) :
-        argc(argc), argv(argv), noBT(false), printAddress(false), verbosity(LOG_WARNING)
-    { }
+        argc(argc),
+        argv(argv),
+        useDefaultConfig(true),
+        noBT(false),
+        printAddress(false),
+        verbosity(LOG_WARNING)
+    { configFile.clear(); }
 
     ParseResultCode ParseResult();
 
     qcc::String GetConfigFile() const { return configFile; }
+    bool UseDefaultConfig() const { return useDefaultConfig; }
     bool PrintAddress() const { return printAddress; }
     int GetVerbosity() const { return verbosity; }
     bool GetNoBT() const { return noBT; }
@@ -118,6 +124,7 @@ class OptParse {
     char** argv;
 
     qcc::String configFile;
+    bool useDefaultConfig;
     bool noBT;
     bool printAddress;
     int verbosity;
@@ -148,11 +155,6 @@ OptParse::ParseResultCode OptParse::ParseResult()
     ParseResultCode result(PR_OK);
     int i;
 
-    if (argc == 1) {
-        result = PR_MISSING_OPTION;
-        goto exit;
-    }
-
     for (i = 1; i < argc; ++i) {
         qcc::String arg(argv[i]);
 
@@ -175,12 +177,14 @@ OptParse::ParseResultCode OptParse::ParseResult()
                 goto exit;
             }
             configFile = argv[i];
+            useDefaultConfig = false;
         } else if (arg.compare(0, sizeof("--config-file") - 1, "--config-file") == 0) {
             if (!configFile.empty()) {
                 result = PR_OPTION_CONFLICT;
                 goto exit;
             }
             configFile = arg.substr(sizeof("--config-file"));
+            useDefaultConfig = false;
         } else if (arg.compare("--print-address") == 0) {
             printAddress = true;
         } else if (arg.compare("--no-bt") == 0) {
@@ -337,12 +341,17 @@ int main(int argc, char** argv, char** env)
 
     loggerSettings->SetLevel(opts.GetVerbosity());
 
-    config->SetConfigFile(opts.GetConfigFile());
-    if (!config->LoadConfigFile()) {
-        StringSource src(defaultConfig);
-        if (!config->LoadSource(src)) {
-            return DAEMON_EXIT_CONFIG_ERROR;
-        }
+    if (opts.UseDefaultConfig()) {
+    	StringSource src(defaultConfig);
+    	if (!config->LoadSource(src)) {
+    		return DAEMON_EXIT_CONFIG_ERROR;
+    	}
+    } else {
+    	config->SetConfigFile(opts.GetConfigFile());
+    	if (!config->LoadConfigFile()) {
+    		fprintf(stderr, "Invalid configuration file specified: \"%s\"\n", opts.GetConfigFile().c_str());
+    		return DAEMON_EXIT_CONFIG_ERROR;
+    	}
     }
 
     return daemon(opts);
