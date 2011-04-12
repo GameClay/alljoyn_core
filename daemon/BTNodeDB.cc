@@ -185,57 +185,57 @@ void BTNodeDB::Diff(const BTNodeDB& other, BTNodeDB* added, BTNodeDB* removed) c
     NodeAddrMap::const_iterator addrit;
 
     // Find removed names/nodes
-    for (nodeit = Begin(); nodeit != End(); ++nodeit) {
-        const BTNodeInfo& node = *nodeit;
-        addrit = other.addrMap.find(node->GetBusAddress());
-        if (addrit == addrMap.end()) {
-            if (removed) {
+    if (removed) {
+        for (nodeit = Begin(); nodeit != End(); ++nodeit) {
+            const BTNodeInfo& node = *nodeit;
+            addrit = other.addrMap.find(node->GetBusAddress());
+            if (addrit == addrMap.end()) {
                 removed->AddNode(node);
-            }
-        } else {
-            BTNodeInfo diffNode(node->GetBusAddress(), node->GetUniqueName(), node->GetGUID());
-            bool include = false;
-            const BTNodeInfo& onode = addrit->second;
-            NameSet::const_iterator nameit;
-            NameSet::const_iterator onameit;
-            for (nameit = node->GetAdvertiseNamesBegin(); nameit != node->GetAdvertiseNamesEnd(); ++nameit) {
-                const String& name = *nameit;
-                onameit = onode->FindAdvertiseName(name);
-                if (onameit == onode->GetAdvertiseNamesEnd()) {
-                    diffNode->AddAdvertiseName(name);
-                    include = true;
+            } else {
+                BTNodeInfo diffNode(node->GetBusAddress(), node->GetUniqueName(), node->GetGUID());
+                bool include = false;
+                const BTNodeInfo& onode = addrit->second;
+                NameSet::const_iterator nameit;
+                NameSet::const_iterator onameit;
+                for (nameit = node->GetAdvertiseNamesBegin(); nameit != node->GetAdvertiseNamesEnd(); ++nameit) {
+                    const String& name = *nameit;
+                    onameit = onode->FindAdvertiseName(name);
+                    if (onameit == onode->GetAdvertiseNamesEnd()) {
+                        diffNode->AddAdvertiseName(name);
+                        include = true;
+                    }
                 }
-            }
-            if (include) {
-                removed->AddNode(diffNode);
+                if (include) {
+                    removed->AddNode(diffNode);
+                }
             }
         }
     }
 
     // Find added names/nodes
-    for (nodeit = other.Begin(); nodeit != other.End(); ++nodeit) {
-        const BTNodeInfo& onode = *nodeit;
-        addrit = addrMap.find(onode->GetBusAddress());
-        if (addrit == addrMap.end()) {
-            if (added) {
+    if (added) {
+        for (nodeit = other.Begin(); nodeit != other.End(); ++nodeit) {
+            const BTNodeInfo& onode = *nodeit;
+            addrit = addrMap.find(onode->GetBusAddress());
+            if (addrit == addrMap.end()) {
                 added->AddNode(onode);
-            }
-        } else {
-            BTNodeInfo diffNode(onode->GetBusAddress(), onode->GetUniqueName(), onode->GetGUID());
-            bool include = false;
-            const BTNodeInfo& node = addrit->second;
-            NameSet::const_iterator nameit;
-            NameSet::const_iterator onameit;
-            for (onameit = onode->GetAdvertiseNamesBegin(); onameit != onode->GetAdvertiseNamesEnd(); ++onameit) {
-                const String& oname = *onameit;
-                nameit = node->FindAdvertiseName(oname);
-                if (nameit == node->GetAdvertiseNamesEnd()) {
-                    diffNode->AddAdvertiseName(oname);
-                    include = true;
+            } else {
+                BTNodeInfo diffNode(onode->GetBusAddress(), onode->GetUniqueName(), onode->GetGUID());
+                bool include = false;
+                const BTNodeInfo& node = addrit->second;
+                NameSet::const_iterator nameit;
+                NameSet::const_iterator onameit;
+                for (onameit = onode->GetAdvertiseNamesBegin(); onameit != onode->GetAdvertiseNamesEnd(); ++onameit) {
+                    const String& oname = *onameit;
+                    nameit = node->FindAdvertiseName(oname);
+                    if (nameit == node->GetAdvertiseNamesEnd()) {
+                        diffNode->AddAdvertiseName(oname);
+                        include = true;
+                    }
                 }
-            }
-            if (include) {
-                added->AddNode(diffNode);
+                if (include) {
+                    added->AddNode(diffNode);
+                }
             }
         }
     }

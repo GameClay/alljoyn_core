@@ -417,13 +417,16 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
             cacheLock.Unlock();
 
             if (oldAdInfo) {
+                BTNodeDB removed;
+                oldAdInfo->Diff(foundNodeDB, NULL, &removed);
+
                 /* Distribute the lost names before updating the foundNodeDB,
                  * since removing names from nodes found in foundNodeDB will
                  * cause those names to be removed from oldAdInfo if they both
                  * have references to the same instance of BTNodeInfo.
                  */
-                DistributeAdvertisedNameChanges(empty, *oldAdInfo);
-                foundNodeDB.UpdateDB(NULL, oldAdInfo);
+                DistributeAdvertisedNameChanges(empty, removed);
+                foundNodeDB.UpdateDB(NULL, &removed);
 
                 delete oldAdInfo;
             }
@@ -683,15 +686,15 @@ void BTController::BTDeviceAvailable(bool on)
         lock.Lock();
         if (on) {
             BTBusAddress addr;
-            QStatus status = bt.StartListen(addr.addr, addr.psm);
+            QStatus status = bt.StartListen(listenAddr.addr, listenAddr.psm);
             if (status == ER_OK) {
                 listening = true;
                 nodeDB.Lock();
                 if (!self->IsValid()) {
-                    self = BTNodeInfo(addr, bus.GetUniqueName(), bus.GetGlobalGUIDString());
+                    self = BTNodeInfo(listenAddr, bus.GetUniqueName(), bus.GetGlobalGUIDString());
                     nodeDB.AddNode(self);
                 } else {
-                    self->SetBusAddress(addr);
+                    self->SetBusAddress(listenAddr);
                 }
                 BDAddressSet ignoreAddrs;
                 BTNodeDB::const_iterator it;
@@ -721,6 +724,9 @@ void BTController::BTDeviceAvailable(bool on)
                 find.active = false;
             }
             if (listening) {
+                listenAddr.addr.SetRaw(0);
+                listenAddr.psm = bt::INVALID_PSM;
+                self->SetBusAddress(listenAddr);
                 bt.StopListen();
                 listening = false;
             }
@@ -1053,7 +1059,8 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
     QStatus status = msg->GetArgs(SIG_NAME_OP, &addrRaw, &psm, &name);
 
     if (status == ER_OK) {
-        BTNodeInfo node = nodeDB.FindNode(addrRaw, psm);
+        BTBusAddress addr(addrRaw, psm);
+        BTNodeInfo node = nodeDB.FindNode(addr);
 
         if (node->IsValid()) {
             QCC_DbgPrintf(("%s %s to the list of %s names for %s.",
@@ -1109,7 +1116,11 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
                 Signal(master->GetServiceName().c_str(), 0, *member, args, numArgs);
             }
             lock.Unlock();
+        } else {
+            QCC_LogError(ER_FAIL, ("Did not find node %s-%04x in node DB", addr.addr.ToString().c_str(), addr.psm));
         }
+    } else {
+        QCC_LogError(status, ("Processing msg args"));
     }
 }
 
@@ -1477,7 +1488,7 @@ void BTController::ImportState(MsgArg* nodeStateEntries,
     }
 
     foundNodeDB.Diff(incomingDB, &added, &removed);
-    foundNodeDB.UpdateDB(&added, &removed);
+    foundNodeDB.UpdateDB(NULL, &added);
 
     DistributeAdvertisedNameChanges(added, removed);
 
