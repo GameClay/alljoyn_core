@@ -320,8 +320,9 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
         qcc::Alarm alarm;
         bool active;
         bool dirty;
+        size_t count;
         NameArgInfo(BTController& bto, size_t size, qcc::Timer& dispatcher) :
-            bto(bto), argsSize(size), dispatcher(dispatcher), active(false)
+            bto(bto), argsSize(size), dispatcher(dispatcher), active(false), dirty(false), count(0)
         {
             args = new MsgArg[size];
             minion = bto.self;
@@ -331,7 +332,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
         virtual void ClearArgs() = 0;
         virtual void AddName(const qcc::String& name, BTNodeInfo& node) = 0;
         virtual void RemoveName(const qcc::String& name, BTNodeInfo& node) = 0;
-        virtual size_t Empty() const = 0;
+        size_t Empty() const { return count == 0; }
         bool Changed() const { return dirty; }
         void AddName(const qcc::String& name)
         {
@@ -361,13 +362,11 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
 
     struct AdvertiseNameArgInfo : public NameArgInfo {
         std::vector<MsgArg> adInfoArgs;
-        size_t count;
         AdvertiseNameArgInfo(BTController& bto, qcc::Timer& dispatcher) :
-            NameArgInfo(bto, 5, dispatcher), count(0)
+            NameArgInfo(bto, 5, dispatcher)
         { }
         void AddName(const qcc::String& name, BTNodeInfo& node);
         void RemoveName(const qcc::String& name, BTNodeInfo& node);
-        size_t Empty() const { return count == 0; }
         void SetArgs();
         void ClearArgs();
         bool UseLocal() { return bto.UseLocalAdvertise(); }
@@ -380,13 +379,11 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     struct FindNameArgInfo : public NameArgInfo {
         qcc::String resultDest;
         BDAddressSet ignoreAddrs;
-        NameSet names;
         FindNameArgInfo(BTController& bto, qcc::Timer& dispatcher) :
             NameArgInfo(bto, 3, dispatcher)
         { }
         void AddName(const qcc::String& name, BTNodeInfo& node);
         void RemoveName(const qcc::String& name, BTNodeInfo& node);
-        size_t Empty() const { return names.empty(); }
         void SetArgs();
         void ClearArgs();
         bool UseLocal() { return bto.UseLocalFind(); }

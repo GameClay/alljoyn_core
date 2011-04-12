@@ -823,13 +823,14 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                 nodeDB.RemoveNode(minion);
                 find.ignoreAddrs->erase(minion->GetBusAddress().addr);
 
-                // Indicate name list has changed.
-                advertise.dirty = !minion->AdvertiseNamesEmpty();
-                find.dirty = !minion->FindNamesEmpty();
-
-                // Remove find names for the lost minion.
-                for (NameSet::const_iterator it = minion->GetFindNamesBegin(); it != minion->GetFindNamesEnd(); ++it) {
-                    find.names.erase(*it);
+                // Indicate the name lists have changed.
+                if (!minion->AdvertiseNamesEmpty()) {
+                    advertise.count -= minion->AdvertiseNamesSize();
+                    advertise.dirty = true;
+                }
+                if (!minion->FindNamesEmpty()) {
+                    find.count -= minion->FindNamesSize();
+                    find.dirty = true;
                 }
 
                 if (wasDirect) {
@@ -1821,16 +1822,19 @@ QStatus BTController::AdvertiseNameArgInfo::StopLocal()
 void BTController::FindNameArgInfo::AddName(const qcc::String& name, BTNodeInfo& node)
 {
     node->AddFindName(name);
-    names.insert(name);
+    ++count;
     dirty = true;
 }
 
 
 void BTController::FindNameArgInfo::RemoveName(const qcc::String& name, BTNodeInfo& node)
 {
-    node->RemoveFindName(name);
-    names.erase(name);
-    dirty = true;
+    NameSet::iterator nit = node->FindFindName(name);
+    if (nit != node->GetFindNamesEnd()) {
+        node->RemoveFindName(nit);
+        --count;
+        dirty = true;
+    }
 }
 
 
