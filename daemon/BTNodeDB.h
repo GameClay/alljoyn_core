@@ -34,13 +34,13 @@
 #include <alljoyn/MsgArg.h>
 
 #include "BDAddress.h"
+#include "BTTransportConsts.h"
 #include "Transport.h"
 
 
 namespace ajn {
 
 struct BTBusAddress {
-    static const uint16_t INVALID_PSM = 0;          /**< Invalid L2CAP PSM value */
 
     BDAddress addr;    /**< BDAddress part of the bus address. */
     uint16_t psm;      /**< L2CAP PSM part of the bus address. */
@@ -48,7 +48,7 @@ struct BTBusAddress {
     /**
      * default constructor
      */
-    BTBusAddress() : psm(INVALID_PSM) { }
+    BTBusAddress() : psm(bt::INVALID_PSM) { }
 
     /**
      * Copy constructor
@@ -82,7 +82,7 @@ struct BTBusAddress {
         std::map<qcc::String, qcc::String> argMap;
         Transport::ParseArguments("bluetooth", addrSpec.c_str(), argMap);
         addr.FromString(argMap["addr"]);
-        psm = StringToU32(argMap["psm"], 0, INVALID_PSM);
+        psm = StringToU32(argMap["psm"], 0, bt::INVALID_PSM);
     }
 
     /**
@@ -100,7 +100,7 @@ struct BTBusAddress {
      *
      * @return  true if the bus address is valid, false otherwise
      */
-    bool IsValid() const { return psm != INVALID_PSM; }
+    bool IsValid() const { return psm != bt::INVALID_PSM; }
 
     /**
      * Less than operator.
@@ -161,7 +161,8 @@ class _BTNodeInfo {
         uniqueName(),
         nodeAddr(nodeAddr),
         directMinion(false),
-        connectProxyNode(NULL)
+        connectProxyNode(NULL),
+        uuidRev(bt::INVALID_UUIDREV)
     { }
 
     /**
@@ -175,7 +176,8 @@ class _BTNodeInfo {
         uniqueName(uniqueName),
         nodeAddr(nodeAddr),
         directMinion(false),
-        connectProxyNode(NULL)
+        connectProxyNode(NULL),
+        uuidRev(bt::INVALID_UUIDREV)
     { }
 
     /**
@@ -190,7 +192,8 @@ class _BTNodeInfo {
         uniqueName(uniqueName),
         nodeAddr(nodeAddr),
         directMinion(false),
-        connectProxyNode(NULL)
+        connectProxyNode(NULL),
+        uuidRev(bt::INVALID_UUIDREV)
     { }
 
     /**
@@ -425,33 +428,6 @@ class _BTNodeInfo {
     void SetDirectMinion(bool val) { directMinion = val; }
 
     /**
-     * Equivalence operator.
-     *
-     * @param other     reference to the rhs of "==" for comparison
-     *
-     * @return  true if this is == other, false otherwise
-     */
-    bool operator==(const _BTNodeInfo& other) const { return (nodeAddr == other.nodeAddr); }
-
-    /**
-     * Inequality operator.
-     *
-     * @param other     reference to the rhs of "==" for comparison
-     *
-     * @return  true if this is != other, false otherwise
-     */
-    bool operator!=(const _BTNodeInfo& other) const { return !(*this == other); }
-
-    /**
-     * Less than operator.
-     *
-     * @param other     reference to the rhs of "<" for comparison
-     *
-     * @return  true if this is < other, false otherwise
-     */
-    bool operator<(const _BTNodeInfo& other) const { return (nodeAddr < other.nodeAddr); }
-
-    /**
      * Check if this node is a minion of the specified master node.
      *
      * @param master    Node to check if we are a minion.
@@ -489,20 +465,61 @@ class _BTNodeInfo {
         }
     }
 
+    /**
+     * Get the UUID revision of the advertisement this node was discovered in.
+     *
+     * @return  The UUID revision.
+     */
+    uint32_t GetUUIDRev() const { return uuidRev; }
+
+    /**
+     * Set the UUID revision of the advertisement this node was discovered in.
+     *
+     * @param uuidRev   The UUID revision.
+     */
+    void SetUUIDRev(uint32_t uuidRev) { this->uuidRev = uuidRev; }
+
+    /**
+     * Equivalence operator.
+     *
+     * @param other     reference to the rhs of "==" for comparison
+     *
+     * @return  true if this is == other, false otherwise
+     */
+    bool operator==(const _BTNodeInfo& other) const { return (nodeAddr == other.nodeAddr); }
+
+    /**
+     * Inequality operator.
+     *
+     * @param other     reference to the rhs of "==" for comparison
+     *
+     * @return  true if this is != other, false otherwise
+     */
+    bool operator!=(const _BTNodeInfo& other) const { return !(*this == other); }
+
+    /**
+     * Less than operator.
+     *
+     * @param other     reference to the rhs of "<" for comparison
+     *
+     * @return  true if this is < other, false otherwise
+     */
+    bool operator<(const _BTNodeInfo& other) const { return (nodeAddr < other.nodeAddr); }
+
   private:
     /**
      * Private copy construct to catch potential coding errors.
      */
     _BTNodeInfo(const _BTNodeInfo& other) { }
 
-    qcc::String guid;           /**< Bus GUID of the node. */
-    qcc::String uniqueName;     /**< Unique bus name of the daemon on the node. */
-    BTBusAddress nodeAddr;      /**< Bus address of the node. */
-    bool directMinion;          /**< Flag indicating if the node is a directly connected minion or not. */
-
+    qcc::String guid;             /**< Bus GUID of the node. */
+    qcc::String uniqueName;       /**< Unique bus name of the daemon on the node. */
+    BTBusAddress nodeAddr;        /**< Bus address of the node. */
+    bool directMinion;            /**< Flag indicating if the node is a directly connected minion or not. */
     BTNodeInfo* connectProxyNode; /**< Node that will accept connections for us. */
     NameSet adNames;              /**< Set of advertise names. */
     NameSet findNames;            /**< Set of find names. */
+    uint32_t uuidRev;             /**< UUID revision of the advertisement this node was found in. */
 };
 
 
@@ -666,6 +683,13 @@ class BTNodeDB {
         Unlock();
         return size;
     }
+
+#ifndef NDEBUG
+    void DumpTable(const char* info) const;
+#else
+    void DumpTable(const char* info) const { }
+#endif
+
 
   private:
 

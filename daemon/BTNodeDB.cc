@@ -83,7 +83,7 @@ const BTNodeInfo BTNodeDB::FindNode(const BTBusAddress& addr) const
 const BTNodeInfo BTNodeDB::FindNode(const BDAddress& addr) const
 {
     BTNodeInfo node;
-    BTBusAddress busAddr(addr, BTBusAddress::INVALID_PSM);
+    BTBusAddress busAddr(addr, bt::INVALID_PSM);
     Lock();
     NodeAddrMap::const_iterator it = addrMap.lower_bound(busAddr);
     if (it != addrMap.end() && (it->second)->GetBusAddress().addr == addr) {
@@ -296,5 +296,30 @@ void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool rem
         }
     }
 }
+
+
+#ifndef NDEBUG
+void BTNodeDB::DumpTable(const char* info) const
+{
+    const_iterator nodeit;
+    QCC_DbgPrintf(("Node State Table (%s):", info));
+    for (nodeit = Begin(); nodeit != End(); ++nodeit) {
+        const BTNodeInfo& node = *nodeit;
+        NameSet::const_iterator nameit;
+        QCC_DbgPrintf(("    %s-%04x %s:",
+                       node->GetBusAddress().addr.ToString().c_str(),
+                       node->GetBusAddress().psm,
+                       node->GetUniqueName().c_str()));
+        QCC_DbgPrintf(("         Advertise names:"));
+        for (nameit = node->GetAdvertiseNamesBegin(); nameit != node->GetAdvertiseNamesEnd(); ++nameit) {
+            QCC_DbgPrintf(("            %s", nameit->c_str()));
+        }
+        QCC_DbgPrintf(("         Find names:"));
+        for (nameit = node->GetFindNamesBegin(); nameit != node->GetFindNamesEnd(); ++nameit) {
+            QCC_DbgPrintf(("            %s", nameit->c_str()));
+        }
+    }
+}
+#endif
 
 }

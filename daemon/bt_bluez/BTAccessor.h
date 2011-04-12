@@ -314,7 +314,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     class FoundInfo {
       public:
         FoundInfo() :
-            uuidRev(BTController::INVALID_UUIDREV),
+            uuidRev(bt::INVALID_UUIDREV),
             timestamp(0)
         { }
         uint32_t uuidRev;

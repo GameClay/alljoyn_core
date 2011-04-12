@@ -427,7 +427,7 @@ QStatus BTTransport::StopAdvertise()
 {
     BDAddress bdAddr;
     BTNodeDB adInfo;
-    btAccessor->SetSDPInfo(BTController::INVALID_UUIDREV, bdAddr, BTBusAddress::INVALID_PSM, adInfo);
+    btAccessor->SetSDPInfo(bt::INVALID_UUIDREV, bdAddr, bt::INVALID_PSM, adInfo);
     btAccessor->StopDiscoverability();
     return ER_OK;  // This will ensure that the topology manager stays in the right state.
 }

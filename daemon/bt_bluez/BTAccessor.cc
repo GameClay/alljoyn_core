@@ -413,11 +413,11 @@ QStatus BTTransport::BTAccessor::SetSDPInfo(uint32_t uuidRev,
                                             uint16_t psm,
                                             const BTNodeDB& adInfo)
 {
-    QCC_DbgTrace(("BTTransport::BTAccessor::SetSDPInfo(uuidRev = %08x, bdAddr = %s, psm = %04x)",
-                  uuidRev, bdAddr.ToString().c_str(), psm));
+    QCC_DbgTrace(("BTTransport::BTAccessor::SetSDPInfo(uuidRev = %08x, bdAddr = %s, psm = %04x, adInfo = <%u nodes>)",
+                  uuidRev, bdAddr.ToString().c_str(), psm, adInfo.Size()));
     QStatus status = ER_OK;
 
-    if (uuidRev == BTController::INVALID_UUIDREV) {
+    if (uuidRev == bt::INVALID_UUIDREV) {
         if (recordHandle != 0) {
             QCC_DbgPrintf(("Removing record handle %x (no more records)", recordHandle));
             RemoveRecord();
@@ -568,7 +568,7 @@ QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
             shutdown(l2capLFd, SHUT_RDWR);
             close(l2capLFd);
             l2capLFd = -1;
-            psm = BTBusAddress::INVALID_PSM;
+            psm = bt::INVALID_PSM;
         } else {
             QCC_DbgPrintf(("Bound PSM: %#04x", psm));
             ConfigL2cap(l2capLFd);
@@ -580,7 +580,7 @@ QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
                 shutdown(l2capLFd, SHUT_RDWR);
                 close(l2capLFd);
                 l2capLFd = -1;
-                psm = BTBusAddress::INVALID_PSM;
+                psm = bt::INVALID_PSM;
             }
         }
     }
@@ -1123,7 +1123,7 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
         //               addrStr, listSize));
 
         qcc::String uuid;
-        uint32_t newUUIDRev = BTController::INVALID_UUIDREV;
+        uint32_t newUUIDRev = bt::INVALID_UUIDREV;
         uint32_t oldUUIDRev;
         bool found = FindAllJoynUUID(uuids, listSize, newUUIDRev);
 
@@ -1134,12 +1134,12 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
             FoundInfo& foundInfo = foundDevices[addr];
             oldUUIDRev = foundInfo.uuidRev;
 
-            if (foundInfo.uuidRev != BTController::INVALID_UUIDREV) {
+            if (foundInfo.uuidRev != bt::INVALID_UUIDREV) {
                 // We've seen this device before, so clear out the old timeout alarm.
                 bzBus.GetInternal().GetDispatcher().RemoveAlarm(foundInfo.alarm);
             }
 
-            if ((foundInfo.uuidRev == BTController::INVALID_UUIDREV) ||
+            if ((foundInfo.uuidRev == bt::INVALID_UUIDREV) ||
                 (foundInfo.uuidRev != newUUIDRev)) {
                 // Newly found device or changed advertisments, so inform the topology manager.
 
@@ -1149,7 +1149,7 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
 
             foundInfo.timestamp = GetTimestamp();
             foundInfo.alarm = DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_LOST,
-                                                                       addr, BTController::INVALID_UUIDREV,
+                                                                       addr, bt::INVALID_UUIDREV,
                                                                        newUUIDRev),
                                                 FOUND_DEVICE_INFO_TIMEOUT);
 
@@ -1331,7 +1331,7 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                         QCC_DbgPrintf(("    Attribute ID: %04x  ALLJOYN_BT_L2CAP_PSM_ATTR: %s", attrId, psmStr.c_str()));
                         *connPSM = StringToU32(psmStr);
                         if ((*connPSM < 0x1001) || ((*connPSM & 0x1) != 0x1) || (*connPSM > 0x8fff)) {
-                            *connPSM = BTBusAddress::INVALID_PSM;
+                            *connPSM = bt::INVALID_PSM;
                         }
                         foundPSM = true;
                     }
@@ -1364,7 +1364,7 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
             }
         }
 
-        if (((!connPSM || (*connPSM == BTBusAddress::INVALID_PSM))) ||
+        if (((!connPSM || (*connPSM == bt::INVALID_PSM))) ||
             (!foundConnAddr || !foundUUIDRev || !foundPSM || !foundAdInfo)) {
             status = ER_FAIL;
         }
@@ -1416,12 +1416,12 @@ void BTTransport::BTAccessor::ProcessXMLAdvertisementsAttr(const XmlElement* ele
                         } else if (tupleElements[j]->GetName().compare("uint64") == 0) {
                             String addrStr = Trim(tupleElements[j]->GetAttribute("value"));
                             addr.SetRaw(StringToU64(addrStr, 0));
-                            QCC_DbgPrintf(("        BDAddress: %s", nodeInfo->GetBusAddress().addr.ToString().c_str()));
+                            QCC_DbgPrintf(("        BDAddress: %s", addr.ToString().c_str()));
                             gotBDAddr = true;
                         } else if (tupleElements[j]->GetName().compare("uint16") == 0) {
                             String psmStr = Trim(tupleElements[j]->GetAttribute("value"));
-                            psm = StringToU32(psmStr, 0, BTBusAddress::INVALID_PSM);
-                            QCC_DbgPrintf(("        PSM: %#04x", nodeInfo->GetBusAddress().psm));
+                            psm = StringToU32(psmStr, 0, bt::INVALID_PSM);
+                            QCC_DbgPrintf(("        PSM: %#04x", psm));
                             gotPSM = true;
                         } else if (tupleElements[j]->GetName().compare("sequence") == 0) {
                             // This sequence is just the list of advertised names for the given node.

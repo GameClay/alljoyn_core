@@ -121,7 +121,7 @@ BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
     bus(bus),
     bt(bt),
     master(NULL),
-    masterUUIDRev(INVALID_UUIDREV),
+    masterUUIDRev(bt::INVALID_UUIDREV),
     directMinions(0),
     maxConnections(min(StringToU32(Environ::GetAppEnviron()->Find("ALLJOYN_MAX_BT_CONNECTIONS"), 0, DEFAULT_MAX_CONNECTIONS),
                        ABSOLUTE_MAX_CONNECTIONS)),
@@ -129,7 +129,7 @@ BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
     advertise(*this, bus.GetInternal().GetDispatcher()),
     find(*this, bus.GetInternal().GetDispatcher())
 {
-    while (masterUUIDRev == INVALID_UUIDREV) {
+    while (masterUUIDRev == bt::INVALID_UUIDREV) {
         masterUUIDRev = qcc::Rand32();
     }
 
@@ -346,11 +346,60 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
 
 
     if (IsMaster()) {
+        UUIDRevCacheMap::iterator ci;
+        UUIDRevCacheMap::iterator ciEnd;
         BTNodeDB empty;
+        BTNodeDB* adInfo = NULL;
+        BDAddress connBDAddr;
+        uint16_t connPSM;
+
+        if (!lost) {
+            adInfo = new BTNodeDB();
+
+            status = bt.GetDeviceInfo(adBdAddr, newUUIDRev, connBDAddr, connPSM, *adInfo);
+
+            if (status == ER_OK) {
+                if (adInfo->Size() == 0) {
+                    lost = true;
+                    delete adInfo;
+                    adInfo = NULL;
+                }
+            } else {
+                delete adInfo;
+                adInfo = NULL;
+            }
+        }
         if (lost) {
+            /*
+             * There are few reasons that we have received a "lost" advertisement:
+             *
+             * 1. A device/piconet/scatternet we knew about has gone out of
+             * range.  This is a legitemate lost advertisement.  We need to
+             * remove the advertisement information from the cache and
+             * foundNodeDB, and inform everyone of the lost information.
+             *
+             * 2. A device/piconet/scatternet joined another
+             * piconet/scatternet and is no longer advertising itself.  This
+             * is not a real "lost" advertisement.  The code that handles
+             * "new" advertisements is expected to clean up the old
+             * advertisement information so that processing of the "lost"
+             * advertisement becomes a no-op.  Given the timeouts involved,
+             * this will always happen after the "new" advertisements are
+             * handled.
+             *
+             * 3. A piconet/scatternet has changed advertising nodes.  This
+             * too is not a real "lost" advertisement.  This is just an effect
+             * of rotating advertising nodes when the piconet/scatternet is
+             * large enough.  Like case 2, the code that handles "new"
+             * advertisements is expected to clean up the old advertisement
+             * information so that processing this "lost" advertisement
+             * becomes a no-op.  Again, the timeouts involved will ensure that
+             * the "new" advertisements are handled first.
+             */
             cacheLock.Lock();
-            UUIDRevCacheMap::iterator ci = uuidRevCache.lower_bound(oldUUIDRev);
-            UUIDRevCacheMap::const_iterator ciEnd = uuidRevCache.upper_bound(oldUUIDRev);
+
+            ci = uuidRevCache.lower_bound(oldUUIDRev);
+            ciEnd = uuidRevCache.upper_bound(oldUUIDRev);
 
             BTNodeDB* oldAdInfo = NULL;
 
@@ -358,6 +407,9 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                 ++ci;
             }
 
+            /* For case 1, ci should not equal ciEnd.  For case 2 and 3 ci
+             * normally will be the same as ciEnd.
+             */
             if (ci != ciEnd) {
                 oldAdInfo = ci->second.adInfo;
                 uuidRevCache.erase(ci);
@@ -365,54 +417,157 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
             cacheLock.Unlock();
 
             if (oldAdInfo) {
-                foundNodeDB.UpdateDB(NULL, oldAdInfo);
+                /* Distribute the lost names before updating the foundNodeDB,
+                 * since removing names from nodes found in foundNodeDB will
+                 * cause those names to be removed from oldAdInfo if they both
+                 * have references to the same instance of BTNodeInfo.
+                 */
                 DistributeAdvertisedNameChanges(empty, *oldAdInfo);
+                foundNodeDB.UpdateDB(NULL, oldAdInfo);
+
                 delete oldAdInfo;
             }
         } else {
-            BTNodeDB* adInfo = new BTNodeDB();
-            BTNodeDB* newAdInfo;
-            BTNodeDB* oldAdInfo;
-            BDAddress connBDAddr;
-            uint16_t connPSM;
+            /*
+             * There are several reasons that we have a "new" advertisement:
+             *
+             * 1. A device/piconet/scatternet we have never seen before came
+             * into range.  This is the simplest case and we only need to add
+             * the newly advertised information to our cache and foundNodeDB,
+             * and to send everyone the set of newly discovered information.
+             *
+             * 2. A device/piconet/scatternet we know about changed it's set
+             * of advertised names.  This case is slightly more complex.  We
+             * need to find the cache entry and update it with the current
+             * information.  We also need to update findNodeDB with the new
+             * information and inform everyone of the changes (both additions
+             * and removals).
+             *
+             * 3. 2 devices/piconets/scatternets we know about connected to
+             * each other to form their own piconet/scatternet.  This case is
+             * the most complex.  We need to find the cache information for
+             * all the nodes in the discovered piconet/scatternet, coalesce
+             * the cache information, update the foundNodeDB, and send the
+             * changes to everyone (both additions and removals).
+             *
+             * 4. A piconet/scatternet has undergone a disconnection so there
+             * are now 2 devices/piconets/scatternets.  This case is similar
+             * to 2 except that the connect address for some names/node will
+             * change.  It is also likely, that there will be a temporary lost
+             * names condition until both advertisements are received.
+             *
+             * 5. A piconet/scatternet has changed which node is advertising
+             * the names.  This not really a "new" advertisement.  We will
+             * need to update the cache information so that when the "lost"
+             * advertisement comes in for the old advertising device, none of
+             * the names actually become lost.
+             */
 
-            status = bt.GetDeviceInfo(adBdAddr, newUUIDRev, connBDAddr, connPSM, *adInfo);
-
-            if (status == ER_OK) {
+            if (adInfo) {
                 BTBusAddress connAddr(connBDAddr, connPSM);
+                BTNodeDB::const_iterator nodeit;
+                BTNodeDB oldAdInfo;
 
-                cacheLock.Lock();
-                UUIDRevCacheMap::iterator ci = uuidRevCache.lower_bound(oldUUIDRev);
-                UUIDRevCacheMap::const_iterator ciEnd = uuidRevCache.upper_bound(oldUUIDRev);
+                /* Need a container to keep track of which cache entries are
+                 * to be removed in favor of the new advertisement information
+                 * to be cached.  We really only need the iterator into the
+                 * cache, but iterators can't be contained in a set<> so use a
+                 * map and the pointer to the adInfo cache member since that
+                 * is known to be unique to each iterator.
+                 */
+                map<void*, UUIDRevCacheMap::iterator> cacheEntries;
 
-                while ((ci != ciEnd) && (ci->second.connAddr != connAddr)) {
-                    ++ci;
+                BTNodeInfo connNode = foundNodeDB.FindNode(connAddr);
+
+                if (!connNode->IsValid()) {
+                    connNode = BTNodeInfo(connAddr);
+                    connNode->SetUUIDRev(newUUIDRev);
                 }
 
-                if (ci == ciEnd) {
-                    newAdInfo = adInfo;
-                    oldAdInfo = &empty;
-                } else {
-                    newAdInfo = new BTNodeDB();
-                    oldAdInfo = new BTNodeDB();
-                    ci->second.adInfo->Diff(*adInfo, newAdInfo, oldAdInfo);
+                /* The value in oldUUIDRev is basically irrelevant even if it
+                 * is a valid value since we need to handle devices that may
+                 * have become part of larger piconets/scatternets.  The cache
+                 * will have them under their own respective UUID revisions
+                 * rather than the one passed in.
+                 */
+
+                cacheLock.Lock();
+                for (nodeit = adInfo->Begin(); nodeit != adInfo->End(); ++nodeit) {
+                    BTNodeInfo adNode = *nodeit;
+                    BTNodeInfo foundNode = foundNodeDB.FindNode(adNode->GetBusAddress());
+                    if (foundNode->IsValid()) {
+                        uint32_t uuidRev = foundNode->GetUUIDRev();
+
+                        // Find the right cache entry.
+                        ci = uuidRevCache.lower_bound(uuidRev);
+                        ciEnd = uuidRevCache.upper_bound(uuidRev);
+
+                        while ((ci != ciEnd) && (ci->second.connAddr != connAddr)) {
+                            ++ci;
+                        }
+
+                        if (ci != ciEnd) {
+                            cacheEntries[ci->second.adInfo] = ci;
+                            BTNodeInfo cachedNode = ci->second.adInfo->FindNode(adNode->GetBusAddress());
+                            NameSet::const_iterator nameit;
+                            for (nameit = adNode->GetAdvertiseNamesBegin();
+                                 nameit != adNode->GetAdvertiseNamesEnd();
+                                 ++nameit) {
+                                cachedNode->RemoveAdvertiseName(*nameit);
+                            }
+                            if (cachedNode->AdvertiseNamesEmpty()) {
+                                ci->second.adInfo->RemoveNode(adNode);
+                            }
+                        }
+
+                        // Update the node's UUID revision and connect address
+                        foundNode->SetUUIDRev(newUUIDRev);
+                        foundNode->SetConnectNode(connNode);
+                    } else {
+                        // Update the node's UUID revision and connect address
+                        if (adNode->AdvertiseNamesEmpty()) {
+                            adInfo->RemoveNode(adNode);
+                        } else {
+                            adNode->SetUUIDRev(newUUIDRev);
+                            adNode->SetConnectNode(connNode);
+                        }
+                    }
+                }
+
+                /* Any names left in the cache entries that were found will be
+                 * considered lost.  We cannot distinguish between a
+                 * piconet/scatternet splitting in 2 and a name/device leaving
+                 * and no longer discoverable.  This will be our only chance
+                 * to notify everyone of the lost name so we need the set of
+                 * lost names and devices.  If it was just a simple
+                 * disconnection into 2 separate piconets/scatternets, we
+                 * should get the second advertisement soon and it will be
+                 * handled as a new discovery.
+                 */
+                map<void*, UUIDRevCacheMap::iterator>::iterator ceit;
+                for (ceit = cacheEntries.begin(); ceit != cacheEntries.end(); ++ceit) {
+                    ci = ceit->second;
+                    if (ci->second.adInfo->Size() > 0) {
+                        oldAdInfo.UpdateDB(ci->second.adInfo, NULL);
+                    }
                     delete ci->second.adInfo;
                     uuidRevCache.erase(ci);
                 }
-                uuidRevCache.insert(pair<uint32_t, UUIDRevCacheInfo>(newUUIDRev, UUIDRevCacheInfo(adBdAddr, newUUIDRev, connAddr, adInfo)));
+
+                uuidRevCache.insert(UUIDRevCacheMapEntry(newUUIDRev, UUIDRevCacheInfo(adBdAddr,
+                                                                                      newUUIDRev,
+                                                                                      connAddr,
+                                                                                      adInfo)));
+
                 cacheLock.Unlock();
 
-                foundNodeDB.UpdateDB(newAdInfo, oldAdInfo);
-                DistributeAdvertisedNameChanges(*newAdInfo, *oldAdInfo);
-
-                // newAdInfo is either temporarily on the heap or the same as adInfo
-                if (newAdInfo != adInfo) {
-                    delete newAdInfo;
-                }
-                // oldAdInfo is either temporarily on the heap or pointing to empty
-                if (oldAdInfo != &empty) {
-                    delete oldAdInfo;
-                }
+                /* Distribute the names before updating the foundNodeDB, since
+                 * removing names in oldAdInfo from nodes found in foundNodeDB
+                 * will cause those names to be removed from oldAdInfo if they
+                 * both have references to the same instance of BTNodeInfo.
+                 */
+                DistributeAdvertisedNameChanges(*adInfo, oldAdInfo);
+                foundNodeDB.UpdateDB(adInfo, &oldAdInfo);
             }
         }
     } else {
@@ -523,19 +678,21 @@ void BTController::PostConnect(QStatus status, const RemoteEndpoint* ep)
 void BTController::BTDeviceAvailable(bool on)
 {
     QCC_DbgPrintf(("BTController::BTDevicePower(<%s>)", on ? "on" : "off"));
+    devAvailable = on;
     if (IsMaster()) {
         lock.Lock();
         if (on) {
             BTBusAddress addr;
             QStatus status = bt.StartListen(addr.addr, addr.psm);
             if (status == ER_OK) {
-                if (self->IsValid()) {
-                    nodeDB.RemoveNode(self);
-                }
-                self = BTNodeInfo(addr, bus.GetUniqueName(), bus.GetGlobalGUIDString());
-                nodeDB.AddNode(self);
                 listening = true;
                 nodeDB.Lock();
+                if (!self->IsValid()) {
+                    self = BTNodeInfo(addr, bus.GetUniqueName(), bus.GetGlobalGUIDString());
+                    nodeDB.AddNode(self);
+                } else {
+                    self->SetBusAddress(addr);
+                }
                 BDAddressSet ignoreAddrs;
                 BTNodeDB::const_iterator it;
                 for (it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
@@ -570,7 +727,6 @@ void BTController::BTDeviceAvailable(bool on)
         }
         lock.Unlock();
     }
-    devAvailable = on;
 }
 
 
@@ -740,7 +896,7 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BTNodeDB& newAdInfo,
     for (BTNodeDB::const_iterator it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
         const BTNodeInfo& node = *it;
         if (!node->FindNamesEmpty() && node->IsMinionOf(self)) {
-            QCC_DbgPrintf(("Notify %s-%04x of the names.", node->GetBusAddress().addr.ToString().c_str(), node->GetBusAddress().psm));
+            QCC_DbgPrintf(("Notify %s-%04x of the name changes.", node->GetBusAddress().addr.ToString().c_str(), node->GetBusAddress().psm));
             if (oldAdInfo.Size() > 0) {
                 status = SendFoundNamesChange(node, oldAdInfo, true);
             }
@@ -751,7 +907,7 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BTNodeDB& newAdInfo,
     }
     lock.Unlock();
 
-    QCC_DbgPrintf(("Notify ourself of the names."));
+    QCC_DbgPrintf(("Notify ourself of the name changes."));
     BTNodeDB::const_iterator node;
     // Tell ourself about the names (This is best done outside the noseStateLock just in case).
     for (node = oldAdInfo.Begin(); node != oldAdInfo.End(); ++node) {
@@ -1374,7 +1530,7 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo, bool allow)
 
     if (advertiseOp && changed) {
         ++masterUUIDRev;
-        if (masterUUIDRev == INVALID_UUIDREV) {
+        if (masterUUIDRev == bt::INVALID_UUIDREV) {
             ++masterUUIDRev;
         }
         find.dirty = true; // Force updating the ignore UUID
@@ -1619,9 +1775,9 @@ void BTController::AdvertiseNameArgInfo::StopOp()
     size_t argsSize = this->argsSize;
 
     MsgArg::Set(args, argsSize, SIG_DELEGATE_AD,
-                INVALID_UUIDREV,
+                bt::INVALID_UUIDREV,
                 0ULL,
-                BTBusAddress::INVALID_PSM,
+                bt::INVALID_PSM,
                 (size_t)0, NULL,
                 (uint32_t)0);
     assert(argsSize == this->argsSize);
@@ -1643,9 +1799,11 @@ QStatus BTController::AdvertiseNameArgInfo::StartLocal()
 
 QStatus BTController::AdvertiseNameArgInfo::StopLocal()
 {
-    // Advertise empty list for a while so others detect lost name quickly.
-    BTNodeDB adInfo;
-    return bto.bt.StartAdvertise(bto.masterUUIDRev, bto.self->GetBusAddress().addr, bto.self->GetBusAddress().psm, adInfo);
+    // Should still advertise our node even though there are no names to
+    // advertise so that other nodes can clean up their cache's appropriately.
+    return bto.bt.StartAdvertise(bto.masterUUIDRev,
+                                 bto.self->GetBusAddress().addr, bto.self->GetBusAddress().psm,
+                                 bto.nodeDB);
 }
 
 

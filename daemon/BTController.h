@@ -167,8 +167,6 @@ class BluetoothDeviceInterface {
  */
 class BTController : public BusObject, public NameListener, public qcc::AlarmListener {
   public:
-    static const uint32_t INVALID_UUIDREV = 0;      /**< Invalid UUID Revsision number */
-
     /**
      * Constructor
      *
@@ -384,7 +382,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
         BDAddressSet ignoreAddrs;
         NameSet names;
         FindNameArgInfo(BTController& bto, qcc::Timer& dispatcher) :
-            NameArgInfo(bto, 4, dispatcher)
+            NameArgInfo(bto, 3, dispatcher)
         { }
         void AddName(const qcc::String& name, BTNodeInfo& node);
         void RemoveName(const qcc::String& name, BTNodeInfo& node);
@@ -402,12 +400,13 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
         uint32_t uuidRev;       /**< Advertised UUID Revision */
         BTBusAddress connAddr;
         BTNodeDB* adInfo;
-        UUIDRevCacheInfo() : uuidRev(INVALID_UUIDREV) { }
+        UUIDRevCacheInfo() : uuidRev(bt::INVALID_UUIDREV) { }
         UUIDRevCacheInfo(const BDAddress& adAddr, uint32_t uuidRev, const BTBusAddress& connAddr, BTNodeDB* adInfo) :
             adAddr(adAddr), uuidRev(uuidRev), connAddr(connAddr), adInfo(adInfo) { }
     };
 
     typedef std::multimap<uint32_t, UUIDRevCacheInfo> UUIDRevCacheMap;
+    typedef std::pair<uint32_t, UUIDRevCacheInfo> UUIDRevCacheMapEntry;
 
     /**
      * Distribute the advertised name changes to all connected nodes.
