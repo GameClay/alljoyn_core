@@ -245,6 +245,13 @@ class LocalEndpoint : public BusEndpoint, public qcc::AlarmListener, public Mess
     const ProxyBusObject& GetAllJoynProxyObj() const { return *alljoynObj; }
 
     /**
+     * Get the org.alljoyn.Debug remote object.
+     *
+     * @return org.alljoyn.Debug remote object
+     */
+    const ProxyBusObject& GetAllJoynDebugObj() const { return *alljoynDebugObj; }
+
+    /**
      * Get the org.alljoyn.Bus.Peer local object.
      */
     AllJoynPeerObj* GetPeerObj() const { return peerObj; }
@@ -363,6 +370,11 @@ class LocalEndpoint : public BusEndpoint, public qcc::AlarmListener, public Mess
      * Remote object for the AllJoyn object and its interfaces
      */
     ProxyBusObject* alljoynObj;
+
+    /**
+     * Remote object for the AllJoyn debug object and its interfaces
+     */
+    ProxyBusObject* alljoynDebugObj;
 
     /**
      * The local AllJoyn peer object that implements AllJoyn endpoint functionality

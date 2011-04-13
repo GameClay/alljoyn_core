@@ -46,6 +46,10 @@ const char* org::alljoyn::Daemon::ObjectPath = "/org/alljoyn/Bus";
 const char* org::alljoyn::Daemon::InterfaceName = "org.alljoyn.Daemon";
 const char* org::alljoyn::Daemon::WellKnownName = "org.alljoyn.Daemon";
 
+/** org.alljoyn.Daemon.Debug interface definitions */
+const char* org::alljoyn::Daemon::Debug::ObjectPath = "/org/alljoyn/Debug";
+const char* org::alljoyn::Daemon::Debug::InterfaceName = "org.alljoyn.Debug";
+
 /** org.alljoyn.Bus.Peer.* interface definitions */
 const char* org::alljoyn::Bus::Peer::HeaderCompression::InterfaceName = "org.alljoyn.Bus.Peer.HeaderCompression";
 const char* org::alljoyn::Bus::Peer::Authentication::InterfaceName = "org.alljoyn.Bus.Peer.Authentication";
@@ -95,6 +99,18 @@ QStatus org::alljoyn::CreateInterfaces(BusAttachment& bus)
         ifc->AddSignal("DetachSession",  "us",     "sessionId,joiner",       0);
         ifc->AddSignal("ExchangeNames",  "a(sas)", "uniqueName,aliases",     0);
         ifc->AddSignal("NameChanged",    "sss",    "name,oldOwner,newOwner", 0);
+        ifc->Activate();
+    }
+    {
+        /* Create the org.alljoyn.Daemon.Debug interface */
+        InterfaceDescription* ifc = NULL;
+        status = bus.CreateInterface(org::alljoyn::Daemon::Debug::InterfaceName, ifc);
+
+        if (ER_OK != status) {
+            QCC_LogError(status, ("Failed to create interface \"%s\"", org::alljoyn::Daemon::Debug::InterfaceName));
+            return status;
+        }
+        ifc->AddMethod("SetDebugLevel",  "su", NULL, "module,level", 0);
         ifc->Activate();
     }
     {

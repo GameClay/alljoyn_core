@@ -33,6 +33,9 @@
 #include "Bus.h"
 #include "DBusObj.h"
 #include "AllJoynObj.h"
+#ifndef NDEBUG
+#include "AllJoynDebugObj.h"
+#endif
 
 namespace ajn {
 
@@ -60,11 +63,17 @@ class BusController {
 
   private:
 
+#ifndef NDEBUG
+    /** BusObject responsible for org.alljoyn.Debug */
+    AllJoynDebugObj alljoynDebugObj;
+#endif
+
     /** Bus object responsible for org.freedesktop.DBus */
     DBusObj dbusObj;
 
     /** BusObject responsible for org.alljoyn.Bus */
     AllJoynObj alljoynObj;
+
 };
 
 }

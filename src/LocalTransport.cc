@@ -95,6 +95,7 @@ LocalEndpoint::LocalEndpoint(BusAttachment& bus) :
     replyMapLock(),
     dbusObj(NULL),
     alljoynObj(NULL),
+    alljoynDebugObj(NULL),
     peerObj(NULL)
 {
 }
@@ -121,6 +122,10 @@ LocalEndpoint::~LocalEndpoint()
     if (alljoynObj) {
         delete alljoynObj;
         alljoynObj = NULL;
+    }
+    if (alljoynDebugObj) {
+        delete alljoynDebugObj;
+        alljoynDebugObj = NULL;
     }
     if (peerObj) {
         delete peerObj;
@@ -152,6 +157,17 @@ QStatus LocalEndpoint::Start()
         if (mintf) {
             alljoynObj = new ProxyBusObject(bus, org::alljoyn::Bus::WellKnownName, org::alljoyn::Bus::ObjectPath, 0);
             alljoynObj->AddInterface(*mintf);
+        } else {
+            status = ER_BUS_NO_SUCH_INTERFACE;
+        }
+    }
+
+    if (!alljoynDebugObj && (ER_OK == status)) {
+        /* Register well known org.alljoyn.Bus remote object */
+        const InterfaceDescription* dintf = bus.GetInterface(org::alljoyn::Daemon::Debug::InterfaceName);
+        if (dintf) {
+            alljoynDebugObj = new ProxyBusObject(bus, org::alljoyn::Daemon::WellKnownName, org::alljoyn::Daemon::Debug::ObjectPath, 0);
+            alljoynDebugObj->AddInterface(*dintf);
         } else {
             status = ER_BUS_NO_SUCH_INTERFACE;
         }

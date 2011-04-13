@@ -69,6 +69,11 @@ extern const char* ErrorName;                     /**< Standard AllJoyn error na
 extern const char* ObjectPath;                    /**< Object path */
 extern const char* InterfaceName;                 /**< Interface name */
 extern const char* WellKnownName;                 /**< Well known bus name */
+
+namespace Debug {
+extern const char* ObjectPath;                    /**< Object path */
+extern const char* InterfaceName;                 /**< Interface name */
+}
 }
 
 QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljoyn.* interfaces and sub-interfaces */

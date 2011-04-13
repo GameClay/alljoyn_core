@@ -505,6 +505,11 @@ const ProxyBusObject& BusAttachment::GetAllJoynProxyObj()
     return busInternal->localEndpoint.GetAllJoynProxyObj();
 }
 
+const ProxyBusObject& BusAttachment::GetAllJoynDebugObj()
+{
+    return busInternal->localEndpoint.GetAllJoynDebugObj();
+}
+
 QStatus BusAttachment::RegisterSignalHandler(MessageReceiver* receiver,
                                              MessageReceiver::SignalHandler signalHandler,
                                              const InterfaceDescription::Member* member,
@@ -794,6 +799,27 @@ QStatus BusAttachment::NameHasOwner(const char* name, bool& hasOwner)
                               org::freedesktop::DBus::InterfaceName,
                               errName,
                               errMsg.c_str()));
+    }
+    return status;
+}
+
+QStatus BusAttachment::SetDaemonDebug(const char* module, uint32_t level)
+{
+    if (!IsConnected()) {
+        return ER_BUS_NOT_CONNECTED;
+    }
+
+    Message reply(*this);
+    MsgArg args[2];
+    size_t argsSize = ArraySize(args);
+    MsgArg::Set(args, argsSize, "su", module, level);
+    QStatus status = this->GetAllJoynDebugObj().MethodCall(org::alljoyn::Daemon::Debug::InterfaceName, "SetDebugLevel", args, argsSize, reply);
+    if (status != ER_OK) {
+        String errMsg;
+        reply->GetErrorName(&errMsg);
+        if (errMsg == "ER_BUS_NO_SUCH_OBJECT") {
+            status = ER_BUS_NO_SUCH_OBJECT;
+        }
     }
     return status;
 }
