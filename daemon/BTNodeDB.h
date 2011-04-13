@@ -508,9 +508,14 @@ class _BTNodeInfo {
 
   private:
     /**
-     * Private copy construct to catch potential coding errors.
+     * Private copy constructor to catch potential coding errors.
      */
     _BTNodeInfo(const _BTNodeInfo& other) { }
+
+    /**
+     * Private assignmentoperator to catch potential coding errors.
+     */
+    _BTNodeInfo& operator=(const _BTNodeInfo& other) { return *this; }
 
     qcc::String guid;             /**< Bus GUID of the node. */
     qcc::String uniqueName;       /**< Unique bus name of the daemon on the node. */
