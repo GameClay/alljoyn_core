@@ -351,9 +351,10 @@ class MyAuthListener : public AuthListener {
 
 static void usage(void)
 {
-    printf("Usage: bbsrv [-h]\n\n");
+    printf("Usage: bbdaemon [-h] [-m] [-b]\n\n");
     printf("Options:\n");
     printf("   -h   = Print this help message\n");
+    printf("   -b   = Disable Bluetooth transport\n");
     printf("   -m   = Mimic behavior of bbservice within daemon\n");
 }
 
@@ -378,6 +379,7 @@ int main(int argc, char** argv)
     QStatus status = ER_OK;
     qcc::GUID guid;
     bool mimicBbservice = false;
+    bool noBT = false;
     ConfigDB* config(ConfigDB::GetConfigDB());
     StringSource src(policyConfig);
     config->LoadSource(src);
@@ -395,6 +397,8 @@ int main(int argc, char** argv)
             exit(0);
         } else if (0 == strcmp("-m", argv[i])) {
             mimicBbservice = true;
+        } else if (0 == strcmp("-b", argv[i])) {
+            noBT = true;
         } else {
             status = ER_FAIL;
             printf("Unknown option %s\n", argv[i]);
@@ -407,7 +411,7 @@ int main(int argc, char** argv)
     Environ* env = Environ::GetAppEnviron();
 
 #ifdef QCC_OS_WINDOWS
-    serverArgs = env->Find("BUS_SERVER_ADDRESSES", "tcp:addr=0.0.0.0,port=9955;bluetooth:");
+    serverArgs = env->Find("BUS_SERVER_ADDRESSES", "tcp:addr=0.0.0.0,port=9955");
 #else
 
 #if defined(DAEMON_LIB)
@@ -421,7 +425,11 @@ int main(int argc, char** argv)
      * adapters. */
     serverArgs = env->Find("BUS_SERVER_ADDRESSES", "unix:abstract=alljoyn;tcp:");
 #else
-    serverArgs = env->Find("BUS_SERVER_ADDRESSES", "unix:abstract=alljoyn;tcp:;bluetooth:");
+    if (noBT) {
+        serverArgs = env->Find("BUS_SERVER_ADDRESSES", "unix:abstract=alljoyn;tcp:");
+    } else {
+        serverArgs = env->Find("BUS_SERVER_ADDRESSES", "unix:abstract=alljoyn;tcp:;bluetooth:");
+    }
 #endif /* DAEMON_LIB */
 
 #endif /* !QCC_OS_WINDOWS */
