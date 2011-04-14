@@ -574,7 +574,7 @@ QStatus BusAttachment::AddLogonEntry(const char* authMechanism, const char* user
     }
 }
 
-QStatus BusAttachment::RequestName(const char* requestedName, uint32_t flags, uint32_t& disposition)
+QStatus BusAttachment::RequestName(const char* requestedName, uint32_t flags)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
@@ -589,7 +589,23 @@ QStatus BusAttachment::RequestName(const char* requestedName, uint32_t flags, ui
     const ProxyBusObject& dbusObj = this->GetDBusProxyObj();
     QStatus status = dbusObj.MethodCall(org::freedesktop::DBus::InterfaceName, "RequestName", args, numArgs, reply);
     if (ER_OK == status) {
+        uint32_t disposition;
         status = reply->GetArgs("u", &disposition);
+        if (ER_OK == status) {
+            switch(disposition) {
+            case DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER:
+                break;
+            case DBUS_REQUEST_NAME_REPLY_IN_QUEUE:
+                status = ER_DBUS_REQUEST_NAME_REPLY_IN_QUEUE;
+                break;
+            case DBUS_REQUEST_NAME_REPLY_EXISTS:
+                status = ER_DBUS_REQUEST_NAME_REPLY_EXISTS;
+                break;
+            case DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER:
+                status = ER_DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER;
+                break;
+            }
+        }
     } else {
         String errMsg;
         const char* errName = reply->GetErrorName(&errMsg);
@@ -601,7 +617,7 @@ QStatus BusAttachment::RequestName(const char* requestedName, uint32_t flags, ui
     return status;
 }
 
-QStatus BusAttachment::ReleaseName(const char* name, uint32_t& disposition)
+QStatus BusAttachment::ReleaseName(const char* name)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
@@ -616,7 +632,20 @@ QStatus BusAttachment::ReleaseName(const char* name, uint32_t& disposition)
     const ProxyBusObject& dbusObj = this->GetDBusProxyObj();
     QStatus status = dbusObj.MethodCall(org::freedesktop::DBus::InterfaceName, "ReleaseName", args, numArgs, reply);
     if (ER_OK == status) {
+        uint32_t disposition;
         status = reply->GetArgs("u", &disposition);
+        if (ER_OK == status) {
+            switch(disposition) {
+            case DBUS_RELEASE_NAME_REPLY_RELEASED:
+                break;
+            case DBUS_RELEASE_NAME_REPLY_NON_EXISTENT:
+                status = ER_DBUS_RELEASE_NAME_REPLY_NON_EXISTENT;
+                break;
+            case DBUS_RELEASE_NAME_REPLY_NOT_OWNER:
+                status = ER_DBUS_RELEASE_NAME_REPLY_NOT_OWNER;
+                break;
+            }
+        }
     } else {
         String errMsg;
         const char* errName = reply->GetErrorName(&errMsg);
@@ -653,7 +682,7 @@ QStatus BusAttachment::AddMatch(const char* rule)
     return status;
 }
 
-QStatus BusAttachment::FindAdvertisedName(const char* namePrefix, uint32_t& disposition)
+QStatus BusAttachment::FindAdvertisedName(const char* namePrefix)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
@@ -668,7 +697,20 @@ QStatus BusAttachment::FindAdvertisedName(const char* namePrefix, uint32_t& disp
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
     QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "FindAdvertisedName", args, numArgs, reply);
     if (ER_OK == status) {
+        uint32_t disposition;
         status = reply->GetArgs("u", &disposition);
+        if (ER_OK == status) {
+            switch (disposition) {
+            case ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS:
+                break;
+            case ALLJOYN_FINDADVERTISEDNAME_REPLY_ALREADY_DISCOVERING:
+                status = ER_ALLJOYN_FINDADVERTISEDNAME_REPLY_ALREADY_DISCOVERING;
+                break;
+            case ALLJOYN_FINDADVERTISEDNAME_REPLY_FAILED:
+                status = ER_ALLJOYN_FINDADVERTISEDNAME_REPLY_FAILED;
+                break;
+            }
+        }
     } else {
         String errMsg;
         const char* errName = reply->GetErrorName(&errMsg);
@@ -680,7 +722,7 @@ QStatus BusAttachment::FindAdvertisedName(const char* namePrefix, uint32_t& disp
     return status;
 }
 
-QStatus BusAttachment::CancelFindAdvertisedName(const char* namePrefix, uint32_t& disposition)
+QStatus BusAttachment::CancelFindAdvertisedName(const char* namePrefix)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
@@ -695,7 +737,16 @@ QStatus BusAttachment::CancelFindAdvertisedName(const char* namePrefix, uint32_t
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
     QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "CancelFindAdvertisedName", args, numArgs, reply);
     if (ER_OK == status) {
+        uint32_t disposition;
         status = reply->GetArgs("u", &disposition);
+        if (ER_OK == status) {
+            switch (disposition) {
+            case ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_SUCCESS:
+                break;
+            case ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_FAILED:
+                status = ER_ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_FAILED;
+            }
+        }
     } else {
         String errMsg;
         const char* errName = reply->GetErrorName(&errMsg);
@@ -707,7 +758,7 @@ QStatus BusAttachment::CancelFindAdvertisedName(const char* namePrefix, uint32_t
     return status;
 }
 
-QStatus BusAttachment::AdvertiseName(const char* name, TransportMask transports, uint32_t& disposition)
+QStatus BusAttachment::AdvertiseName(const char* name, TransportMask transports)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
@@ -722,7 +773,20 @@ QStatus BusAttachment::AdvertiseName(const char* name, TransportMask transports,
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
     QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "AdvertiseName", args, numArgs, reply);
     if (ER_OK == status) {
+        int32_t disposition;
         status = reply->GetArgs("u", &disposition);
+        if (ER_OK == status) {
+            switch (disposition) {
+            case ALLJOYN_ADVERTISENAME_REPLY_SUCCESS:
+                break;
+            case ALLJOYN_ADVERTISENAME_REPLY_ALREADY_ADVERTISING:
+                status = ER_ALLJOYN_ADVERTISENAME_REPLY_ALREADY_ADVERTISING;
+                break;
+            case ALLJOYN_ADVERTISENAME_REPLY_FAILED:
+                status = ER_ALLJOYN_ADVERTISENAME_REPLY_FAILED;
+                break;
+            }
+        }
     } else {
         String errMsg;
         const char* errName = reply->GetErrorName(&errMsg);
@@ -734,7 +798,7 @@ QStatus BusAttachment::AdvertiseName(const char* name, TransportMask transports,
     return status;
 }
 
-QStatus BusAttachment::CancelAdvertiseName(const char* name, TransportMask transports, uint32_t& disposition)
+QStatus BusAttachment::CancelAdvertiseName(const char* name, TransportMask transports)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
@@ -749,7 +813,20 @@ QStatus BusAttachment::CancelAdvertiseName(const char* name, TransportMask trans
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
     QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "CancelAdvertiseName", args, numArgs, reply);
     if (ER_OK == status) {
+        uint32_t disposition;
         status = reply->GetArgs("u", &disposition);
+        if (ER_OK == status) {
+            switch (disposition) {
+            case ALLJOYN_ADVERTISENAME_REPLY_SUCCESS:
+                break;
+            case ALLJOYN_ADVERTISENAME_REPLY_ALREADY_ADVERTISING:
+                status = ER_ALLJOYN_ADVERTISENAME_REPLY_ALREADY_ADVERTISING;
+                break;
+            case ALLJOYN_ADVERTISENAME_REPLY_FAILED:
+                status = ER_ALLJOYN_ADVERTISENAME_REPLY_FAILED;
+                break;
+            }
+        }
     } else {
         String errMsg;
         const char* errName = reply->GetErrorName(&errMsg);
@@ -824,7 +901,7 @@ QStatus BusAttachment::SetDaemonDebug(const char* module, uint32_t level)
     return status;
 }
 
-QStatus BusAttachment::BindSessionPort(SessionPort& sessionPort, const SessionOpts& opts, uint32_t& disposition)
+QStatus BusAttachment::BindSessionPort(SessionPort& sessionPort, const SessionOpts& opts)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
@@ -847,17 +924,26 @@ QStatus BusAttachment::BindSessionPort(SessionPort& sessionPort, const SessionOp
 
     } else {
         SessionPort tempPort;
+        uint32_t disposition;
         status = reply->GetArgs("uq", &disposition, &tempPort);
-        if (disposition != ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS) {
-            status = ER_BUS_ERROR_RESPONSE;
-        } else {
-            sessionPort = tempPort;
+        if (status == ER_OK) {
+            switch(disposition) {
+            case ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS:
+                sessionPort = tempPort;
+                break;
+            case ALLJOYN_BINDSESSIONPORT_REPLY_ALREADY_EXISTS:
+                status = ER_ALLJOYN_BINDSESSIONPORT_REPLY_ALREADY_EXISTS;
+                break;
+            case ALLJOYN_BINDSESSIONPORT_REPLY_FAILED:
+                status = ER_ALLJOYN_BINDSESSIONPORT_REPLY_FAILED;
+                break;
+            }
         }
     }
     return status;
 }
 
-QStatus BusAttachment::JoinSession(const char* sessionHost, SessionPort sessionPort, uint32_t& disposition, SessionId& sessionId, SessionOpts& opts)
+QStatus BusAttachment::JoinSession(const char* sessionHost, SessionPort sessionPort, SessionId& sessionId, SessionOpts& opts)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
@@ -880,11 +966,34 @@ QStatus BusAttachment::JoinSession(const char* sessionHost, SessionPort sessionP
         size_t na;
         reply->GetArgs(na, replyArgs);
         assert(na == 3);
-        disposition = replyArgs[0].v_uint32;
+        uint32_t disposition = replyArgs[0].v_uint32;
         sessionId = replyArgs[1].v_uint32;
         status = GetSessionOpts(replyArgs[2], opts);
-        if ((status != ER_OK) || (disposition != ALLJOYN_JOINSESSION_REPLY_SUCCESS)) {
+        if (status != ER_OK) {
             sessionId = 0;
+        } else {
+            switch (disposition) {
+            case ALLJOYN_JOINSESSION_REPLY_SUCCESS:
+                break;
+            case ALLJOYN_JOINSESSION_REPLY_NO_SESSION:
+                status = ER_ALLJOYN_JOINSESSION_REPLY_NO_SESSION;
+                break;
+            case ALLJOYN_JOINSESSION_REPLY_UNREACHABLE:
+                status = ER_ALLJOYN_JOINSESSION_REPLY_UNREACHABLE;
+                break;
+            case ALLJOYN_JOINSESSION_REPLY_CONNECT_FAILED:
+                status = ER_ALLJOYN_JOINSESSION_REPLY_CONNECT_FAILED;
+                break;
+            case ALLJOYN_JOINSESSION_REPLY_REJECTED:
+                status = ER_ALLJOYN_JOINSESSION_REPLY_REJECTED;
+                break;
+            case ALLJOYN_JOINSESSION_REPLY_BAD_SESSION_OPTS:
+                status = ER_ALLJOYN_JOINSESSION_REPLY_BAD_SESSION_OPTS;
+                break;
+            case ALLJOYN_JOINSESSION_REPLY_FAILED:
+                status = ER_ALLJOYN_JOINSESSION_REPLY_FAILED;
+                break;
+            }
         }
     } else {
         String errMsg;
@@ -898,7 +1007,7 @@ QStatus BusAttachment::JoinSession(const char* sessionHost, SessionPort sessionP
     return status;
 }
 
-QStatus BusAttachment::LeaveSession(const SessionId& sessionId, uint32_t& disposition)
+QStatus BusAttachment::LeaveSession(const SessionId& sessionId)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
@@ -909,7 +1018,20 @@ QStatus BusAttachment::LeaveSession(const SessionId& sessionId, uint32_t& dispos
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
     QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "LeaveSession", &arg, 1, reply);
     if (ER_OK == status) {
+        uint32_t disposition;
         status = reply->GetArgs("u", &disposition);
+        if (ER_OK == status) {
+            switch (disposition) {
+            case ALLJOYN_LEAVESESSION_REPLY_SUCCESS:
+                break;
+            case ALLJOYN_LEAVESESSION_REPLY_NO_SESSION:
+                status = ER_ALLJOYN_LEAVESESSION_REPLY_NO_SESSION;
+                break;
+            case ALLJOYN_LEAVESESSION_REPLY_FAILED:
+                status = ER_ALLJOYN_LEAVESESSION_REPLY_FAILED;
+                break;
+            }
+        }
     } else {
         String errMsg;
         const char* errName = reply->GetErrorName(&errMsg);

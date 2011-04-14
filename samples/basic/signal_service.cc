@@ -229,36 +229,28 @@ int main(int argc, char** argv, char** envArg) {
      */
     /* Request name */
     if (ER_OK == status) {
-        uint32_t disposition = 0;
         uint32_t flags = DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_DO_NOT_QUEUE;
-        QStatus status = g_msgBus->RequestName(SERVICE_NAME, flags, disposition);
-        if ((ER_OK != status) || (disposition != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER)) {
-            printf("RequestName(%s) failed (status=%s, disposition=%d)\n", SERVICE_NAME, QCC_StatusText(status), disposition);
-            status = (status == ER_OK) ? ER_FAIL : status;
+        QStatus status = g_msgBus->RequestName(SERVICE_NAME, flags);
+        if (ER_OK != status) {
+            printf("RequestName(%s) failed (status=%s)\n", SERVICE_NAME, QCC_StatusText(status));
         }
     }
 
     /* Create session */
     SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
     if (ER_OK == status) {
-        uint32_t returnValue = 0;
         SessionPort sp = SERVICE_PORT;
-        status = g_msgBus->BindSessionPort(sp, opts, returnValue);
+        status = g_msgBus->BindSessionPort(sp, opts);
         if (ER_OK != status) {
             printf("BindSessionPort failed (%s)\n", QCC_StatusText(status));
-        } else if (returnValue != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
-            status = ER_FAIL;
-            printf("BindSessionPort returned failed returnValue (%u)\n", returnValue);
         }
     }
 
     /* Advertise name */
     if (ER_OK == status) {
-        uint32_t returnValue = 0;
-        status = g_msgBus->AdvertiseName(SERVICE_NAME, opts.transports, returnValue);
-        if ((status != ER_OK) || (returnValue != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS)) {
-            printf("Failed to advertise name %s (%s) (returnValue=%d)\n", SERVICE_NAME, QCC_StatusText(status), returnValue);
-            status = (status == ER_OK) ? ER_FAIL : status;
+        status = g_msgBus->AdvertiseName(SERVICE_NAME, opts.transports);
+        if (status != ER_OK) {
+            printf("Failed to advertise name %s (%s)\n", SERVICE_NAME, QCC_StatusText(status));
         }
     }
 

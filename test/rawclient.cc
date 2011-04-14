@@ -69,11 +69,10 @@ class MyBusListener : public BusListener {
 
         if (0 == strcmp(name, g_wellKnownName.c_str())) {
             /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
-            uint32_t disposition = 0;
             SessionOpts opts(SessionOpts::TRAFFIC_RAW_RELIABLE, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
-            QStatus status = g_msgBus->JoinSession(name, SESSION_PORT, disposition, sessionId, opts);
-            if ((ER_OK != status) || (ALLJOYN_JOINSESSION_REPLY_SUCCESS != disposition)) {
-                QCC_LogError(status, ("JoinSession(%s) failed (%u)", name, disposition));
+            QStatus status = g_msgBus->JoinSession(name, SESSION_PORT, sessionId, opts);
+            if (ER_OK != status) {
+                QCC_LogError(status, ("JoinSession(%s) failed", name));
             } else {
                 /* Release the main thread */
                 g_discoverEvent.SetEvent();
@@ -188,11 +187,9 @@ int main(int argc, char** argv)
 
     /* Begin discovery for the well-known name of the service */
     if (ER_OK == status) {
-        uint32_t disposition = 0;
-        status = g_msgBus->FindAdvertisedName(g_wellKnownName.c_str(), disposition);
-        if ((status != ER_OK) || (disposition != ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS)) {
+        status = g_msgBus->FindAdvertisedName(g_wellKnownName.c_str());
+        if (status != ER_OK) {
             QCC_LogError(status, ("%s.FindAdvertisedName failed", INTERFACE_NAME));
-            status = (status == ER_OK) ? ER_FAIL : status;
         }
     }
 

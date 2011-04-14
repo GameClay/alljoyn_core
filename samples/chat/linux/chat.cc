@@ -130,14 +130,12 @@ class MyBusListener : public BusListener {
         printf("Discovered chat conversation: \"%s\"\n", convName);
 
         /* Join the conversation */
-        uint32_t disposition;
         SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
-        QStatus status = s_bus->JoinSession(name, CHAT_PORT, disposition, s_sessionId, opts);
-        if ((ER_OK == status) && (ALLJOYN_JOINSESSION_REPLY_SUCCESS == disposition)) {
+        QStatus status = s_bus->JoinSession(name, CHAT_PORT, s_sessionId, opts);
+        if (ER_OK == status) {
             printf("Joined conversation \"%s\"\n", convName);
         } else {
-            if (ER_OK == status) { status = ER_FAIL; }
-            printf("JoinSession failed (status=%s, disposition=%d)\n", QCC_StatusText(status), disposition);
+            printf("JoinSession failed (status=%s)\n", QCC_StatusText(status));
         }
         s_joinComplete = true;
     }
@@ -269,43 +267,34 @@ int main(int argc, char** argv)
     /* Advertise or discover based on command line options */
     if (!s_advertisedName.empty()) {
         /* Request name */
-        uint32_t disposition = 0;
-        QStatus status = s_bus->RequestName(s_advertisedName.c_str(), DBUS_NAME_FLAG_DO_NOT_QUEUE, disposition);
-        if ((ER_OK != status) || (disposition != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER)) {
-            printf("RequestName(%s) failed (status=%s, disposition=%d)\n", s_advertisedName.c_str(), QCC_StatusText(status), disposition);
+        QStatus status = s_bus->RequestName(s_advertisedName.c_str(), DBUS_NAME_FLAG_DO_NOT_QUEUE);
+        if (ER_OK != status) {
+            printf("RequestName(%s) failed (status=%s)\n", s_advertisedName.c_str(), QCC_StatusText(status));
             status = (status == ER_OK) ? ER_FAIL : status;
         }
 
         /* Bind the session port*/
         SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
         if (ER_OK == status) {
-            uint32_t disposition = 0;
             SessionPort sp = CHAT_PORT;
-            status = s_bus->BindSessionPort(sp, opts, disposition);
+            status = s_bus->BindSessionPort(sp, opts);
             if (ER_OK != status) {
                 printf("BindSessionPort failed (%s)\n", QCC_StatusText(status));
-            } else if (disposition != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
-                status = ER_FAIL;
-                printf("BindSessionPort returned failed disposition (%u)\n", disposition);
             }
         }
 
         /* Advertise name */
         if (ER_OK == status) {
-            uint32_t disposition = 0;
-            status = s_bus->AdvertiseName(s_advertisedName.c_str(), opts.transports, disposition);
-            if ((status != ER_OK) || (disposition != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS)) {
-                printf("Failed to advertise name %s (%s) (disposition=%d)\n", s_advertisedName.c_str(), QCC_StatusText(status), disposition);
-                status = (status == ER_OK) ? ER_FAIL : status;
+            status = s_bus->AdvertiseName(s_advertisedName.c_str(), opts.transports);
+            if (status != ER_OK) {
+                printf("Failed to advertise name %s (%s)\n", s_advertisedName.c_str(), QCC_StatusText(status));
             }
         }
     } else {
         /* Discover name */
-        uint32_t disposition = 0;
-        status = s_bus->FindAdvertisedName(s_joinName.c_str(), disposition);
-        if ((status != ER_OK) || (disposition != ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS)) {
-            printf("org.alljoyn.Bus.FindAdvertisedName failed (%s) (disposition=%d)\n", QCC_StatusText(status), disposition);
-            status = (status == ER_OK) ? ER_FAIL : status;
+        status = s_bus->FindAdvertisedName(s_joinName.c_str());
+        if (status != ER_OK) {
+            printf("org.alljoyn.Bus.FindAdvertisedName failed (%s)\n", QCC_StatusText(status));
         }
 
         /* Wait for join session to complete */

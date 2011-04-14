@@ -122,6 +122,7 @@ class BusAttachment : public MessageReceiver {
      * Retrieve an existing activated InterfaceDescription.
      *
      * @param name       Interface name
+     *
      * @return
      *      - A pointer to the registered interface
      *      - NULL if interface doesn't exist
@@ -134,12 +135,10 @@ class BusAttachment : public MessageReceiver {
      * Deleting an interface is only allowed if that interface has never been activated.
      *
      * @param iface  The un-activated interface to be deleted.
+     *
      * @return
      *      - #ER_OK if deletion was successful
      *      - #ER_BUS_NO_SUCH_INTERFACE if interface was not found
-     * @return
-     *      - #ER_OK on success
-     *      - #ER_BUS_NO_SUCH_INTERFACE if interface is not found
      */
     QStatus DeleteInterface(InterfaceDescription& iface);
 
@@ -164,6 +163,7 @@ class BusAttachment : public MessageReceiver {
      * Stop the message bus.
      *
      * @param blockUntilStopped   Block the caller until the bus is stopped
+     *
      * @return
      *      - #ER_OK if successful.
      *      - An error status if unable to stop the message bus
@@ -203,6 +203,7 @@ class BusAttachment : public MessageReceiver {
      * Disconnect a remote bus address connection.
      *
      * @param connectSpec  The transport connection spec used to connect.
+     *
      * @return
      *          - #ER_OK if successful
      *          - #ER_BUS_BUS_NOT_STARTED if the bus is not started
@@ -224,6 +225,7 @@ class BusAttachment : public MessageReceiver {
      * Register a BusObject
      *
      * @param obj      BusObject to register.
+     *
      * @return
      *      - #ER_OK if successful.
      *      - #ER_BUS_BAD_OBJ_PATH for a bad object path
@@ -382,15 +384,13 @@ class BusAttachment : public MessageReceiver {
      *
      * @param[in]  requestedName  Well-known name being requested.
      * @param[in]  flags          Bitmask of DBUS_NAME_FLAG_* defines (see DBusStd.h)
-     * @param[out] disposition    DBUS_REQUEST_NAME_REPLY_* response to org.freedesktop.DBus.RequestName (see DBusStd.h).
-     *                            disposition is only valid if return value is #ER_OK.
      *
      * @return
-     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_OK iff daemon response was received and request was successful.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus RequestName(const char* requestedName, uint32_t flags, uint32_t& disposition);
+    QStatus RequestName(const char* requestedName, uint32_t flags);
 
     /**
      * Release a previously requeted well-known name.
@@ -398,15 +398,13 @@ class BusAttachment : public MessageReceiver {
      * and interprets the response.
      *
      * @param[in]  name          Well-known name being released.
-     * @param[out] disposition   DBUS_RELEASE_NAME_REPLY_* response to org.freedesktop.DBus.ReleaseName (see DBusStd.h).
-     *                           disposition is only valid if return value is #ER_OK.
      *
      * @return
-     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_OK iff daemon response was received amd the name was successfully released.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus ReleaseName(const char* name, uint32_t& disposition);
+    QStatus ReleaseName(const char* name);
 
     /**
      * Add a DBus match rule.
@@ -429,14 +427,13 @@ class BusAttachment : public MessageReceiver {
      *
      * @param[in]  name          the well-known name to advertise. (Must be owned by the caller via RequestName).
      * @param[in]  transports    Set of transports to use for sending advertisment.
-     * @param[out] disposition   ALLJOYN_ADVERTISEDNAME_REPLY_* constant from AllJoynStd.h
      *
      * @return
-     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_OK iff daemon response was received and advertise was successful.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus AdvertiseName(const char* name, TransportMask transports, uint32_t& disposition);
+    QStatus AdvertiseName(const char* name, TransportMask transports);
 
     /**
      * Stop advertising the existence of a well-known name to other AllJoyn daemons.
@@ -446,46 +443,44 @@ class BusAttachment : public MessageReceiver {
      *
      * @param[in]  name          A well-known name that was previously advertised via AdvertiseName.
      * @param[in]  transports    Set of transports whose name advertisment will be cancelled.
-     * @param[out] disposition   ALLJOYN_CANCELADVERTISENAME_REPLY_* constant from AllJoynStd.h
      *
      * @return
-     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_OK iff daemon response was received and advertisements were sucessfully stopped.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus CancelAdvertiseName(const char* name, TransportMask transports, uint32_t& disposition);
+    QStatus CancelAdvertiseName(const char* name, TransportMask transports);
 
     /**
      * Register interest in a well-known name prefix for the purpose of discovery.
      * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.FindAdvertisedName method call to the local daemon
      * and interprets the response.
      *
-     * @param[in]  namePrefix    Well-known name prefix that application is interested in receiving BusListener::FoundAdvertisedName
-     *                           notifications about.
-     * @param[out] disposition   ALLJOYN_FINDADVERTISEDNAME_REPLY_* constant from AllJoynStd.h
+     * @param[in]  namePrefix    Well-known name prefix that application is interested in receiving
+     *                           BusListener::FoundAdvertisedName notifications about.
      *
      * @return
-     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_OK iff daemon response was received and discovery was successfully started.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus FindAdvertisedName(const char* namePrefix, uint32_t& disposition);
+    QStatus FindAdvertisedName(const char* namePrefix);
 
     /**
-     * Cancel interest in a well-known name prefix that was previously registered with FindAdvertisedName.
-     * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.CancelFindAdvertisedName method call to the local daemon
-     * and interprets the response.
+     * Cancel interest in a well-known name prefix that was previously
+     * registered with FindAdvertisedName.  This method is a shortcut/helper
+     * that issues an org.codeauora.AllJoyn.Bus.CancelFindAdvertisedName method
+     * call to the local daemon and interprets the response.
      *
      * @param[in]  namePrefix    Well-known name prefix that application is no longer interested in receiving
      *                           BusListener::FoundAdvertisedName notifications about.
-     * @param[out] disposition   ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_* constant from AllJoynStd.h
      *
      * @return
-     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_OK iff daemon response was received and cancel was successfully completed.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus CancelFindAdvertisedName(const char* namePrefix, uint32_t& disposition);
+    QStatus CancelFindAdvertisedName(const char* namePrefix);
 
     /**
      * Make a SessionPort available for external BusAttachments to join.
@@ -512,15 +507,12 @@ class BusAttachment : public MessageReceiver {
      * @param[in]     opts          Session options that joiners must agree to in order to
      *                              successfully join the session.
      *
-     * @param[out]    disposition   @ref BindSessionPortReplyAnchor "ALLJOYN_BINDSESSIONPORT_REPLY_*"
-     *                              constant from AllJoynStd.h
-     *
      * @return
-     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_OK iff daemon response was received and the bind operation was successful.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus BindSessionPort(SessionPort& sessionPort, const SessionOpts& opts, uint32_t& disposition);
+    QStatus BindSessionPort(SessionPort& sessionPort, const SessionOpts& opts);
 
     /**
      * Join a session.
@@ -529,15 +521,15 @@ class BusAttachment : public MessageReceiver {
      *
      * @param[in]  sessionHost   Bus name of attachment that is hosting the session to be joined.
      * @param[in]  sessionPort   SessionPort of sessionHost to be joined.
-     * @param[out] disposition   @ref JoinSessionReplyAnchor "ALLJOYN_JOINSESSION_REPLY_*" constant from AllJoynStd.h.
-     * @param[out] sessionId     Unique identifier for session. Valid if disposition is ALLJOYN_CREATESESSION_REPLY_SUCCESS.
+     * @param[out] sessionId     Unique identifier for session.
      * @param[out] opts          Session options.
+     *
      * @return
-     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_OK iff daemon response was received and the session was successfully joined.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus JoinSession(const char* sessionHost, SessionPort sessionPort, uint32_t& disposition, SessionId& sessionId, SessionOpts& opts);
+    QStatus JoinSession(const char* sessionHost, SessionPort sessionPort, SessionId& sessionId, SessionOpts& opts);
 
     /**
      * Leave an existing session.
@@ -545,19 +537,20 @@ class BusAttachment : public MessageReceiver {
      * and interprets the response.
      *
      * @param[in]  sessionId     Session id.
-     * @param[out] disposition   @ref LeaveSessionReplyAnchor "ALLJOYN_LEAVESESSION_REPLY_*" constant from AllJoynStd.h.
+     *
      * @return
-     *      - #ER_OK if daemon response was received. ER_OK indicates that disposition is valid for inspection.
+     *      - #ER_OK iff daemon response was received and the leave operation was successfully completed.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus LeaveSession(const SessionId& sessionId, uint32_t& disposition);
+    QStatus LeaveSession(const SessionId& sessionId);
 
     /**
      * Get the file descriptor for a raw (non-message based) session.
      *
      * @param sessionId   Id of an existing streamming session.
      * @param sockFd      [OUT] Socket file descriptor for session.
+     *
      * @return ER_OK if successful.
      */
     QStatus GetSessionFd(SessionId sessionId, qcc::SocketFd& sockFd);
@@ -568,7 +561,8 @@ class BusAttachment : public MessageReceiver {
      * and interprets the response.
      *
      * @param[in]  name       The well known name that the caller is inquiring about.
-     * @param[out] hasOwner   If return is ER_OK, indicates whether name exists on the bus. If return is not ER_OK, param is not modified.
+     * @param[out] hasOwner   If return is ER_OK, indicates whether name exists on the bus. 
+     *                        If return is not ER_OK, param is not modified.
      * @return
      *      - #ER_OK if name ownership was able to be determined.
      *      - An error status otherwise

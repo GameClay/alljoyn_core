@@ -70,11 +70,10 @@ class MyBusListener : public BusListener {
         printf("FoundAdvertisedName(name=%s, prefix=%s)\n", name, namePrefix);
         if (0 == strcmp(name, SERVICE_NAME)) {
             /* We found a remote bus that is advertising basic sercice's  well-known name so connect to it */
-            uint32_t returnValue;
             SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
-            QStatus status = g_msgBus->JoinSession(name, SERVICE_PORT, returnValue, s_sessionId, opts);
-            if ((ER_OK != status) || (ALLJOYN_JOINSESSION_REPLY_SUCCESS != returnValue)) {
-                printf("JoinSession failed (status=%s, returnValue=%d)\n", QCC_StatusText(status), returnValue);
+            QStatus status = g_msgBus->JoinSession(name, SERVICE_PORT, s_sessionId, opts);
+            if (ER_OK != status) {
+                printf("JoinSession failed (status=%s)\n", QCC_StatusText(status));
             } else {
                 printf("JoinSession SUCCESS (Session id=%d)\n", s_sessionId);
             }
@@ -160,11 +159,9 @@ int main(int argc, char** argv, char** envArg)
 
     /* Begin discovery on the well-known name of the service to be called */
     if (ER_OK == status) {
-        uint32_t returnValue = 0;
-        status = g_msgBus->FindAdvertisedName(SERVICE_NAME, returnValue);
-        if ((status != ER_OK) || (returnValue != ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS)) {
-            printf("org.alljoyn.Bus.FindAdvertisedName failed (%s) (returnValue=%d)\n", QCC_StatusText(status), returnValue);
-            status = (status == ER_OK) ? ER_FAIL : status;
+        status = g_msgBus->FindAdvertisedName(SERVICE_NAME);
+        if (status != ER_OK) {
+            printf("org.alljoyn.Bus.FindAdvertisedName failed (%s))\n", QCC_StatusText(status));
         }
     }
 

@@ -81,24 +81,23 @@ class MyBusListener : public BusListener {
 
         if (0 == ::strcmp(name, g_wellKnownName.c_str())) {
             /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
-            uint32_t disposition = 0;
             SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, false, SessionOpts::PROXIMITY_ANY, transport);
             QStatus status;
 
             if (stopDiscover) {
-                status = g_msgBus->CancelFindAdvertisedName(g_wellKnownName.c_str(), disposition);
-                if ((ER_OK != status) || (ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_SUCCESS != disposition)) {
-                    QCC_LogError(status, ("CancelFindAdvertisedName(%s) failed (%u)", name, disposition));
+                status = g_msgBus->CancelFindAdvertisedName(g_wellKnownName.c_str());
+                if (ER_OK != status) {
+                    QCC_LogError(status, ("CancelFindAdvertisedName(%s) failed", name));
                 }
             }
 
-            status = g_msgBus->JoinSession(name, ::org::alljoyn::alljoyn_test::SessionPort, disposition, sessionId, opts);
-            if ((ER_OK != status) || (ALLJOYN_JOINSESSION_REPLY_SUCCESS != disposition)) {
-                QCC_LogError(status, ("JoinSession(%s) failed (%u)", name, disposition));
+            status = g_msgBus->JoinSession(name, ::org::alljoyn::alljoyn_test::SessionPort, sessionId, opts);
+            if (ER_OK != status) {
+                QCC_LogError(status, ("JoinSession(%s) failed", name));
             }
 
             /* Release the main thread */
-            if ((ER_OK == status) && (ALLJOYN_JOINSESSION_REPLY_SUCCESS == disposition)) {
+            if (ER_OK == status) {
                 g_discoverEvent.SetEvent();
             }
         }
@@ -550,11 +549,9 @@ int main(int argc, char** argv)
                                             reply);
             } else if (discoverRemote) {
                 /* Begin discovery on the well-known name of the service to be called */
-                uint32_t disposition = 0;
-                status = g_msgBus->FindAdvertisedName(g_wellKnownName.c_str(), disposition);
-                if ((status != ER_OK) || (disposition != ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS)) {
-                    status = (status == ER_OK) ? ER_FAIL : status;
-                    QCC_LogError(status, ("FindAdvertisedName failed (disposition=%d)", disposition));
+                status = g_msgBus->FindAdvertisedName(g_wellKnownName.c_str());
+                if (status != ER_OK) {
+                    QCC_LogError(status, ("FindAdvertisedName failed"));
                 }
             }
         }

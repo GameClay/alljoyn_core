@@ -400,33 +400,24 @@ class LocalTestObject : public BusObject {
         Message reply(bus);
 
         /* Request a well-known name */
-        uint32_t disposition = 0;
-        QStatus status = bus.RequestName(g_wellKnownName.c_str(), DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_DO_NOT_QUEUE, disposition);
-        if ((status != ER_OK) || (disposition != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER)) {
-            status = (status == ER_OK) ? ER_FAIL : status;
-            QCC_LogError(status, ("RequestName(%s) failed. (disposition=%d)", disposition));
+        QStatus status = bus.RequestName(g_wellKnownName.c_str(), DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_DO_NOT_QUEUE);
+        if (status != ER_OK) {
+            QCC_LogError(status, ("RequestName(%s) failed."));
             return;
         }
 
         /* Create a session for incoming client connections */
-        uint32_t replyCode = 0;
         SessionPort sessionPort = ::org::alljoyn::alljoyn_test::SessionPort;
-        status = bus.BindSessionPort(sessionPort, opts, replyCode);
+        status = bus.BindSessionPort(sessionPort, opts);
         if (status != ER_OK) {
             QCC_LogError(status, ("BindSessionPort failed"));
-            return;
-        } else if (replyCode != ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS) {
-            status = ER_FAIL;
-            QCC_LogError(status, ("BindSessionPort returned failed status %d", replyCode));
             return;
         }
 
         /* Begin Advertising the well-known name */
-        disposition = 0;
-        status = g_msgBus->AdvertiseName(g_wellKnownName.c_str(), opts.transports, disposition);
-        if ((ER_OK != status) || (disposition != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS)) {
-            status = (status == ER_OK) ? ER_FAIL : status;
-            QCC_LogError(status, ("Sending org.alljoyn.Bus.Advertise failed (disposition=%d)", disposition));
+        status = g_msgBus->AdvertiseName(g_wellKnownName.c_str(), opts.transports);
+        if (ER_OK != status) {
+            QCC_LogError(status, ("Sending org.alljoyn.Bus.Advertise failed"));
             return;
         }
 

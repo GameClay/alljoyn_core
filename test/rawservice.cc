@@ -172,31 +172,25 @@ int main(int argc, char** argv)
 
     /* Request a well-known name */
     if (status == ER_OK) {
-        uint32_t disposition = 0;
-        QStatus status = g_msgBus->RequestName(g_wellKnownName.c_str(), DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_DO_NOT_QUEUE, disposition);
-        if ((status != ER_OK) || (disposition != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER)) {
-            status = (status == ER_OK) ? ER_FAIL : status;
-            QCC_LogError(status, ("Failed to request name %s (disposition=%d)", g_wellKnownName.c_str(), disposition));
+        QStatus status = g_msgBus->RequestName(g_wellKnownName.c_str(), DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_DO_NOT_QUEUE);
+        if (status != ER_OK) {
+            QCC_LogError(status, ("Failed to request name %s", g_wellKnownName.c_str()));
         }
     }
 
     /* Bind the session port */
     SessionOpts opts(SessionOpts::TRAFFIC_RAW_RELIABLE, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
-    uint32_t replyCode = 0;
     SessionPort sp = SESSION_PORT;
-    status = g_msgBus->BindSessionPort(sp, opts, replyCode);
-    if ((status != ER_OK) || (replyCode != ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS)) {
-        status = (status == ER_OK) ? ER_BUS_ERROR_RESPONSE : status;
-        QCC_LogError(status, ("BindSessionOpts failed (%d)", replyCode));
+    status = g_msgBus->BindSessionPort(sp, opts);
+    if (status != ER_OK) {
+        QCC_LogError(status, ("BindSessionOpts failed"));
     }
 
     /* Begin Advertising the well-known name */
     if (status == ER_OK) {
-        uint32_t disposition = 0;
-        status = g_msgBus->AdvertiseName(g_wellKnownName.c_str(), opts.transports, disposition);
-        if ((status != ER_OK) || (disposition != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS)) {
-            status = (status == ER_OK) ? ER_FAIL : status;
-            QCC_LogError(status, ("AdvertiseName failed (disposition=%d)", disposition));
+        status = g_msgBus->AdvertiseName(g_wellKnownName.c_str(), opts.transports);
+        if (status != ER_OK) {
+            QCC_LogError(status, ("AdvertiseName failed"));
         }
     }
 
