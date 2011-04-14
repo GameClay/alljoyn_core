@@ -533,11 +533,11 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             ajObj.router.LockNameTable();
             ajObj.discoverMapLock.Lock();
             ajObj.virtualEndpointsLock.Lock();
+            b2bEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
             while (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
                 /* Does vSessionEp route through b2bEp? If so, we're done */
                 ep = ajObj.router.FindEndpoint(sessionHost);
                 vSessionEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
-                b2bEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
                 if (!b2bEp) {
                     QCC_LogError(ER_FAIL, ("B2B endpoint disappeared during JoinSession"));
                     replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
@@ -561,6 +561,9 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                     ajObj.router.LockNameTable();
                     ajObj.discoverMapLock.Lock();
                     ajObj.virtualEndpointsLock.Lock();
+
+                    /* Re-acquire b2bEp now that we have the lock again */
+                    b2bEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
                 }
             }
 
@@ -1121,7 +1124,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     }
 
     /* If the session is raw, then close the new ep and preserve the fd */
-    if (srcB2BEp && (optsOut.traffic != SessionOpts::TRAFFIC_MESSAGES)) {
+    if (srcB2BEp && !creatorName.empty() && (optsOut.traffic != SessionOpts::TRAFFIC_MESSAGES)) {
         sessionMapLock.Lock();
         map<pair<String, SessionId>, SessionMapEntry>::iterator it = sessionMap.find(pair<String, SessionId>(creatorName, id));
         if (it != sessionMap.end()) {

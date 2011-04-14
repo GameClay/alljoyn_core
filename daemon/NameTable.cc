@@ -161,7 +161,7 @@ QStatus NameTable::AddAlias(const qcc::String& aliasName,
             aliasNames[aliasName] = deque<NameQueueEntry>(1, entry);
             disposition = DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER;
             newOwner = &uniqueName;
-            
+
             /* Check to see if we are overriding a virtual (remote) name */
             map<qcc::StringMapKey, VirtualEndpoint*>::const_iterator vit = virtualAliasNames.find(aliasName);
             if (vit != virtualAliasNames.end()) {
