@@ -78,56 +78,22 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      * @param ignoreAddrs   Set of BD Addresses to ignore
      * @param duration      Number of seconds to discover (0 = forever, default is 0)
      */
-    QStatus StartDiscovery(const BDAddressSet& ignoreAddrs, uint32_t duration = 0)
-    {
-        this->ignoreAddrs = ignoreAddrs;
-        QStatus status = DiscoveryControl(*org.bluez.Adapter.StartDiscovery);
-        if (duration > 0) {
-            DispatchOperation(new DispatchInfo(DispatchInfo::STOP_DISCOVERY),  duration * 1000);
-        }
-        discoveryActive = true;
-        return status;
-    }
+    QStatus StartDiscovery(const BDAddressSet& ignoreAddrs, uint32_t duration = 0);
 
     /**
      * Stop discovery (inquiry)
      */
-    QStatus StopDiscovery()
-    {
-        ignoreAddrs = BDAddressSet();
-        QStatus status = DiscoveryControl(*org.bluez.Adapter.StopDiscovery);
-        discoveryActive = false;
-        return status;
-    }
+    QStatus StopDiscovery();
 
     /**
      * Start discoverability (inquiry scan)
      */
-    QStatus StartDiscoverability(uint32_t duration = 0)
-    {
-        QStatus status = ER_FAIL;
-        discoverable = true;
-        if (bluetoothAvailable) {
-            status = SetDiscoverabilityProperty();
-            if (duration > 0) {
-                DispatchOperation(new DispatchInfo(DispatchInfo::STOP_DISCOVERABILITY),  duration * 1000);
-            }
-        }
-        return status;
-    }
+    QStatus StartDiscoverability(uint32_t duration = 0);
 
     /**
      * Stop discoverability (inquiry scan)
      */
-    QStatus StopDiscoverability()
-    {
-        QStatus status = ER_FAIL;
-        discoverable = false;
-        if (bluetoothAvailable) {
-            status = SetDiscoverabilityProperty();
-        }
-        return status;
-    }
+    QStatus StopDiscoverability();
 
     /**
      * Set SDP information

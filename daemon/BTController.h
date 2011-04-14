@@ -379,6 +379,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     struct FindNameArgInfo : public NameArgInfo {
         qcc::String resultDest;
         BDAddressSet ignoreAddrs;
+        std::vector<uint64_t> ignoreAddrsCache;
         FindNameArgInfo(BTController& bto, qcc::Timer& dispatcher) :
             NameArgInfo(bto, 3, dispatcher)
         { }

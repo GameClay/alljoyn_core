@@ -408,6 +408,63 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
 }
 
 
+QStatus BTTransport::BTAccessor::StartDiscovery(const BDAddressSet& ignoreAddrs, uint32_t duration)
+{
+    this->ignoreAddrs = ignoreAddrs;
+
+    deviceLock.Lock();
+    set<BDAddress>::const_iterator it;
+    for (it = ignoreAddrs->begin(); it != ignoreAddrs->end(); ++it) {
+        FoundInfoMap::iterator devit = foundDevices.find(*it);
+        if (devit != foundDevices.end()) {
+            bzBus.GetInternal().GetDispatcher().RemoveAlarm(devit->second.alarm);
+            foundDevices.erase(devit);
+        }
+    }
+    deviceLock.Unlock();
+
+    QStatus status = DiscoveryControl(*org.bluez.Adapter.StartDiscovery);
+    if (duration > 0) {
+        DispatchOperation(new DispatchInfo(DispatchInfo::STOP_DISCOVERY),  duration * 1000);
+    }
+    discoveryActive = true;
+    return status;
+}
+
+
+QStatus BTTransport::BTAccessor::StopDiscovery()
+{
+    QStatus status = DiscoveryControl(*org.bluez.Adapter.StopDiscovery);
+    discoveryActive = false;
+    return status;
+}
+
+
+QStatus BTTransport::BTAccessor::StartDiscoverability(uint32_t duration)
+{
+    QStatus status = ER_FAIL;
+    discoverable = true;
+    if (bluetoothAvailable) {
+        status = SetDiscoverabilityProperty();
+        if (duration > 0) {
+            DispatchOperation(new DispatchInfo(DispatchInfo::STOP_DISCOVERABILITY),  duration * 1000);
+        }
+    }
+    return status;
+}
+
+
+QStatus BTTransport::BTAccessor::StopDiscoverability()
+{
+    QStatus status = ER_FAIL;
+    discoverable = false;
+    if (bluetoothAvailable) {
+        status = SetDiscoverabilityProperty();
+    }
+    return status;
+}
+
+
 QStatus BTTransport::BTAccessor::SetSDPInfo(uint32_t uuidRev,
                                             const BDAddress& bdAddr,
                                             uint16_t psm,
@@ -1128,11 +1185,11 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
         bool found = FindAllJoynUUID(uuids, listSize, newUUIDRev);
 
         if (found) {
-            QCC_DbgHLPrintf(("Found AllJoyn device: %s  newUUIDRev = %08x", addrStr, newUUIDRev));
-
             deviceLock.Lock();
             FoundInfo& foundInfo = foundDevices[addr];
             oldUUIDRev = foundInfo.uuidRev;
+
+            QCC_DbgHLPrintf(("Found AllJoyn device: %s  newUUIDRev = %08x  oldUUIDRev = %08x", addrStr, newUUIDRev, oldUUIDRev));
 
             if (foundInfo.uuidRev != bt::INVALID_UUIDREV) {
                 // We've seen this device before, so clear out the old timeout alarm.

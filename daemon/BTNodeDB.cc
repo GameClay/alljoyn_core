@@ -111,6 +111,12 @@ BTNodeInfo BTNodeDB::FindDirectMinion(const BTNodeInfo& start, const BTNodeInfo&
 {
     Lock();
     const_iterator next = nodes.find(start);
+#ifndef NDEBUG
+    if (next == End()) {
+        String s("Failed to find: " + start->GetBusAddress().addr.ToString());
+        DumpTable(s.c_str());
+    }
+#endif
     assert(next != End());
     do {
         ++next;
@@ -189,7 +195,7 @@ void BTNodeDB::Diff(const BTNodeDB& other, BTNodeDB* added, BTNodeDB* removed) c
         for (nodeit = Begin(); nodeit != End(); ++nodeit) {
             const BTNodeInfo& node = *nodeit;
             addrit = other.addrMap.find(node->GetBusAddress());
-            if (addrit == addrMap.end()) {
+            if (addrit == other.addrMap.end()) {
                 removed->AddNode(node);
             } else {
                 BTNodeInfo diffNode(node->GetBusAddress(), node->GetUniqueName(), node->GetGUID());
