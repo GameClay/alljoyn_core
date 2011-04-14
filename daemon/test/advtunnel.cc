@@ -22,6 +22,7 @@
 #include <assert.h>
 
 #include <signal.h>
+#include <errno.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -200,6 +201,13 @@ QStatus AdvTunnel::Listen(uint16_t port)
         QCC_LogError(status, ("Failed to create listen socket"));
         return status;
     }
+    /* Allow reuse of the same port */
+    uint32_t yes = 1;
+    if (setsockopt(listenSock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&yes), sizeof(yes)) < 0) {
+        QCC_LogError(status, ("AdvTunnel::Listen(): setsockopt(SO_REUSEADDR) failed: %d - %s", errno, strerror(errno)));
+        qcc::Close(listenSock);
+        return status;
+    }
     status = qcc::Bind(listenSock, wildcard, port);
     if (status != ER_OK) {
         QCC_LogError(status, ("Failed bind listen socket"));
@@ -359,9 +367,9 @@ void AdvTunnel::Found(const qcc::String& busAddr, const qcc::String& guid, std::
 Exit:
     if (status != ER_OK) {
         printf("Failed to push found names into socket stream\n");
-        /*
-         * TODO - May need a way to shut things down
-         */
+        if (g_ns) {
+            g_ns->Stop();
+        }
     }
 }
 
@@ -426,7 +434,7 @@ int main(int argc, char** argv)
     g_ns = &ns;
 
     ns.SetCallback(new CallbackImpl<AdvTunnel, void, const qcc::String&, const qcc::String&, std::vector<qcc::String>&, uint8_t>
-                       (&tunnel, &AdvTunnel::Found));
+                   (&tunnel, &AdvTunnel::Found));
 
     while (g_ns) {
         if (listen) {
@@ -436,25 +444,25 @@ int main(int argc, char** argv)
         }
         if (status != ER_OK) {
             printf("Failed to establish relay: %s\n", QCC_StatusText(status));
+        } else {
+            printf("Relay established\n");
+
+            qcc::String guid = "0000000000000000000000000000";
+            ns.Init(guid, true, true);
+
+            ns.OpenInterface("*");
+            ns.Locate("");
+
+            printf("Start relay\n");
+
+            /*
+             * Loop reading and rebroadcasting advertisements.
+             */
+            while (status == ER_OK) {
+                status = tunnel.RelayAdv();
+            }
             ns.Stop();
-            break;
-        }
-
-        printf("Relay established\n");
-
-        qcc::String guid = "0000000000000000000000000000";
-        ns.Init(guid, true, true);
-
-        ns.OpenInterface("*");
-        ns.Locate("");
-
-        printf("Start relay\n");
-
-        /*
-         * Loop reading and rebroadcasting advertisements.
-         */
-        while (status == ER_OK) {
-            status = tunnel.RelayAdv();
+            ns.Join();
         }
     }
     ns.Join();
