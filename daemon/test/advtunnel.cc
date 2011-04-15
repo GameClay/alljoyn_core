@@ -52,6 +52,11 @@ using namespace ajn;
 static NameService* g_ns;
 
 /*
+ * If true sniffs advertisements but doesn't send them.
+ */
+static bool sniffMode = false;
+
+/*
  * Name service configuration parameters. These need to match up with the ones used by AllJoyn.
  */
 const char* IPV4_MULTICAST_GROUP = "239.255.37.41";
@@ -348,6 +353,11 @@ void AdvTunnel::Found(const qcc::String& busAddr, const qcc::String& guid, std::
     for (size_t i = 0; i < nameList.size(); ++i) {
         printf("   %s\n", nameList[i].c_str());
     }
+
+    if (sniffMode) {
+        goto Exit;
+    }
+
     status = PushString(busAddr);
     if (status != ER_OK) {
         goto Exit;
@@ -378,6 +388,7 @@ static void usage(void)
     printf("Usage: advtunnel [-p <port>] ([-h] -l | -c <addr>)\n\n");
     printf("Options:\n");
     printf("   -h                    = Print this help message\n");
+    printf("   -s                    = Sniff mode\n");
     printf("   -p                    = Port to connect or listen on\n");
     printf("   -l                    = Listen mode\n");
     printf("   -c <addr>             = Connect mode and address to connect to\n");
@@ -391,6 +402,7 @@ int main(int argc, char** argv)
     bool listen = false;
     qcc::String addr;
     uint16_t port =  TUNNEL_PORT;
+    qcc::String guid = "0000000000000000000000000000";
 
     /* Install SIGINT handler */
     signal(SIGINT, SigIntHandler);
@@ -398,6 +410,10 @@ int main(int argc, char** argv)
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "-l") == 0) {
             listen = true;
+            continue;
+        }
+        if (strcmp(argv[i], "-s") == 0) {
+            sniffMode = true;
             continue;
         }
         if (strcmp(argv[i], "-p") == 0) {
@@ -426,7 +442,7 @@ int main(int argc, char** argv)
         usage();
         exit(1);
     }
-    if ((!listen && (addr.size() == 0)) || (listen && (addr.size() != 0))) {
+    if (!sniffMode && ((!listen && (addr.size() == 0)) || (listen && (addr.size() != 0)))) {
         usage();
         exit(1);
     }
@@ -436,6 +452,18 @@ int main(int argc, char** argv)
     ns.SetCallback(new CallbackImpl<AdvTunnel, void, const qcc::String&, const qcc::String&, std::vector<qcc::String>&, uint8_t>
                    (&tunnel, &AdvTunnel::Found));
 
+    /*
+     * In sniffMode we just report advertisements
+     */
+    if (sniffMode) {
+        ns.Init(guid, true, true);
+        ns.OpenInterface("*");
+        ns.Locate("");
+        printf("Started sniffing for advertised names\n");
+        qcc::Sleep(10000000);
+        ns.Stop();
+        ns.Join();
+    }
     while (g_ns) {
         if (listen) {
             status = tunnel.Listen(port);
@@ -447,7 +475,6 @@ int main(int argc, char** argv)
         } else {
             printf("Relay established\n");
 
-            qcc::String guid = "0000000000000000000000000000";
             ns.Init(guid, true, true);
 
             ns.OpenInterface("*");
