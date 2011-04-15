@@ -508,7 +508,7 @@ int main(int argc, char** argv)
             bus.WaitStop();
 
             if (mimicBbservice) {
-                bus.DeregisterBusObject(*testObj);
+                bus.UnregisterBusObject(*testObj);
                 delete testObj;
             }
         } else {

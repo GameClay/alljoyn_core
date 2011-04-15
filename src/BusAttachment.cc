@@ -317,26 +317,26 @@ QStatus BusAttachment::Disconnect(const char* connectSpec)
         if ((ER_OK == status) && !isDaemon) {
             const InterfaceDescription* dbusIface = GetInterface(org::freedesktop::DBus::InterfaceName);
             if (dbusIface) {
-                UnRegisterSignalHandler(this,
+                UnregisterSignalHandler(this,
                                         static_cast<MessageReceiver::SignalHandler>(&BusAttachment::Internal::AllJoynSignalHandler),
                                         dbusIface->GetMember("NameOwnerChanged"),
                                         NULL);
             }
             const InterfaceDescription* alljoynIface = GetInterface(org::alljoyn::Bus::InterfaceName);
             if (alljoynIface) {
-                UnRegisterSignalHandler(this,
+                UnregisterSignalHandler(this,
                                         static_cast<MessageReceiver::SignalHandler>(&BusAttachment::Internal::AllJoynSignalHandler),
                                         alljoynIface->GetMember("FoundName"),
                                         NULL);
             }
             if (alljoynIface) {
-                UnRegisterSignalHandler(this,
+                UnregisterSignalHandler(this,
                                         static_cast<MessageReceiver::SignalHandler>(&BusAttachment::Internal::AllJoynSignalHandler),
                                         alljoynIface->GetMember("LostAdvertisedName"),
                                         NULL);
             }
             if (alljoynIface) {
-                UnRegisterSignalHandler(this,
+                UnregisterSignalHandler(this,
                                         static_cast<MessageReceiver::SignalHandler>(&BusAttachment::Internal::AllJoynSignalHandler),
                                         alljoynIface->GetMember("BusConnectionLost"),
                                         NULL);
@@ -518,12 +518,12 @@ QStatus BusAttachment::RegisterSignalHandler(MessageReceiver* receiver,
     return busInternal->localEndpoint.RegisterSignalHandler(receiver, signalHandler, member, srcPath);
 }
 
-QStatus BusAttachment::UnRegisterSignalHandler(MessageReceiver* receiver,
+QStatus BusAttachment::UnregisterSignalHandler(MessageReceiver* receiver,
                                                MessageReceiver::SignalHandler signalHandler,
                                                const InterfaceDescription::Member* member,
                                                const char* srcPath)
 {
-    return busInternal->localEndpoint.UnRegisterSignalHandler(receiver, signalHandler, member, srcPath);
+    return busInternal->localEndpoint.UnregisterSignalHandler(receiver, signalHandler, member, srcPath);
 }
 
 bool BusAttachment::IsConnected() const {
@@ -534,9 +534,9 @@ QStatus BusAttachment::RegisterBusObject(BusObject& obj) {
     return busInternal->localEndpoint.RegisterBusObject(obj);
 }
 
-void BusAttachment::DeregisterBusObject(BusObject& object)
+void BusAttachment::UnregisterBusObject(BusObject& object)
 {
-    busInternal->localEndpoint.DeregisterBusObject(object);
+    busInternal->localEndpoint.UnregisterBusObject(object);
 }
 
 QStatus BusAttachment::EnablePeerSecurity(const char* authMechanisms,
@@ -876,13 +876,13 @@ void BusAttachment::RegisterBusListener(BusListener& listener)
     busInternal->listenersLock.Unlock();
 }
 
-void BusAttachment::UnRegisterBusListener(BusListener& listener)
+void BusAttachment::UnregisterBusListener(BusListener& listener)
 {
     busInternal->listenersLock.Lock();
     list<BusListener*>::iterator it = std::find(busInternal->listeners.begin(), busInternal->listeners.end(), &listener);
     if (it != busInternal->listeners.end()) {
         busInternal->listeners.erase(it);
-        listener.ListenerUnRegistered();
+        listener.ListenerUnregistered();
     }
     busInternal->listenersLock.Unlock();
 }

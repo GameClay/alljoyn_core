@@ -365,9 +365,9 @@ int main(int argc, char** argv)
         }
     }
 
-    /* Deregister the ServiceObject. */
+    /* Unregister the ServiceObject. */
     chatObj.ReleaseName();
-    bus->DeregisterBusObject(chatObj);
+    bus->UnregisterBusObject(chatObj);
     if (s_chatObj) {
         s_chatObj = NULL;
     }

@@ -708,8 +708,8 @@ int main(int argc, char** argv)
         } else {
             QCC_LogError(status, ("Failed to connect to \"%s\"", clientArgs.c_str()));
         }
-        /* Deregister the bus object */
-        g_msgBus->DeregisterBusObject(testObj);
+        /* Unregister the bus object */
+        g_msgBus->UnregisterBusObject(testObj);
     }
 
     /* Clean up msg bus */

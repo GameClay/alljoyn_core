@@ -159,7 +159,7 @@ class SimpleBusListener : public BusListener {
     uint32_t enabled;
 
     void ListenerRegistered(BusAttachment* bus);
-    void ListenerUnRegistered();
+    void ListenerUnregistered();
     void BusStopping();
 
     void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix);

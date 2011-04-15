@@ -102,7 +102,7 @@ DBusObj::DBusObj(Bus& bus) :
 
 DBusObj::~DBusObj()
 {
-    bus.DeregisterBusObject(*this);
+    bus.UnregisterBusObject(*this);
     router.RemoveBusNameListener(this);
 }
 

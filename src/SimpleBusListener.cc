@@ -299,7 +299,7 @@ void SimpleBusListener::BusStopping()
     }
 }
 
-void SimpleBusListener::ListenerUnRegistered()
+void SimpleBusListener::ListenerUnregistered()
 {
     internal.lock.Lock();
     internal.bus = NULL;

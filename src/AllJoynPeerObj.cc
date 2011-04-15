@@ -110,7 +110,7 @@ QStatus AllJoynPeerObj::Join()
     conversations.clear();
     lock.Unlock();
 
-    bus.UnRegisterBusListener(*this);
+    bus.UnregisterBusListener(*this);
     return status;
 }
 

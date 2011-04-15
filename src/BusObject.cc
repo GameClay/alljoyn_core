@@ -562,10 +562,10 @@ BusObject::~BusObject()
 {
     QCC_DbgPrintf(("BusObject destructor for object with path = \"%s\"", GetPath()));
     /*
-     * If this object has a parent it has not been deregistered so do so now.
+     * If this object has a parent it has not been unregistered so do so now.
      */
     if (parent) {
-        bus.GetInternal().GetLocalEndpoint().DeregisterBusObject(*this);
+        bus.GetInternal().GetLocalEndpoint().UnregisterBusObject(*this);
     }
     delete components;
 }

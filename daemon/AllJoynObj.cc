@@ -74,7 +74,7 @@ AllJoynObj::AllJoynObj(Bus& bus) :
 
 AllJoynObj::~AllJoynObj()
 {
-    bus.DeregisterBusObject(*this);
+    bus.UnregisterBusObject(*this);
 
     // TODO: Unregister signal handlers.
     // TODO: Unregister name listeners

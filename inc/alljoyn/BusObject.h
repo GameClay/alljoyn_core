@@ -247,11 +247,11 @@ class BusObject : public MessageReceiver {
     virtual void ObjectRegistered(void) { }
 
     /**
-     * Called by the message bus when the object has been successfully deregistered
+     * Called by the message bus when the object has been successfully unregistered
      * @remark
      * This base class implementation @b must be called explicitly by any overriding derived class.
      */
-    virtual void ObjectDeregistered(void) { isRegistered = false; }
+    virtual void ObjectUnregistered(void) { isRegistered = false; }
 
   private:
 

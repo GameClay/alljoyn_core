@@ -202,14 +202,14 @@ QStatus LocalEndpoint::Stop(void)
 
     IncrementAndFetch(&refCount);
     /*
-     * Deregister all registered bus objects
+     * Unregister all registered bus objects
      */
     objectsLock.Lock();
     hash_map<const char*, BusObject*, hash<const char*>, PathEq>::iterator it = localObjects.begin();
     while (it != localObjects.end()) {
         BusObject* obj = it->second;
         objectsLock.Unlock();
-        DeregisterBusObject(*obj);
+        UnregisterBusObject(*obj);
         objectsLock.Lock();
         it = localObjects.begin();
     }
@@ -379,7 +379,7 @@ QStatus LocalEndpoint::DoRegisterBusObject(BusObject& object, BusObject* parent,
     BusObject* existingObj = FindLocalObject(objPath);
     if (NULL != existingObj) {
         existingObj->Replace(object);
-        DeregisterBusObject(*existingObj);
+        UnregisterBusObject(*existingObj);
     }
 
     /* Register object. */
@@ -404,9 +404,9 @@ QStatus LocalEndpoint::DoRegisterBusObject(BusObject& object, BusObject* parent,
     return status;
 }
 
-void LocalEndpoint::DeregisterBusObject(BusObject& object)
+void LocalEndpoint::UnregisterBusObject(BusObject& object)
 {
-    QCC_DbgPrintf(("DeregisterBusObject %s", object.GetPath()));
+    QCC_DbgPrintf(("UnregisterBusObject %s", object.GetPath()));
 
     /* Remove members */
     methodTable.RemoveAll(&object);
@@ -417,7 +417,7 @@ void LocalEndpoint::DeregisterBusObject(BusObject& object)
     objectsLock.Unlock();
 
     /* Notify object and detach from bus*/
-    object.ObjectDeregistered();
+    object.ObjectUnregistered();
 
     /* Detach object from parent */
     objectsLock.Lock();
@@ -425,13 +425,13 @@ void LocalEndpoint::DeregisterBusObject(BusObject& object)
         object.parent->RemoveChild(object);
     }
 
-    /* If object has children, deregister them as well */
+    /* If object has children, unregister them as well */
     while (true) {
         BusObject* child = object.RemoveChild();
         if (!child) {
             break;
         }
-        DeregisterBusObject(*child);
+        UnregisterBusObject(*child);
     }
     /* Delete the object if it was a default object */
     vector<BusObject*>::iterator dit = defaultObjects.begin();
@@ -484,18 +484,18 @@ QStatus LocalEndpoint::RegisterReplyHandler(MessageReceiver* receiver,
         /* Set a timeout */
         status = bus.GetInternal().GetTimer().AddAlarm(reply.alarm);
         if (status != ER_OK) {
-            UnRegisterReplyHandler(serial);
+            UnregisterReplyHandler(serial);
         }
     }
     return status;
 }
 
-void LocalEndpoint::UnRegisterReplyHandler(uint32_t serial)
+void LocalEndpoint::UnregisterReplyHandler(uint32_t serial)
 {
     replyMapLock.Lock();
     map<uint32_t, ReplyContext>::iterator iter = replyMap.find(serial);
     if (iter != replyMap.end()) {
-        QCC_DbgPrintf(("LocalEndpoint::UnRegisterReplyHandler - Removing serial=%u", serial));
+        QCC_DbgPrintf(("LocalEndpoint::UnregisterReplyHandler - Removing serial=%u", serial));
         ReplyContext rc = iter->second;
         replyMap.erase(iter);
         replyMapLock.Unlock();
@@ -523,7 +523,7 @@ QStatus LocalEndpoint::RegisterSignalHandler(MessageReceiver* receiver,
     return ER_OK;
 }
 
-QStatus LocalEndpoint::UnRegisterSignalHandler(MessageReceiver* receiver,
+QStatus LocalEndpoint::UnregisterSignalHandler(MessageReceiver* receiver,
                                                MessageReceiver::SignalHandler signalHandler,
                                                const InterfaceDescription::Member* member,
                                                const char* srcPath)

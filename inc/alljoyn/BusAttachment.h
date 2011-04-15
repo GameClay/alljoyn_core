@@ -233,11 +233,11 @@ class BusAttachment : public MessageReceiver {
     QStatus RegisterBusObject(BusObject& obj);
 
     /**
-     * De-register a BusObject
+     * Unregister a BusObject
      *
-     * @param object  Object to be deregistered.
+     * @param object  Object to be unregistered.
      */
-    void DeregisterBusObject(BusObject& object);
+    void UnregisterBusObject(BusObject& object);
 
     /**
      * Get the org.freedesktop.DBus proxy object.
@@ -292,7 +292,7 @@ class BusAttachment : public MessageReceiver {
                                   const char* srcPath);
 
     /**
-     * Un-Register a signal handler.
+     * Unregister a signal handler.
      *
      * Remove the signal handler that was registered with the given parameters.
      *
@@ -302,7 +302,7 @@ class BusAttachment : public MessageReceiver {
      * @param srcPath        The object path of the emitter of the signal or NULL for all paths.
      * @return #ER_OK
      */
-    QStatus UnRegisterSignalHandler(MessageReceiver* receiver,
+    QStatus UnregisterSignalHandler(MessageReceiver* receiver,
                                     MessageReceiver::SignalHandler signalHandler,
                                     const InterfaceDescription::Member* member,
                                     const char* srcPath);
@@ -335,11 +335,11 @@ class BusAttachment : public MessageReceiver {
     virtual void RegisterBusListener(BusListener& listener);
 
     /**
-     * UnRegister an object that was previously registered with RegisterBusListener.
+     * Unregister an object that was previously registered with RegisterBusListener.
      *
      * @param listener  Object instance to un-register as a listener.
      */
-    virtual void UnRegisterBusListener(BusListener& listener);
+    virtual void UnregisterBusListener(BusListener& listener);
 
     /**
      * Set a key store listener to listen for key store load and store requests.

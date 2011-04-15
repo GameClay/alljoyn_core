@@ -147,7 +147,7 @@ class LocalEndpoint : public BusEndpoint, public qcc::AlarmListener, public Mess
      *
      * @param serial       The serial number expected in the reply
      */
-    void UnRegisterReplyHandler(uint32_t serial);
+    void UnregisterReplyHandler(uint32_t serial);
 
     /**
      * Register a signal handler.
@@ -179,7 +179,7 @@ class LocalEndpoint : public BusEndpoint, public qcc::AlarmListener, public Mess
      *      - ER_OK if successful
      *      - An error status otherwise
      */
-    QStatus UnRegisterSignalHandler(MessageReceiver* receiver,
+    QStatus UnregisterSignalHandler(MessageReceiver* receiver,
                                     MessageReceiver::SignalHandler signalHandler,
                                     const InterfaceDescription::Member* member,
                                     const char* srcPath);
@@ -209,11 +209,11 @@ class LocalEndpoint : public BusEndpoint, public qcc::AlarmListener, public Mess
     QStatus RegisterBusObject(BusObject& obj);
 
     /**
-     * Deregisters an object and its method and signal handlers.
+     * Unregisters an object and its method and signal handlers.
      *
-     * @param obj  Object to be deregistered.
+     * @param obj  Object to be unregistered.
      */
-    void DeregisterBusObject(BusObject& obj);
+    void UnregisterBusObject(BusObject& obj);
 
     /**
      * Find a local object.
@@ -530,13 +530,13 @@ class LocalTransport : public Transport {
     }
 
     /**
-     * Deregisters an object and its method and signal handlers.
+     * Unregisters an object and its method and signal handlers.
      *
      * @param object   Object to be deregistred.
      */
-    void DeregisterBusObject(BusObject& object)
+    void UnregisterBusObject(BusObject& object)
     {
-        return localEndpoint.DeregisterBusObject(object);
+        return localEndpoint.UnregisterBusObject(object);
     }
 
     /**

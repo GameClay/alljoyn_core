@@ -120,11 +120,11 @@ class Bus : public BusAttachment, public NameListener {
     void RegisterBusListener(BusListener& listener);
 
     /**
-     * UnRegister an object that was previously registered as a BusListener
+     * Unregister an object that was previously registered as a BusListener
      *
      * @param listener  BusListener to be un registered.
      */
-    void UnRegisterBusListener(BusListener& listener);
+    void UnregisterBusListener(BusListener& listener);
 
   private:
 

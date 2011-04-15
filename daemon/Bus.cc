@@ -150,7 +150,7 @@ void Bus::RegisterBusListener(BusListener& listener)
     reinterpret_cast<DaemonRouter&>(GetInternal().GetRouter()).AddBusNameListener(this);
 }
 
-void Bus::UnRegisterBusListener(BusListener& listener) {
+void Bus::UnregisterBusListener(BusListener& listener) {
     if (&listener == busListener) {
         busListener = NULL;
         reinterpret_cast<DaemonRouter&>(GetInternal().GetRouter()).RemoveBusNameListener(this);

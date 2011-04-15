@@ -170,7 +170,7 @@ BTController::~BTController()
     // Don't need to remove our bus name change listener from the router (name
     // table) since the router is already destroyed at this point in time.
 
-    bus.DeregisterBusObject(*this);
+    bus.UnregisterBusObject(*this);
     if (master) {
         delete master;
     }

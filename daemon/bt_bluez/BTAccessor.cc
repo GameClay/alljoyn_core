@@ -373,7 +373,7 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
     transport->BTDeviceAvailable(false);
 
     /*
-     * Deregister any registered services
+     * Unregister any registered services
      */
     if (recordHandle != 0) {
         QCC_DbgPrintf(("Removing record handle %x (disconnct from BlueZ)", recordHandle));
@@ -1018,11 +1018,11 @@ void BTTransport::BTAccessor::AdapterRemoved(const char* adapterObjPath)
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::AdapterRemoved(adapterObjPath = \"%s\")", adapterObjPath));
 
-    bzBus.UnRegisterSignalHandler(this,
+    bzBus.UnregisterSignalHandler(this,
                                   SignalHandler(&BTTransport::BTAccessor::DeviceFoundSignalHandler),
                                   org.bluez.Adapter.DeviceFound, adapterObjPath);
 
-    bzBus.UnRegisterSignalHandler(this,
+    bzBus.UnregisterSignalHandler(this,
                                   SignalHandler(&BTTransport::BTAccessor::AdapterPropertyChangedSignalHandler),
                                   org.bluez.Adapter.PropertyChanged, adapterObjPath);
 

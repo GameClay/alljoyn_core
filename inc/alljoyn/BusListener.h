@@ -57,7 +57,7 @@ class BusListener {
     /**
      * Called by the bus when the listener is unegistered.
      */
-    virtual void ListenerUnRegistered() { }
+    virtual void ListenerUnregistered() { }
 
     /**
      * Called by the bus when an external bus is discovered that is advertising a well-known name
