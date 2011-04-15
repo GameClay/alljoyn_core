@@ -450,7 +450,7 @@ int main(int argc, char** argv)
     g_ns = &ns;
 
     ns.SetCallback(new CallbackImpl<AdvTunnel, void, const qcc::String&, const qcc::String&, std::vector<qcc::String>&, uint8_t>
-                   (&tunnel, &AdvTunnel::Found));
+                       (&tunnel, &AdvTunnel::Found));
 
     /*
      * In sniffMode we just report advertisements

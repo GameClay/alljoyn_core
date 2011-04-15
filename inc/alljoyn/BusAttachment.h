@@ -561,7 +561,7 @@ class BusAttachment : public MessageReceiver {
      * and interprets the response.
      *
      * @param[in]  name       The well known name that the caller is inquiring about.
-     * @param[out] hasOwner   If return is ER_OK, indicates whether name exists on the bus. 
+     * @param[out] hasOwner   If return is ER_OK, indicates whether name exists on the bus.
      *                        If return is not ER_OK, param is not modified.
      * @return
      *      - #ER_OK if name ownership was able to be determined.

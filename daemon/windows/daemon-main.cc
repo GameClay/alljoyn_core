@@ -342,16 +342,16 @@ int main(int argc, char** argv, char** env)
     loggerSettings->SetLevel(opts.GetVerbosity());
 
     if (opts.UseDefaultConfig()) {
-    	StringSource src(defaultConfig);
-    	if (!config->LoadSource(src)) {
-    		return DAEMON_EXIT_CONFIG_ERROR;
-    	}
+        StringSource src(defaultConfig);
+        if (!config->LoadSource(src)) {
+            return DAEMON_EXIT_CONFIG_ERROR;
+        }
     } else {
-    	config->SetConfigFile(opts.GetConfigFile());
-    	if (!config->LoadConfigFile()) {
-    		fprintf(stderr, "Invalid configuration file specified: \"%s\"\n", opts.GetConfigFile().c_str());
-    		return DAEMON_EXIT_CONFIG_ERROR;
-    	}
+        config->SetConfigFile(opts.GetConfigFile());
+        if (!config->LoadConfigFile()) {
+            fprintf(stderr, "Invalid configuration file specified: \"%s\"\n", opts.GetConfigFile().c_str());
+            return DAEMON_EXIT_CONFIG_ERROR;
+        }
     }
 
     return daemon(opts);

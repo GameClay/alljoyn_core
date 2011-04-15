@@ -592,15 +592,18 @@ QStatus BusAttachment::RequestName(const char* requestedName, uint32_t flags)
         uint32_t disposition;
         status = reply->GetArgs("u", &disposition);
         if (ER_OK == status) {
-            switch(disposition) {
-            case DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER:
+            switch (disposition) {
+            case DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER :
                 break;
-            case DBUS_REQUEST_NAME_REPLY_IN_QUEUE:
+
+            case DBUS_REQUEST_NAME_REPLY_IN_QUEUE :
                 status = ER_DBUS_REQUEST_NAME_REPLY_IN_QUEUE;
                 break;
-            case DBUS_REQUEST_NAME_REPLY_EXISTS:
+
+            case DBUS_REQUEST_NAME_REPLY_EXISTS :
                 status = ER_DBUS_REQUEST_NAME_REPLY_EXISTS;
                 break;
+
             case DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER:
                 status = ER_DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER;
                 break;
@@ -635,12 +638,14 @@ QStatus BusAttachment::ReleaseName(const char* name)
         uint32_t disposition;
         status = reply->GetArgs("u", &disposition);
         if (ER_OK == status) {
-            switch(disposition) {
+            switch (disposition) {
             case DBUS_RELEASE_NAME_REPLY_RELEASED:
                 break;
+
             case DBUS_RELEASE_NAME_REPLY_NON_EXISTENT:
                 status = ER_DBUS_RELEASE_NAME_REPLY_NON_EXISTENT;
                 break;
+
             case DBUS_RELEASE_NAME_REPLY_NOT_OWNER:
                 status = ER_DBUS_RELEASE_NAME_REPLY_NOT_OWNER;
                 break;
@@ -703,12 +708,15 @@ QStatus BusAttachment::FindAdvertisedName(const char* namePrefix)
             switch (disposition) {
             case ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS:
                 break;
+
             case ALLJOYN_FINDADVERTISEDNAME_REPLY_ALREADY_DISCOVERING:
                 status = ER_ALLJOYN_FINDADVERTISEDNAME_REPLY_ALREADY_DISCOVERING;
                 break;
+
             case ALLJOYN_FINDADVERTISEDNAME_REPLY_FAILED:
                 status = ER_ALLJOYN_FINDADVERTISEDNAME_REPLY_FAILED;
                 break;
+
             default:
                 status = ER_BUS_UNEXPECTED_DISPOSITION;
                 break;
@@ -746,9 +754,11 @@ QStatus BusAttachment::CancelFindAdvertisedName(const char* namePrefix)
             switch (disposition) {
             case ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_SUCCESS:
                 break;
+
             case ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_FAILED:
                 status = ER_ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_FAILED;
                 break;
+
             default:
                 status = ER_BUS_UNEXPECTED_DISPOSITION;
                 break;
@@ -786,12 +796,15 @@ QStatus BusAttachment::AdvertiseName(const char* name, TransportMask transports)
             switch (disposition) {
             case ALLJOYN_ADVERTISENAME_REPLY_SUCCESS:
                 break;
+
             case ALLJOYN_ADVERTISENAME_REPLY_ALREADY_ADVERTISING:
                 status = ER_ALLJOYN_ADVERTISENAME_REPLY_ALREADY_ADVERTISING;
                 break;
+
             case ALLJOYN_ADVERTISENAME_REPLY_FAILED:
                 status = ER_ALLJOYN_ADVERTISENAME_REPLY_FAILED;
                 break;
+
             default:
                 status = ER_BUS_UNEXPECTED_DISPOSITION;
                 break;
@@ -829,12 +842,15 @@ QStatus BusAttachment::CancelAdvertiseName(const char* name, TransportMask trans
             switch (disposition) {
             case ALLJOYN_ADVERTISENAME_REPLY_SUCCESS:
                 break;
+
             case ALLJOYN_ADVERTISENAME_REPLY_ALREADY_ADVERTISING:
                 status = ER_ALLJOYN_ADVERTISENAME_REPLY_ALREADY_ADVERTISING;
                 break;
+
             case ALLJOYN_ADVERTISENAME_REPLY_FAILED:
                 status = ER_ALLJOYN_ADVERTISENAME_REPLY_FAILED;
                 break;
+
             default:
                 status = ER_BUS_UNEXPECTED_DISPOSITION;
                 break;
@@ -940,13 +956,15 @@ QStatus BusAttachment::BindSessionPort(SessionPort& sessionPort, const SessionOp
         uint32_t disposition;
         status = reply->GetArgs("uq", &disposition, &tempPort);
         if (status == ER_OK) {
-            switch(disposition) {
+            switch (disposition) {
             case ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS:
                 sessionPort = tempPort;
                 break;
+
             case ALLJOYN_BINDSESSIONPORT_REPLY_ALREADY_EXISTS:
                 status = ER_ALLJOYN_BINDSESSIONPORT_REPLY_ALREADY_EXISTS;
                 break;
+
             case ALLJOYN_BINDSESSIONPORT_REPLY_FAILED:
                 status = ER_ALLJOYN_BINDSESSIONPORT_REPLY_FAILED;
                 break;
@@ -988,24 +1006,31 @@ QStatus BusAttachment::JoinSession(const char* sessionHost, SessionPort sessionP
             switch (disposition) {
             case ALLJOYN_JOINSESSION_REPLY_SUCCESS:
                 break;
+
             case ALLJOYN_JOINSESSION_REPLY_NO_SESSION:
                 status = ER_ALLJOYN_JOINSESSION_REPLY_NO_SESSION;
                 break;
+
             case ALLJOYN_JOINSESSION_REPLY_UNREACHABLE:
                 status = ER_ALLJOYN_JOINSESSION_REPLY_UNREACHABLE;
                 break;
+
             case ALLJOYN_JOINSESSION_REPLY_CONNECT_FAILED:
                 status = ER_ALLJOYN_JOINSESSION_REPLY_CONNECT_FAILED;
                 break;
+
             case ALLJOYN_JOINSESSION_REPLY_REJECTED:
                 status = ER_ALLJOYN_JOINSESSION_REPLY_REJECTED;
                 break;
+
             case ALLJOYN_JOINSESSION_REPLY_BAD_SESSION_OPTS:
                 status = ER_ALLJOYN_JOINSESSION_REPLY_BAD_SESSION_OPTS;
                 break;
+
             case ALLJOYN_JOINSESSION_REPLY_FAILED:
                 status = ER_ALLJOYN_JOINSESSION_REPLY_FAILED;
                 break;
+
             default:
                 status = ER_BUS_UNEXPECTED_DISPOSITION;
                 break;
@@ -1040,12 +1065,15 @@ QStatus BusAttachment::LeaveSession(const SessionId& sessionId)
             switch (disposition) {
             case ALLJOYN_LEAVESESSION_REPLY_SUCCESS:
                 break;
+
             case ALLJOYN_LEAVESESSION_REPLY_NO_SESSION:
                 status = ER_ALLJOYN_LEAVESESSION_REPLY_NO_SESSION;
                 break;
+
             case ALLJOYN_LEAVESESSION_REPLY_FAILED:
                 status = ER_ALLJOYN_LEAVESESSION_REPLY_FAILED;
                 break;
+
             default:
                 status = ER_BUS_UNEXPECTED_DISPOSITION;
                 break;
