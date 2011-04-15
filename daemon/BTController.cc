@@ -1385,29 +1385,26 @@ void BTController::HandleFoundNamesChange(const InterfaceDescription::Member* me
     }
 
     BTNodeDB adInfo;
-    uint64_t addrRaw;
-    uint16_t psm;
     bool lost = (member == org.alljoyn.Bus.BTController.LostNames);
     MsgArg* entries;
     size_t size;
 
-    QStatus status = msg->GetArgs(SIG_FOUND_NAMES, &size, &entries, &addrRaw, &psm);
+    QStatus status = msg->GetArgs(SIG_FOUND_NAMES, &size, &entries);
 
     if (status == ER_OK) {
         status = ExtractAdInfo(entries, size, adInfo);
     }
 
     if ((status == ER_OK) && (adInfo.Size() > 0)) {
-        BDAddress bdAddr(addrRaw);
-
-        BTNodeDB::const_iterator node;
+        BTNodeDB::const_iterator nodeit;
 
         lock.Lock();
-        for (node = adInfo.Begin(); node != adInfo.End(); ++node) {
+        for (nodeit = adInfo.Begin(); nodeit != adInfo.End(); ++nodeit) {
             vector<String> vectorizedNames;
-            vectorizedNames.reserve((*node)->AdvertiseNamesSize());
-            vectorizedNames.assign((*node)->GetAdvertiseNamesBegin(), (*node)->GetAdvertiseNamesEnd());
-            bt.FoundNamesChange((*node)->GetUniqueName(), vectorizedNames, bdAddr, psm, lost);
+            const BTNodeInfo& node = *nodeit;
+            vectorizedNames.reserve(node->AdvertiseNamesSize());
+            vectorizedNames.assign(node->GetAdvertiseNamesBegin(), node->GetAdvertiseNamesEnd());
+            bt.FoundNamesChange(node->GetGUID(), vectorizedNames, node->GetBusAddress().addr, node->GetBusAddress().psm, lost);
         }
         lock.Unlock();
     }
