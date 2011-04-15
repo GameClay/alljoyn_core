@@ -1526,7 +1526,7 @@ void AllJoynObj::CancelAdvertiseName(const InterfaceDescription::Member* member,
     msg->GetArgs(numArgs, args);
     const char* advertiseName;
     TransportMask transports = 0;
-    QStatus status = MsgArg::Get(args, numArgs, "sy", &advertiseName, &transports);
+    QStatus status = MsgArg::Get(args, numArgs, "sq", &advertiseName, &transports);
     if (status != ER_OK) {
         QCC_LogError(status, ("CancelAdvertiseName: bad arg types"));
         return;
