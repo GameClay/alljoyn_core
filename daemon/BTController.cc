@@ -971,7 +971,9 @@ QStatus BTController::SendFoundNamesChange(const BTNodeInfo& destNode,
             vector<const char*> nameList;
             NameSet::const_iterator name;
             nameList.reserve(node->AdvertiseNamesSize());
-            QCC_DbgPrintf(("Encoding %u advertise names for %s:", node->AdvertiseNamesSize(), node->GetGUID().c_str()));
+            QCC_DbgPrintf(("Encoding %u advertise names for %s-%04x:",
+                           node->AdvertiseNamesSize(),
+                           node->GetBusAddress().addr.ToString().c_str(), node->GetBusAddress().psm));
             for (name = node->GetAdvertiseNamesBegin(); name != node->GetAdvertiseNamesEnd(); ++name) {
                 QCC_DbgPrintf(("    %s", name->c_str()));
                 nameList.push_back(name->c_str());
@@ -1063,32 +1065,30 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
     NameArgInfo* nameCollection = (findOp ?
                                    static_cast<NameArgInfo*>(&find) :
                                    static_cast<NameArgInfo*>(&advertise));
-    char* name;
+    char* nameStr;
     uint64_t addrRaw;
     uint16_t psm;
 
-    QStatus status = msg->GetArgs(SIG_NAME_OP, &addrRaw, &psm, &name);
+    QStatus status = msg->GetArgs(SIG_NAME_OP, &addrRaw, &psm, &nameStr);
 
     if (status == ER_OK) {
         BTBusAddress addr(addrRaw, psm);
         BTNodeInfo node = nodeDB.FindNode(addr);
 
         if (node->IsValid()) {
-            QCC_DbgPrintf(("%s %s to the list of %s names for %s.",
+            QCC_DbgPrintf(("%s %s to the list of %s names for %s-%04x.",
                            addName ? "Adding" : "Removing",
-                           name,
+                           nameStr,
                            findOp ? "find" : "advertise",
-                           node->GetUniqueName().c_str()));
-
-
+                           node->GetBusAddress().addr.ToString().c_str(), node->GetBusAddress().psm));
 
             // All nodes need to be registered via SetState
-            qcc::String n(name);
+            qcc::String name(nameStr);
             lock.Lock();
             if (addName) {
-                nameCollection->AddName(n, node);
+                nameCollection->AddName(name, node);
             } else {
-                nameCollection->RemoveName(n, node);
+                nameCollection->RemoveName(name, node);
             }
 
             if (IsMaster()) {
@@ -1112,6 +1112,7 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
                     BTNodeDB newAdInfo;
                     BTNodeDB oldAdInfo;
                     BTNodeInfo nodeChange(node->GetBusAddress(), node->GetUniqueName(), node->GetGUID());
+                    nodeChange->AddAdvertiseName(name);
                     if (addName) {
                         newAdInfo.AddNode(nodeChange);
                     } else {
@@ -1602,7 +1603,8 @@ QStatus BTController::ExtractAdInfo(const MsgArg* entries, size_t size, BTNodeDB
                 BTBusAddress addr(rawAddr, psm);
                 BTNodeInfo node(addr, empty, guidStr);
 
-                QCC_DbgPrintf(("Extracting %u advertise names for %s:", numNames, guid));
+                QCC_DbgPrintf(("Extracting %u advertise names for %s-%04x:",
+                               numNames, addr.addr.ToString().c_str(), addr.psm));
                 for (size_t j = 0; j < numNames; ++j) {
                     char* name;
                     status = names[j].Get(SIG_NAME, &name);
