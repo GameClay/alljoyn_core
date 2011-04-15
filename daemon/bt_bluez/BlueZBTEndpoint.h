@@ -27,6 +27,7 @@
 
 #include "BlueZUtils.h"
 #include "BTEndpoint.h"
+#include "BTNodeDB.h"
 
 namespace ajn {
 

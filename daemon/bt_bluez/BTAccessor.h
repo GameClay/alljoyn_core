@@ -141,13 +141,14 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      * that information.
      *
      * @param alljoyn   BusAttachment that will be connected to the resulting endpoint
-     * @param addr      Bluetooth device address to connect to
-     * @param psm       L2CAP PSM to connect to
+     * @param connAddr  Bluetooth device address where the real connection will go
+     * @param devAddr   Bluetooth device address of the device desired to be reached
      *
      * @return  A newly instatiated remote endpoint for the Bluetooth connection (NULL indicates a failure)
      */
     RemoteEndpoint* Connect(BusAttachment& alljoyn,
-                            const BTBusAddress& addr);
+                            const BTBusAddress& connAddr,
+                            const BTBusAddress& devAddr);
 
     /**
      * Disconnect from the specified remote Bluetooth device.

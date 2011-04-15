@@ -486,7 +486,7 @@ QStatus BTTransport::BTAccessor::SetSDPInfo(uint32_t uuidRev,
         for (nodeit = adInfo.Begin(); nodeit != adInfo.End(); ++nodeit) {
             const BTNodeInfo& node = *nodeit;
             NameSet::const_iterator nameit;
-            QCC_DbgPrintf(("    %s-%04x:", node->GetBusAddress().addr.ToString().c_str(), node->GetBusAddress().psm));
+            QCC_DbgPrintf(("    %s:", node->GetBusAddress().ToString().c_str()));
             nameList +=
                 "<sequence>"
                 "  <text value=\"" + node->GetGUID() + "\"/>"
@@ -770,11 +770,13 @@ exit:
 
 
 RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
-                                                 const BTBusAddress& addr)
+                                                 const BTBusAddress& connAddr,
+                                                 const BTBusAddress& devAddr)
 {
-    QCC_DbgTrace(("BTTransport::BTAccessor::Connect(addr = %s-%04x)", addr.addr.ToString().c_str(), addr.psm));
+    QCC_DbgTrace(("BTTransport::BTAccessor::Connect(connAddr = %s, devAddr = %s)",
+                  connAddr.ToString().c_str(), devAddr.ToString().c_str()));
 
-    if (!addr.IsValid()) {
+    if (!connAddr.IsValid()) {
         return NULL;
     }
 
@@ -794,8 +796,8 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
     memset(&skaddr, 0, sizeof(skaddr));
 
     skaddr.l2cap.sa_family = AF_BLUETOOTH;
-    skaddr.l2cap.psm = htole16(addr.psm);         // BlueZ requires PSM to be in little-endian format
-    addr.addr.CopyTo(skaddr.l2cap.bdaddr.b, true);
+    skaddr.l2cap.psm = htole16(connAddr.psm);         // BlueZ requires PSM to be in little-endian format
+    connAddr.addr.CopyTo(skaddr.l2cap.bdaddr.b, true);
 
     for (int tries = 0; tries < MAX_CONNECT_ATTEMPTS; ++tries) {
         sockFd = socket(AF_BLUETOOTH, SOCK_SEQPACKET, L2CAP_PROTOCOL_ID);
@@ -803,13 +805,13 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
             ConfigL2cap(sockFd);
         } else {
             status = ER_OS_ERROR;
-            QCC_LogError(status, ("Create socket failed - %s-%04x (errno: %d - %s)",
-                                  addr.addr.ToString().c_str(), addr.psm, errno, strerror(errno)));
+            QCC_LogError(status, ("Create socket failed - %s (errno: %d - %s)",
+                                  connAddr.ToString().c_str(), errno, strerror(errno)));
             qcc::Sleep(200);
             continue;
         }
-        QCC_DbgPrintf(("BTTransport::BTAccessor::Connect(%s-%04x): sockFd = %d",
-                       addr.addr.ToString().c_str(), addr.psm, sockFd));
+        QCC_DbgPrintf(("BTTransport::BTAccessor::Connect(%s, %s): sockFd = %d",
+                       connAddr.ToString().c_str(), devAddr.ToString().c_str(), sockFd));
 
         /* Attempt to connect */
         ret = connect(sockFd, (struct sockaddr*)&skaddr, sizeof(skaddr));
@@ -818,8 +820,8 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
             close(sockFd);
             sockFd = -1;
             if ((errno == ECONNREFUSED) || (errno == EBADFD)) {
-                QCC_LogError(status, ("Connect failed - %s-%04x (errno: %d - %s)",
-                                      addr.addr.ToString().c_str(), addr.psm, errno, strerror(errno)));
+                QCC_LogError(status, ("Connect failed - %s (errno: %d - %s)",
+                                      connAddr.ToString().c_str(), errno, strerror(errno)));
                 qcc::Sleep(200);
                 continue;
             }
@@ -829,8 +831,8 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
         break;
     }
     if (status != ER_OK) {
-        QCC_LogError(status, ("Connect to %s-%04x failed (errno: %d - %s)",
-                              addr.addr.ToString().c_str(), addr.psm, errno, strerror(errno)));
+        QCC_LogError(status, ("Connect to %sx failed (errno: %d - %s)",
+                              connAddr.ToString().c_str(), errno, strerror(errno)));
         goto exit;
     }
     /*
@@ -858,8 +860,8 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
                 QCC_LogError(status, ("Failed to send nul byte (errno: %d - %s)", errno, strerror(errno)));
                 goto exit;
             }
-            QCC_DbgPrintf(("BTTransport::BTAccessor::Connect() success sockFd = %d addr = %s%04x",
-                           sockFd, addr.addr.ToString().c_str(), addr.psm));
+            QCC_DbgPrintf(("BTTransport::BTAccessor::Connect() success sockFd = %d connAddr = %s",
+                           sockFd, connAddr.addr.ToString().c_str()));
             break;
         }
     }
@@ -875,7 +877,7 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
 exit:
 
     if (status == ER_OK) {
-        conn = new BlueZBTEndpoint(alljoyn, false, sockFd, addr);
+        conn = new BlueZBTEndpoint(alljoyn, false, sockFd, devAddr);
     } else {
         if (sockFd > 0) {
             QCC_DbgPrintf(("Closing sockFd: %d", sockFd));
@@ -895,7 +897,7 @@ exit:
 
 QStatus BTTransport::BTAccessor::Disconnect(const BTBusAddress& addr)
 {
-    QCC_DbgTrace(("BTTransport::BTAccessor::Disconnect(addr = %s-%04x)", addr.addr.ToString().c_str(), addr.psm));
+    QCC_DbgTrace(("BTTransport::BTAccessor::Disconnect(addr = %s)", addr.ToString().c_str()));
     QStatus status(ER_BUS_BAD_TRANSPORT_ARGS);
 
     RemoteEndpoint* ep(NULL);
@@ -1404,7 +1406,7 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                         BTNodeDB::const_iterator nodeit;
                         for (nodeit = adInfo->Begin(); nodeit != adInfo->End(); ++nodeit) {
                             const BTNodeInfo& node = *nodeit;
-                            QCC_DbgPrintf(("       %s-%04x", node->GetBusAddress().addr.ToString().c_str(), node->GetBusAddress().psm));
+                            QCC_DbgPrintf(("       %s", node->GetBusAddress().ToString().c_str()));
                             NameSet::const_iterator name;
                             for (name = node->GetAdvertiseNamesBegin(); name != node->GetAdvertiseNamesEnd(); ++name) {
                                 QCC_DbgPrintf(("           \"%s\"", name->c_str()));

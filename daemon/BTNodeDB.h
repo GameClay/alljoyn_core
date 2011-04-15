@@ -96,6 +96,16 @@ struct BTBusAddress {
     }
 
     /**
+     * Create a bus address string from the bus address in a human readable form.
+     *
+     * @return  a string representation of the bus address: "XX:XX:XX:XX:XX:XX-XXXX"
+     */
+    qcc::String ToString() const
+    {
+        return qcc::String(addr.ToString() + "-" + qcc::U32ToString(psm, 16, 4, '0'));
+    }
+
+    /**
      * Check is the bus address is valid.
      *
      * @return  true if the bus address is valid, false otherwise

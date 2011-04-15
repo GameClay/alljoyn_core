@@ -496,9 +496,15 @@ QStatus BTTransport::Connect(const BTBusAddress& addr,
 
     qcc::String authName;
 
-    btController->PrepConnect();
+    BTBusAddress connAddr = btController->PrepConnect(addr);
 
-    conn = btAccessor->Connect(bus, addr);
+    if (!connAddr.IsValid()) {
+        status = ER_FAIL;
+        QCC_LogError(status, ("Connect address %s is for an unknown device", addr.ToString().c_str()));
+        goto exit;
+    }
+
+    conn = btAccessor->Connect(bus, connAddr, addr);
     if (!conn) {
         status = ER_FAIL;
         goto exit;
@@ -512,8 +518,8 @@ QStatus BTTransport::Connect(const BTBusAddress& addr,
     threadListLock.Lock();
     threadList.push_back(conn);
     threadListLock.Unlock();
-    QCC_DbgPrintf(("BTTransport::Connect: Calling conn->Establish() [addr = %s-%04x]",
-                   addr.addr.ToString().c_str(), addr.psm));
+    QCC_DbgPrintf(("BTTransport::Connect: Calling conn->Establish() [addr = %s via %s]",
+                   addr.ToString().c_str(), connAddr.ToString().c_str()));
     status = conn->Establish("ANONYMOUS", authName);
     if (status != ER_OK) {
         QCC_LogError(status, ("BTEndpoint::Establish failed"));
@@ -521,7 +527,7 @@ QStatus BTTransport::Connect(const BTBusAddress& addr,
         goto exit;
     }
 
-    QCC_DbgPrintf(("Starting endpoint [addr = %s-%04x]", addr.addr.ToString().c_str(), addr.psm));
+    QCC_DbgPrintf(("Starting endpoint [addr = %s via %s]", addr.ToString().c_str(), connAddr.ToString().c_str()));
     /* Start the endpoint */
     conn->SetListener(this);
     status = conn->Start();

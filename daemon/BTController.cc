@@ -365,6 +365,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
 
             if (status == ER_OK) {
                 if (adInfo->Size() == 0) {
+                    // Process this as a lost device.
                     lost = true;
                     delete adInfo;
                     adInfo = NULL;
@@ -374,6 +375,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                 adInfo = NULL;
             }
         }
+
         if (lost) {
             /*
              * There are few reasons that we have received a "lost" advertisement:
@@ -598,7 +600,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
 }
 
 
-void BTController::PrepConnect()
+const BTBusAddress& BTController::PrepConnect(const BTBusAddress& addr)
 {
     lock.Lock();
     if (UseLocalFind()) {
@@ -630,6 +632,20 @@ void BTController::PrepConnect()
     }
 
     // Unlocks in BTController::PostConnect()
+
+    BTNodeInfo node;
+    if (!IsMinion()) {
+        node = nodeDB.FindNode(addr);
+        if (!node->IsValid()) {
+            node = foundNodeDB.FindNode(addr);
+        }
+    }
+
+    if (!IsMaster() && !node->IsValid()) {
+        node = masterNode;
+    }
+
+    return node->GetConnectAddress();
 }
 
 
@@ -916,7 +932,7 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BTNodeDB& newAdInfo,
     for (BTNodeDB::const_iterator it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
         const BTNodeInfo& node = *it;
         if (!node->FindNamesEmpty() && node->IsMinionOf(self)) {
-            QCC_DbgPrintf(("Notify %s-%04x of the name changes.", node->GetBusAddress().addr.ToString().c_str(), node->GetBusAddress().psm));
+            QCC_DbgPrintf(("Notify %s of the name changes.", node->GetBusAddress().ToString().c_str()));
             if (oldAdInfo.Size() > 0) {
                 status = SendFoundNamesChange(node, oldAdInfo, true);
             }
@@ -955,8 +971,8 @@ QStatus BTController::SendFoundNamesChange(const BTNodeInfo& destNode,
                                            const BTNodeDB& adInfo,
                                            bool lost)
 {
-    QCC_DbgTrace(("BTController::SendFoundNamesChange(destNode = \"%s-%04x\", adInfo = <>, <%s>)",
-                  destNode->GetBusAddress().addr.ToString().c_str(), destNode->GetBusAddress().psm,
+    QCC_DbgTrace(("BTController::SendFoundNamesChange(destNode = \"%s\", adInfo = <>, <%s>)",
+                  destNode->GetBusAddress().ToString().c_str(),
                   lost ? "lost" : "found/changed"));
 
     vector<MsgArg> nodeList;
@@ -971,9 +987,9 @@ QStatus BTController::SendFoundNamesChange(const BTNodeInfo& destNode,
             vector<const char*> nameList;
             NameSet::const_iterator name;
             nameList.reserve(node->AdvertiseNamesSize());
-            QCC_DbgPrintf(("Encoding %u advertise names for %s-%04x:",
+            QCC_DbgPrintf(("Encoding %u advertise names for %s:",
                            node->AdvertiseNamesSize(),
-                           node->GetBusAddress().addr.ToString().c_str(), node->GetBusAddress().psm));
+                           node->GetBusAddress().ToString().c_str()));
             for (name = node->GetAdvertiseNamesBegin(); name != node->GetAdvertiseNamesEnd(); ++name) {
                 QCC_DbgPrintf(("    %s", name->c_str()));
                 nameList.push_back(name->c_str());
@@ -1076,11 +1092,11 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
         BTNodeInfo node = nodeDB.FindNode(addr);
 
         if (node->IsValid()) {
-            QCC_DbgPrintf(("%s %s to the list of %s names for %s-%04x.",
+            QCC_DbgPrintf(("%s %s to the list of %s names for %s.",
                            addName ? "Adding" : "Removing",
                            nameStr,
                            findOp ? "find" : "advertise",
-                           node->GetBusAddress().addr.ToString().c_str(), node->GetBusAddress().psm));
+                           node->GetBusAddress().ToString().c_str()));
 
             // All nodes need to be registered via SetState
             qcc::String name(nameStr);
@@ -1129,7 +1145,7 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
             }
             lock.Unlock();
         } else {
-            QCC_LogError(ER_FAIL, ("Did not find node %s-%04x in node DB", addr.addr.ToString().c_str(), addr.psm));
+            QCC_LogError(ER_FAIL, ("Did not find node %s in node DB", addr.ToString().c_str()));
         }
     } else {
         QCC_LogError(status, ("Processing msg args"));
@@ -1603,8 +1619,8 @@ QStatus BTController::ExtractAdInfo(const MsgArg* entries, size_t size, BTNodeDB
                 BTBusAddress addr(rawAddr, psm);
                 BTNodeInfo node(addr, empty, guidStr);
 
-                QCC_DbgPrintf(("Extracting %u advertise names for %s-%04x:",
-                               numNames, addr.addr.ToString().c_str(), addr.psm));
+                QCC_DbgPrintf(("Extracting %u advertise names for %s:",
+                               numNames, addr.ToString().c_str()));
                 for (size_t j = 0; j < numNames; ++j) {
                     char* name;
                     status = names[j].Get(SIG_NAME, &name);
@@ -1905,9 +1921,8 @@ void BTController::DumpNodeStateTable() const
     for (nodeit = nodeDB.Begin(); nodeit != nodeDB.End(); ++nodeit) {
         const BTNodeInfo& node = *nodeit;
         NameSet::const_iterator nameit;
-        QCC_DbgPrintf(("    %s-%04x %s (%s):",
-                       node->GetBusAddress().addr.ToString().c_str(),
-                       node->GetBusAddress().psm,
+        QCC_DbgPrintf(("    %s %s (%s):",
+                       node->GetBusAddress().ToString().c_str(),
                        node->GetUniqueName().c_str(),
                        (node == self) ? "local" :
                        ((node == find.minion) ? "find minion" :

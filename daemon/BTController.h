@@ -268,11 +268,16 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     bool OKToConnect() const { return IsMaster() && (directMinions < maxConnections); }
 
     /**
-     * Perform preparations for an outgoing connection.  For now, this just
-     * turns off discovery and discoverability when there are no other
-     * Bluetooth AllJoyn connections.
+     * Perform preparations for an outgoing connection.  This turns off
+     * discovery and discoverability when there are no other Bluetooth AllJoyn
+     * connections.  It also looks up the real connect address for a device
+     * given the device's address.
+     *
+     * @param addr  Connect address for the device.
+     *
+     * @return  The actual address to use to create the connection.
      */
-    void PrepConnect();
+    const BTBusAddress& PrepConnect(const BTBusAddress& addr);
 
     /**
      * Perform operations necessary based on the result of connect operation.

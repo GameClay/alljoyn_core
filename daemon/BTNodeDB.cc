@@ -312,9 +312,8 @@ void BTNodeDB::DumpTable(const char* info) const
     for (nodeit = Begin(); nodeit != End(); ++nodeit) {
         const BTNodeInfo& node = *nodeit;
         NameSet::const_iterator nameit;
-        QCC_DbgPrintf(("    %s-%04x %s:",
-                       node->GetBusAddress().addr.ToString().c_str(),
-                       node->GetBusAddress().psm,
+        QCC_DbgPrintf(("    %sx %s:",
+                       node->GetBusAddress().ToString().c_str(),
                        node->GetUniqueName().c_str()));
         QCC_DbgPrintf(("         Advertise names:"));
         for (nameit = node->GetAdvertiseNamesBegin(); nameit != node->GetAdvertiseNamesEnd(); ++nameit) {
