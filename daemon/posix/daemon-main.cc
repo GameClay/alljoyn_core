@@ -548,7 +548,7 @@ int daemon(OptParse& opts)
 // called from the Java service code.
 //
 #if defined(DAEMON_LIB)
-extern "C" int DaemonMain(int argc, char** argv, char* serviceConfig, char* logLevels)
+extern "C" int DaemonMain(int argc, char** argv, char* serviceConfig)
 #else
 int main(int argc, char** argv, char** env)
 #endif
@@ -583,11 +583,6 @@ int main(int argc, char** argv, char** env)
     }
 
     loggerSettings->SetLevel(opts.GetVerbosity());
-
-#if defined(QCC_OS_ANDROID) && defined(DAEMON_LIB)
-    QCC_SetLogLevels(logLevels);
-    QCC_UseOSLogging(true);
-#endif
 
     if (opts.GetInternalConfig()) {
         StringSource src(internalConfig);

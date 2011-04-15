@@ -51,7 +51,7 @@ public class BusDaemonUser extends Activity {
         String config =
         	"<busconfig>" + 
         	"  <type>alljoyn</type>" + 
-        	"  <listen>unix:abstract=bluebus</listen>" + 
+        	"  <listen>unix:abstract=alljoyn</listen>" + 
         	"  <listen>tcp:addr=0.0.0.0,port=9955</listen>" +
         	"  <policy context=\"default\">" +
         	"    <allow send_interface=\"*\"/>" +
@@ -70,10 +70,7 @@ public class BusDaemonUser extends Activity {
         	"</busconfig>";
         
         intent.putExtra("config", config);
-
-        String loglevels = "ALL=7";
-        intent.putExtra("loglevels", loglevels);
-        
+     
         this.startService(intent);
 
         Toast.makeText(this, "Starting Bus daemon", Toast.LENGTH_LONG).show();

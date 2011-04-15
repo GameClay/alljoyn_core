@@ -26,7 +26,7 @@
 // replaced by a function called DaemonMain.  Calling DaemonMain() here
 // essentially runs the AllJoyn daemon like it had been run on the command line.
 //
-extern int DaemonMain(int argc, char** argv, char* config, char*logLevels);
+extern int DaemonMain(int argc, char** argv, char* config);
 
 void do_log(const char* format, ...)
 {
@@ -40,7 +40,7 @@ void do_log(const char* format, ...)
 }
 
 
-void Java_org_alljoyn_bus_daemonservice_DaemonService_runDaemon(JNIEnv* env, jobject thiz, jobjectArray jargv, jstring jconfig, jstring jloglevels)
+void Java_org_alljoyn_bus_daemonservice_DaemonService_runDaemon(JNIEnv* env, jobject thiz, jobjectArray jargv, jstring jconfig)
 {
     int i;
     jsize argc;
@@ -67,17 +67,13 @@ void Java_org_alljoyn_bus_daemonservice_DaemonService_runDaemon(JNIEnv* env, job
     char const* config = (*env)->GetStringUTFChars(env, jconfig, 0);
     do_log("runDaemon(): config = %s\n", config);
 
-    char const* loglevels = (*env)->GetStringUTFChars(env, jloglevels, 0);
-    do_log("runDaemon(): config = %s\n", loglevels);
-
     //
     // Run the alljoyn-daemon providing the array of environment strings as the
     // (shell) environment for the daemon.
     //
     do_log("runDaemon(): calling DaemonMain()\n");
-    int rc = DaemonMain(argc, (char**)argv, (char*)config, (char*)loglevels);
+    int rc = DaemonMain(argc, (char**)argv, (char*)config);
 
-    (*env)->ReleaseStringUTFChars(env, jloglevels, loglevels);
     (*env)->ReleaseStringUTFChars(env, jconfig, config);
 
     free(argv);

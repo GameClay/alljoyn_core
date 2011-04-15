@@ -106,7 +106,7 @@ public class DaemonService extends Service {
     //
     // Declaration of the JNI function that will actually run the daemon.
     //
-    public static native int runDaemon(Object[] argv, String config, String loglevels);
+    public static native int runDaemon(Object[] argv, String config);
 
     //
     // Execute the daemon main "program" in a thread in case we somehow get
@@ -115,30 +115,21 @@ public class DaemonService extends Service {
     private DaemonThread thread;
 
     //
-    // Just run the daemon.  We expect this call never to return.  The service
+    // Run the daemon.  We expect this call never to return.  The service
     // will eventually end its life-cycle due to a SIGKILL from the Android
     // system (perhaps due to the low memory killer, perhaps due to another
     // kill request).
     //
-    // We pass the mEnvironment array which consists of a number of environment
-    // variables and values which ultimately came from the intent that caused
-    // the service to be run.
-    //
     class DaemonThread extends Thread {
         public void run()
         {
-        	runDaemon(mArgv.toArray(), mConfig, mLoglevels);
+        	runDaemon(mArgv.toArray(), mConfig);
         }
     }
 
     private ArrayList<String> mArgv;
     private String mConfig;
-    private String mLoglevels;
     
-    //
-    // We need to override this method so we can return START_STICKY.  This
-    // may be called multiple times whenever a new service user pops up.
-    //
     @Override
     public int onStartCommand(Intent intent, int flags, int startId)
     {
@@ -151,7 +142,6 @@ public class DaemonService extends Service {
         argv.add("--verbosity=3");           // argv[3] set verbosity to LOG_ERR (see qcc/Logger.h)
         mArgv = argv;
         mConfig = "";
-        mLoglevels = "ALL=1";
         
     	//
     	// The intent may be null if the service is being restarted after its
@@ -183,14 +173,7 @@ public class DaemonService extends Service {
         	} else {
     	        Log.w(TAG, String.format("onStartCommand(): using default config"));
         	}
-        	
-    		String providedLoglevels = intent.getStringExtra("loglevels");
-        	if (providedLoglevels != null) {
-        		mLoglevels = providedLoglevels;
-        	} else {
-    	        Log.w(TAG, String.format("onStartCommand(): using default loglevels"));
-        	}
-        	
+        	    	
             thread = new DaemonThread();
             thread.start();
     	}
@@ -205,11 +188,6 @@ public class DaemonService extends Service {
         return START_REDELIVER_INTENT;
     }
 
-    //
-    // This is where to add code to enable the priority bump due to a bound
-    // foreground application.  We don't have any reason to exchange any RPC
-    // calls, but the act of binding implies that we get that priority bump.
-    //
     @Override
     public IBinder onBind(Intent intent)
     {
