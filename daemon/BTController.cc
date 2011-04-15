@@ -269,12 +269,17 @@ QStatus BTController::SendSetState(const qcc::String& busName)
             masterNode = BTNodeInfo(addr, master->GetServiceName());
         } else {
             // We are the still the master
+            bool noRotateMinions = !RotateMinions();
             ImportState(nodeStateArgs, numNodeStateArgs, addr);
 
             delete newMaster;
 
             assert(find.resultDest.empty());
-            find.dirty = true;
+            if (noRotateMinions && RotateMinions()) {
+                // Force changing from permanent delegations to durational delegations
+                advertise.dirty = true;
+                find.dirty = true;
+            }
         }
 
         QCC_DbgPrintf(("We are %s, %s is now our %s",
@@ -839,6 +844,9 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                     if (!RotateMinions() && wasRotateMinions) {
                         advertise.StopAlarm();
                         find.StopAlarm();
+                        // Force changing from durational delegations to permanent delegations
+                        advertise.dirty = true;
+                        find.dirty = true;
                     }
                     if (wasFindMinion) {
                         find.minion = self;
@@ -1194,10 +1202,15 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
         }
 
         BTBusAddress addr(rawBDAddr, psm);
+        bool noRotateMinions = !RotateMinions();
         ImportState(nodeStateArgs, numNodeStateArgs, addr);
 
         assert(find.resultDest.empty());
-        find.dirty = true;
+        if (noRotateMinions && RotateMinions()) {
+            // Force changing from permanent delegations to durational delegations
+            advertise.dirty = true;
+            find.dirty = true;
+        }
 
         status = MsgArg::Set(args, numArgs, SIG_SET_STATE_OUT,
                              self->GetBusAddress().addr.GetRaw(),
@@ -1318,7 +1331,7 @@ void BTController::HandleDelegateAdvertise(const InterfaceDescription::Member* m
             if (adInfo.Size() > 0) {
                 BDAddress bdAddr(bdAddrRaw);
 
-                QCC_DbgPrintf(("Starting advertise..."));
+                QCC_DbgPrintf(("Starting advertise for %u seconds...", duration));
                 bt.StartAdvertise(uuidRev, bdAddr, psm, adInfo, duration);
                 advertise.active = true;
             } else {
