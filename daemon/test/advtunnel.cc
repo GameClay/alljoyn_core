@@ -355,6 +355,7 @@ void AdvTunnel::Found(const qcc::String& busAddr, const qcc::String& guid, std::
     }
 
     if (sniffMode) {
+        status = ER_OK;
         goto Exit;
     }
 

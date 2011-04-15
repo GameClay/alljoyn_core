@@ -397,7 +397,7 @@ void AllJoynPeerObj::AuthAdvance(Message& msg)
     lock.Unlock();
 
     if (!sasl) {
-        sasl = new SASLEngine(bus, ajn::AuthMechanism::CHALLENGER, peerAuthMechanisms.c_str(), peerAuthListener);
+        sasl = new SASLEngine(bus, ajn::AuthMechanism::CHALLENGER, peerAuthMechanisms.c_str(), sender.c_str(), peerAuthListener);
         qcc::String localGuidStr = bus.GetInternal().GetKeyStore().GetGuid();
         if (!localGuidStr.empty()) {
             sasl->SetLocalId(localGuidStr);
@@ -649,7 +649,7 @@ QStatus AllJoynPeerObj::SecurePeerConnection(const qcc::String& busName, bool fo
         /*
          * Initiaize the SASL engine as responder (i.e. client)
          */
-        SASLEngine sasl(bus, ajn::AuthMechanism::RESPONDER, peerAuthMechanisms, peerAuthListener);
+        SASLEngine sasl(bus, ajn::AuthMechanism::RESPONDER, peerAuthMechanisms, busName.c_str(), peerAuthListener);
         sasl.SetLocalId(localGuidStr);
         qcc::String inStr;
         qcc::String outStr;

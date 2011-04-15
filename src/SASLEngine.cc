@@ -205,7 +205,7 @@ QStatus SASLEngine::NewAuthRequest(qcc::String& authCmd)
      */
     while (true) {
         if (authMechanism) {
-            status = authMechanism->Init(authRole);
+            status = authMechanism->Init(authRole, authPeer);
             if (status == ER_OK) {
                 QCC_DbgPrintf(("Initialized authMechanism %s", authMechanism->GetName()));
                 AuthMechanism::AuthResult authResult;
@@ -498,7 +498,7 @@ QStatus SASLEngine::Challenge(qcc::String& inStr, qcc::String& outStr)
                 authMechanism = bus.GetInternal().GetAuthManager().GetMechanism(mechanismName, listener);
             }
             if (authMechanism) {
-                status = authMechanism->Init(authRole);
+                status = authMechanism->Init(authRole, authPeer);
                 if (status != ER_OK) {
                     delete authMechanism;
                     authMechanism = NULL;
@@ -635,9 +635,10 @@ QStatus SASLEngine::Advance(qcc::String authIn, qcc::String& authOut, AuthState&
     return status;
 }
 
-SASLEngine::SASLEngine(BusAttachment& bus, AuthMechanism::AuthRole authRole, const qcc::String& mechanisms, AuthListener* listener, ExtensionHandler* extHandler) :
+SASLEngine::SASLEngine(BusAttachment& bus, AuthMechanism::AuthRole authRole, const qcc::String& mechanisms, const char* authPeer, AuthListener* listener, ExtensionHandler* extHandler) :
     bus(bus),
     authRole(authRole),
+    authPeer(authPeer),
     listener(listener),
     authCount(0),
     authMechanism(NULL),

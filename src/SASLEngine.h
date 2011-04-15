@@ -93,10 +93,11 @@ class SASLEngine {
      * @param bus           The bus
      * @param authRole      Challenger or responder end of the authentication conversation
      * @param mechanisms    The mechanisms to use for this authentication conversation
+     * @param authPeer      A string identifying the peer being authenticated
      * @param listener      Listener for handling password and other authentication related requests.
      * @param extHandler    The an optional handler for extension commands.
      */
-    SASLEngine(BusAttachment& bus, AuthMechanism::AuthRole authRole, const qcc::String& mechanisms, AuthListener* listener = NULL, ExtensionHandler* extHandler = NULL);
+    SASLEngine(BusAttachment& bus, AuthMechanism::AuthRole authRole, const qcc::String& mechanisms, const char* authPeer, AuthListener* listener = NULL, ExtensionHandler* extHandler = NULL);
 
     /**
      * Destructor
@@ -168,6 +169,11 @@ class SASLEngine {
      * Indicates if this is a challenger or a responder
      */
     AuthMechanism::AuthRole authRole;
+
+    /**
+     * Peer that is being authenticated, this is simply passed on to the authentication mechanisms.
+     */
+    qcc::String authPeer;
 
     /**
      * Listener for handling interactive authentication methods.

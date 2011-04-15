@@ -49,9 +49,9 @@ AuthMechSRP::AuthMechSRP(KeyStore& keyStore, AuthListener* listener) : AuthMecha
 {
 }
 
-QStatus AuthMechSRP::Init(AuthRole authRole)
+QStatus AuthMechSRP::Init(AuthRole authRole, const qcc::String& authPeer)
 {
-    AuthMechanism::Init(authRole);
+    AuthMechanism::Init(authRole, authPeer);
     step = 0;
     if (!listener) {
         return ER_BUS_NO_LISTENER;
@@ -149,7 +149,7 @@ qcc::String AuthMechSRP::Response(const qcc::String& challenge,
             result = ALLJOYN_AUTH_ERROR;
             break;
         }
-        if (listener->RequestCredentials(GetName(), authCount, "", AuthListener::CRED_PASSWORD, creds)) {
+        if (listener->RequestCredentials(GetName(), authPeer.c_str(), authCount, "", AuthListener::CRED_PASSWORD, creds)) {
             status = srp.ClientFinish("<anonymous>", creds.GetPassword());
             if (status == ER_OK) {
                 ComputeMS();
@@ -203,7 +203,7 @@ qcc::String AuthMechSRP::Challenge(const qcc::String& response,
          * Client sends a random string. Server returns an SRP string.
          */
         clientRandom = HexStringToByteString(response);
-        if (listener->RequestCredentials(GetName(), authCount, "", AuthListener::CRED_ONE_TIME_PWD, creds)) {
+        if (listener->RequestCredentials(GetName(), authPeer.c_str(), authCount, "", AuthListener::CRED_ONE_TIME_PWD, creds)) {
             status = srp.ServerInit("<anonymous>", creds.GetPassword(), challenge);
         } else {
             result = ALLJOYN_AUTH_FAIL;

@@ -49,9 +49,9 @@ AuthMechLogon::AuthMechLogon(KeyStore& keyStore, AuthListener* listener) : AuthM
 {
 }
 
-QStatus AuthMechLogon::Init(AuthRole authRole)
+QStatus AuthMechLogon::Init(AuthRole authRole, const qcc::String& authPeer)
 {
-    AuthMechanism::Init(authRole);
+    AuthMechanism::Init(authRole, authPeer);
     step = 0;
     if (!listener) {
         return ER_BUS_NO_LISTENER;
@@ -116,7 +116,7 @@ qcc::String AuthMechLogon::InitialResponse(AuthResult& result)
     /*
      * Initial response provides the id of the user to authenticate.
      */
-    if (listener->RequestCredentials(GetName(), authCount, "", AuthListener::CRED_PASSWORD | AuthListener::CRED_USER_NAME, creds)) {
+    if (listener->RequestCredentials(GetName(), authPeer.c_str(), authCount, "", AuthListener::CRED_PASSWORD | AuthListener::CRED_USER_NAME, creds)) {
         if (creds.IsSet(AuthListener::CRED_USER_NAME) && !creds.GetUserName().empty()) {
             /*
              * Client starts the conversation by sending a random string and user id.
@@ -165,8 +165,7 @@ qcc::String AuthMechLogon::Response(const qcc::String& challenge,
             break;
         }
         if (!creds.IsSet(AuthListener::CRED_PASSWORD)) {
-            if (!listener->RequestCredentials(GetName(), authCount, creds.GetUserName().c_str(),
-                                              AuthListener::CRED_PASSWORD, creds)) {
+            if (!listener->RequestCredentials(GetName(), authPeer.c_str(), authCount, creds.GetUserName().c_str(), AuthListener::CRED_PASSWORD, creds)) {
                 result = ALLJOYN_AUTH_FAIL;
                 break;
             }
@@ -291,7 +290,7 @@ qcc::String AuthMechLogon::Challenge(const qcc::String& response,
         /*
          * Application may return a password or a precomputed SRP logon entry string.
          */
-        if (listener->RequestCredentials(GetName(), authCount, userName.c_str(), AuthListener::CRED_PASSWORD | AuthListener::CRED_LOGON_ENTRY, creds)) {
+        if (listener->RequestCredentials(GetName(), authPeer.c_str(), authCount, userName.c_str(), AuthListener::CRED_PASSWORD | AuthListener::CRED_LOGON_ENTRY, creds)) {
             if (creds.IsSet(AuthListener::CRED_PASSWORD)) {
                 status = srp.ServerInit(userName, creds.GetPassword(), challenge);
             } else if (creds.IsSet(AuthListener::CRED_LOGON_ENTRY)) {

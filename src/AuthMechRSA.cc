@@ -60,9 +60,9 @@ bool AuthMechRSA::GetPassphrase(qcc::String& passphrase, bool toWrite)
     bool ok;
     AuthListener::Credentials creds;
     if (toWrite) {
-        ok = listener->RequestCredentials(GetName(), authCount, "", AuthListener::CRED_NEW_PASSWORD, creds);
+        ok = listener->RequestCredentials(GetName(), authPeer.c_str(), authCount, "", AuthListener::CRED_NEW_PASSWORD, creds);
     } else {
-        ok = listener->RequestCredentials(GetName(), authCount, "", AuthListener::CRED_PASSWORD, creds);
+        ok = listener->RequestCredentials(GetName(), authPeer.c_str(), authCount, "", AuthListener::CRED_PASSWORD, creds);
     }
     if (ok) {
         passphrase = creds.GetPassword();
@@ -70,10 +70,10 @@ bool AuthMechRSA::GetPassphrase(qcc::String& passphrase, bool toWrite)
     return ok;
 }
 
-QStatus AuthMechRSA::Init(AuthRole authRole)
+QStatus AuthMechRSA::Init(AuthRole authRole, const qcc::String& authPeer)
 {
     AuthListener::Credentials creds;
-    QStatus status = AuthMechanism::Init(authRole);
+    QStatus status = AuthMechanism::Init(authRole, authPeer);
     /* These are the credentials we need */
     uint16_t mask = AuthListener::CRED_CERT_CHAIN | AuthListener::CRED_PRIVATE_KEY | AuthListener::CRED_PASSWORD;
 
@@ -83,7 +83,7 @@ QStatus AuthMechRSA::Init(AuthRole authRole)
     qcc::GUID certGuid(SELF_CERT_GUID);
     qcc::GUID privGuid(SELF_PRIV_GUID);
     if (listener) {
-        if (!listener->RequestCredentials(GetName(), authCount, "", mask, creds)) {
+        if (!listener->RequestCredentials(GetName(), authPeer.c_str(), authCount, "", mask, creds)) {
             return ER_AUTH_FAIL;
         }
     }

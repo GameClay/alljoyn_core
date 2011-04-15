@@ -144,7 +144,9 @@ static const char privKey[] = {
 
 class MyAuthListener : public AuthListener {
 
-    bool RequestCredentials(const char* authMechanism, uint16_t authCount, const char* userId, uint16_t credMask, Credentials& creds) {
+    bool RequestCredentials(const char* authMechanism, const char* authPeer, uint16_t authCount, const char* userId, uint16_t credMask, Credentials& creds) {
+
+        printf("RequestCredentials for authenticating %s using mechanism %s\n", authPeer, authMechanism);
 
         if (strcmp(authMechanism, "ALLJOYN_SRP_KEYX") == 0) {
             if (credMask & AuthListener::CRED_PASSWORD) {

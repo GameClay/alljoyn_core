@@ -330,7 +330,7 @@ class MyAuthListener : public AuthListener {
 
   private:
 
-    bool RequestCredentials(const char* authMechanism, uint16_t authCount, const char* userId, uint16_t credMask, Credentials& creds) {
+    bool RequestCredentials(const char* authMechanism, const char* authPeer, uint16_t authCount, const char* userId, uint16_t credMask, Credentials& creds) {
 
         if (authCount > maxAuth) {
             return false;

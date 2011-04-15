@@ -73,12 +73,16 @@ class AuthMechanism {
      * should call this base class method.
      *
      * @param authRole   Indicates if the authentication method is initializing as a challenger or a responder.
-     * @param authCount  Indicates the number of times this authentication mechanism has been tried
-     *                   between the same two authenticating entities.
+     * @param authPeer   The bus name of the remote peer that is being authenticated.
      *
      * @return ER_OK if the authentication mechanism was succesfully initialized.
      */
-    virtual QStatus Init(AuthRole authRole) { this->authRole = authRole; ++authCount; return ER_OK; }
+    virtual QStatus Init(AuthRole authRole, const qcc::String& authPeer) { 
+        this->authPeer = authPeer;
+        this->authRole = authRole;
+        ++authCount;
+        return ER_OK;
+    }
 
     /**
      * Challenges flow from servers to clients.
@@ -206,6 +210,11 @@ class AuthMechanism {
      * The current role of the authenticating peer.
      */
     AuthRole authRole;
+
+    /**
+     * A name for the remote peer that is being authenticated.
+     */
+    qcc::String authPeer;
 };
 
 

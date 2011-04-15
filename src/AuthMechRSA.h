@@ -63,11 +63,12 @@ class AuthMechRSA : public AuthMechanism, qcc::Crypto_RSA::PassphraseListener {
      * Initialize this authentication mechanism.
      *
      * @param authRole  Indicates if the authentication method is initializing as a challenger or a responder.
+     * @param authPeer  The bus name of the remote peer that is being authenticated.
      *
      * @return ER_OK if the authentication mechanism was succesfully initialized
      *         otherwise an error status.
      */
-    QStatus Init(AuthRole authRole);
+    QStatus Init(AuthRole authRole, const qcc::String& authPeer);
 
     /**
      * Function of type MKeyStoreAuthMechanismManager::AuthMechFactory
