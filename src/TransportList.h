@@ -165,7 +165,7 @@ class TransportList : public TransportListener {
 
     /**
      * Assignment operator.
-     * 
+     *
      * @param other RHS of assignment.
      */
     TransportList operator=(const TransportList& other);

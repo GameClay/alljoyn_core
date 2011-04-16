@@ -77,7 +77,7 @@ class AuthMechanism {
      *
      * @return ER_OK if the authentication mechanism was succesfully initialized.
      */
-    virtual QStatus Init(AuthRole authRole, const qcc::String& authPeer) { 
+    virtual QStatus Init(AuthRole authRole, const qcc::String& authPeer) {
         this->authPeer = authPeer;
         this->authRole = authRole;
         ++authCount;
