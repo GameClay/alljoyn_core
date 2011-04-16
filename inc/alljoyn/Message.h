@@ -635,6 +635,20 @@ class _Message {
   private:
 
     /**
+     * Copy constructor.
+     *
+     * @param other   Copy from %_Message.
+     */
+    _Message(const _Message& other);
+
+    /**
+     * Assignment operator.
+     *
+     * @param otehr   RHS of assignment.
+     */
+    _Message operator=(const _Message& other);
+
+    /**
      * Add the expansion rule described in the message args to the remote endpoint from which this message
      * was received.
      *

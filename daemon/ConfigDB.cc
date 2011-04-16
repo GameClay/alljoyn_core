@@ -67,6 +67,11 @@ ConfigDB::ConfigDB() : db(new DB()), stopping(false)
     db->limitMap[qcc::String("service_start_timeout")] = 10000;  // 10 seconds
 }
 
+ConfigDB::~ConfigDB()
+{
+    delete db;
+}
+
 bool ConfigDB::LoadConfigFile()
 {
     if (stopping) {

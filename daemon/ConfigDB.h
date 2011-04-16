@@ -58,6 +58,14 @@ class ConfigDB : public ajn::NameListener {
      */
     static ConfigDB* GetConfigDB();
 
+    /**
+     * Destructor.
+     */
+    ~ConfigDB();
+
+    /**
+     * Shutdown configDB
+     */
     void Shutdown() { stopping = true; }
 
     /**
@@ -482,6 +490,22 @@ class ConfigDB : public ajn::NameListener {
      * Constructor.
      */
     ConfigDB();
+
+    /**
+     * Copy constructor.
+     * ConfigDB may not be copy constructed.
+     *
+     * @param other   sink being copied.
+     */
+    ConfigDB(const ConfigDB& other);
+
+    /**
+     * Assignment operator.
+     * ConfigDB may not be assigned.
+     *
+     * @param other   RHS of assignment.
+     */
+    ConfigDB& operator=(const ConfigDB& other);
 
     qcc::String configFile;     /**< Config file. */
     DB* db;                     /**< The current config database storage object. */

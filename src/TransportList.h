@@ -156,6 +156,20 @@ class TransportList : public TransportListener {
 
   private:
 
+    /**
+     * Copy constructor.
+     *
+     * @param other  Copy source.
+     */
+    TransportList(const TransportList& other);
+
+    /**
+     * Assignment operator.
+     * 
+     * @param other RHS of assignment.
+     */
+    TransportList operator=(const TransportList& other);
+
     BusAttachment& bus;                             /**< The bus */
     std::vector<Transport*> transportList;           /**< transport list */
     std::vector<TransportListener*> listeners;       /**< transport listeners */

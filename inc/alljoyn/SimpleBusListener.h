@@ -154,6 +154,18 @@ class SimpleBusListener : public BusListener {
   private:
 
     /**
+     * Copy constructor.
+     * @param other   Object to copy from.
+     */
+    SimpleBusListener(const SimpleBusListener& other);
+
+    /**
+     * Assignment operator.
+     * @param other  RHS of assignment.
+     */
+    SimpleBusListener& operator=(const SimpleBusListener& other);
+
+    /**
      * Bit mask of events enabled for this listener.
      */
     uint32_t enabled;

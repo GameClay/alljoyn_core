@@ -211,6 +211,22 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
 
   private:
 
+    /**
+     * Copy constructor.
+     * Internal may not be copy constructed.
+     *
+     * @param other   sink being copied.
+     */
+    Internal(const BusAttachment::Internal& other);
+
+    /**
+     * Assignment operator.
+     * Internal may not be assigned.
+     *
+     * @param other   RHS of assignment.
+     */
+    Internal& operator=(const BusAttachment::Internal& other);
+
     void ThreadExit(qcc::Thread* thread);
 
     qcc::String application;              /* Name of the that owns the BusAttachment application */
