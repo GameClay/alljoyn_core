@@ -32,21 +32,21 @@
 namespace ajn {
 
 /**
+ * The various bus events.
+ */
+static const uint32_t BUS_EVENT_FOUND_ADVERTISED_NAME = 0x0001;
+static const uint32_t BUS_EVENT_LOST_ADVERTISED_NAME  = 0x0002;
+static const uint32_t BUS_EVENT_NAME_OWNER_CHANGED    = 0x0004;
+static const uint32_t BUS_EVENT_SESSION_LOST          = 0x0008;
+static const uint32_t BUS_EVENT_ACCEPT_SESSION_JOINER = 0x0010;
+static const uint32_t BUS_EVENT_ALL                   = 0x00FF;
+static const uint32_t BUS_EVENT_NONE                  = 0x0000;
+
+/**
  * Helper class that provides a blocking API that allows application threads to wait for bus events.
  */
 class SimpleBusListener : public BusListener {
   public:
-
-    /**
-     * The various bus events.
-     */
-    static const uint32_t FOUND_ADVERTISED_NAME = 0x0001;
-    static const uint32_t LOST_ADVERTISED_NAME  = 0x0002;
-    static const uint32_t NAME_OWNER_CHANGED    = 0x0004;
-    static const uint32_t SESSION_LOST          = 0x0008;
-    static const uint32_t ACCEPT_SESSION_JOINER = 0x0010;
-    static const uint32_t ALL_EVENTS            = 0x00FF;
-    static const uint32_t NO_EVENT              = 0x0000;
 
     static const uint32_t FOREVER = -1;
 
