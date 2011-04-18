@@ -301,6 +301,16 @@ QStatus BTController::SendSetState(const qcc::String& busName)
         if (!IsMinion()) {
             UpdateDelegations(advertise, listening);
             UpdateDelegations(find);
+            if (IsDrone()) {
+                if (advertise.minion != self) {
+                    advertise.minion = self;
+                    QCC_DbgPrintf(("Set advertise minion to ourself"));
+                }
+                if (find.minion != self) {
+                    find.minion = self;
+                    QCC_DbgPrintf(("Set find minion to ourself"));
+                }
+            }
             QCC_DEBUG_ONLY(DumpNodeStateTable());
         }
 
@@ -803,6 +813,7 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
 {
     if (oldOwner && (alias == *oldOwner)) {
         // An endpoint left the bus.
+        QCC_DbgPrintf(("%s has left the bus", alias.c_str()));
 
         lock.Lock();
         if (master && (master->GetServiceName() == alias)) {
@@ -891,6 +902,7 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                                 advertise.ClearArgs();
                                 Signal(advertise.minion->GetUniqueName().c_str(), 0, *advertise.delegateSignal, advertise.args, advertise.argsSize);
                                 advertise.minion = self;
+                                QCC_DbgPrintf(("Set advertise minion to ourself"));
                             }
 
                             NextDirectMinion(find.minion);

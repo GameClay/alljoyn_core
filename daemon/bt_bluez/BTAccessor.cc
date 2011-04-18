@@ -790,6 +790,7 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
 
     if (discoveryActive) {
         resumeDiscovery = true;
+        QCC_DbgPrintf(("Pausing discovery"));
         DiscoveryControl(*org.bluez.Adapter.StopDiscovery);
     }
 
@@ -888,6 +889,7 @@ exit:
     }
 
     if (resumeDiscovery) {
+        QCC_DbgPrintf(("Resuming discovery"));
         DiscoveryControl(*org.bluez.Adapter.StartDiscovery);
     }
 
@@ -1251,6 +1253,7 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
 
     if (discoveryActive) {
         resumeDiscovery = true;
+        QCC_DbgPrintf(("Pausing discovery"));
         DiscoveryControl(*org.bluez.Adapter.StopDiscovery);
     }
 
@@ -1288,6 +1291,7 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
     }
 
     if (resumeDiscovery) {
+        QCC_DbgPrintf(("Resuming discovery"));
         DiscoveryControl(*org.bluez.Adapter.StartDiscovery);
     }
 
