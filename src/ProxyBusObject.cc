@@ -627,7 +627,7 @@ QStatus ProxyBusObject::IntrospectRemoteObject()
     Message reply(*bus);
     const InterfaceDescription::Member* introMember = introIntf->GetMember("Introspect");
     assert(introMember);
-    QStatus status = MethodCall(*introMember, NULL, 0, reply, 5000);
+    QStatus status = MethodCall(*introMember, NULL, 0, reply, DefaultCallTimeout);
 
     /* Parse the XML reply */
     if (ER_OK == status) {
