@@ -1394,14 +1394,15 @@ void NameService::LazyUpdateInterfaces(void)
                 QCC_LogError(status, ("LazyUpdateInterfaces: qcc::Socket(AF_INET) failed: %d - %s", errno, strerror(errno)));
                 continue;
             }
-        }
-
-        if (entries[i].m_family == AF_INET6) {
+        } else if (entries[i].m_family == AF_INET6) {
             QStatus status = qcc::Socket(qcc::QCC_AF_INET6, qcc::QCC_SOCK_DGRAM, sockFd);
             if (status != ER_OK) {
                 QCC_LogError(status, ("LazyUpdateInterfaces: qcc::Socket(AF_INET6) failed: %d - %s", errno, strerror(errno)));
                 continue;
             }
+        } else {
+            assert(!"NameService::LazyUpdateInterfaces(): Unexpected value in m_family (not AF_INET or AF_INET6");
+            continue;
         }
 
         //
