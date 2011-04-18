@@ -429,7 +429,7 @@ void AllJoynPeerObj::AuthAdvance(Message& msg)
          * Report the succesful authentication to allow application to clear UI etc.
          */
         if ((status == ER_OK) && peerAuthListener) {
-            peerAuthListener->AuthenticationComplete(mech.c_str(), true /* success */);
+            peerAuthListener->AuthenticationComplete(mech.c_str(), sender.c_str(), true /* success */);
         }
         /*
          * All done with this SASL engine.
@@ -442,7 +442,7 @@ void AllJoynPeerObj::AuthAdvance(Message& msg)
          * Report the failed authentication to allow application to clear UI etc.
          */
         if (peerAuthListener) {
-            peerAuthListener->AuthenticationComplete(mech.c_str(), false /* failure */);
+            peerAuthListener->AuthenticationComplete(mech.c_str(), sender.c_str(), false /* failure */);
         }
         /*
          * All done with this SASL engine.
@@ -714,7 +714,7 @@ QStatus AllJoynPeerObj::SecurePeerConnection(const qcc::String& busName, bool fo
      * Report the authentication completion to allow application to clear UI etc.
      */
     if (peerAuthListener) {
-        peerAuthListener->AuthenticationComplete(mech.c_str(), status == ER_OK);
+        peerAuthListener->AuthenticationComplete(mech.c_str(), sender.c_str(), status == ER_OK);
     }
     /*
      * All done, release the lock

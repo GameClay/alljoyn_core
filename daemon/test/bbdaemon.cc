@@ -329,7 +329,7 @@ class MyAuthListener : public AuthListener {
         return false;
     }
 
-    bool VerifyCredentials(const char* authMechanism, const Credentials& creds) {
+    bool VerifyCredentials(const char* authMechanism, const char* authPeer, const Credentials& creds) {
         if (strcmp(authMechanism, "ALLJOYN_RSA_KEYX") == 0) {
             if (creds.IsSet(AuthListener::CRED_CERT_CHAIN)) {
                 printf("Verify\n%s\n", creds.GetCertChain().c_str());
@@ -339,7 +339,7 @@ class MyAuthListener : public AuthListener {
         return false;
     }
 
-    void AuthenticationComplete(const char* authMechanism, bool success) {
+    void AuthenticationComplete(const char* authMechanism, const char* authPeer, bool success) {
         printf("Authentication %s %s\n", authMechanism, success ? "succesful" : "failed");
     }
 

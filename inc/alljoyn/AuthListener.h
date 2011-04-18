@@ -203,12 +203,15 @@ class AuthListener {
      * Authentication mechanism requests verification of credentials from a remote peer.
      *
      * @param authMechanism  The name of the authentication mechanism issuing the request.
+     * @param peerName       The name of the remote peer being authenticated.  On the initiating
+     *                       side this will be a well-known-name for the remote peer. On the
+     *                       accepting side this will be the unique bus name for the remote peer.
      * @param credentials    The credentials to be verified.
      *
      * @return  The listener should return true if the credentials are acceptable or false if the
      *          credentials are being rejected.
      */
-    virtual bool VerifyCredentials(const char* authMechanism, const Credentials& credentials) { return true; }
+    virtual bool VerifyCredentials(const char* authMechanism, const char* peerName, const Credentials& credentials) { return true; }
 
     /**
      * Optional method that if implemented allows an application to monitor security violations. This
@@ -226,9 +229,12 @@ class AuthListener {
      *
      * @param authMechanism  The name of the authentication mechanism that was used or an empty
      *                       string if the authentication failed.
+     * @param peerName       The name of the remote peer being authenticated.  On the initiating
+     *                       side this will be a well-known-name for the remote peer. On the
+     *                       accepting side this will be the unique bus name for the remote peer.
      * @param success        true if the authentication was successful, otherwise false.
      */
-    virtual void AuthenticationComplete(const char* authMechanism, bool success) = 0;
+    virtual void AuthenticationComplete(const char* authMechanism, const char* peerName, bool success) = 0;
 
 
 };

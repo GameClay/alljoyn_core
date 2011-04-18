@@ -308,7 +308,7 @@ qcc::String AuthMechRSA::Response(const qcc::String& challenge,
         if (status == ER_OK) {
             AuthListener::Credentials creds;
             creds.SetCertChain(remote.certChain.c_str());
-            if (!listener->VerifyCredentials(GetName(), creds)) {
+            if (!listener->VerifyCredentials(GetName(), authPeer.c_str(), creds)) {
                 status = ER_AUTH_FAIL;
             }
         }
@@ -420,7 +420,7 @@ qcc::String AuthMechRSA::Challenge(const qcc::String& response,
         if (status == ER_OK) {
             AuthListener::Credentials creds;
             creds.SetCertChain(remote.certChain.c_str());
-            if (!listener->VerifyCredentials(GetName(), creds)) {
+            if (!listener->VerifyCredentials(GetName(), authPeer.c_str(), creds)) {
                 status = ER_AUTH_FAIL;
             }
         }
