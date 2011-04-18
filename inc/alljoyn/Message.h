@@ -33,47 +33,44 @@
 #include <alljoyn/Session.h>
 #include <Status.h>
 
-#define ALLJOYN_MAX_NAME_LEN          255 /*!<  The maximum length of certain bus names */
-#define ALLJOYN_MAX_PACKET_LEN  134217728 /*!<  The maximum packet length (2^27) is defined by the specification */
-#define ALLJOYN_MAX_ARRAY_LEN    67108864 /*!<  The maximum array length (2^26) is defined by the specification */
+namespace ajn {
+
+static const size_t ALLJOYN_MAX_NAME_LEN   =       255; /*!<  The maximum length of certain bus names */
+static const size_t ALLJOYN_MAX_PACKET_LEN = 134217728; /*!<  The maximum packet length (2^27) is defined by the specification */
+static const size_t ALLJOYN_MAX_ARRAY_LEN  =  67108864; /*!<  The maximum array length (2^26) is defined by the specification */
 
 /** @name Endianess indicators */
 // @{
 /** indicates the bus is little endian */
-#define ALLJOYN_LITTLE_ENDIAN    'l'
+static const uint8_t ALLJOYN_LITTLE_ENDIAN = 'l';
 /** indicates the bus is big endian */
-#define ALLJOYN_BIG_ENDIAN       'B'
+static const uint8_t ALLJOYN_BIG_ENDIAN    = 'B';
 // @}
 
 
 /** @name Flag types */
 // @{
 /** No reply is expected*/
-#define ALLJOYN_FLAG_NO_REPLY_EXPECTED  0x01
+static const uint8_t ALLJOYN_FLAG_NO_REPLY_EXPECTED  = 0x01;
 /** Auto start the service */
-#define ALLJOYN_FLAG_AUTO_START         0x02
+static const uint8_t ALLJOYN_FLAG_AUTO_START         = 0x02;
 /** Allow messages from remote hosts (valid only in Hello message) */
-#define ALLJOYN_FLAG_ALLOW_REMOTE_MSG   0x04
+static const uint8_t ALLJOYN_FLAG_ALLOW_REMOTE_MSG   = 0x04;
 /** Global (bus-to-bus) broadcast */
-#define ALLJOYN_FLAG_GLOBAL_BROADCAST   0x20
+static const uint8_t ALLJOYN_FLAG_GLOBAL_BROADCAST   = 0x20;
 /** Header is compressed */
-#define ALLJOYN_FLAG_COMPRESSED         0x40
+static const uint8_t ALLJOYN_FLAG_COMPRESSED         = 0x40;
 /** Body is encrypted */
-#define ALLJOYN_FLAG_ENCRYPTED          0x80
+static const uint8_t ALLJOYN_FLAG_ENCRYPTED          = 0x80;
 // @}
 
 /** ALLJOYN protocol version */
-#define ALLJOYN_MAJOR_PROTOCOL_VERSION    1
+static const uint8_t ALLJOYN_MAJOR_PROTOCOL_VERSION  = 1;
 
 /*
  * Forward declarations.
  */
-namespace ajn {
 class RemoteEndpoint;
-};
-
-
-namespace ajn {
 
 
 /** Message types */
