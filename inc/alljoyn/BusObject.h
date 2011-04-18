@@ -253,6 +253,52 @@ class BusObject : public MessageReceiver {
      */
     virtual void ObjectUnregistered(void) { isRegistered = false; }
 
+    /**
+     * Default handler for a bus attempt to read a property value.
+     * @remark
+     * A derived class can override this function to provide a custom handler for the GetProp method
+     * call. If overriden the custom handler must compose an appropriate reply message to return the
+     * requested property value.
+     *
+     * @param member   Identifies the org.freedesktop.DBus.Properties.Get method.
+     * @param msg      The Properties.Get request.
+     */
+    virtual void GetProp(const InterfaceDescription::Member* member, Message& msg);
+
+    /**
+     * Default handler for a bus attempt to write a property value.
+     * @remark
+     * A derived class can override this function to provide a custom handler for the SetProp method
+     * call. If overriden the custom handler must compose an appropriate reply message.
+     *
+     * @param member   Identifies the org.freedesktop.DBus.Properties.Set method.
+     * @param msg      The Properties.Set request.
+     */
+    virtual void SetProp(const InterfaceDescription::Member* member, Message& msg);
+
+    /**
+     * Default handler for a bus attempt to read all properties on an interface.
+     * @remark
+     * A derived class can override this function to provide a custom handler for the GetAllProps
+     * method call. If overriden the custom handler must compose an appropriate reply message
+     * listing all properties on this object.
+     *
+     * @param member   Identifies the org.freedesktop.DBus.Properties.GetAll method.
+     * @param msg      The Properties.GetAll request.
+     */
+    virtual void GetAllProps(const InterfaceDescription::Member* member, Message& msg);
+
+    /**
+     * Default handler for a bus attempt to read the object's introspection data.
+     * @remark
+     * A derived class can override this function to provide a custom handler for the GetProp method
+     * call. If overriden the custom handler must compose an appropriate reply message.
+     *
+     * @param member   Identifies the @c org.freedesktop.DBus.Introspectable.Introspect method.
+     * @param msg      The Introspectable.Introspect request.
+     */
+    virtual void Introspect(const InterfaceDescription::Member* member, Message& msg);
+
   private:
 
     /**
@@ -281,38 +327,6 @@ class BusObject : public MessageReceiver {
      *      - #ER_BUS_NO_SUCH_INTERFACE is method can not be added because interface does not exist.
      */
     QStatus DoRegistration();
-
-    /**
-     * Internal handler for a bus attempt to read a property value
-     *
-     * @param member   Identifies the org.freedesktop.DBus.Properties.Get method.
-     * @param msg      The Properties.Get request.
-     */
-    void GetProp(const InterfaceDescription::Member* member, Message& msg);
-
-    /**
-     * Internal handler for a bus attempt to write a property value
-     *
-     * @param member   Identifies the org.freedesktop.DBus.Properties.Set method.
-     * @param msg      The Properties.Set request.
-     */
-    void SetProp(const InterfaceDescription::Member* member, Message& msg);
-
-    /**
-     * Internal handler for a bus attempt to read all properties on an interface
-     *
-     * @param member   Identifies the org.freedesktop.DBus.Properties.GetAll method.
-     * @param msg      The Properties.GetAll request.
-     */
-    void GetAllProps(const InterfaceDescription::Member* member, Message& msg);
-
-    /**
-     * Internal handler for a bus attempt to read the object's introspection data.
-     *
-     * @param member   Identifies the @c org.freedesktop.DBus.Introspectable.Introspect method.
-     * @param msg      The Introspectable.Introspect request.
-     */
-    void Introspect(const InterfaceDescription::Member* member, Message& msg);
 
     /**
      * Returns true if this object implements the given interface.
