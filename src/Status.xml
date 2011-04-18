@@ -120,10 +120,6 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
   <status name="ER_BUS_CANNOT_ADD_INTERFACE" value="0x9064" comment="An interface cannot be added to an object that is already registered."/>
   <status name="ER_BUS_CANNOT_ADD_HANDLER" value="0x9065" comment="A method handler cannot be added to an object that is already registered."/>
   <status name="ER_BUS_KEYSTORE_NOT_LOADED" value="0x9066" comment="Key store has not been loaded"/>
-  <status name="ER_BUS_MEDIA_STREAM_NOT_FOUND" value="0x9067" comment="Media stream was not found"/>
-  <status name="ER_BUS_MEDIA_STREAM_OPEN" value="0x9068" comment="Media stream is open"/>
-  <status name="ER_BUS_MEDIA_STREAM_CLOSED" value="0x9069" comment="Media stream is closed"/>
-  <status name="ER_BUS_MEDIA_STREAM_EXISTS" value="0x906a" comment="Media stream is already added"/>
   <status name="ER_BUS_NO_SUCH_HANDLE" value="0x906b" comment="Handle is not in the handle table"/>
   <status name="ER_BUS_HANDLES_NOT_ENABLED" value="0x906c" comment="Passing of handles is not enabled for this connection"/>
   <status name="ER_BUS_HANDLES_MISMATCH" value="0x906d" comment="Message had more handles than expected"/>
@@ -132,7 +128,6 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
   <status name="ER_BUS_ELEMENT_NOT_FOUND" value="0x9070" comment="Dictionary element was not found"/>
   <status name="ER_BUS_NOT_A_DICTIONARY" value="0x9071" comment="MsgArg was not an array of dictionary elements"/>
   <status name="ER_BUS_WAIT_FAILED" value="0x9072" comment="Wait failed"/>
-  <status name="ER_BUS_INVALID_MEDIA_TYPE" value="0x9073" comment="Unexpected mimetype for the media"/>
   <status name="ER_BUS_BAD_SESSION_OPTS" value="0x9074" comment="Session options are bad or incompatible"/>
   <status name="ER_BUS_CONNECTION_REJECTED" value="0x9075" comment="Incoming connection rejected"/>
   <status name="ER_DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER" value="0x9076" comment="RequestName reply: Name was successfully obtained"/>
