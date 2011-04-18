@@ -975,7 +975,6 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
             }
         } else {
             /* This daemon will attempt to route indirectly to dest */
-
             virtualEndpointsLock.Unlock();
             discoverMapLock.Unlock();
             router.UnlockNameTable();
@@ -1021,13 +1020,13 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                                            optsIn, replyCode, tempId, tempOpts, replyArgs[3]);
 
                 /* If successful, add bi-directional session routes */
+                router.LockNameTable();
+                discoverMapLock.Lock();
+                virtualEndpointsLock.Lock();
                 if ((status == ER_OK) && (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS)) {
 
                     /* Wait for dest to appear with a route through b2bEp */
                     uint32_t startTime = GetTimestamp();
-                    router.LockNameTable();
-                    discoverMapLock.Lock();
-                    virtualEndpointsLock.Lock();
                     VirtualEndpoint* vDestEp = NULL;
                     while (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
                         /* Does vSessionEp route through b2bEp? If so, we're done */
