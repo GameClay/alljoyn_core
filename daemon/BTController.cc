@@ -1470,7 +1470,6 @@ void BTController::ImportState(MsgArg* nodeStateEntries,
     BTNodeInfo node;
     BTNodeInfo connectingNode(addr);
     connectingNode->SetDirectMinion(true);
-    connectingNode->SetConnectNode(self);
 
     for (i = 0; i < numNodeStates; ++i) {
         char* bn;

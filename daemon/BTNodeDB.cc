@@ -126,7 +126,6 @@ BTNodeInfo BTNodeDB::FindDirectMinion(const BTNodeInfo& start, const BTNodeInfo&
     } while ((!(*next)->IsDirectMinion() || (*next == skip)) && ((*next) != start));
     BTNodeInfo node = *next;
     Unlock();
-    assert(start->GetConnectAddress() == node->GetConnectAddress());
     return node;
 }
 
