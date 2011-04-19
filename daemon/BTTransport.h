@@ -430,6 +430,11 @@ class BTTransport :
                                   BTNodeDB& adInfo);
 
 
+    RemoteEndpoint* LookupEndpoint(const qcc::String& busName);
+    void ReturnEndpoint(RemoteEndpoint* ep);
+    QStatus Disconnect(const qcc::String& busName);
+
+
     BusAttachment& bus;                            /**< The message bus for this transport */
     BTAccessor* btAccessor;                        /**< Object for accessing the Bluetooth device */
     BTController* btController;                    /**< Bus Object that manages the BT topology */

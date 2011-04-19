@@ -123,8 +123,8 @@ class BluetoothDeviceInterface {
     /**
      * Tells the Bluetooth transport to start listening for incoming connections.
      *
-     * @param addr      [OUT] BD Address of the adapter listening for connections
-     * @param psm       [OUT] L2CAP PSM allocated
+     * @param addr[out] BD Address of the adapter listening for connections
+     * @param psm[out]  L2CAP PSM allocated
      *
      * @return  ER_OK if successful
      */
@@ -140,11 +140,11 @@ class BluetoothDeviceInterface {
      * Retrieves the information from the specified device necessary to
      * establish a connection and get the list of advertised names.
      *
-     * @param addr      BD address of the device of interest.
-     * @param uuidRev   [OUT] UUID revision number.
-     * @param connAddr  [OUT] BD address of the connectable device.
-     * @param psm       [OUT] L2CAP PSM that is accepting AllJoyn connections.
-     * @param adInfo    [OUT] Advertisement information.
+     * @param addr          BD address of the device of interest.
+     * @param uuidRev[out]  UUID revision number.
+     * @param connAddr[out] BD address of the connectable device.
+     * @param psm[out]      L2CAP PSM that is accepting AllJoyn connections.
+     * @param adInfo[out]   Advertisement information.
      *
      * @return  ER_OK if successful
      */
@@ -156,7 +156,9 @@ class BluetoothDeviceInterface {
 
     virtual QStatus Connect(const BTBusAddress& addr) = 0;
 
-    virtual QStatus Disconnect(const BTBusAddress& addr) = 0;
+    virtual QStatus Disconnect(const qcc::String& busName) = 0;
+    virtual void ReturnEndpoint(RemoteEndpoint* ep) = 0;
+    virtual RemoteEndpoint* LookupEndpoint(const qcc::String& busName) = 0;
 };
 
 
@@ -374,9 +376,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
 
     struct AdvertiseNameArgInfo : public NameArgInfo {
         std::vector<MsgArg> adInfoArgs;
-        AdvertiseNameArgInfo(BTController& bto, qcc::Timer& dispatcher) :
-            NameArgInfo(bto, 5, dispatcher)
-        { }
+        AdvertiseNameArgInfo(BTController& bto, qcc::Timer& dispatcher);
         void AddName(const qcc::String& name, BTNodeInfo& node);
         void RemoveName(const qcc::String& name, BTNodeInfo& node);
         void SetArgs();
@@ -392,9 +392,7 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
         qcc::String resultDest;
         BDAddressSet ignoreAddrs;
         std::vector<uint64_t> ignoreAddrsCache;
-        FindNameArgInfo(BTController& bto, qcc::Timer& dispatcher) :
-            NameArgInfo(bto, 3, dispatcher)
-        { }
+        FindNameArgInfo(BTController& bto, qcc::Timer& dispatcher);
         void AddName(const qcc::String& name, BTNodeInfo& node);
         void RemoveName(const qcc::String& name, BTNodeInfo& node);
         void SetArgs();
@@ -547,16 +545,25 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      * Update the internal state information for other nodes based on incoming
      * message args.
      *
-     * @param nodeStateEntries  List of message args containing the remote
+     * @param addr              BT bus address of the newly connected minion
+     *                          node.
+     * @param nodeStateArgs     List of message args containing the remote
      *                          node's state information.
      * @param numNodeStates     Number of node state entries in the message arg
      *                          list.
-     * @param addr              BT bus address of the newly connected minion
-     *                          node.
+     * @param foundNodeArgs     List of message args containing the found node
+     *                          known by the remote node.
+     * @param numFoundNodes     Number of found nodes in the message arg list.
+     *
+     * @return
+     *         - #ER_OK success
+     *         - #ER_FAIL failed to import state information
      */
-    void ImportState(MsgArg* nodeStateEntries,
-                     size_t numNodeStates,
-                     const BTBusAddress& addr);
+    QStatus ImportState(const BTBusAddress& addr,
+                        MsgArg* nodeStateEntries,
+                        size_t numNodeStates,
+                        MsgArg* foundNodeArgs,
+                        size_t numFoundNodes);
 
     /**
      * Updates the find/advertise name information on the minion assigned to
@@ -576,14 +583,42 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      *
      * @param entries   Array of MsgArgs all with type dict entry:
      *                  - Key: Bus GUID associated with advertise names
-     *                  - Value: Array of bus names advertised by device with associated Bus GUID
+     *                  - Value: Array of bus names advertised by device with
+     *                           associated Bus GUID
      * @param size      Number of entries in the array
      * @param adInfo    Advertisement information to be filled
      *
      * @return  ER_OK if advertisment information successfully extracted.
      */
-    static QStatus ExtractAdInfo(const MsgArg* entries, size_t size, BTNodeDB& adInfo);
+    static QStatus ExtractAdInfo(const MsgArg* entries,
+                                 size_t size,
+                                 BTNodeDB& adInfo);
 
+    /**
+     * Convenience function for filling a vector of MsgArgs with advertise
+     * name information.
+     *
+     * @param args[out] vector of MsgArgs to fill.
+     * @param adInfo    source advertisement information
+     */
+    static void FillAdvertiseNamesMsgArgs(std::vector<MsgArg>& args,
+                                          const BTNodeDB& adInfo);
+
+    /**
+     * Convenience function for filling a vector of MsgArgs with the node
+     * state information.
+     *
+     * @param args[out] vector of MsgArgs to fill.
+     */
+    void FillNodeStateMsgArgs(std::vector<MsgArg>& args) const;
+
+    /**
+     * Convenience function for filling a vector of MsgArgs with the set of
+     * found nodes.
+     *
+     * @param args[out] vector of MsgArgs to fill.
+     */
+    void FillFoundNodesMsgArgs(std::vector<MsgArg>& args) const;
 
     void AlarmTriggered(const qcc::Alarm& alarm, QStatus reason);
 

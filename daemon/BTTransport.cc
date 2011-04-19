@@ -564,4 +564,40 @@ QStatus BTTransport::Disconnect(const BTBusAddress& addr)
     return btAccessor->Disconnect(addr);
 }
 
+
+RemoteEndpoint* BTTransport::LookupEndpoint(const qcc::String& busName)
+{
+    RemoteEndpoint* ep = NULL;
+    vector<RemoteEndpoint*>::iterator eit;
+    threadListLock.Lock();
+    for (eit = threadList.begin(); eit != threadList.end(); ++eit) {
+        if ((*eit)->GetRemoteName() == busName) {
+            ep = *eit;
+            break;
+        }
+    }
+    return ep;
+}
+
+
+void BTTransport::ReturnEndpoint(RemoteEndpoint* ep) {
+    if (find(threadList.begin(), threadList.end(), ep) != threadList.end()) {
+        threadListLock.Unlock();
+    }
+}
+
+
+QStatus BTTransport::Disconnect(const qcc::String& busName)
+{
+    QStatus status = ER_OK;
+    RemoteEndpoint* ep = LookupEndpoint(busName);
+    if (ep) {
+        ReturnEndpoint(ep);
+        status = ep->Stop();
+    }
+
+    return status;
+}
+
+
 }

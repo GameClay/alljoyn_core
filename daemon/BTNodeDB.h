@@ -31,8 +31,6 @@
 #include <qcc/String.h>
 #include <qcc/StringUtil.h>
 
-#include <alljoyn/MsgArg.h>
-
 #include "BDAddress.h"
 #include "BTTransportConsts.h"
 #include "Transport.h"
@@ -599,14 +597,6 @@ class BTNodeDB {
     BTNodeInfo FindDirectMinion(const BTNodeInfo& start, const BTNodeInfo& skip) const;
 
     /**
-     * Convenience function for filling a vector of MsgArgs based on
-     * information found in DB.
-     *
-     * @param arg   [OUT] vector of MsgArgs to fill.
-     */
-    void FillNodeStateMsgArgs(std::vector<MsgArg>& arg) const;
-
-    /**
      * Add a node to the DB.
      *
      * @param node  Node to be added to the DB.
@@ -698,6 +688,11 @@ class BTNodeDB {
         Unlock();
         return size;
     }
+
+    /**
+     * Clear out the DB.
+     */
+    void Clear() { nodes.clear(); addrMap.clear(); nameMap.clear(); }
 
 #ifndef NDEBUG
     void DumpTable(const char* info) const;

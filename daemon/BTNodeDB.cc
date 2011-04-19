@@ -130,51 +130,6 @@ BTNodeInfo BTNodeDB::FindDirectMinion(const BTNodeInfo& start, const BTNodeInfo&
 }
 
 
-void BTNodeDB::FillNodeStateMsgArgs(vector<MsgArg>& arg) const
-{
-    arg.reserve(nodes.size());
-    const_iterator it;
-    Lock();
-    for (it = Begin(); it != End(); ++it) {
-        const BTNodeInfo& node = *it;
-        QCC_DbgPrintf(("    Node %s:", node->GetUniqueName().c_str()));
-        NameSet::const_iterator nit;
-
-        /*
-         * It is acceptable to use a local vector<char*> here because when the
-         * array is passed into MsgArg, it will copy the pointer value into
-         * another array instead of using the address of the passed in array.
-         * The char*, however, must remain valid for the lifetime of the
-         * MsgArg since the strings themselves are _not_ copied.  In the case
-         * here, the char* come from strings stored in the class's node state
-         * table and thus have a lifetime that exceeds the generated MsgArg.
-         */
-        vector<const char*> nodeAdNames;
-        nodeAdNames.reserve(node->AdvertiseNamesSize());
-        for (nit = node->GetAdvertiseNamesBegin(); nit != node->GetAdvertiseNamesEnd(); ++nit) {
-            QCC_DbgPrintf(("        Ad name: %s", nit->c_str()));
-            nodeAdNames.push_back(nit->c_str());
-        }
-
-        vector<const char*> nodeFindNames;
-        nodeFindNames.reserve(node->FindNamesSize());
-        for (nit = node->GetFindNamesBegin(); nit != node->GetFindNamesEnd(); ++nit) {
-            QCC_DbgPrintf(("        Find name: %s", nit->c_str()));
-            nodeFindNames.push_back(nit->c_str());
-        }
-
-        arg.push_back(MsgArg("(sstqasas)", //SIG_NODE_STATE_ENTRY,
-                             node->GetGUID().c_str(),
-                             node->GetUniqueName().c_str(),
-                             node->GetBusAddress().addr.GetRaw(),
-                             node->GetBusAddress().psm,
-                             nodeAdNames.size(), &nodeAdNames.front(),
-                             nodeFindNames.size(), &nodeFindNames.front()));
-    }
-    Unlock();
-}
-
-
 void BTNodeDB::Diff(const BTNodeDB& other, BTNodeDB* added, BTNodeDB* removed) const
 {
     Lock();
