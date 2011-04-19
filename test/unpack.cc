@@ -343,6 +343,82 @@ int main(int argc, char** argv)
         }
     }
 
+
+    /*
+     * Array of struct with array of struct
+     */
+    if (status == ER_OK) {
+        int gen = 0;
+        MsgArg arg;
+        MsgArg outer[2];
+        size_t i, j;
+        for (i = 0; i < ArraySize(outer); ++i) {
+            MsgArg inner[2];
+            for (j = 0; j < ArraySize(inner); ++j) {
+                ++gen;
+                status = inner[j].Set("(i)", gen);
+                if (status != ER_OK) {
+                    QCC_SyncPrintf("\nFailed to set inner - gen = %d  i = %u  j = %u  status = %s\n", gen, i, j, QCC_StatusText(status));
+                    break;
+                }
+            }
+            if (status != ER_OK) {
+                break;
+            }
+            ++gen;
+            status = outer[i].Set("(ia(i))", gen, ArraySize(inner), inner);
+            if (status != ER_OK) {
+                QCC_SyncPrintf("\nFailed to set outer - gen = %d  i = %u  j = %u  status = %s\n", gen, i, j, QCC_StatusText(status));
+                break;
+            }
+            outer[i].Stabilize();
+            QCC_SyncPrintf("outer[%u] = %s\n", i, outer[i].ToString().c_str());
+        }
+
+        for (i = 0; i < ArraySize(outer); ++i) {
+            QCC_SyncPrintf("outer[%u] = %s\n", i, outer[i].ToString().c_str());
+        }
+
+
+        if (status == ER_OK) {
+            status = arg.Set("a(ia(i))", ArraySize(outer), outer);
+            if (status != ER_OK) {
+                QCC_SyncPrintf("\nFailed to set arg - status = %s\n", QCC_StatusText(status));
+            } else {
+                QCC_SyncPrintf("\narg:\n%s\n", arg.ToString().c_str());
+                MsgArg* outerRet;
+                size_t outerRetSize;
+                MsgArg* innerRet;
+                size_t innerRetSize;
+                status = arg.Get("a(ia(i))", &outerRetSize, &outerRet);
+                if (status != ER_OK) {
+                    QCC_SyncPrintf("\nFailed to get arg - status = %s\n", QCC_StatusText(status));
+                } else {
+                    for (i = 0; i < outerRetSize; ++i) {
+                        int r1;
+                        status = outerRet[i].Get("(ia(i))", &r1, &innerRetSize, &innerRet);
+                        if (status != ER_OK) {
+                            QCC_SyncPrintf("\nFailed to get outer - i = %u status = %s\n", i, QCC_StatusText(status));
+                            break;
+                        }
+                        for (j = 0; j < innerRetSize; ++j) {
+                            int r3;
+
+                            status = innerRet[j].Get("(i)", &r3);
+                            if (status != ER_OK) {
+                                QCC_SyncPrintf("\nFailed to get inner - i = %u  j = %u  status = %s\n%s", i, j, QCC_StatusText(status), innerRet[j].ToString().c_str());
+                                break;
+                            }
+                        }
+                        if (status != ER_OK) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     if (status == ER_OK) {
         QCC_SyncPrintf("\nPASSED\n");
     } else {
