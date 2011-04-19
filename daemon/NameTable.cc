@@ -336,6 +336,10 @@ void NameTable::RemoveVirtualAliases(VirtualEndpoint& ep)
     map<qcc::StringMapKey, VirtualEndpoint*>::iterator vit = virtualAliasNames.begin();
     while (vit != virtualAliasNames.end()) {
         if (vit->second == &ep) {
+            String alias = vit->first.c_str();
+            if (aliasNames.find(alias) == aliasNames.end()) {
+                CallListeners(alias, &ep.GetUniqueName(), NULL);
+            }
             virtualAliasNames.erase(vit++);
         } else {
             ++vit;
