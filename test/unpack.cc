@@ -124,7 +124,7 @@ int main(int argc, char** argv)
         if (status == ER_OK) {
             int64_t* p64;
             size_t p64len;
-            status = arg.Get("((iuiu)(yd)at)", &i, &u, &i, &u, &y, d, &p64len, &p64);
+            status = arg.Get("((iuiu)(yd)at)", &i, &u, &i, &u, &y, &d, &p64len, &p64);
         }
     }
     /*
@@ -372,20 +372,13 @@ int main(int argc, char** argv)
                 break;
             }
             outer[i].Stabilize();
-            QCC_SyncPrintf("outer[%u] = %s\n", i, outer[i].ToString().c_str());
         }
-
-        for (i = 0; i < ArraySize(outer); ++i) {
-            QCC_SyncPrintf("outer[%u] = %s\n", i, outer[i].ToString().c_str());
-        }
-
 
         if (status == ER_OK) {
             status = arg.Set("a(ia(i))", ArraySize(outer), outer);
             if (status != ER_OK) {
                 QCC_SyncPrintf("\nFailed to set arg - status = %s\n", QCC_StatusText(status));
             } else {
-                QCC_SyncPrintf("\narg:\n%s\n", arg.ToString().c_str());
                 MsgArg* outerRet;
                 size_t outerRetSize;
                 MsgArg* innerRet;
