@@ -32,4 +32,3 @@ elif env['OS'] == 'linux':
     env.Install(clientDistDir, env.Glob('linux/Make*'))
 elif env['OS'] == 'windows':
     env.Program('chat', ['linux/chat.cc'])
-    env.Install('$DISTDIR/bin/samples', ['chat'])
