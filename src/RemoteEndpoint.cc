@@ -308,7 +308,6 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
             }
         }
     }
-
     if ((ER_OK != status) && (ER_STOPPING_THREAD != status) && (ER_SOCK_OTHER_END_CLOSED != status)) {
         QCC_LogError(status, ("Endpoint Rx thread (%s) exiting", GetName().c_str()));
     }
@@ -335,12 +334,11 @@ void* RemoteEndpoint::TxThread::Run(void* arg)
         if (!IsStopping() && (ER_ALERTED_THREAD == status)) {
             stopEvent.ResetEvent();
             status = ER_OK;
+            queueLock.Lock();
             while (!queue.empty() && !IsStopping()) {
-                queueLock.Lock();
 
                 /* Get next message */
                 Message msg = queue.back();
-                queue.pop_back();
 
                 /* Alert next thread on wait queue */
                 if (0 < waitQueue.size()) {
@@ -356,10 +354,12 @@ void* RemoteEndpoint::TxThread::Run(void* arg)
 
                 /* Deliver message */
                 status = msg->Deliver(*ep);
+                queueLock.Lock();
+                queue.pop_back();
             }
+            queueLock.Unlock();
         }
     }
-
     /* Wake any thread waiting on tx queue availability */
     queueLock.Lock();
     while (0 < waitQueue.size()) {

@@ -1398,20 +1398,17 @@ void AllJoynObj::GetSessionFd(const InterfaceDescription::Member* member, Messag
 
     QCC_DbgTrace(("AllJoynObj::GetSessionFd(%d)", id));
 
-    /* Check for a raw fd waiting to be retrieved */
+    /* Wait for any join related operations to complete before returning fd */
     sessionMapLock.Lock();
     map<pair<String, SessionId>, SessionMapEntry>::iterator it = sessionMap.find(pair<String, SessionId>(msg->GetSender(), id));
-    if (it != sessionMap.end()) {
-        /* Force shutdown the endpoint if it isn't already */
-        if (it->second.streamingEp) {
-            status = ShutdownEndpoint(*it->second.streamingEp, it->second.fd);
-            if (status != ER_OK) {
-                QCC_LogError(status, ("Failed to shutdown raw endpoint"));
-            }
-            it->second.streamingEp = NULL;
+    if ((it != sessionMap.end()) && (it->second.opts.traffic != SessionOpts::TRAFFIC_MESSAGES)) {
+        uint32_t ts = GetTimestamp();
+        while ((it != sessionMap.end()) && ((sockFd = it->second.fd) == -1) && ((ts + 5000) > GetTimestamp())) {
+            sessionMapLock.Unlock();
+            qcc::Sleep(5);
+            sessionMapLock.Lock();
+            it = sessionMap.find(pair<String, SessionId>(msg->GetSender(), id));
         }
-        sockFd = it->second.fd;
-        it->second.fd = -1;
     }
     sessionMapLock.Unlock();
 
