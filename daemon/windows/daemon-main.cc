@@ -51,7 +51,7 @@
 #ifdef _USRDLL
 
 #define DAEMONLIBRARY_EXPORTS
-#include ".\WinService\DaemonLib.h"
+#include "DaemonLib.h"
 
 #include <share.h>
 
