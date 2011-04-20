@@ -291,6 +291,46 @@ bool MsgArg::HasSignature(const char* signature) const
 
 void MsgArg::Stabilize()
 {
+    /*
+     * If the MsgArg doesn't own the MsgArgs it references they need to be cloned.
+     */
+    if (!(flags & OwnsArgs)) {
+        MsgArg* tmp;
+        flags |= OwnsArgs;
+        switch (typeId) {
+        case ALLJOYN_DICT_ENTRY:
+            v_dictEntry.key = new MsgArg(*v_dictEntry.key);
+            v_dictEntry.val = new MsgArg(*v_dictEntry.val);
+            break;
+
+        case ALLJOYN_STRUCT:
+            tmp = new MsgArg[v_struct.numMembers];
+            for (size_t i = 0; i < v_struct.numMembers; i++) {
+                Clone(tmp[i], v_struct.members[i]);
+            }
+            v_struct.members = tmp;
+            break;
+
+        case ALLJOYN_ARRAY:
+            tmp = new MsgArg[v_array.numElements];
+            for (size_t i = 0; i < v_array.numElements; i++) {
+                Clone(tmp[i], v_array.elements[i]);
+            }
+            v_array.elements = tmp;
+            break;
+
+        case ALLJOYN_VARIANT:
+            v_variant.val = new MsgArg(*v_variant.val);
+            break;
+
+        default:
+            /* Nothing to do for the remaining types */
+            break;
+        }
+    }
+    /*
+     * If the MsgArg doesn't own the data it references directly or indirectly the data needs to be copied.
+     */
     if (!(flags & OwnsData)) {
         void* tmp;
         flags |= OwnsData;
@@ -353,38 +393,13 @@ void MsgArg::Stabilize()
             }
             break;
 
-        default:
-            /* Nothing to do for the remaining types */
-            break;
-        }
-    }
-    if (!(flags & OwnsArgs)) {
-        MsgArg* tmp;
-        flags |= OwnsArgs;
-        switch (typeId) {
         case ALLJOYN_DICT_ENTRY:
-            v_dictEntry.key = new MsgArg(*v_dictEntry.key);
-            v_dictEntry.val = new MsgArg(*v_dictEntry.val);
-            break;
-
-        case ALLJOYN_STRUCT:
-            tmp = new MsgArg[v_struct.numMembers];
-            for (size_t i = 0; i < v_struct.numMembers; i++) {
-                Clone(tmp[i], v_struct.members[i]);
-            }
-            v_struct.members = tmp;
-            break;
-
-        case ALLJOYN_ARRAY:
-            tmp = new MsgArg[v_array.numElements];
-            for (size_t i = 0; i < v_array.numElements; i++) {
-                Clone(tmp[i], v_array.elements[i]);
-            }
-            v_array.elements = tmp;
+            v_dictEntry.key->Stabilize();
+            v_dictEntry.val->Stabilize();
             break;
 
         case ALLJOYN_VARIANT:
-            v_variant.val = new MsgArg(*v_variant.val);
+            v_variant.val->Stabilize();
             break;
 
         default:
