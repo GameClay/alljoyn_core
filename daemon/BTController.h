@@ -181,6 +181,13 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     ~BTController();
 
     /**
+     * Called by the message bus when the object has been successfully
+     * registered. The object can perform any initialization such as adding
+     * match rules at this time.
+     */
+    void ObjectRegistered();
+
+    /**
      * Initialize and register this DBusObj instance.
      *
      * @return ER_OK if successful.

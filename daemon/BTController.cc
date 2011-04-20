@@ -126,6 +126,7 @@ BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
     maxConnections(min(StringToU32(Environ::GetAppEnviron()->Find("ALLJOYN_MAX_BT_CONNECTIONS"), 0, DEFAULT_MAX_CONNECTIONS),
                        ABSOLUTE_MAX_CONNECTIONS)),
     listening(false),
+    devAvailable(false),
     advertise(*this, bus.GetInternal().GetDispatcher()),
     find(*this, bus.GetInternal().GetDispatcher())
 {
@@ -162,6 +163,11 @@ BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
     find.delegateSignal = org.alljoyn.Bus.BTController.DelegateFind;
 
     static_cast<DaemonRouter&>(bus.GetInternal().GetRouter()).AddBusNameListener(this);
+
+    // Setup the BT node info for ourself.
+    self->SetGUID(bus.GetGlobalGUIDString());
+    advertise.minion = self;
+    find.minion = self;
 }
 
 
@@ -174,6 +180,12 @@ BTController::~BTController()
     if (master) {
         delete master;
     }
+}
+
+
+void BTController::ObjectRegistered() {
+    // Set our unique name now that we know it.
+    self->SetUniqueName(bus.GetUniqueName());
 }
 
 
@@ -698,7 +710,7 @@ void BTController::PostConnect(QStatus status, const RemoteEndpoint* ep)
 
 void BTController::BTDeviceAvailable(bool on)
 {
-    QCC_DbgPrintf(("BTController::BTDevicePower(<%s>)", on ? "on" : "off"));
+    QCC_DbgPrintf(("BTController::BTDeviceAvailable(<%s>)", on ? "on" : "off"));
     devAvailable = on;
     if (IsMaster()) {
         lock.Lock();
@@ -706,16 +718,18 @@ void BTController::BTDeviceAvailable(bool on)
             BTBusAddress addr;
             QStatus status = bt.StartListen(listenAddr.addr, listenAddr.psm);
             if (status == ER_OK) {
+                assert(listenAddr.IsValid());
                 listening = true;
                 nodeDB.Lock();
-                if (!self->IsValid()) {
-                    self = BTNodeInfo(listenAddr, bus.GetUniqueName(), bus.GetGlobalGUIDString());
-                    advertise.minion = self;
-                    find.minion = self;
-                    nodeDB.AddNode(self);
-                } else {
+                if (listenAddr != self->GetBusAddress()) {
+                    if (self->IsValid()) {
+                        // Gotta remove it from the DB since the DB has it indexed
+                        // on the BusAddress which changed.
+                        nodeDB.RemoveNode(self);
+                    }
                     self->SetBusAddress(listenAddr);
-                }
+                    nodeDB.AddNode(self);
+                } // else 'self' is already in nodeDB with the correct BusAddress.
                 BDAddressSet ignoreAddrs;
                 BTNodeDB::const_iterator it;
                 for (it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
