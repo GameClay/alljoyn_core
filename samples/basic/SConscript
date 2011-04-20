@@ -14,6 +14,7 @@
 # 
 
 Import('env')
+clientDistDir = '$DISTDIR/samples/basic'
 
 # Sample Programs
 progs = [
@@ -25,4 +26,10 @@ progs = [
     ]
 
 if 'linux' == env['OS']:
-    env.Install('$DISTDIR/bin/samples/basic', env.Glob('progs'))
+    env.Install('$DISTDIR/bin/samples', progs )
+    env.Install(clientDistDir, env.Glob('*.cc'))
+    env.Install(clientDistDir, env.Glob('Make*'))
+    env.Install(clientDistDir, env.Glob('README*'))
+elif env['OS'] == 'windows':
+    env.Install('$DISTDIR/bin/samples', progs )
+    env.Install(clientDistDir, env.Glob('*.cc'))
