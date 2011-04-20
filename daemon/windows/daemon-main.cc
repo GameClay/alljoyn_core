@@ -35,6 +35,7 @@
 #include <qcc/Environ.h>
 #include <qcc/StringSource.h>
 #include <qcc/Util.h>
+#include <qcc/FileStream.h>
 
 #include <alljoyn/version.h>
 
@@ -46,6 +47,15 @@
 #include "BusController.h"
 #include "ConfigDB.h"
 #include "BusInternal.h"
+
+#ifdef _USRDLL
+
+#define DAEMONLIBRARY_EXPORTS
+#include ".\WinService\DaemonLib.h"
+
+#include <share.h>
+
+#endif
 
 #define DAEMON_EXIT_OK            0
 #define DAEMON_EXIT_OPTION_ERROR  1
@@ -317,12 +327,24 @@ int daemon(OptParse& opts)
     return DAEMON_EXIT_OK;
 }
 
+#ifdef _USRDLL
 
+DAEMONLIBRARY_API int LoadDaemon(int argc, char** argv)
+#else
 int main(int argc, char** argv, char** env)
+#endif
 {
     LoggerSetting* loggerSettings(LoggerSetting::GetLoggerSetting(argv[0]));
     loggerSettings->SetSyslog(false);
+
+#ifdef _USRDLL
+	FILE * pFile = _fsopen(g_logFilePathName ,"a+", _SH_DENYNO);
+	if (pFile==NULL)
+		return 911;
+    loggerSettings->SetFile(pFile);
+#else
     loggerSettings->SetFile(stdout);
+#endif
 
     OptParse opts(argc, argv);
     OptParse::ParseResultCode parseCode(opts.ParseResult());
