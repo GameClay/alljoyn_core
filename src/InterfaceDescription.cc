@@ -98,7 +98,8 @@ InterfaceDescription& InterfaceDescription::operator=(const InterfaceDescription
 {
     if (this != &other) {
         name = other.name;
-        defs = new Definitions(other.defs->members, other.defs->properties);
+        defs->members = other.defs->members;
+        defs->properties = other.defs->properties;
         secure = other.secure;
 
         /* Update the iface pointer in each member */
@@ -174,6 +175,10 @@ QStatus InterfaceDescription::AddMember(AllJoynMessageType type,
                                         const char* argNames,
                                         uint8_t annotation)
 {
+    if (isActivated) {
+        return ER_BUS_INTERFACE_ACTIVATED;
+    }
+
     StringMapKey key = qcc::String(name);
     Member member(this, type, name, inSig, outSig, argNames, annotation);
     pair<StringMapKey, Member> item(key, member);
@@ -183,6 +188,10 @@ QStatus InterfaceDescription::AddMember(AllJoynMessageType type,
 
 QStatus InterfaceDescription::AddProperty(const char* name, const char* signature, uint8_t access)
 {
+    if (isActivated) {
+        return ER_BUS_INTERFACE_ACTIVATED;
+    }
+
     StringMapKey key = qcc::String(name);
     Property prop(name, signature, access);
     pair<StringMapKey, Property> item(key, prop);

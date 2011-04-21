@@ -163,4 +163,5 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
   <status name="ER_ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_SUCCESS" value="0x9094" comment="CancelFindAdvertisedName reply: Success"/>
   <status name="ER_ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_FAILED" value="0x9095" comment="CancelFindAdvertisedName reply: Failed"/>
   <status name="ER_BUS_UNEXPECTED_DISPOSITION" value="0x9096" comment="An unexpected disposition was returned and has been treated as an error"/>
+  <status name="ER_BUS_INTERFACE_ACTIVATED" value="0x9097" comment="An InterfaceDescription cannot be modified once activated"/>
 </status_block>
