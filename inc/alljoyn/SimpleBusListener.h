@@ -5,7 +5,7 @@
  */
 
 /******************************************************************************
- * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2011, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -37,8 +37,6 @@ namespace ajn {
 static const uint32_t BUS_EVENT_FOUND_ADVERTISED_NAME = 0x0001;
 static const uint32_t BUS_EVENT_LOST_ADVERTISED_NAME  = 0x0002;
 static const uint32_t BUS_EVENT_NAME_OWNER_CHANGED    = 0x0004;
-static const uint32_t BUS_EVENT_SESSION_LOST          = 0x0008;
-static const uint32_t BUS_EVENT_ACCEPT_SESSION_JOINER = 0x0010;
 static const uint32_t BUS_EVENT_ALL                   = 0x00FF;
 static const uint32_t BUS_EVENT_NONE                  = 0x0000;
 
@@ -87,14 +85,6 @@ class SimpleBusListener : public BusListener {
                 const char* previousOwner; ///< The unique name that previously owned the name or NULL if there was no previous owner.
                 const char* newOwner;      ///< The unique name that now owns the name or NULL if the there is no new owner.
             } nameOwnerChanged;
-            struct {
-                SessionId sessionId;     ///< Id of session that was lost.
-            } sessionLost;
-            struct {
-                SessionPort sessionPort;        ///< Name of session.
-                const char* joiner;             ///< Unique name of potential joiner.
-                const SessionOpts* sessionOpts; ///< Incoming session options.
-            } acceptSessionJoiner;
         };
 
         /**
@@ -115,13 +105,9 @@ class SimpleBusListener : public BusListener {
       private:
 
         /**
-         * @internal  Storage for the busEvent strings.
+         * @internal  Storage for the BusEvent strings.
          */
         qcc::String strings[3];
-        /**
-         * @internal  Storage for session options.
-         */
-        SessionOpts sessionOpts;
     };
 
     /**
@@ -139,15 +125,7 @@ class SimpleBusListener : public BusListener {
     QStatus WaitForEvent(BusEvent& busEvent, uint32_t timeout = FOREVER);
 
     /**
-     * On receiving an ACCEPT_SESSION busEvent the application must call this function to accept or
-     * reject the session request. Calling WaitForEvent will automatically reject the session request.
-     *
-     * @param accept  Select or reject this session request.
-     */
-    QStatus AcceptSessionJoiner(bool accept);
-
-    /**
-     * Desctructor.
+     * Destructor.
      */
     ~SimpleBusListener();
 
@@ -177,9 +155,6 @@ class SimpleBusListener : public BusListener {
     void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix);
     void LostAdvertisedName(const char* name, const char* namePrefix);
     void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner);
-    void SessionLost(const SessionId& sessionId);
-    bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts);
-    void SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner);
 
     /**
      * @internal

@@ -5,7 +5,7 @@
  */
 
 /******************************************************************************
- * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ * Copyright 2011, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -74,17 +74,6 @@ SimpleBusListener::BusEvent& SimpleBusListener::BusEvent::operator=(const BusEve
         nameOwnerChanged.newOwner = CopyIn(strings[2], other.nameOwnerChanged.newOwner);
         break;
 
-    case BUS_EVENT_SESSION_LOST:
-        sessionLost.sessionId = other.sessionLost.sessionId;
-        break;
-
-    case BUS_EVENT_ACCEPT_SESSION_JOINER:
-        acceptSessionJoiner.sessionPort = other.acceptSessionJoiner.sessionPort;
-        acceptSessionJoiner.joiner = CopyIn(strings[1], other.acceptSessionJoiner.joiner);
-        sessionOpts = *other.acceptSessionJoiner.sessionOpts;
-        acceptSessionJoiner.sessionOpts = &sessionOpts;
-        break;
-
     default:
         break;
     }
@@ -93,13 +82,11 @@ SimpleBusListener::BusEvent& SimpleBusListener::BusEvent::operator=(const BusEve
 
 class SimpleBusListener::Internal {
   public:
-    Internal() : bus(NULL), acceptEvent(NULL), accepted(false), waiter(false) { }
+    Internal() : bus(NULL), waiter(false) { }
     Event waitEvent;
     qcc::Mutex lock;
     std::queue<BusEvent> eventQueue;
     BusAttachment* bus;
-    Event* acceptEvent;
-    bool accepted;
     bool waiter;
 
     void QueueEvent(BusEvent& ev) {
@@ -149,84 +136,10 @@ void SimpleBusListener::NameOwnerChanged(const char* busName, const char* previo
     }
 }
 
-void SimpleBusListener::SessionLost(const SessionId& sessionId)
-{
-    if (enabled & BUS_EVENT_SESSION_LOST) {
-        BusEvent busEvent;
-        busEvent.eventType = BUS_EVENT_SESSION_LOST;
-        busEvent.sessionLost.sessionId = sessionId;
-        internal.QueueEvent(busEvent);
-    }
-}
-
-bool SimpleBusListener::AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
-{
-    bool ret = false;
-    if (enabled & BUS_EVENT_ACCEPT_SESSION_JOINER) {
-        BusEvent busEvent;
-        busEvent.eventType = BUS_EVENT_ACCEPT_SESSION_JOINER;
-        busEvent.acceptSessionJoiner.sessionPort = sessionPort;
-        busEvent.acceptSessionJoiner.joiner = joiner;
-        busEvent.acceptSessionJoiner.sessionOpts = &opts;
-        internal.lock.Lock();
-        internal.QueueEvent(busEvent);
-        if (!internal.acceptEvent) {
-            Event acceptEvent;
-            internal.acceptEvent = &acceptEvent;
-            internal.lock.Unlock();
-            Event::Wait(acceptEvent);
-            ret = internal.accepted;
-        } else {
-            internal.acceptEvent->SetEvent();
-            internal.acceptEvent = NULL;
-            internal.lock.Unlock();
-        }
-    }
-    return ret;
-}
-
-QStatus SimpleBusListener::AcceptSessionJoiner(bool accept)
-{
-    QStatus status = ER_BUS_NO_SESSION;
-    if (enabled & BUS_EVENT_ACCEPT_SESSION_JOINER) {
-        internal.lock.Lock();
-        internal.waiter = true;
-        internal.waitEvent.ResetEvent();
-        if (internal.acceptEvent) {
-            internal.accepted = accept;
-            internal.acceptEvent->SetEvent();
-            internal.acceptEvent = NULL;
-            status = ER_OK;
-        }
-        /*
-         * If we accepted the session joiner wait for the join to complete
-         */
-        if ((status == ER_OK) && accept) {
-            internal.lock.Unlock();
-            status = Event::Wait(internal.waitEvent, 10000);
-            internal.lock.Lock();
-            internal.waitEvent.ResetEvent();
-        }
-        internal.waiter = false;
-        internal.lock.Unlock();
-    }
-    return status;
-}
-
-void SimpleBusListener::SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner)
-{
-    if (enabled & BUS_EVENT_ACCEPT_SESSION_JOINER) {
-        internal.waitEvent.SetEvent();
-    }
-}
-
 void SimpleBusListener::SetFilter(uint32_t enabled)
 {
     internal.lock.Lock();
     this->enabled = enabled;
-    if (internal.acceptEvent) {
-        AcceptSessionJoiner(false);
-    }
     /*
      * Save all queued events that pass the filter.
      */
@@ -265,11 +178,6 @@ QStatus SimpleBusListener::WaitForEvent(BusEvent& busEvent, uint32_t timeout)
         QCC_LogError(status, ("Another thread is already waiting"));
         goto ExitWait;
     }
-    if (internal.acceptEvent) {
-        status = ER_BUS_WAIT_FAILED;
-        QCC_LogError(status, ("An ACCEPT_SESSION_JOINER event has not been accepted"));
-        goto ExitWait;
-    }
     if (internal.eventQueue.empty() && timeout) {
         internal.waiter = true;
         internal.lock.Unlock();
@@ -294,9 +202,6 @@ void SimpleBusListener::BusStopping()
      * Unblock any waiting thread
      */
     internal.waitEvent.SetEvent();
-    if (internal.acceptEvent) {
-        internal.acceptEvent->SetEvent();
-    }
 }
 
 void SimpleBusListener::ListenerUnregistered()
@@ -320,9 +225,6 @@ SimpleBusListener::~SimpleBusListener()
      */
     internal.lock.Lock();
     internal.waitEvent.SetEvent();
-    if (internal.acceptEvent) {
-        internal.acceptEvent->SetEvent();
-    }
     internal.lock.Unlock();
     delete &internal;
 }
