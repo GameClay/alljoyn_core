@@ -142,16 +142,14 @@ class BluetoothDeviceInterface {
      *
      * @param addr          BD address of the device of interest.
      * @param uuidRev[out]  UUID revision number.
-     * @param connAddr[out] BD address of the connectable device.
-     * @param psm[out]      L2CAP PSM that is accepting AllJoyn connections.
+     * @param connAddr[out] Bluetooth bus address of the connectable device.
      * @param adInfo[out]   Advertisement information.
      *
      * @return  ER_OK if successful
      */
     virtual QStatus GetDeviceInfo(const BDAddress& addr,
                                   uint32_t& uuidRev,
-                                  BDAddress& connAddr,
-                                  uint16_t& psm,
+                                  BTBusAddress& connAddr,
                                   BTNodeDB& adInfo) = 0;
 
     virtual QStatus Connect(const BTBusAddress& addr) = 0;
@@ -259,14 +257,11 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      *
      * @param bdAddr   BD Address from the SDP record.
      * @param uuidRev  UUID revsision of the found bus.
-     * @param lost     Set to true when device change is lost, false if found or changed.
      *
      * @return ER_OK if successful.
      */
     void ProcessDeviceChange(const BDAddress& adBdAddr,
-                             uint32_t newUUIDRev,
-                             uint32_t oldUUIDRev,
-                             bool lost);
+                             uint32_t uuidRev);
 
     /**
      * Test whether it is ok to make outgoing connections or accept incoming
@@ -403,16 +398,18 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     };
 
 
-    struct UUIDRevCacheInfo {
-        BDAddress adAddr;       /**< Advertising BDAddress */
-        uint32_t uuidRev;       /**< Advertised UUID Revision */
-        BTBusAddress connAddr;
+    struct _UUIDRevCacheInfo {
         BTNodeDB* adInfo;
-        UUIDRevCacheInfo() : uuidRev(bt::INVALID_UUIDREV) { }
-        UUIDRevCacheInfo(const BDAddress& adAddr, uint32_t uuidRev, const BTBusAddress& connAddr, BTNodeDB* adInfo) :
-            adAddr(adAddr), uuidRev(uuidRev), connAddr(connAddr), adInfo(adInfo) { }
+        qcc::Alarm timeout;
+        _UUIDRevCacheInfo() : adInfo(NULL) { }
+        _UUIDRevCacheInfo(BTNodeDB* adInfo) : adInfo(adInfo) { }
+        bool operator==(const _UUIDRevCacheInfo& other) const
+        {
+            return (adInfo == other.adInfo) && (timeout == other.timeout);
+        }
     };
 
+    typedef qcc::ManagedObj<_UUIDRevCacheInfo> UUIDRevCacheInfo;
     typedef std::multimap<uint32_t, UUIDRevCacheInfo> UUIDRevCacheMap;
     typedef std::pair<uint32_t, UUIDRevCacheInfo> UUIDRevCacheMapEntry;
 
@@ -424,8 +421,8 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      *
      * @return ER_OK if successful.
      */
-    QStatus DistributeAdvertisedNameChanges(const BTNodeDB& newAdInfo,
-                                            const BTNodeDB& oldAdInfo);
+    QStatus DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
+                                            const BTNodeDB* oldAdInfo);
 
     /**
      * Send the FoundNames signal to the node interested in one or more of the
@@ -566,6 +563,20 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
                         size_t numFoundNodes);
 
     /**
+     * Lookup the UUID revision cache iterator for the specified UUIDRev and
+     * Bluetooth address.
+     *
+     * @param lookupUUIDRev     UUIDRev to lookup
+     * @param bdAddr            Bluetooth address of a node that must be in the
+     *                          cached advertisement information.
+     *
+     * @return  iterator into the uuidRevCache map or UUIDRevCacheMap::end() if
+     *          not found.
+     */
+    UUIDRevCacheMap::iterator LookupUUIDRevCache(uint32_t lookupUUIDRev,
+                                                 const BDAddress& bdAddr);
+
+    /**
      * Updates the find/advertise name information on the minion assigned to
      * perform the specified name discovery operation.  It will update the
      * delegation for find or advertise based on current activity, whether we
@@ -655,7 +666,6 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
     bool listening;
     bool devAvailable;
 
-
     BTNodeDB foundNodeDB;
     BTNodeDB nodeDB;
     BTNodeInfo self;
@@ -689,7 +699,6 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
                     const InterfaceDescription::Member* FoundNames;
                     const InterfaceDescription::Member* LostNames;
                     const InterfaceDescription::Member* FoundDevice;
-                    const InterfaceDescription::Member* LostDevice;
                 } BTController;
             } Bus;
         } alljoyn;

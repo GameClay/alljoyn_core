@@ -324,12 +324,9 @@ class BTTransport :
      *
      * @param adBdAddr  BD Address of the device advertising names.
      * @param uuidRev   UUID revision number of the device that was found.
-     * @param lost      Flag indicating if device actually disappeared.
      */
     void DeviceChange(const BDAddress& bdAddr,
-                      uint32_t newUUIDRev,
-                      uint32_t oldUUIDRev,
-                      bool lost);
+                      uint32_t uuidRev);
 
     /**
      * Start the find operation for AllJoyn capable devices.  A duration may
@@ -398,8 +395,8 @@ class BTTransport :
     /**
      * Tells the Bluetooth transport to start listening for incoming connections.
      *
-     * @param addr      [OUT] BD Address of the adapter listening for connections
-     * @param psm       [OUT] L2CAP PSM allocated
+     * @param addr[out] BD Address of the adapter listening for connections
+     * @param psm[out]  L2CAP PSM allocated
      *
      * @return  ER_OK if successful
      */
@@ -415,18 +412,16 @@ class BTTransport :
      * Retrieves the information from the specified device necessary to
      * establish a connection and get the list of advertised names.
      *
-     * @param addr      BD address of the device of interest.
-     * @param uuidRev   [OUT] UUID revision number.
-     * @param connAddr  [OUT] Address of the Bluetooth device accepting connections.
-     * @param connPSM   [OUT] L2CAP PSM that is accepting AllJoyn connections.
-     * @param adInfo    [OUT] Advertisement information.
+     * @param addr          BD address of the device of interest.
+     * @param uuidRev[out]  UUID revision number.
+     * @param connAddr[out] Bluetooth bus address of the connectable device.
+     * @param adInfo[out]   Advertisement information.
      *
      * @return  ER_OK if successful
      */
     virtual QStatus GetDeviceInfo(const BDAddress& addr,
                                   uint32_t& uuidRev,
-                                  BDAddress& connAddr,
-                                  uint16_t& psm,
+                                  BTBusAddress& connAddr,
                                   BTNodeDB& adInfo);
 
 

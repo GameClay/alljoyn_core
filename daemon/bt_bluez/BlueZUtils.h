@@ -48,6 +48,7 @@ class _AdapterObject : public ProxyBusObject {
   public:
     int id;
     BDAddress address;
+    bool bluezDiscovering;
 
     _AdapterObject() { }
     _AdapterObject(BusAttachment& bus,

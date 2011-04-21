@@ -385,12 +385,10 @@ void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
 
 
 void BTTransport::DeviceChange(const BDAddress& adBdAddr,
-                               uint32_t newUUIDRev,
-                               uint32_t oldUUIDRev,
-                               bool lost)
+                               uint32_t uuidRev)
 {
     if (btmActive) {
-        btController->ProcessDeviceChange(adBdAddr, newUUIDRev, oldUUIDRev, lost);
+        btController->ProcessDeviceChange(adBdAddr, uuidRev);
     }
 }
 
@@ -475,15 +473,14 @@ void BTTransport::StopListen()
 
 QStatus BTTransport::GetDeviceInfo(const BDAddress& addr,
                                    uint32_t& uuidRev,
-                                   BDAddress& connAddr,
-                                   uint16_t& connPSM,
+                                   BTBusAddress& connAddr,
                                    BTNodeDB& adInfo)
 {
     if (!btmActive) {
         return ER_BUS_TRANSPORT_NOT_AVAILABLE;
     }
 
-    return btAccessor->GetDeviceInfo(addr, &uuidRev, &connAddr, &connPSM, &adInfo);
+    return btAccessor->GetDeviceInfo(addr, &uuidRev, &connAddr, &adInfo);
 }
 
 

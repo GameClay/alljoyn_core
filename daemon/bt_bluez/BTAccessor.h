@@ -111,8 +111,8 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     /**
      * Make the Bluetooth device connectable.
      *
-     * @param addr      [OUT] Bluetooth device address that is connectable
-     * @param psm       [OUT] L2CAP PSM that is connectable (0 if not connectable)
+     * @param addr[out] Bluetooth device address that is connectable
+     * @param psm[out]  L2CAP PSM that is connectable (0 if not connectable)
      *
      * @return  ER_OK if device is now connectable
      */
@@ -162,16 +162,14 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     /**
      * Perform an SDP queary on the specified device to get the bus information.
      *
-     * @param addr      Bluetooth device address to retrieve the SDP record from
-     * @param uuidRev   [OUT] Bus UUID revision to found in the SDP record
-     * @param connAddr  [OUT] Address of the Bluetooth device accepting connections.
-     * @param connPSM   [OUT] L2CAP PSM number accepting connections
-     * @param adInfo    [OUT] Map of bus node GUIDs and bus names being advertised
+     * @param addr          Bluetooth device address to retrieve the SDP record from
+     * @param uuidRev[out]  Bus UUID revision to found in the SDP record
+     * @param connAddr[out] Address of the Bluetooth device accepting connections.
+     * @param adInfo[out]   Map of bus node GUIDs and bus names being advertised
      */
     QStatus GetDeviceInfo(const BDAddress& addr,
                           uint32_t* uuidRev,
-                          BDAddress* connAddr,
-                          uint16_t* connPSM,
+                          BTBusAddress* connAddr,
                           BTNodeDB* adInfo);
 
     /**
@@ -298,8 +296,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
             ADAPTER_ADDED,
             ADAPTER_REMOVED,
             DEFAULT_ADAPTER_CHANGED,
-            DEVICE_FOUND,
-            DEVICE_LOST
+            DEVICE_FOUND
         } DispatchTypes;
         DispatchTypes operation;
 
@@ -316,11 +313,10 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
 
     struct DeviceDispatchInfo : public DispatchInfo {
         BDAddress addr;
-        uint32_t newUUIDRev;
-        uint32_t oldUUIDRev;
+        uint32_t uuidRev;
 
-        DeviceDispatchInfo(DispatchTypes operation, const BDAddress& addr, uint32_t newUUIDRev, uint32_t oldUUIDRev) :
-            DispatchInfo(operation), addr(addr), newUUIDRev(newUUIDRev), oldUUIDRev(oldUUIDRev) { }
+        DeviceDispatchInfo(DispatchTypes operation, const BDAddress& addr, uint32_t uuidRev) :
+            DispatchInfo(operation), addr(addr), uuidRev(uuidRev) { }
     };
 
     struct MsgDispatchInfo : public DispatchInfo {

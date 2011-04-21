@@ -157,7 +157,14 @@ class _BTNodeInfo {
     /**
      * Default constructor.
      */
-    _BTNodeInfo() : directMinion(false), connectProxyNode(NULL) { }
+    _BTNodeInfo() :
+        guid(),
+        uniqueName(),
+        nodeAddr(),
+        directMinion(false),
+        connectProxyNode(NULL),
+        uuidRev(bt::INVALID_UUIDREV)
+    { }
 
     /**
      * Construct that initializes certain information.
@@ -567,7 +574,7 @@ class BTNodeDB {
     /**
      * Find the first node with given a Bluetooth device address.  (Generally,
      * the bluetooth device address should be unique, but it is not completely
-     * impossible for 2 instances for AllJoyn to be running on one physicaly
+     * impossible for 2 instances for AllJoyn to be running on one physical
      * device with the same Bluetooth device address but with different PSMs.)
      *
      * @param addr  Bluetooth device address
@@ -626,11 +633,16 @@ class BTNodeDB {
     }
 
     /**
-     * Determine the difference between this DB and another DB.
+     * Determine the difference between this DB and another DB.  Nodes in
+     * 'added' and 'removed' will be independent copies of the instances in
+     * 'other' and they will only have the names that were added and/or
+     * removed respectively.
      *
-     * @param other     Other DB for comparision
-     * @param added     [OUT] if non-null, the set of nodes (and names) found in other but not in us
-     * @param removed   [OUT] if non-null, the set of nodes (and names) found in us but not in other
+     * @param other         Other DB for comparision
+     * @param added[out]    If non-null, the set of nodes (and names) found in
+     *                      other but not in us
+     * @param removed[out]  If non-null, the set of nodes (and names) found in
+     *                      us but not in other
      */
     void Diff(const BTNodeDB& other, BTNodeDB* added, BTNodeDB* removed) const;
 
@@ -639,7 +651,10 @@ class BTNodeDB {
      *
      * @param added         If non-null, nodes (and names) to add
      * @param removed       If non-null, name to remove from nodes
-     * @param removeNodes   [OPTIONAL] if true, remove nodes that become empty due to removed, false, keep empty nodes.
+     * @param removeNodes   Optional parameter that defaults to true
+     *                      - true: remove nodes that become empty due to all
+     *                              names being removed
+     *                      - false: keep empty nodes
      */
     void UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool removeNodes = true);
 

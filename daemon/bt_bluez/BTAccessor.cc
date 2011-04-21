@@ -693,10 +693,11 @@ QStatus BTTransport::BTAccessor::FillAdapterAddress(AdapterObject& adapter)
 
         if (arg) {
             status = arg->GetElement("{ss}", "Address", &bdAddrStr);
-
             if (status == ER_OK) {
                 status = adapter->address.FromString(bdAddrStr);
             }
+
+            arg->GetElement("{sb}", "Discovering", &adapter->bluezDiscovering);
         }
     }
 
@@ -1094,22 +1095,9 @@ void BTTransport::BTAccessor::AlarmTriggered(const Alarm& alarm, QStatus reason)
             DefaultAdapterChanged(static_cast<AdapterDispatchInfo*>(op)->adapterPath.c_str());
             break;
 
-        case DispatchInfo::DEVICE_LOST: {
-            deviceLock.Lock();
-            FoundInfoMap::iterator foundInfo = foundDevices.find(static_cast<DeviceDispatchInfo*>(op)->addr);
-            if ((foundInfo != foundDevices.end()) &&
-                (foundInfo->second.timestamp <= (GetTimestamp() + FOUND_DEVICE_INFO_TIMEOUT))) {
-                foundDevices.erase(foundInfo);
-            }
-            deviceLock.Unlock();
-            // Fall through
-        }
-
         case DispatchInfo::DEVICE_FOUND:
             transport->DeviceChange(static_cast<DeviceDispatchInfo*>(op)->addr,
-                                    static_cast<DeviceDispatchInfo*>(op)->newUUIDRev,
-                                    static_cast<DeviceDispatchInfo*>(op)->oldUUIDRev,
-                                    op->operation == DispatchInfo::DEVICE_LOST);
+                                    static_cast<DeviceDispatchInfo*>(op)->uuidRev);
             break;
         }
     }
@@ -1184,35 +1172,22 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
         //               addrStr, listSize));
 
         qcc::String uuid;
-        uint32_t newUUIDRev = bt::INVALID_UUIDREV;
-        uint32_t oldUUIDRev;
-        bool found = FindAllJoynUUID(uuids, listSize, newUUIDRev);
+        uint32_t uuidRev = bt::INVALID_UUIDREV;
+        bool found = FindAllJoynUUID(uuids, listSize, uuidRev);
 
         if (found) {
             deviceLock.Lock();
             FoundInfo& foundInfo = foundDevices[addr];
-            oldUUIDRev = foundInfo.uuidRev;
 
-            QCC_DbgHLPrintf(("Found AllJoyn device: %s  newUUIDRev = %08x  oldUUIDRev = %08x", addrStr, newUUIDRev, oldUUIDRev));
-
-            if (foundInfo.uuidRev != bt::INVALID_UUIDREV) {
-                // We've seen this device before, so clear out the old timeout alarm.
-                bzBus.GetInternal().GetDispatcher().RemoveAlarm(foundInfo.alarm);
-            }
+            QCC_DbgHLPrintf(("Found AllJoyn device: %s  uuidRev = %08x  foundInfo.uuidRev = %08x", addrStr, uuidRev, foundInfo.uuidRev));
 
             if ((foundInfo.uuidRev == bt::INVALID_UUIDREV) ||
-                (foundInfo.uuidRev != newUUIDRev)) {
+                (foundInfo.uuidRev != uuidRev)) {
                 // Newly found device or changed advertisments, so inform the topology manager.
 
-                foundInfo.uuidRev = newUUIDRev;
-                DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_FOUND, addr, newUUIDRev, oldUUIDRev));
+                foundInfo.uuidRev = uuidRev;
+                DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_FOUND, addr, uuidRev));
             }
-
-            foundInfo.timestamp = GetTimestamp();
-            foundInfo.alarm = DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_LOST,
-                                                                       addr, bt::INVALID_UUIDREV,
-                                                                       newUUIDRev),
-                                                FOUND_DEVICE_INFO_TIMEOUT);
 
             deviceLock.Unlock();
         }
@@ -1242,8 +1217,7 @@ bool BTTransport::BTAccessor::FindAllJoynUUID(const MsgArg* uuids,
 
 QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
                                                uint32_t* uuidRev,
-                                               BDAddress* connAddr,
-                                               uint16_t* connPSM,
+                                               BTBusAddress* connAddr,
                                                BTNodeDB* adInfo)
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::GetDeviceInfo(addr = %s, ...)", addr.ToString().c_str()));
@@ -1280,10 +1254,15 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
 
                 StringSource rawXmlSrc(record);
                 XmlParseContext xmlctx(rawXmlSrc);
+                BDAddress bdAddr;
+                uint16_t psm;
 
-                status = ProcessSDPXML(xmlctx, uuidRev, connAddr, connPSM, adInfo);
+                status = ProcessSDPXML(xmlctx, uuidRev, &bdAddr, &psm, adInfo);
                 if (status == ER_OK) {
-                    QCC_DbgPrintf(("Found AllJoyn UUID: psm %#04x", *connPSM));
+                    if (connAddr) {
+                        *connAddr = BTBusAddress(bdAddr, psm);
+                    }
+                    QCC_DbgPrintf(("Found AllJoyn UUID: psm %#04x", psm));
                     break;
                 }
             }
@@ -1410,7 +1389,7 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                         BTNodeDB::const_iterator nodeit;
                         for (nodeit = adInfo->Begin(); nodeit != adInfo->End(); ++nodeit) {
                             const BTNodeInfo& node = *nodeit;
-                            QCC_DbgPrintf(("       %s", node->GetBusAddress().ToString().c_str()));
+                            QCC_DbgPrintf(("       %s (GUID: %s)", node->GetBusAddress().ToString().c_str(), node->GetGUID().c_str()));
                             NameSet::const_iterator name;
                             for (name = node->GetAdvertiseNamesBegin(); name != node->GetAdvertiseNamesEnd(); ++name) {
                                 QCC_DbgPrintf(("           \"%s\"", name->c_str()));
@@ -1474,27 +1453,22 @@ void BTTransport::BTAccessor::ProcessXMLAdvertisementsAttr(const XmlElement* ele
                         if (tupleElements[j]->GetName().compare("text") == 0) {
                             String guidStr = tupleElements[j]->GetAttribute("value");
                             nodeInfo->SetGUID(Trim(guidStr));
-                            QCC_DbgPrintf(("        GUID: %s", nodeInfo->GetGUID().c_str()));
                             gotGUID = true;
                         } else if (tupleElements[j]->GetName().compare("uint64") == 0) {
                             String addrStr = Trim(tupleElements[j]->GetAttribute("value"));
                             addr.SetRaw(StringToU64(addrStr, 0));
-                            QCC_DbgPrintf(("        BDAddress: %s", addr.ToString().c_str()));
                             gotBDAddr = true;
                         } else if (tupleElements[j]->GetName().compare("uint16") == 0) {
                             String psmStr = Trim(tupleElements[j]->GetAttribute("value"));
                             psm = StringToU32(psmStr, 0, bt::INVALID_PSM);
-                            QCC_DbgPrintf(("        PSM: %#04x", psm));
                             gotPSM = true;
                         } else if (tupleElements[j]->GetName().compare("sequence") == 0) {
                             // This sequence is just the list of advertised names for the given node.
                             const vector<XmlElement*>& nameList = tupleElements[j]->GetChildren();
-                            QCC_DbgPrintf(("        Advertise Names:"));
                             for (size_t k = 0; k < nameList.size(); ++k) {
                                 if (nameList[k] && (nameList[k]->GetName().compare("text") == 0)) {
                                     // A bug in BlueZ adds a space to the end of our text string.
                                     const qcc::String name = Trim(nameList[k]->GetAttribute("value"));
-                                    QCC_DbgPrintf(("            %s", name.c_str()));
                                     nodeInfo->AddAdvertiseName(name);
                                 }
                             }
@@ -1668,6 +1642,18 @@ void BTTransport::BTAccessor::AdapterPropertyChangedSignalHandler(const Interfac
                 dargs[1].Set("v", &discVal);
 
                 adapter->MethodCall(*org.bluez.Adapter.SetProperty, dargs, ArraySize(dargs));
+            }
+        } else if (strcmp(property, "Discovering") == 0) {
+            value->Get("b", &(adapter->bluezDiscovering));
+            if ((adapter == GetDefaultAdapterObject()) && !adapter->bluezDiscovering) {
+                // The default adapter has stopped discovering.  Flush the
+                // found devices cache so that any devices found will be
+                // passed on to the topology manager the next time the default
+                // adapter starts up.  When discovery is started using
+                // org.bluez D-Bus serivce, BlueZ automatically cycles between
+                // discovering and idle.  The typical cycle time is ~5 seconds
+                // discovering and ~10 seconds idle.
+                foundDevices.clear();
             }
         }
     }
