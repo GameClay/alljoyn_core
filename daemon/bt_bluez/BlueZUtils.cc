@@ -134,11 +134,11 @@ QStatus BTSocketStream::PushBytes(const void* buf, size_t numBytes, size_t& numS
     QStatus status;
     do {
         status = SocketStream::PushBytes(buf, min(numBytes, outMtu), numSent);
-        if ((status == ER_OS_ERROR) && (errno = ENOMEM)) {
+        if ((status == ER_OS_ERROR) && (errno == ENOMEM)) {
             // BlueZ reports ENOMEM when it should report EBUSY or EAGAIN, just wait and try again.
             Sleep(10);
         }
-    } while ((status == ER_OS_ERROR) && (errno = ENOMEM));
+    } while ((status == ER_OS_ERROR) && (errno == ENOMEM));
 
     return status;
 }
