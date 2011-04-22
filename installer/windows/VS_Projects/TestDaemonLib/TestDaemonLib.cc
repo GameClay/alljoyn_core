@@ -22,19 +22,19 @@
 #include "C:\aj\alljoyn_core\daemon\windows\DaemonLib.h"
 #include <stdio.h>
 
-const wchar_t * filename = L"TestLog.txt";
+const wchar_t* filename = L"TestLog.txt";
 
-int _tmain(int argc, char * argv[])
+int _tmain(int argc, char* argv[])
 {
-	wchar_t buffer[500];
-	printf("AllJoyn Daemon Windows Service\n");
-	swprintf_s(buffer, 500, L"C:\\Alljoyn\\logging\\%s", filename);
-	SetLogFile(buffer);
-	swprintf_s(buffer, 500, L"%S %s", argv[0], L" --verbosity=15 --no-bt\n");
+    wchar_t buffer[500];
+    printf("AllJoyn Daemon Windows Service\n");
+    swprintf_s(buffer, 500, L"C:\\Alljoyn\\logging\\%s", filename);
+    SetLogFile(buffer);
+    swprintf_s(buffer, 500, L"%S %s", argv[0], L" --verbosity=15 --no-bt\n");
 //	LoadDaemon(argc,argv);
-	DaemonMain(buffer);
-	getchar();
-	return 0;
+    DaemonMain(buffer);
+    getchar();
+    return 0;
 }
 
 

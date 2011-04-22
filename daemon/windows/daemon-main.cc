@@ -338,9 +338,9 @@ int main(int argc, char** argv, char** env)
     loggerSettings->SetSyslog(false);
 
 #ifdef _USRDLL
-	FILE * pFile = _fsopen(g_logFilePathName ,"a+", _SH_DENYNO);
-	if (pFile==NULL)
-		return 911;
+    FILE* pFile = _fsopen(g_logFilePathName, "a+", _SH_DENYNO);
+    if (pFile == NULL)
+        return 911;
     loggerSettings->SetFile(pFile);
 #else
     loggerSettings->SetFile(stdout);
