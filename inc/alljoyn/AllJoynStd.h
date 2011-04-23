@@ -105,6 +105,27 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
 // @}
 
 /**
+ * @anchor UnbindSessionPortReplyAnchor
+ * @name org.alljoyn.Bus.UnbindSessionPort
+ *  Interface: org.alljoyn.Bus
+ *  Method: UINT32 disposition UnbindSessionPort(SessionPort port)
+ *
+ * Cancel a session port binding.
+ *
+ * In params:
+ *  inPort       - Session Port number to unbind.
+ *
+ * Out params:
+ *  disposition  - UnbindSessionPort return value (see below).
+ */
+// @{
+/* org.alljoyn.Bus.UnbindSessionPort */
+#define ALLJOYN_UNBINDSESSIONPORT_REPLY_SUCCESS   1   /**< UnbindSessionPort reply: Success */
+#define ALLJOYN_UNBINDSESSIONPORT_REPLY_BAD_PORT  2   /**< UnbindSessionPort reply: Unknown session port */
+#define ALLJOYN_UNBINDSESSIONPORT_REPLY_FAILED    3   /**< UnbindSessionPort reply: Failed */
+// @}
+
+/**
  * @anchor JoinSessionReplyAnchor
  * @name org.alljoyn.Bus.JoinSession
  *  Interface: org.alljoyn.Bus

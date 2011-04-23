@@ -67,10 +67,10 @@ static void SigIntHandler(int sig)
     }
 }
 
-class MyBusListener : public BusListener {
+class MySessionPortListener : public SessionPortListener {
 
   public:
-    MyBusListener() : BusListener(), sessionId(0) { }
+    MySessionPortListener() : SessionPortListener(), sessionId(0) { }
 
     bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
     {
@@ -151,7 +151,7 @@ int main(int argc, char** argv)
 
     /* Create message bus */
     g_msgBus = new BusAttachment("rawservice", true);
-    MyBusListener myBusListener;
+    MySessionPortListener mySessionPortListener;
 
     /* Start the msg bus */
     status = g_msgBus->Start();
@@ -161,8 +161,6 @@ int main(int argc, char** argv)
 
     /* Create a bus listener and connect to the local daemon */
     if (status == ER_OK) {
-        g_msgBus->RegisterBusListener(myBusListener);
-
         /* Connect to the daemon */
         status = g_msgBus->Connect(clientArgs.c_str());
         if (status != ER_OK) {
@@ -181,7 +179,7 @@ int main(int argc, char** argv)
     /* Bind the session port */
     SessionOpts opts(SessionOpts::TRAFFIC_RAW_RELIABLE, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
     SessionPort sp = SESSION_PORT;
-    status = g_msgBus->BindSessionPort(sp, opts);
+    status = g_msgBus->BindSessionPort(sp, opts, mySessionPortListener);
     if (status != ER_OK) {
         QCC_LogError(status, ("BindSessionOpts failed"));
     }
@@ -197,7 +195,7 @@ int main(int argc, char** argv)
     SessionId lastSessionId = 0;
     while ((status == ER_OK) && (!g_msgBus->IsStopping())) {
         /* Wait for someone to join our session */
-        SessionId id = myBusListener.GetSessionId();
+        SessionId id = mySessionPortListener.GetSessionId();
         if (id == lastSessionId) {
             qcc::Sleep(100);
             continue;

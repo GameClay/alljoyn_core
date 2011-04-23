@@ -35,6 +35,8 @@
 #include <alljoyn/ProxyBusObject.h>
 #include <alljoyn/InterfaceDescription.h>
 #include <alljoyn/Session.h>
+#include <alljoyn/SessionListener.h>
+#include <alljoyn/SessionPortListener.h>
 #include <Status.h>
 
 namespace ajn {
@@ -500,36 +502,63 @@ class BusAttachment : public MessageReceiver {
      * the original session. The joiner can then create additional sessions with the service by
      * calling JoinSession with these dynamic SessionPort ids.
      *
-     * @param[in,out] sessionPort   SessionPort value to bind or SESSION_PORT_ANY to allow this method
-     *                              to choose an available port. On successful return, this value
-     *                              contains the chosen SessionPort.
+     * @param[in,out] sessionPort      SessionPort value to bind or SESSION_PORT_ANY to allow this method
+     *                                 to choose an available port. On successful return, this value
+     *                                 contains the chosen SessionPort.
      *
-     * @param[in]     opts          Session options that joiners must agree to in order to
-     *                              successfully join the session.
+     * @param[in]     opts             Session options that joiners must agree to in order to
+     *                                 successfully join the session.
+     *
+     * @param[in]     sessionListener  Called by the bus when session related events occur.
      *
      * @return
      *      - #ER_OK iff daemon response was received and the bind operation was successful.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus BindSessionPort(SessionPort& sessionPort, const SessionOpts& opts);
+    QStatus BindSessionPort(SessionPort& sessionPort, const SessionOpts& opts, SessionPortListener& listener);
+
+    /**
+     * Cancel an existing port binding.
+     *
+     * @param[in]   sessionPort    Existing session port to be un-bound.
+     *
+     * @return
+     *      - #ER_OK iff daemon response was received and the bind operation was successful.
+     *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+     *      - Other error status codes indicating a failure.
+     */
+    QStatus UnbindSessionPort(SessionPort sessionPort);
 
     /**
      * Join a session.
      * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.JoinSession method call to the local daemon
      * and interprets the response.
      *
-     * @param[in]  sessionHost   Bus name of attachment that is hosting the session to be joined.
-     * @param[in]  sessionPort   SessionPort of sessionHost to be joined.
-     * @param[out] sessionId     Unique identifier for session.
-     * @param[out] opts          Session options.
+     * @param[in]  sessionHost      Bus name of attachment that is hosting the session to be joined.
+     * @param[in]  sessionPort      SessionPort of sessionHost to be joined.
+     * @param[in]  sessionListener  Optional listener called when session related events occur. May be NULL.
+     * @param[out] sessionId        Unique identifier for session.
+     * @param[out] opts             Session options.
      *
      * @return
      *      - #ER_OK iff daemon response was received and the session was successfully joined.
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus JoinSession(const char* sessionHost, SessionPort sessionPort, SessionId& sessionId, SessionOpts& opts);
+    QStatus JoinSession(const char* sessionHost, SessionPort sessionPort, SessionListener* listener,
+                        SessionId& sessionId, SessionOpts& opts);
+
+    /**
+     * Set the SessionListener for an existing sessionId.
+     * Calling this method will override the listener set by a previoius call to SetSessionListener or any
+     * listener specified in JoinSession.
+     *
+     * @param sessionId    The session id of an existing session.
+     * @param listener     The SessionListener to associate with the session. May be NULL to clear previous listener.
+     * @return  ER_OK if successful.
+     */
+    QStatus SetSessionListener(SessionId sessionId, SessionListener* listener);
 
     /**
      * Leave an existing session.

@@ -63,7 +63,7 @@ static void SigIntHandler(int sig)
 }
 
 /** AllJoynListener receives discovery events from AllJoyn */
-class MyBusListener : public BusListener {
+class MyBusListener : public BusListener, public SessionListener {
   public:
     void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
     {
@@ -71,7 +71,7 @@ class MyBusListener : public BusListener {
         if (0 == strcmp(name, SERVICE_NAME)) {
             /* We found a remote bus that is advertising basic sercice's  well-known name so connect to it */
             SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
-            QStatus status = g_msgBus->JoinSession(name, SERVICE_PORT, s_sessionId, opts);
+            QStatus status = g_msgBus->JoinSession(name, SERVICE_PORT, this, s_sessionId, opts);
             if (ER_OK != status) {
                 printf("JoinSession failed (status=%s)\n", QCC_StatusText(status));
             } else {

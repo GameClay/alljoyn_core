@@ -85,7 +85,7 @@ class MyBusListener : public BusListener {
             printf("FoundAdvertisedName(name=%s, prefix=%s)\n", name, namePrefix);
             /* We found a remote bus that is advertising basic sercice's  well-known name so connect to it */
             SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
-            QStatus status = g_msgBus->JoinSession(name, SERVICE_PORT, s_sessionId, opts);
+            QStatus status = g_msgBus->JoinSession(name, SERVICE_PORT, NULL, s_sessionId, opts);
             if (ER_OK != status) {
                 printf("JoinSession failed (status=%s)\n", QCC_StatusText(status));
             } else {

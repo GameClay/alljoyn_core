@@ -123,7 +123,7 @@ class ChatObject : public BusObject {
     const InterfaceDescription::Member* chatSignalMember;
 };
 
-class MyBusListener : public BusListener {
+class MyBusListener : public BusListener, public SessionPortListener, public SessionListener {
     void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
     {
         const char* convName = name + strlen(NAME_PREFIX);
@@ -131,7 +131,7 @@ class MyBusListener : public BusListener {
 
         /* Join the conversation */
         SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
-        QStatus status = s_bus->JoinSession(name, CHAT_PORT, s_sessionId, opts);
+        QStatus status = s_bus->JoinSession(name, CHAT_PORT, this, s_sessionId, opts);
         if (ER_OK == status) {
             printf("Joined conversation \"%s\"\n", convName);
         } else {
@@ -277,7 +277,7 @@ int main(int argc, char** argv)
         SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
         if (ER_OK == status) {
             SessionPort sp = CHAT_PORT;
-            status = s_bus->BindSessionPort(sp, opts);
+            status = s_bus->BindSessionPort(sp, opts, *s_busListener);
             if (ER_OK != status) {
                 printf("BindSessionPort failed (%s)\n", QCC_StatusText(status));
             }

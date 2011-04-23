@@ -26,7 +26,7 @@
 #error Only include BusListener.h in C++ code.
 #endif
 
-#include <alljoyn/Session.h>
+#include <alljoyn/TransportMask.h>
 
 namespace ajn {
 
@@ -86,33 +86,6 @@ class BusListener {
      * @param newOwner       The unique name that now owns the name or NULL if the there is no new owner.
      */
     virtual void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner) { }
-
-    /**
-     * Called by the bus when a session becomes disconnected.
-     *
-     * @param sessionId     Id of session that was lost.
-     */
-    virtual void SessionLost(const SessionId& sessionId) { }
-
-    /**
-     * Accept or reject an incoming JoinSession request. The session does not exist until this
-     * after this function returns.
-     *
-     * @param sessionPort    Session port that was joined.
-     * @param joiner         Unique name of potential joiner.
-     * @param opts           Session options requested by the joiner.
-     * @return   Return true if JoinSession request is accepted. false if rejected.
-     */
-    virtual bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts) { return false; }
-
-    /**
-     * Called by the bus when a session has been successfully joined. The session is now fully up.
-     *
-     * @param sessionPort    Session port that was joined.
-     * @param id             Id of session.
-     * @param joiner         Unique name of the joiner.
-     */
-    virtual void SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner) { }
 
     /**
      * Called when a bus this listener is registered with is stopping.

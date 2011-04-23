@@ -94,6 +94,20 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     void BindSessionPort(const InterfaceDescription::Member* member, Message& msg);
 
     /**
+     * Respond to a bus request to unbind a SessionPort.
+     *
+     * The input Message (METHOD_CALL) is expected to contain the following parameters:
+     *   sessionPort  sessionPort    SessionPort to be unbound.
+     *
+     * The output Message (METHOD_REPLY) contains the following parameters:
+     *   resultCode   uint32   An ALLJOYN_UNBINDSESSIONPORT_* reply code (see AllJoynStd.h).
+     *
+     * @param member  Member.
+     * @param msg     The incoming message.
+     */
+    void UnbindSessionPort(const InterfaceDescription::Member* member, Message& msg);
+
+    /**
      * Respond to a bus request to join an existing session.
      *
      * The input Message (METHOD_CALL) is expected to contain the following parameters:

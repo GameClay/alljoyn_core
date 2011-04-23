@@ -34,6 +34,8 @@
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/InterfaceDescription.h>
 #include <alljoyn/BusListener.h>
+#include <alljoyn/SessionPortListener.h>
+#include <alljoyn/SessionListener.h>
 
 #include "AuthMechanism.h"
 #include "ClientRouter.h"
@@ -201,6 +203,15 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
     void CallJoinedListeners(SessionPort sessionPort, SessionId id, const char* joiner);
 
     /**
+     * Set the SessionListener for an existing session id.
+     *
+     * @param sessionId  Existing session Id.
+     * @param listener   SessionListener to associate with sessionId.
+     * @return  ER_OK if successful.
+     */
+    QStatus SetSessionListener(SessionId id, SessionListener* listener);
+
+    /**
      * This function puts a message on the dispatch thread and deliver it to the specified alarm listener.
      *
      * @param listener  The alarm listener to receive the message.
@@ -250,8 +261,11 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
     qcc::String listenAddresses;          /* The set of bus addresses that this bus can listen on. (empty for clients) */
     qcc::Mutex stopLock;                  /* Protects BusAttachement::Stop from being reentered */
     int32_t stopCount;                    /* Number of caller's blocked in BusAttachment::Stop() */
-};
 
+    std::map<SessionPort, SessionPortListener*> sessionPortListeners;  /* Lookup SessionPortListener by session port */
+    std::map<SessionId, SessionListener*> sessionListeners;            /* Lookup SessionListener by session id */
+    qcc::Mutex sessionListenersLock;                                   /* Lock protecting sessionListners maps */
+};
 
 }
 

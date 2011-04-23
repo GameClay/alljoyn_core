@@ -116,6 +116,7 @@ QStatus AllJoynObj::Init()
         { alljoynIntf->GetMember("FindAdvertisedName"),       static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::FindAdvertisedName) },
         { alljoynIntf->GetMember("CancelFindAdvertisedName"), static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::CancelFindAdvertisedName) },
         { alljoynIntf->GetMember("BindSessionPort"),          static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::BindSessionPort) },
+        { alljoynIntf->GetMember("UnbindSessionPort"),        static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::UnbindSessionPort) },
         { alljoynIntf->GetMember("JoinSession"),              static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::JoinSession) },
         { alljoynIntf->GetMember("LeaveSession"),             static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::LeaveSession) },
         { alljoynIntf->GetMember("GetSessionFd"),             static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::GetSessionFd) }
@@ -264,7 +265,7 @@ void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Mes
         /* Assign or check uniqueness of sessionPort */
         sessionMapLock.Lock();
         if (sessionPort == SESSION_PORT_ANY) {
-            sessionPort = 0;
+            sessionPort = 9999;
             while (++sessionPort) {
                 map<pair<String, SessionId>, SessionMapEntry>::const_iterator it = sessionMap.lower_bound(pair<String, SessionId>(sender, 0));
                 while ((it != sessionMap.end()) && (it->first.first == sender)) {
@@ -274,7 +275,7 @@ void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Mes
                     ++it;
                 }
                 /* If no existing sessionMapEntry for sessionPort, then we are done */
-                if ((it == sessionMap.end()) || (it->first.first == sender)) {
+                if ((it == sessionMap.end()) || (it->first.first != sender)) {
                     break;
                 }
             }
@@ -304,7 +305,7 @@ void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Mes
             do {
                 entry.id = qcc::Rand32();
             } while (entry.id == 0);
-            sessionMap[pair < String, SessionId > (entry.endpointName, entry.id)] = entry;
+            sessionMap[pair < String, SessionId > (entry.endpointName, 0)] = entry;
         }
         sessionMapLock.Unlock();
     }
@@ -318,7 +319,45 @@ void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Mes
 
     /* Log error if reply could not be sent */
     if (ER_OK != status) {
-        QCC_LogError(status, ("Failed to respond to org.alljoyn.Bus.Advertise"));
+        QCC_LogError(status, ("Failed to respond to org.alljoyn.Bus.BindSessionPort"));
+    }
+}
+
+void AllJoynObj::UnbindSessionPort(const InterfaceDescription::Member* member, Message& msg)
+{
+    uint32_t replyCode = ALLJOYN_UNBINDSESSIONPORT_REPLY_FAILED;
+    size_t numArgs;
+    const MsgArg* args;
+    SessionOpts opts;
+
+    msg->GetArgs(numArgs, args);
+    SessionPort sessionPort = args[0].v_uint32;
+
+    QCC_DbgTrace(("AllJoynObj::UnbindSession(%d)", sessionPort));
+
+    /* Remove session map entry */
+    String sender = msg->GetSender();
+    sessionMapLock.Lock();
+    map<pair<String, SessionId>, SessionMapEntry>::iterator it = sessionMap.lower_bound(pair<String, SessionId>(sender, 0));
+    while ((it != sessionMap.end()) && (it->first.first == sender) && (it->first.second == 0)) {
+        if (it->second.sessionPort == sessionPort) {
+            sessionMap.erase(it);
+            replyCode = ALLJOYN_UNBINDSESSIONPORT_REPLY_SUCCESS;
+            break;
+        }
+        ++it;
+    }
+    sessionMapLock.Unlock();
+
+    /* Reply to request */
+    MsgArg replyArgs[1];
+    replyArgs[0].Set("u", replyCode);
+    QStatus status = MethodReply(msg, replyArgs, ArraySize(replyArgs));
+    QCC_DbgPrintf(("AllJoynObj::UnbindSessionPort(%s, %d) returned %d (status=%s)", sender.c_str(), sessionPort, replyCode, QCC_StatusText(status)));
+
+    /* Log error if reply could not be sent */
+    if (ER_OK != status) {
+        QCC_LogError(status, ("Failed to respond to org.alljoyn.Bus.UnbindSessionPort"));
     }
 }
 
@@ -361,10 +400,10 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             String creatorName = rSessionEp->GetUniqueName();
             bool foundSessionMapEntry = false;
             map<pair<String, SessionId>, SessionMapEntry>::iterator sit = ajObj.sessionMap.lower_bound(pair<String, SessionId>(creatorName, 0));
-            while ((sit != ajObj.sessionMap.end()) && (creatorName == sit->first.first)) {
+            while ((sit != ajObj.sessionMap.end()) && (creatorName == sit->first.first) && (sit->first.second == 0)) {
                 if (sit->second.sessionPort == sessionPort) {
-                    foundSessionMapEntry = true;
                     sme = sit->second;
+                    foundSessionMapEntry = true;
                     break;
                 }
                 ++sit;
@@ -384,7 +423,6 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                             newSessionId = qcc::Rand32();
                         } while (newSessionId == 0);
                     }
-
                     /* Ask creator to accept session */
                     status = ajObj.SendAcceptSession(sme.sessionPort, newSessionId, sessionHost, msg->GetSender(), optsIn, isAccepted);
                     if (status != ER_OK) {
@@ -414,13 +452,20 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                             ajObj.sessionMapLock.Lock();
                             if (sme.opts.isMultipoint) {
                                 /* Add (local) joiner to list of session members since no AttachSession will be sent */
-                                ajObj.sessionMap[pair < String, SessionId > (sme.endpointName, sme.id)].memberNames.push_back(msg->GetSender());
+                                map<pair<String, SessionId>, SessionMapEntry>::const_iterator sit = ajObj.sessionMap.find(pair<String, SessionId>(sme.endpointName, sme.id));
+                                if (sit == ajObj.sessionMap.end()) {
+                                    sit = ajObj.sessionMap.find(pair<String, SessionId>(sme.endpointName, 0));
+                                }
+                                if (sit != ajObj.sessionMap.end()) {
+                                    sme = sit->second;
+                                }
                                 sme.memberNames.push_back(msg->GetSender());
                             } else {
                                 /* Add the creator-side entry in sessionMap if session is not multiPoint */
                                 sme.id = newSessionId;
-                                ajObj.sessionMap[pair < String, SessionId > (sme.endpointName, sme.id)] = sme;
                             }
+                            ajObj.sessionMap[pair < String, SessionId > (sme.endpointName, sme.id)] = sme;
+
                             /* Create a joiner side entry in sessionMap */
                             SessionMapEntry joinerSme = sme;
                             joinerSme.endpointName = msg->GetSender();
@@ -783,7 +828,7 @@ void AllJoynObj::LeaveSession(const InterfaceDescription::Member* member, Messag
     /* Find the session with that id */
     sessionMapLock.Lock();
     map<pair<String, SessionId>, SessionMapEntry>::iterator it = sessionMap.find(pair<String, SessionId>(msg->GetSender(), id));
-    if (it == sessionMap.end()) {
+    if ((it == sessionMap.end()) || (id == 0)) {
         sessionMapLock.Unlock();
         replyCode = ALLJOYN_LEAVESESSION_REPLY_NO_SESSION;
     } else {
@@ -879,14 +924,20 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
             map<pair<String, SessionId>, SessionMapEntry>::const_iterator sit = sessionMap.lower_bound(pair<String, SessionId>(destUniqueName, 0));
             while ((sit != sessionMap.end()) && (sit->first.first == destUniqueName)) {
                 if (sit->second.sessionPort == sessionPort) {
-                    /* If this session is not multipoint, then create a new session entry */
                     sme = sit->second;
-                    if (!sit->second.opts.isMultipoint) {
+                    if (!sme.opts.isMultipoint) {
+                        /* Session is not multipoint. Create a new session entry */
                         do {
                             sme.id = qcc::Rand32();
                         } while (sme.id == 0);
-                        sessionMap[pair < String, SessionId > (sme.endpointName, sme.id)] = sme;
+                    } else {
+                        /* Session is multipoint. Look for an existing (already joined) session */
+                        sit = sessionMap.find(pair<String, SessionId>(destUniqueName, sme.id));
+                        if (sit != sessionMap.end()) {
+                            sme = sit->second;
+                        }
                     }
+                    sessionMap[pair < String, SessionId > (sme.endpointName, sme.id)] = sme;
                     foundSessionMapEntry = true;
                     break;
                 }
@@ -918,7 +969,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                         /* If this node is the session creator, give it a chance to accept or reject the new member */
                         bool isAccepted = true;
                         BusEndpoint* creatorEp = router.FindEndpoint(sme.sessionHost);
-                        if (destEp == creatorEp) {
+                        if (creatorEp && (destEp == creatorEp)) {
                             virtualEndpointsLock.Unlock();
                             discoverMapLock.Unlock();
                             router.UnlockNameTable();
@@ -932,7 +983,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                         }
 
                         /* Add new joiner to members */
-                        if (isAccepted) {
+                        if (isAccepted && creatorEp) {
                             sessionMapLock.Lock();
                             map<pair<String, SessionId>, SessionMapEntry>::iterator smIt = sessionMap.find(pair<String, SessionId>(sme.endpointName, sme.id));
                             if (smIt != sessionMap.end()) {
@@ -2163,7 +2214,7 @@ void AllJoynObj::NameOwnerChanged(const qcc::String& alias, const qcc::String* o
         return;
     }
 
-    /* Remove uniquen names from sessionsMap entries */
+    /* Remove unique names from sessionsMap entries */
     if (!newOwner && (alias[0] == ':')) {
         sessionMapLock.Lock();
         map<pair<String, SessionId>, SessionMapEntry>::iterator it = sessionMap.begin();

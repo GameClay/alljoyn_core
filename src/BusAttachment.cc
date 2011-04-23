@@ -930,7 +930,7 @@ QStatus BusAttachment::SetDaemonDebug(const char* module, uint32_t level)
     return status;
 }
 
-QStatus BusAttachment::BindSessionPort(SessionPort& sessionPort, const SessionOpts& opts)
+QStatus BusAttachment::BindSessionPort(SessionPort& sessionPort, const SessionOpts& opts, SessionPortListener& listener)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
@@ -970,11 +970,64 @@ QStatus BusAttachment::BindSessionPort(SessionPort& sessionPort, const SessionOp
                 break;
             }
         }
+        if (status == ER_OK) {
+            busInternal->listenersLock.Lock();
+            busInternal->sessionPortListeners[sessionPort] = &listener;
+            busInternal->listenersLock.Unlock();
+        }
     }
     return status;
 }
 
-QStatus BusAttachment::JoinSession(const char* sessionHost, SessionPort sessionPort, SessionId& sessionId, SessionOpts& opts)
+QStatus BusAttachment::UnbindSessionPort(SessionPort sessionPort)
+{
+    if (!IsConnected()) {
+        return ER_BUS_NOT_CONNECTED;
+    }
+
+    Message reply(*this);
+    MsgArg args[1];
+
+    args[0].Set("q", sessionPort);
+
+    QStatus status = this->GetAllJoynProxyObj().MethodCall(org::alljoyn::Bus::InterfaceName, "UnbindSessionPort", args, ArraySize(args), reply);
+    if (status != ER_OK) {
+        String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        QCC_LogError(status, ("%s.UnbindSessionPort returned ERROR_MESSAGE (error=%s, \"%s\")",
+                              org::alljoyn::Bus::InterfaceName,
+                              errName,
+                              errMsg.c_str()));
+
+    } else {
+        uint32_t disposition;
+        status = reply->GetArgs("u", &disposition);
+        if (status == ER_OK) {
+            switch (disposition) {
+            case ALLJOYN_UNBINDSESSIONPORT_REPLY_SUCCESS:
+                status = ER_OK;
+                break;
+
+            case ALLJOYN_UNBINDSESSIONPORT_REPLY_BAD_PORT:
+                status = ER_ALLJOYN_UNBINDSESSIONPORT_REPLY_BAD_PORT;
+                break;
+
+            case ALLJOYN_UNBINDSESSIONPORT_REPLY_FAILED:
+            default:
+                status = ER_ALLJOYN_UNBINDSESSIONPORT_REPLY_FAILED;
+                break;
+            }
+        }
+        if (status == ER_OK) {
+            busInternal->sessionListenersLock.Lock();
+            busInternal->sessionPortListeners.erase(sessionPort);
+            busInternal->sessionListenersLock.Unlock();
+        }
+    }
+    return status;
+}
+
+QStatus BusAttachment::JoinSession(const char* sessionHost, SessionPort sessionPort, SessionListener* listener, SessionId& sessionId, SessionOpts& opts)
 {
     if (!IsConnected()) {
         return ER_BUS_NOT_CONNECTED;
@@ -1044,6 +1097,11 @@ QStatus BusAttachment::JoinSession(const char* sessionHost, SessionPort sessionP
                               org::alljoyn::Bus::InterfaceName,
                               errName,
                               errMsg.c_str()));
+    }
+    if (listener && (status == ER_OK)) {
+        busInternal->listenersLock.Lock();
+        busInternal->sessionListeners[sessionId] = listener;
+        busInternal->listenersLock.Unlock();
     }
     return status;
 }
@@ -1180,7 +1238,11 @@ void BusAttachment::Internal::AlarmTriggered(const Alarm& alarm, QStatus reason)
             list<BusListener*>::iterator it = listeners.begin();
             while (it != listeners.end()) {
                 SessionId id = static_cast<SessionId>(args[0].v_uint32);
-                (*it++)->SessionLost(id);
+                map<SessionId, SessionListener*>::iterator slit = sessionListeners.find(id);
+                if (slit != sessionListeners.end()) {
+                    slit->second->SessionLost(id);
+                }
+                it++;
             }
             listenersLock.Unlock();
         } else if (0 == strcmp("NameOwnerChanged", msg->GetMemberName())) {
@@ -1204,6 +1266,11 @@ uint32_t BusAttachment::GetTimestamp()
     return qcc::GetTimestamp();
 }
 
+QStatus BusAttachment::SetSessionListener(SessionId id, SessionListener* listener)
+{
+    return busInternal->SetSessionListener(id, listener);
+}
+
 QStatus BusAttachment::CreateInterfacesFromXml(const char* xml)
 {
     StringSource source(xml);
@@ -1220,30 +1287,48 @@ QStatus BusAttachment::CreateInterfacesFromXml(const char* xml)
 
 bool BusAttachment::Internal::CallAcceptListeners(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
 {
-    /* Call all listeners. Any positive response means accept the joinSession request */
-    listenersLock.Lock();
-    list<BusListener*>::iterator it = listeners.begin();
     bool isAccepted = false;
-    while (it != listeners.end()) {
-        bool answer = (*it)->AcceptSessionJoiner(sessionPort, joiner, opts);
-        if (answer) {
-            isAccepted = true;
-        }
-        ++it;
+
+    /* Call sessionPortListener */
+    listenersLock.Lock();
+    map<SessionPort, SessionPortListener*>::iterator it = sessionPortListeners.find(sessionPort);
+    if (it != sessionPortListeners.end()) {
+        isAccepted = it->second->AcceptSessionJoiner(sessionPort, joiner, opts);
+    } else {
+        QCC_LogError(ER_FAIL, ("Unable to find sessionPortListener for port=%d", sessionPort));
     }
     listenersLock.Unlock();
+
     return isAccepted;
 }
 
 void BusAttachment::Internal::CallJoinedListeners(SessionPort sessionPort, SessionId sessionId, const char* joiner)
 {
-    /* Call all listeners. */
+    /* Call sessionListener */
     listenersLock.Lock();
-    list<BusListener*>::iterator it = listeners.begin();
-    while (it != listeners.end()) {
-        (*it++)->SessionJoined(sessionPort, sessionId, joiner);
+    map<SessionPort, SessionPortListener*>::iterator it = sessionPortListeners.find(sessionPort);
+    if (it != sessionPortListeners.end()) {
+        /* Add entry to sessionListeners */
+        sessionListeners[sessionId] = NULL;
+        /* Notify user */
+        it->second->SessionJoined(sessionPort, sessionId, joiner);
+    } else {
+        QCC_LogError(ER_FAIL, ("Unable to find sessionPortListener for port=%d", sessionPort));
     }
     listenersLock.Unlock();
+}
+
+QStatus BusAttachment::Internal::SetSessionListener(SessionId id, SessionListener* listener)
+{
+    QStatus status = ER_BUS_NO_SESSION;
+    listenersLock.Lock();
+    map<SessionId, SessionListener*>::iterator it = sessionListeners.find(id);
+    if (it != sessionListeners.end()) {
+        sessionListeners[id] = listener;
+        status = ER_OK;
+    }
+    listenersLock.Unlock();
+    return status;
 }
 
 }

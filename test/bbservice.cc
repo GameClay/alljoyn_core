@@ -226,7 +226,7 @@ class MyAuthListener : public AuthListener {
 
 };
 
-class MyBusListener : public BusListener {
+class MyBusListener : public BusListener, public SessionPortListener {
 
   public:
     MyBusListener(const SessionOpts& opts) : BusListener(), opts(opts) { }
@@ -405,14 +405,6 @@ class LocalTestObject : public BusObject {
         QStatus status = bus.RequestName(g_wellKnownName.c_str(), DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_DO_NOT_QUEUE);
         if (status != ER_OK) {
             QCC_LogError(status, ("RequestName(%s) failed."));
-            return;
-        }
-
-        /* Create a session for incoming client connections */
-        SessionPort sessionPort = ::org::alljoyn::alljoyn_test::SessionPort;
-        status = bus.BindSessionPort(sessionPort, opts);
-        if (status != ER_OK) {
-            QCC_LogError(status, ("BindSessionPort failed"));
             return;
         }
 
@@ -689,12 +681,13 @@ int main(int argc, char** argv)
 
     if (ER_OK == status) {
         /* Create a bus listener to be used to accept incoming session requests */
-        BusListener* myBusListener = new MyBusListener(opts);
+        MyBusListener* myBusListener = new MyBusListener(opts);
         g_msgBus->RegisterBusListener(*myBusListener);
 
         /* Register local objects and connect to the daemon */
         LocalTestObject testObj(*g_msgBus, ::org::alljoyn::alljoyn_test::ObjectPath, reportInterval, opts);
         g_msgBus->RegisterBusObject(testObj);
+
 
         g_msgBus->EnablePeerSecurity("ALLJOYN_SRP_KEYX ALLJOYN_RSA_KEYX ALLJOYN_SRP_LOGON", new MyAuthListener());
         /*
@@ -705,8 +698,17 @@ int main(int argc, char** argv)
         /* Connect to the daemon */
         status = g_msgBus->Connect(clientArgs.c_str());
         if (ER_OK == status) {
+            /* Bind a well-known session port for incoming client connections */
+            SessionPort sessionPort = ::org::alljoyn::alljoyn_test::SessionPort;
+            status = g_msgBus->BindSessionPort(sessionPort, opts, *myBusListener);
+            if (status != ER_OK) {
+                QCC_LogError(status, ("BindSessionPort failed"));
+            }
+
             /* Wait until bus is stopped */
-            g_msgBus->WaitStop();
+            if (status == ER_OK) {
+                g_msgBus->WaitStop();
+            }
         } else {
             QCC_LogError(status, ("Failed to connect to \"%s\"", clientArgs.c_str()));
         }

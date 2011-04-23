@@ -91,7 +91,7 @@ class MyBusListener : public BusListener {
                 }
             }
 
-            status = g_msgBus->JoinSession(name, ::org::alljoyn::alljoyn_test::SessionPort, sessionId, opts);
+            status = g_msgBus->JoinSession(name, ::org::alljoyn::alljoyn_test::SessionPort, NULL, sessionId, opts);
             if (ER_OK != status) {
                 QCC_LogError(status, ("JoinSession(%s) failed", name));
             }

@@ -116,7 +116,7 @@ class BasicSampleObject : public BusObject {
     }
 };
 
-class MyBusListener : public BusListener {
+class MyBusListener : public BusListener, public SessionPortListener {
     void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner)
     {
         if (newOwner && (0 == strcmp(busName, SERVICE_NAME))) {
@@ -221,7 +221,7 @@ int main(int argc, char** argv, char** envArg)
     SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
     if (ER_OK == status) {
         SessionPort sp = SERVICE_PORT;
-        status = g_msgBus->BindSessionPort(sp, opts);
+        status = g_msgBus->BindSessionPort(sp, opts, *s_busListener);
         if (ER_OK != status) {
             printf("BindSessionPort failed (%s)\n", QCC_StatusText(status));
         }

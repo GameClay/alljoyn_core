@@ -137,31 +137,26 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
   <status name="ER_DBUS_RELEASE_NAME_REPLY_RELEASED" value="0x907a" comment="ReleaseName reply: Name was released"/>
   <status name="ER_DBUS_RELEASE_NAME_REPLY_NON_EXISTENT" value="0x907b" comment=" ReleaseName reply: Name does not exist"/>
   <status name="ER_DBUS_RELEASE_NAME_REPLY_NOT_OWNER" value="0x907c" comment="ReleaseName reply: Request to release name that is not owned by this endpoint"/>
-  <status name="ER_DBUS_START_REPLY_SUCCESS" value="0x907d" comment="StartServiceByName reply: Service is started"/>
   <status name="ER_DBUS_START_REPLY_ALREADY_RUNNING" value="0x907e" comment="StartServiceByName reply: Service is already running"/>
-  <status name="ER_ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS" value="0x907f" comment="BindSessionPort reply: Success"/>
   <status name="ER_ALLJOYN_BINDSESSIONPORT_REPLY_ALREADY_EXISTS" value="0x9080" comment="BindSessionPort reply: SessionPort already exists"/>
   <status name="ER_ALLJOYN_BINDSESSIONPORT_REPLY_FAILED" value="0x9081" comment="BindSessionPort reply: Failed"/>
-  <status name="ER_ALLJOYN_JOINSESSION_REPLY_SUCCESS" value="0x9082" comment="JoinSession reply: Success"/>
   <status name="ER_ALLJOYN_JOINSESSION_REPLY_NO_SESSION" value="0x9083" comment="JoinSession reply: Session with given name does not exist"/>
   <status name="ER_ALLJOYN_JOINSESSION_REPLY_UNREACHABLE" value="0x9084" comment="JoinSession reply: Failed to find suitable transport"/>
   <status name="ER_ALLJOYN_JOINSESSION_REPLY_CONNECT_FAILED" value="0x9085" comment="JoinSession reply: Connect to advertised address"/>
   <status name="ER_ALLJOYN_JOINSESSION_REPLY_REJECTED" value="0x9086" comment="JoinSession reply: The session creator rejected the join req"/>
   <status name="ER_ALLJOYN_JOINSESSION_REPLY_BAD_SESSION_OPTS" value="0x9087" comment="JoinSession reply: Failed due to session option incompatibilities"/>
   <status name="ER_ALLJOYN_JOINSESSION_REPLY_FAILED" value="0x9088" comment="JoinSession reply: Failed for unknown reason"/>
-  <status name="ER_ALLJOYN_LEAVESESSION_REPLY_SUCCESS" value="0x9089" comment="LeaveSession reply: Success"/>
   <status name="ER_ALLJOYN_LEAVESESSION_REPLY_NO_SESSION" value="0x908a" comment="LeaveSession reply: Session with given name does not exist"/>
   <status name="ER_ALLJOYN_LEAVESESSION_REPLY_FAILED" value="0x908b" comment="LeaveSession reply: Failed for unspecified reason"/>
-  <status name="ER_ALLJOYN_ADVERTISENAME_REPLY_SUCCESS" value="0x908c" comment="AdvertiseName reply: Success"/>
   <status name="ER_ALLJOYN_ADVERTISENAME_REPLY_ALREADY_ADVERTISING" value="0x908d" comment="AdvertiseName reply: This endpoint is already advertising this name"/>
   <status name="ER_ALLJOYN_ADVERTISENAME_REPLY_FAILED" value="0x908e" comment="AdvertiseName reply: Advertise failed"/>
-  <status name="ER_ALLJOYN_CANCELADVERTISENAME_REPLY_SUCCESS" value="0x908f" comment="CancelAdvertiseName reply: Success"/>
   <status name="ER_ALLJOYN_CANCELADVERTISENAME_REPLY_FAILED" value="0x9090" comment="CancelAdvertiseName reply: Advertise failed"/>
-  <status name="ER_ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS" value="0x9091" comment="FindAdvertisedName reply: Success"/>
   <status name="ER_ALLJOYN_FINDADVERTISEDNAME_REPLY_ALREADY_DISCOVERING" value="0x9092" comment="FindAdvertisedName reply: This enpoint is already discovering this name"/>
   <status name="ER_ALLJOYN_FINDADVERTISEDNAME_REPLY_FAILED" value="0x9093" comment="FindAdvertisedName reply: Failed"/>
-  <status name="ER_ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_SUCCESS" value="0x9094" comment="CancelFindAdvertisedName reply: Success"/>
   <status name="ER_ALLJOYN_CANCELFINDADVERTISEDNAME_REPLY_FAILED" value="0x9095" comment="CancelFindAdvertisedName reply: Failed"/>
   <status name="ER_BUS_UNEXPECTED_DISPOSITION" value="0x9096" comment="An unexpected disposition was returned and has been treated as an error"/>
   <status name="ER_BUS_INTERFACE_ACTIVATED" value="0x9097" comment="An InterfaceDescription cannot be modified once activated"/>
+  <status name="ER_ALLJOYN_UNBINDSESSIONPORT_REPLY_BAD_PORT" value="0x9098" comment="UnbindSessionPort reply: SessionPort does not exist"/>
+  <status name="ER_ALLJOYN_UNBINDSESSIONPORT_REPLY_FAILED" value="0x9099" comment="UnbindSessionPort reply: Failed"/>
+
 </status_block>

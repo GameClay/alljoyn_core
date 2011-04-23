@@ -86,7 +86,7 @@ class MyBusListener : public BusListener {
             /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
             SessionId sessionId;
             SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
-            QStatus status = g_msgBus->JoinSession(name, ::org::alljoyn::alljoyn_test::SessionPort, sessionId, opts);
+            QStatus status = g_msgBus->JoinSession(name, ::org::alljoyn::alljoyn_test::SessionPort, NULL, sessionId, opts);
             if (ER_OK == status) {
                 /* Release main thread */
                 g_discoverEvent.SetEvent();
