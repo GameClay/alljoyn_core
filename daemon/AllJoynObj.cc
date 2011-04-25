@@ -26,6 +26,7 @@
 #include <assert.h>
 #include <limits>
 #include <map>
+#include <set>
 #include <vector>
 #include <errno.h>
 
@@ -2018,21 +2019,25 @@ void AllJoynObj::ExchangeNamesSignalHandler(const InterfaceDescription::Member* 
      * sent us this ExchangeNames
      */
     if (madeChanges) {
+        set<String> sendSet;
         router.LockNameTable();
         b2bEndpointsLock.Lock();
         bool isRemarshaled = false;
         map<qcc::StringMapKey, RemoteEndpoint*>::const_iterator bit = b2bEndpoints.find(msg->GetRcvEndpointName());
         map<qcc::StringMapKey, RemoteEndpoint*>::iterator it = b2bEndpoints.begin();
         while (it != b2bEndpoints.end()) {
-            if ((bit == b2bEndpoints.end()) || (bit->second->GetRemoteGUID() != it->second->GetRemoteGUID())) {
-                if (!isRemarshaled) {
-                    msg->ReMarshal(bus.GetInternal().GetLocalEndpoint().GetUniqueName().c_str(), true);
-                    isRemarshaled = true;
+            if (sendSet.find(it->second->GetRemoteName()) == sendSet.end()) {
+                if ((bit == b2bEndpoints.end()) || (bit->second->GetRemoteGUID() != it->second->GetRemoteGUID())) {
+                    if (!isRemarshaled) {
+                        msg->ReMarshal(bus.GetInternal().GetLocalEndpoint().GetUniqueName().c_str(), true);
+                        isRemarshaled = true;
+                    }
+                    QStatus status = it->second->PushMessage(msg);
+                    if (ER_OK != status) {
+                        QCC_LogError(status, ("Failed to forward NameChanged to %s", it->second->GetUniqueName().c_str()));
+                    }
                 }
-                QStatus status = it->second->PushMessage(msg);
-                if (ER_OK != status) {
-                    QCC_LogError(status, ("Failed to forward NameChanged to %s", it->second->GetUniqueName().c_str()));
-                }
+                sendSet.insert(it->second->GetRemoteName());
             }
             ++it;
         }
