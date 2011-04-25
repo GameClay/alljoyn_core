@@ -38,13 +38,6 @@
 extern char g_logFilePathName[];
 extern bool g_isManaged;
 
-extern DAEMONLIBRARY_API int nDaemonLibrary;
-
-<<<<<<< Updated upstream
 extern "C" DAEMONLIBRARY_API void DaemonMain(wchar_t* cmd);
 extern "C" DAEMONLIBRARY_API void SetLogFile(wchar_t* str);
-=======
-extern "C" DAEMONLIBRARY_API void DaemonMain(wchar_t * cmd);
-extern "C" DAEMONLIBRARY_API void SetLogFile(wchar_t * str);
 extern "C" DAEMONLIBRARY_API int LoadDaemon(int argc, char** argv);
->>>>>>> Stashed changes

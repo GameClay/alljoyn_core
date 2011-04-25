@@ -100,10 +100,6 @@ DAEMONLIBRARY_API void DaemonMain(wchar_t* cmd)
 
 DAEMONLIBRARY_API void SetLogFile(wchar_t* str)
 {
-<<<<<<< Updated upstream
     sprintf_s(g_logFilePathName, MAX_PATH, "%S", str);
-=======
-	sprintf_s(g_logFilePathName, MAX_PATH, "%S", str);
-	g_isManaged = true;
->>>>>>> Stashed changes
+    g_isManaged = true;
 }

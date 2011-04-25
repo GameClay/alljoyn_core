@@ -23,7 +23,7 @@
 
 // NOTE Uncomment the above #define if you need to debug the service but BEWARE
 // - once this symbol is defined commenting out the symbol will NOT undefine it.
-// it must be removed from the .vcproj file (with notepad or another text editor) 
+// it must be removed from the .vcproj file (with notepad or another text editor)
 
 using System;
 using System.Collections.Generic;
@@ -37,151 +37,135 @@ using System.Threading;
 
 using System.Runtime.InteropServices;
 
-namespace AlljoynService
-{
-    public partial class AlljoynDaemon : ServiceBase
+namespace AlljoynService {
+public partial class AlljoynDaemon : ServiceBase {
+    public AlljoynDaemon()
     {
-        public AlljoynDaemon()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
+    }
 
-        private const string _matchMe = "logpath=";
-        private static string _logPath = "";
-        private static string _exeName = "";
-        private static string _cl = "";
+    private const string _matchMe = "logpath=";
+    private static string _logPath = "";
+    private static string _exeName = "";
+    private static string _cl = "";
 
-        protected override void OnStart(string[] args)
-        {
+    protected override void OnStart(string[] args)
+    {
 #if DEBUG
 #if ATTACH_DEBUGGER
-            while (!Debugger.IsAttached)      // Waiting until debugger is attached
-            {
-                RequestAdditionalTime(1000);  // Prevents the service from timeout
-                Thread.Sleep(1000);           // Gives you time to attach the debugger   
-            }
-            RequestAdditionalTime(20000);     // for Debugging the OnStart method,
-            // increase as needed to prevent timeouts
+        while (!Debugger.IsAttached) {        // Waiting until debugger is attached
+            RequestAdditionalTime(1000);      // Prevents the service from timeout
+            Thread.Sleep(1000);               // Gives you time to attach the debugger
+        }
+        RequestAdditionalTime(20000);         // for Debugging the OnStart method,
+        // increase as needed to prevent timeouts
 
 #endif
 #endif
-            // a service only passes the exe name with this property
-            _exeName = Environment.CommandLine;
+        // a service only passes the exe name with this property
+        _exeName = Environment.CommandLine;
 
-            // get any other command line strings
-            int argc = args.Length; 
-            foreach (string s in args)
-            {
-                string a = s.ToLower();
-                a = a.Trim();
-                if (a.Contains(_matchMe))
-                {
-                    _logPath = getLogPath(a);
-                    argc--; // throw away
-                }
-                else
-                    _cl += " " + a;
-            }
-            if (_logPath.Length == 0)
-            {
+        // get any other command line strings
+        int argc = args.Length;
+        foreach (string s in args) {
+            string a = s.ToLower();
+            a = a.Trim();
+            if (a.Contains(_matchMe)) {
+                _logPath = getLogPath(a);
+                argc--;     // throw away
+            } else
+                _cl += " " + a;
+        }
+        if (_logPath.Length == 0) {
 #if DEBUG
-                Debug.WriteLine("Path name for logfile not found {0}", _cl);
+            Debug.WriteLine("Path name for logfile not found {0}", _cl);
 #endif
+            return;
+        }
+        // Directory methods do not like quotes
+        if (_logPath.IndexOf('"') > 0) {
+#if DEBUG
+            Debug.WriteLine("Path name for logfile not found {0}", _cl);
+#endif
+            return;
+        }
+
+        if (!Directory.Exists(_logPath)) {
+            try{
+                Directory.CreateDirectory(_logPath);
+            }catch{
+                Debug.WriteLine("Access denied {0}", _logPath);
                 return;
             }
-            // Directory methods do not like quotes
-            if (_logPath.IndexOf('"') > 0)
-            {
+        }
+
+        _logPath += @"\" + generateLogName();
+        ServiceDLL.SetLogFile(_logPath);
+
+        _cl = "AlljoynService " + _cl;
+        ThreadStart myThreadDelegate = new ThreadStart(DoWork);
+        Thread myThread = new Thread(myThreadDelegate);
+        myThread.Start();
+    }
+
+    protected override void OnStop()
+    {
+    }
+
+
+    public static void DoWork()
+    {
+        ServiceDLL.DaemonMain(_cl);
+    }
+
+    private static string generateLogName()
+    {
+        string prefix = "DaemonLog_";
+        DateTime dt = DateTime.Now;
+        string s = dt.ToString("u");
+        s = s.Replace(' ', '_');     // change embedded space
+        s = s.Replace(':', '_');     // and colons
+        s = s.ToLower().Replace('z', '.');     // change trailing z to .
+        s += "txt";
+        prefix += s;
+        return prefix;
+    }
+
+    private static string getLogPath(string s)
+    {
+        string pathname = "";
+        if (!s.Contains(_matchMe)) {
 #if DEBUG
-                Debug.WriteLine("Path name for logfile not found {0}", _cl);
+            Debug.WriteLine("ERROR: logpath=<path name> not found.");
 #endif
-                return;
-            }
-
-            if (!Directory.Exists(_logPath))
-            {
-                try
-                {
-                    Directory.CreateDirectory(_logPath);
-                }
-                catch
-                {
-                    Debug.WriteLine("Access denied {0}", _logPath);
-                    return;
-                }
-            }
-
-            _logPath += @"\" + generateLogName();
-            ServiceDLL.SetLogFile(_logPath);
-
-            _cl = "AlljoynService " + _cl; 
-            ThreadStart myThreadDelegate = new ThreadStart(DoWork);
-            Thread myThread = new Thread(myThreadDelegate);
-            myThread.Start();
+            return "";
         }
 
-        protected override void OnStop()
-        {
-        }
+        int start = s.IndexOf(_matchMe);
+        string remains = s.Remove(start, _matchMe.Length);
 
-
-        public static void DoWork()
-        {
-            ServiceDLL.DaemonMain(_cl);
-        }
-
-        private static string generateLogName()
-        {
-            string prefix = "DaemonLog_";
-            DateTime dt = DateTime.Now;
-            string s = dt.ToString("u");
-            s = s.Replace(' ', '_'); // change embedded space
-            s = s.Replace(':', '_'); // and colons
-            s = s.ToLower().Replace('z', '.'); // change trailing z to .
-            s += "txt";
-            prefix += s;
-            return prefix;
-        }
-
-        private static string getLogPath(string s)
-        {
-            string pathname = "";
-            if (!s.Contains(_matchMe))
-            {
-#if DEBUG
-                Debug.WriteLine("ERROR: logpath=<path name> not found.");
-#endif
-                return "";
-            }
-
-            int start = s.IndexOf(_matchMe);
-            string remains = s.Remove(start, _matchMe.Length);
-
-            // watch out for quoted pathnames
-            int quote = remains.IndexOf('"', start, remains.Length - start);
-            if (-1 != quote)
-            {
-                // find matching quote
-                int endquote = remains.IndexOf('"', quote + 1);
-                pathname = remains.Substring(quote, (endquote - quote) + 1);
-                return pathname;
-            }
-
-            int stop = remains.IndexOf(' ', start, remains.Length - start);
-            if (stop == -1) // no spaces found
-                pathname = remains.Substring(start, remains.Length - start);
-            else
-            {
-                pathname = remains.Substring(start, stop - start);
-            }
+        // watch out for quoted pathnames
+        int quote = remains.IndexOf('"', start, remains.Length - start);
+        if (-1 != quote) {
+            // find matching quote
+            int endquote = remains.IndexOf('"', quote + 1);
+            pathname = remains.Substring(quote, (endquote - quote) + 1);
             return pathname;
         }
+
+        int stop = remains.IndexOf(' ', start, remains.Length - start);
+        if (stop == -1)     // no spaces found
+            pathname = remains.Substring(start, remains.Length - start);
+        else {
+            pathname = remains.Substring(start, stop - start);
+        }
+        return pathname;
     }
-    internal class ServiceDLL
-    {
-        [DllImport("DaemonLib.dll", EntryPoint = "SetLogFile", CharSet = CharSet.Unicode)]
-        internal extern static void SetLogFile(String path);
-        [DllImport("DaemonLib.dll", EntryPoint = "DaemonMain", CharSet = CharSet.Unicode)]
-        internal extern static void DaemonMain(String cmd);
-    }
+}
+internal class ServiceDLL {
+    [DllImport("DaemonLib.dll", EntryPoint = "SetLogFile", CharSet = CharSet.Unicode)]
+    internal extern static void SetLogFile(String path);
+    [DllImport("DaemonLib.dll", EntryPoint = "DaemonMain", CharSet = CharSet.Unicode)]
+    internal extern static void DaemonMain(String cmd);
+}
 }

@@ -26,14 +26,12 @@ using System.ComponentModel;
 using System.Configuration.Install;
 
 
-namespace AlljoynService
-{
-    [RunInstaller(true)]
-    public partial class ProjectInstaller : Installer
+namespace AlljoynService {
+[RunInstaller(true)]
+public partial class ProjectInstaller : Installer {
+    public ProjectInstaller()
     {
-        public ProjectInstaller()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
     }
+}
 }

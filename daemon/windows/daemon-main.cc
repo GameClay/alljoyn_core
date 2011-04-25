@@ -325,28 +325,13 @@ DAEMONLIBRARY_API int LoadDaemon(int argc, char** argv)
 {
     LoggerSetting* loggerSettings(LoggerSetting::GetLoggerSetting(argv[0]));
     loggerSettings->SetSyslog(false);
-
-<<<<<<< Updated upstream
-#ifdef _USRDLL
-    FILE* pFile = _fsopen(g_logFilePathName, "a+", _SH_DENYNO);
-    if (pFile == NULL)
-        return 911;
-    loggerSettings->SetFile(pFile);
-#else
-    loggerSettings->SetFile(stdout);
-#endif
-=======
-	if( g_isManaged )
-	{
-		FILE * pFile = _fsopen(g_logFilePathName ,"a+", _SH_DENYNO);
-		if (pFile==NULL)
-			return 911;
-		loggerSettings->SetFile(pFile);
-	}
-	else
-	    loggerSettings->SetFile(stdout);
->>>>>>> Stashed changes
-
+    if (g_isManaged) {
+        FILE* pFile = _fsopen(g_logFilePathName, "a+", _SH_DENYNO);
+        if (pFile == NULL)
+            return 911;
+        loggerSettings->SetFile(pFile);
+    } else
+        loggerSettings->SetFile(stdout);
     OptParse opts(argc, argv);
     OptParse::ParseResultCode parseCode(opts.ParseResult());
     ConfigDB* config(ConfigDB::GetConfigDB());

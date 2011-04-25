@@ -21,8 +21,8 @@
 
 #include "DaemonLib.h"
 
-int main(int argc, char * argv[])
+int main(int argc, char* argv[])
 {
-	return LoadDaemon(argc,argv);
+    return LoadDaemon(argc, argv);
 }
 
