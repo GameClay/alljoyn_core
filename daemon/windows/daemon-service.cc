@@ -42,6 +42,9 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 
 // Global buffer to hold log file path when started as a Windows Service
 char g_logFilePathName[MAX_PATH];
+bool g_isManaged = false;
+
+// forward reference
 
 bool IsWhiteSpace(char c)
 {
@@ -49,10 +52,6 @@ bool IsWhiteSpace(char c)
         return true;
     return false;
 }
-
-// forward reference
-
-DAEMONLIBRARY_API int LoadDaemon(int argc, char** argv);
 
 DAEMONLIBRARY_API void DaemonMain(wchar_t* cmd)
 {
@@ -101,5 +100,10 @@ DAEMONLIBRARY_API void DaemonMain(wchar_t* cmd)
 
 DAEMONLIBRARY_API void SetLogFile(wchar_t* str)
 {
+<<<<<<< Updated upstream
     sprintf_s(g_logFilePathName, MAX_PATH, "%S", str);
+=======
+	sprintf_s(g_logFilePathName, MAX_PATH, "%S", str);
+	g_isManaged = true;
+>>>>>>> Stashed changes
 }

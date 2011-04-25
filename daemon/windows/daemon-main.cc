@@ -48,14 +48,9 @@
 #include "ConfigDB.h"
 #include "BusInternal.h"
 
-#ifdef _USRDLL
-
 #define DAEMONLIBRARY_EXPORTS
 #include "DaemonLib.h"
-
 #include <share.h>
-
-#endif
 
 #define DAEMON_EXIT_OK            0
 #define DAEMON_EXIT_OPTION_ERROR  1
@@ -100,7 +95,6 @@ void SignalHandler(int signal)
         g_ajBus = NULL;
     }
 }
-
 
 class OptParse {
   public:
@@ -327,16 +321,12 @@ int daemon(OptParse& opts)
     return DAEMON_EXIT_OK;
 }
 
-#ifdef _USRDLL
-
 DAEMONLIBRARY_API int LoadDaemon(int argc, char** argv)
-#else
-int main(int argc, char** argv, char** env)
-#endif
 {
     LoggerSetting* loggerSettings(LoggerSetting::GetLoggerSetting(argv[0]));
     loggerSettings->SetSyslog(false);
 
+<<<<<<< Updated upstream
 #ifdef _USRDLL
     FILE* pFile = _fsopen(g_logFilePathName, "a+", _SH_DENYNO);
     if (pFile == NULL)
@@ -345,6 +335,17 @@ int main(int argc, char** argv, char** env)
 #else
     loggerSettings->SetFile(stdout);
 #endif
+=======
+	if( g_isManaged )
+	{
+		FILE * pFile = _fsopen(g_logFilePathName ,"a+", _SH_DENYNO);
+		if (pFile==NULL)
+			return 911;
+		loggerSettings->SetFile(pFile);
+	}
+	else
+	    loggerSettings->SetFile(stdout);
+>>>>>>> Stashed changes
 
     OptParse opts(argc, argv);
     OptParse::ParseResultCode parseCode(opts.ParseResult());
