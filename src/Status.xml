@@ -158,5 +158,6 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
   <status name="ER_BUS_INTERFACE_ACTIVATED" value="0x9097" comment="An InterfaceDescription cannot be modified once activated"/>
   <status name="ER_ALLJOYN_UNBINDSESSIONPORT_REPLY_BAD_PORT" value="0x9098" comment="UnbindSessionPort reply: SessionPort does not exist"/>
   <status name="ER_ALLJOYN_UNBINDSESSIONPORT_REPLY_FAILED" value="0x9099" comment="UnbindSessionPort reply: Failed"/>
+  <status name="ER_ALLJOYN_BINDSESSIONPORT_REPLY_INVALID_OPTS" value="0x909a" comment="BindSessionPort reply: SessionOpts are invalid"/>
 
 </status_block>

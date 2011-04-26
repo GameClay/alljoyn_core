@@ -263,6 +263,14 @@ void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Mes
         QCC_DbgTrace(("AllJoynObj::BindSession(%s, %d, %s, <%x, %x, %x>)", sender.c_str(), sessionPort,
                       opts.isMultipoint ? "true" : "false", opts.traffic, opts.proximity, opts.transports));
 
+        /* Validate some Session options */
+        if ((opts.traffic == SessionOpts::TRAFFIC_RAW_UNRELIABLE) || 
+            ((opts.traffic == SessionOpts::TRAFFIC_RAW_RELIABLE) && opts.isMultipoint)) {
+            replyCode = ALLJOYN_BINDSESSIONPORT_REPLY_INVALID_OPTS;
+        }
+    }
+
+    if (replyCode == ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS) {
         /* Assign or check uniqueness of sessionPort */
         sessionMapLock.Lock();
         if (sessionPort == SESSION_PORT_ANY) {

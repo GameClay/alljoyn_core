@@ -102,6 +102,7 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
 #define ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS         1   /**< BindSessionPort reply: Success */
 #define ALLJOYN_BINDSESSIONPORT_REPLY_ALREADY_EXISTS  2   /**< BindSessionPort reply: SessionPort already exists */
 #define ALLJOYN_BINDSESSIONPORT_REPLY_FAILED          3   /**< BindSessionPort reply: Failed */
+#define ALLJOYN_BINDSESSIONPORT_REPLY_INVALID_OPTS    4   /**< BindSessionPort reply: Invalid SessionOpts */
 // @}
 
 /**
