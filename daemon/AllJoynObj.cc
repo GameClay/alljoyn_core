@@ -264,7 +264,7 @@ void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Mes
                       opts.isMultipoint ? "true" : "false", opts.traffic, opts.proximity, opts.transports));
 
         /* Validate some Session options */
-        if ((opts.traffic == SessionOpts::TRAFFIC_RAW_UNRELIABLE) || 
+        if ((opts.traffic == SessionOpts::TRAFFIC_RAW_UNRELIABLE) ||
             ((opts.traffic == SessionOpts::TRAFFIC_RAW_RELIABLE) && opts.isMultipoint)) {
             replyCode = ALLJOYN_BINDSESSIONPORT_REPLY_INVALID_OPTS;
         }
@@ -314,7 +314,7 @@ void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Mes
             do {
                 entry.id = qcc::Rand32();
             } while (entry.id == 0);
-            sessionMap[pair < String, SessionId > (entry.endpointName, 0)] = entry;
+            sessionMap.insert(pair<pair<String, SessionId>, SessionMapEntry>(pair<String, SessionId>(entry.endpointName, 0), entry));
         }
         sessionMapLock.Unlock();
     }
