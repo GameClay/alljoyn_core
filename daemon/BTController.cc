@@ -764,39 +764,41 @@ void BTController::BTDeviceAvailable(bool on)
 {
     QCC_DbgPrintf(("BTController::BTDeviceAvailable(<%s>)", on ? "on" : "off"));
     devAvailable = on;
-    if (IsMaster()) {
-        lock.Lock();
-        if (on) {
-            BTBusAddress addr;
-            QStatus status = bt.StartListen(listenAddr.addr, listenAddr.psm);
-            if (status == ER_OK) {
-                assert(listenAddr.IsValid());
-                listening = true;
-                nodeDB.Lock();
-                if (listenAddr != self->GetBusAddress()) {
-                    if (self->IsValid()) {
-                        // Gotta remove it from the DB since the DB has it indexed
-                        // on the BusAddress which changed.
-                        nodeDB.RemoveNode(self);
-                    }
-                    self->SetBusAddress(listenAddr);
-                    nodeDB.AddNode(self);
-                } // else 'self' is already in nodeDB with the correct BusAddress.
-                BDAddressSet ignoreAddrs;
-                BTNodeDB::const_iterator it;
-                for (it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
-                    ignoreAddrs->insert((*it)->GetBusAddress().addr);
+    lock.Lock();
+    if (on) {
+        BTBusAddress addr;
+        QStatus status = bt.StartListen(listenAddr.addr, listenAddr.psm);
+        if (status == ER_OK) {
+            assert(listenAddr.IsValid());
+            listening = true;
+            nodeDB.Lock();
+            if (listenAddr != self->GetBusAddress()) {
+                if (self->IsValid()) {
+                    // Gotta remove it from the DB since the DB has it indexed
+                    // on the BusAddress which changed.
+                    nodeDB.RemoveNode(self);
                 }
-                nodeDB.Unlock();
-
-                find.ignoreAddrs = ignoreAddrs;
-                find.dirty = true;
+                self->SetBusAddress(listenAddr);
+                nodeDB.AddNode(self);
+            } // else 'self' is already in nodeDB with the correct BusAddress.
+            BDAddressSet ignoreAddrs;
+            BTNodeDB::const_iterator it;
+            for (it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
+                ignoreAddrs->insert((*it)->GetBusAddress().addr);
             }
+            nodeDB.Unlock();
 
-            UpdateDelegations(advertise, listening);
-            UpdateDelegations(find);
-            QCC_DEBUG_ONLY(DumpNodeStateTable());
-        } else {
+            find.ignoreAddrs = ignoreAddrs;
+            find.dirty = true;
+
+            if (IsMaster()) {
+                UpdateDelegations(advertise, listening);
+                UpdateDelegations(find);
+                QCC_DEBUG_ONLY(DumpNodeStateTable());
+            }
+        }
+    } else {
+        if (IsMaster()) {
             if (advertise.active) {
                 if (UseLocalAdvertise()) {
                     bt.StopAdvertise();
@@ -809,16 +811,16 @@ void BTController::BTDeviceAvailable(bool on)
                 }
                 find.active = false;
             }
-            if (listening) {
-                listenAddr.addr.SetRaw(0);
-                listenAddr.psm = bt::INVALID_PSM;
-                self->SetBusAddress(listenAddr);
-                bt.StopListen();
-                listening = false;
-            }
         }
-        lock.Unlock();
+        if (listening) {
+            listenAddr.addr.SetRaw(0);
+            listenAddr.psm = bt::INVALID_PSM;
+            self->SetBusAddress(listenAddr);
+            bt.StopListen();
+            listening = false;
+        }
     }
+    lock.Unlock();
 }
 
 
