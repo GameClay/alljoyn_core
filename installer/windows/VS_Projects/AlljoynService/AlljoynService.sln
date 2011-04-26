@@ -2,11 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AlljoynService", "AlljoynService.csproj", "{7963233F-8FBB-4B05-8C49-EE5A2EBCDBE8}"
-	ProjectSection(ProjectDependencies) = postProject
-		{E26B3587-A924-4EEC-A60E-D45B4E7B2DC6} = {E26B3587-A924-4EEC-A60E-D45B4E7B2DC6}
-	EndProjectSection
 EndProject
-Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "ServiceSetup", "..\ServiceSetup\ServiceSetup.vdproj", "{8B56270F-F514-4482-8BDC-BFCFA7ADF8DB}"
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "ServiceSetup", "..\ServiceSetup\ServiceSetup.vdproj", "{845BDB1C-6545-4AF3-8E99-87488701CCB7}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DaemonLib", "..\DaemonLib\DaemonLibrary.vcproj", "{E26B3587-A924-4EEC-A60E-D45B4E7B2DC6}"
 EndProject
@@ -30,18 +27,18 @@ Global
 		{7963233F-8FBB-4B05-8C49-EE5A2EBCDBE8}.Release|Win32.ActiveCfg = Release|x86
 		{7963233F-8FBB-4B05-8C49-EE5A2EBCDBE8}.Release|x86.ActiveCfg = Release|x86
 		{7963233F-8FBB-4B05-8C49-EE5A2EBCDBE8}.Release|x86.Build.0 = Release|x86
-		{8B56270F-F514-4482-8BDC-BFCFA7ADF8DB}.Debug|Mixed Platforms.ActiveCfg = Debug
-		{8B56270F-F514-4482-8BDC-BFCFA7ADF8DB}.Debug|Mixed Platforms.Build.0 = Debug
-		{8B56270F-F514-4482-8BDC-BFCFA7ADF8DB}.Debug|Win32.ActiveCfg = Debug
-		{8B56270F-F514-4482-8BDC-BFCFA7ADF8DB}.Debug|Win32.Build.0 = Debug
-		{8B56270F-F514-4482-8BDC-BFCFA7ADF8DB}.Debug|x86.ActiveCfg = Debug
-		{8B56270F-F514-4482-8BDC-BFCFA7ADF8DB}.Debug|x86.Build.0 = Debug
-		{8B56270F-F514-4482-8BDC-BFCFA7ADF8DB}.Release|Mixed Platforms.ActiveCfg = Release
-		{8B56270F-F514-4482-8BDC-BFCFA7ADF8DB}.Release|Mixed Platforms.Build.0 = Release
-		{8B56270F-F514-4482-8BDC-BFCFA7ADF8DB}.Release|Win32.ActiveCfg = Release
-		{8B56270F-F514-4482-8BDC-BFCFA7ADF8DB}.Release|Win32.Build.0 = Release
-		{8B56270F-F514-4482-8BDC-BFCFA7ADF8DB}.Release|x86.ActiveCfg = Release
-		{8B56270F-F514-4482-8BDC-BFCFA7ADF8DB}.Release|x86.Build.0 = Release
+		{845BDB1C-6545-4AF3-8E99-87488701CCB7}.Debug|Mixed Platforms.ActiveCfg = Debug
+		{845BDB1C-6545-4AF3-8E99-87488701CCB7}.Debug|Mixed Platforms.Build.0 = Debug
+		{845BDB1C-6545-4AF3-8E99-87488701CCB7}.Debug|Win32.ActiveCfg = Debug
+		{845BDB1C-6545-4AF3-8E99-87488701CCB7}.Debug|Win32.Build.0 = Debug
+		{845BDB1C-6545-4AF3-8E99-87488701CCB7}.Debug|x86.ActiveCfg = Debug
+		{845BDB1C-6545-4AF3-8E99-87488701CCB7}.Debug|x86.Build.0 = Debug
+		{845BDB1C-6545-4AF3-8E99-87488701CCB7}.Release|Mixed Platforms.ActiveCfg = Release
+		{845BDB1C-6545-4AF3-8E99-87488701CCB7}.Release|Mixed Platforms.Build.0 = Release
+		{845BDB1C-6545-4AF3-8E99-87488701CCB7}.Release|Win32.ActiveCfg = Release
+		{845BDB1C-6545-4AF3-8E99-87488701CCB7}.Release|Win32.Build.0 = Release
+		{845BDB1C-6545-4AF3-8E99-87488701CCB7}.Release|x86.ActiveCfg = Release
+		{845BDB1C-6545-4AF3-8E99-87488701CCB7}.Release|x86.Build.0 = Release
 		{E26B3587-A924-4EEC-A60E-D45B4E7B2DC6}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
 		{E26B3587-A924-4EEC-A60E-D45B4E7B2DC6}.Debug|Mixed Platforms.Build.0 = Debug|Win32
 		{E26B3587-A924-4EEC-A60E-D45B4E7B2DC6}.Debug|Win32.ActiveCfg = Debug|Win32

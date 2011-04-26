@@ -92,6 +92,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				CommandLine="cmd /k pause &amp;&amp; copy $(OutDir)\$(TargetFileName) C:\aj\alljoyn_core\build\windows\x86\debug\dist\bin"
 			/>
 		</Configuration>
 		<Configuration

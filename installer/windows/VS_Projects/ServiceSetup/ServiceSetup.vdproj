@@ -21,7 +21,7 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_CD27E36A34A0406680F4FE0EF22D90D8"
+        "MsmKey" = "8:_6AFEB3158C314A90AF784D2467329261"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -192,10 +192,10 @@
         }
         "File"
         {
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CD27E36A34A0406680F4FE0EF22D90D8"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6AFEB3158C314A90AF784D2467329261"
             {
-            "SourcePath" = "8:..\\AlljoynService\\Debug\\DaemonLib.dll"
-            "TargetName" = "8:DaemonLib.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\build\\windows\\x86\\debug\\dist\\bin\\daemonlib.dll"
+            "TargetName" = "8:daemonlib.dll"
             "Tag" = "8:"
             "Folder" = "8:_BAA6842F451D41F68AB9772735A4618A"
             "Condition" = "8:"
@@ -269,7 +269,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:ServiceSetup"
         "ProductCode" = "8:{544F7727-C2C0-4765-A1D1-49CB1425C038}"
-        "PackageCode" = "8:{7B705138-2A14-435F-AB1D-18A7DC1165BF}"
+        "PackageCode" = "8:{B68BCF9C-FEF5-4CF6-878C-C8FE3D36511E}"
         "UpgradeCode" = "8:{5F3CB03F-DD62-426E-9126-E5476468BCF3}"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:FALSE"
