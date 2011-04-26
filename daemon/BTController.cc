@@ -716,6 +716,7 @@ const BTBusAddress& BTController::PrepConnect(const BTBusAddress& addr)
 void BTController::PostConnect(QStatus status, const RemoteEndpoint* ep)
 {
     // Assumes lock acquired in BTController::PrepConnect()
+    bool restoreOps = true;
 
     if (status == ER_OK) {
         assert(ep);
@@ -727,8 +728,11 @@ void BTController::PostConnect(QStatus status, const RemoteEndpoint* ep)
              * address as the endpoint.
              */
             SendSetState(ep->GetRemoteName());
+            restoreOps = false;
         }
-    } else {
+    }
+
+    if (restoreOps) {
         if (UseLocalFind()) {
             /*
              * Gotta restart the find operation since the connect failed and
