@@ -2113,13 +2113,9 @@ void AllJoynObj::NameChangedSignalHandler(const InterfaceDescription::Member* me
         b2bEndpointsLock.Lock();
         map<qcc::StringMapKey, RemoteEndpoint*>::const_iterator bit = b2bEndpoints.find(msg->GetRcvEndpointName());
         map<qcc::StringMapKey, RemoteEndpoint*>::iterator it = b2bEndpoints.begin();
-        bool isReMarshaled = false;
         while (it != b2bEndpoints.end()) {
             if ((bit == b2bEndpoints.end()) || (bit->second->GetRemoteGUID() != it->second->GetRemoteGUID())) {
-                if (!isReMarshaled) {
-                    isReMarshaled = true;
-                    msg->ReMarshal(bus.GetInternal().GetLocalEndpoint().GetUniqueName().c_str(), true);
-                }
+                msg->ReMarshal(bus.GetInternal().GetLocalEndpoint().GetUniqueName().c_str(), true);
                 QStatus status = it->second->PushMessage(msg);
                 if (ER_OK != status) {
                     QCC_LogError(status, ("Failed to forward NameChanged to %s", it->second->GetUniqueName().c_str()));
