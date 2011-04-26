@@ -43,19 +43,6 @@ using namespace qcc;
 namespace ajn {
 
 
-bool _BTNodeInfo::IsMinionOf(const BTNodeInfo& master) const
-{
-    BTNodeInfo* next = connectProxyNode;
-    while (next) {
-        if (*next == master) {
-            return true;
-        }
-        next = (*next)->connectProxyNode;
-    }
-    return false;
-}
-
-
 const BTBusAddress& _BTNodeInfo::GetConnectAddress() const
 {
     const _BTNodeInfo* next = this;

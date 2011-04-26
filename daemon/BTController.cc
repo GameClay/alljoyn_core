@@ -1001,7 +1001,7 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BTNodeDB& newAdInfo,
     lock.Lock();
     for (BTNodeDB::const_iterator it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
         const BTNodeInfo& node = *it;
-        if (!node->FindNamesEmpty() && node->IsMinionOf(self)) {
+        if (!node->FindNamesEmpty() && (node != self)) {
             QCC_DbgPrintf(("Notify %s of the name changes.", node->GetBusAddress().ToString().c_str()));
             if (oldAdInfo.Size() > 0) {
                 status = SendFoundNamesChange(node, oldAdInfo, true);
@@ -2221,8 +2221,7 @@ void BTController::DumpNodeStateTable() const
                        (node == self) ? "local" :
                        ((node == find.minion) ? "find minion" :
                         ((node == advertise.minion) ? "advertise minion" :
-                         (node->IsDirectMinion() ? "direct minon" :
-                          (node->IsMinionOf(self) ? "indirect minion" : "<orphan>"))))));
+                         (node->IsDirectMinion() ? "direct minon" : "indirect minion")))));
         QCC_DbgPrintf(("         Advertise names:"));
         for (nameit = node->GetAdvertiseNamesBegin(); nameit != node->GetAdvertiseNamesEnd(); ++nameit) {
             QCC_DbgPrintf(("            %s", nameit->c_str()));

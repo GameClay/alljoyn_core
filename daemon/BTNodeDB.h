@@ -436,15 +436,6 @@ class _BTNodeInfo {
     void SetDirectMinion(bool val) { directMinion = val; }
 
     /**
-     * Check if this node is a minion of the specified master node.
-     *
-     * @param master    Node to check if we are a minion.
-     *
-     * @return  true if we are a minion of master, false otherwise
-     */
-    bool IsMinionOf(const BTNodeInfo& master) const;
-
-    /**
      * Get the bus address that is accepting connections for us.
      *
      * @return  Bus address accepting connections for us
