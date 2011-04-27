@@ -224,7 +224,7 @@ static inline bool IsControlMessage(Message& msg)
     if (strcmp("org.freedesktop.DBus", msg->GetInterface()) == 0) {
         return true;
     }
-    if (strcmp("org.alljoyn.Bus", msg->GetInterface()) == 0) {
+    if (strcmp("org.alljoyn.Daemon", msg->GetInterface()) == 0) {
         return true;
     }
     return false;
