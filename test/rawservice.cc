@@ -225,6 +225,7 @@ int main(int argc, char** argv)
 #ifdef WIN32
             closesocket(sockFd);
 #else
+            qcc::Sleep(1000);
             ::shutdown(sockFd, SHUT_RDWR);
             ::close(sockFd);
 #endif
