@@ -592,6 +592,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                 }
 
                 node->SetUUIDRev(newUUIDRev);
+                node->SetConnectNode(connNode);
             }
 
             cacheInfo = UUIDRevCacheInfo(newAdInfo);
