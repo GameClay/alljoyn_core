@@ -146,7 +146,7 @@ static void usage(void)
     printf("Usage: bbclient [-h] [-c <count>] [-i] [-e] [-r #] [-l | -la | -d[s]] [-n <well-known name>] [-t[a] <delay> [<interval>] | -rt]\n\n");
     printf("Options:\n");
     printf("   -h                    = Print this help message\n");
-    printf("   -c [count]            = Number of pings to send to the server\n");
+    printf("   -c <count>            = Number of pings to send to the server\n");
     printf("   -i                    = Use introspection to discover remote interfaces\n");
     printf("   -e[k] [RSA|SRP]       = Encrypt the test interface using specified auth mechanism, -ek means clear keys\n");
     printf("   -a #                  = Max authentication attempts\n");
@@ -158,7 +158,7 @@ static void usage(void)
     printf("   -ds                   = discover remote bus with test service and cancel discover when found\n");
     printf("   -t                    = Call delayed_ping with <delay> and repeat at <interval> if -c given\n");
     printf("   -ta                   = Like -t except calls asynchronously\n");
-    printf("   -rt                   = Round trip timer\n");
+    printf("   -rt [run time]        = Round trip timer (optional run time in ms)\n");
     printf("   -w                    = Don't wait for service\n");
     printf("   -s                    = Call BusAttachment::WaitStop before exiting");
     printf("\n");
@@ -320,6 +320,7 @@ int main(int argc, char** argv)
     unsigned long pingCount = 1;
     unsigned long repCount = 1;
     unsigned long authCount = 1000;
+    uint64_t runTime = 0;
     Environ* env;
     bool startService = false;
     bool autoStartService = false;
@@ -450,7 +451,12 @@ int main(int argc, char** argv)
             }
         } else if (0 == strcmp("-rt", argv[i])) {
             roundtrip = true;
-            if (pingCount == 1) {
+            if ((argc > (i + 1)) && argv[i + 1][0] != '-') {
+                String runTimeStr(argv[i + 1]);
+                runTime = StringToU64(runTimeStr);
+                pingCount = 1;
+                ++i;
+            } else if (pingCount == 1) {
                 pingCount = 1000;
             }
         } else if (0 == strcmp("-s", argv[i])) {
@@ -513,9 +519,13 @@ int main(int argc, char** argv)
     }
 
     for (unsigned long i = 0; i < repCount; i++) {
-
-        unsigned long pings = pingCount;
-
+        unsigned long pings;
+        if (runTime > 0) {
+            pings = 1;
+            pingCount = 0;
+        } else {
+            pings = pingCount;
+        }
 
         /* Start the msg bus */
         if (ER_OK == status) {
@@ -676,13 +686,21 @@ int main(int argc, char** argv)
                                 min_delta = delta;
                                 QCC_SyncPrintf("New Min time: %llu ms\n", min_delta);
                             }
-                            if (delta > ((~0ULL) / pingCount)) {
+                            if ((runTime == 0) && (delta > ((~0ULL) / pingCount))) {
                                 QCC_SyncPrintf("Round trip time &llu ms will overflow average calculation; dropping...\n", delta);
                             } else {
                                 timeSum += delta;
                             }
-                            QCC_SyncPrintf("DELTA: %llu %llu\n", sample, delta);
+                            QCC_SyncPrintf("DELTA: %llu %llu %llu\n", sample, timeSum, delta);
                             ++sample;
+                            if (runTime > 0) {
+                                ++pingCount;
+                                if (timeSum >= runTime) {
+                                    pings = 0;
+                                } else {
+                                    pings = 1;
+                                }
+                            }
                         } else {
                             QCC_SyncPrintf("%s.%s ( path=%s ) returned \"%s\"\n",
                                            g_wellKnownName.c_str(),
