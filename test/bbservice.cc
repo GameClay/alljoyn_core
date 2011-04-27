@@ -413,7 +413,7 @@ class LocalTestObject : public BusObject {
         /* Request a well-known name */
         QStatus status = bus.RequestName(g_wellKnownName.c_str(), DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_DO_NOT_QUEUE);
         if (status != ER_OK) {
-            QCC_LogError(status, ("RequestName(%s) failed."));
+            QCC_LogError(status, ("RequestName(%s) failed.", g_wellKnownName.c_str()));
             return;
         }
 
