@@ -90,14 +90,17 @@ import java.util.ArrayList;
 public class DaemonService extends Service {
     private static final String TAG = "org.alljoyn.bus.daemonservice";
     //
-    // Load the JNI library that holds all of the AllJoyn code.  The alljoyn
-	// daemon has been made into a static library that exports the function
-    // DaemonMain() instead of being an executable with a main() entry point.
-    // Our JNI code links against this static library and produces a dynamic
-    // library that exports a function (runDaemon) that simply calls into the
-    // static liballjoyn-daemon.a library.  This effectively runs alljoyn-daemon
-    // when the Android system detects a need for the
-    // "org.alljoyn.bus.daemonservice.START_DAEMON" Action to be serviced.
+    // Load the JNI library that holds all of the AllJoyn code.  This library
+    // must be separately built.  Please look in the jni directory for the
+    // Android.mk file that describes how to build this library.
+    //
+    // When built for Android, a static library version of the AllJoyn daemon
+    // is built as well as the usual executable.  Our JNI code links against
+    // this static library and produces a dynamic library that exports a
+    // single native function (runDaemon) that simply calls into the AllJoyn
+    // daemon library.  This effectively runs the alljoyn-daemon when the 
+    // Android system needs a "org.alljoyn.bus.daemonservice.START_DAEMON"
+    // Action to be launched.
     //
     static {
         System.loadLibrary("bus-daemon-jni");

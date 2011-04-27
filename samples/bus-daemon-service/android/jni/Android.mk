@@ -15,13 +15,12 @@
 LOCAL_PATH := $(call my-dir)
 
 #
-# This library depends on the built AllJoyn daemon.  It must be separately
-# built before building the JNI code in this directory.  To build the JNI
-# library here, you can uncomment the LOCAL_PATH version of the BUS_LIB_DIR
-# variable below and then "do ndk-build -B V=1".
+# This library depends on the AllJoyn daemon library.  It must be separately
+# built before building the JNI code in this directory.  We have the linker
+# look for this library in the top level build directory (not in the subdir
+# alljoyn_core/build.  To build the JNI library here, do "ndk-build -B V=1".
 #
-BUS_LIB_DIR := ../../lib
-BUS_LIB_DIR := $(LOCAL_PATH)/../../../../build/android/arm/$(APP_OPTIM)/dist/lib/
+BUS_LIB_DIR := ../../../../../build/android/arm/$(APP_OPTIM)/dist/lib/
 
 include $(CLEAR_VARS)
 
