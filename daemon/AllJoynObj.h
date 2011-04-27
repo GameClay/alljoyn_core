@@ -327,7 +327,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
 
     const InterfaceDescription::Member* foundNameSignal;   /**< org.alljoyn.Bus.FoundName signal */
     const InterfaceDescription::Member* lostAdvNameSignal; /**< org.alljoyn.Bus.LostAdvertisdName signal */
-    const InterfaceDescription::Member* busConnLostSignal; /**< org.alljoyn.Bus.BusConnectionLost signal */
+    const InterfaceDescription::Member* sessionLostSignal; /**< org.alljoyn.Bus.SessionLost signal */
 
     /** Map of open connectSpecs to local endpoint name(s) that require the connection. */
     std::multimap<qcc::String, qcc::String> connectMap;
@@ -375,7 +375,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
             fd(-1),
             streamingEp(NULL) { }
     };
-    std::map<std::pair<qcc::String, SessionId>, SessionMapEntry> sessionMap;  /**< Map (endpointName,sessionId) to session info */
+    std::multimap<std::pair<qcc::String, SessionId>, SessionMapEntry> sessionMap;  /**< Map (endpointName,sessionId) to session info */
     qcc::Mutex sessionMapLock;                           /**< Protect sessionMap */
 
     const qcc::GUID& guid;                               /**< Global GUID of this daemon */
@@ -488,6 +488,13 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
                               const char* joinerName,
                               const SessionOpts& opts,
                               bool& isAccepted);
+
+    /**
+     * Utility method used to send SessionLost signal to locally attached endpoint.
+     *
+     * @param       entry    SessionMapEntry that was lost.
+     */
+    void SendSessionLost(const SessionMapEntry& entry);
 
     /**
      * Utility method used to invoke GetSessionInfo remote method.

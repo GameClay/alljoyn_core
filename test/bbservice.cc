@@ -226,10 +226,10 @@ class MyAuthListener : public AuthListener {
 
 };
 
-class MyBusListener : public BusListener, public SessionPortListener {
+class MyBusListener : public BusListener, public SessionPortListener, public SessionListener {
 
   public:
-    MyBusListener(const SessionOpts& opts) : BusListener(), opts(opts) { }
+    MyBusListener(BusAttachment& bus, const SessionOpts& opts) : bus(bus), opts(opts) { }
 
     bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
     {
@@ -253,9 +253,18 @@ class MyBusListener : public BusListener, public SessionPortListener {
     void SessionJoined(SessionPort sessionPort, SessionId sessionId, const char* joiner)
     {
         QCC_SyncPrintf("Session Established: joiner=%s, sessionId=%d\n", joiner, sessionId);
+        QStatus status = bus.SetSessionListener(sessionId, this);
+        if (status != ER_OK) {
+            QCC_LogError(status, ("SetSessionListener failed"));
+        }
+    }
+
+    void SessionLost(SessionId sessionId) {
+        QCC_SyncPrintf("SessionLost(%u) was called\n", sessionId);
     }
 
   private:
+    BusAttachment& bus;
     SessionOpts opts;
 };
 
@@ -681,7 +690,7 @@ int main(int argc, char** argv)
 
     if (ER_OK == status) {
         /* Create a bus listener to be used to accept incoming session requests */
-        MyBusListener* myBusListener = new MyBusListener(opts);
+        MyBusListener* myBusListener = new MyBusListener(*g_msgBus, opts);
         g_msgBus->RegisterBusListener(*myBusListener);
 
         /* Register local objects and connect to the daemon */

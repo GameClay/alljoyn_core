@@ -70,7 +70,7 @@ static Event g_discoverEvent;
 static String g_wellKnownName = ::org::alljoyn::alljoyn_test::DefaultWellKnownName;
 
 /** AllJoynListener receives discovery events from AllJoyn */
-class MyBusListener : public BusListener {
+class MyBusListener : public BusListener, public SessionListener {
   public:
 
     MyBusListener(bool stopDiscover) : BusListener(), sessionId(0), stopDiscover(stopDiscover) { }
@@ -91,7 +91,7 @@ class MyBusListener : public BusListener {
                 }
             }
 
-            status = g_msgBus->JoinSession(name, ::org::alljoyn::alljoyn_test::SessionPort, NULL, sessionId, opts);
+            status = g_msgBus->JoinSession(name, ::org::alljoyn::alljoyn_test::SessionPort, this, sessionId, opts);
             if (ER_OK != status) {
                 QCC_LogError(status, ("JoinSession(%s) failed", name));
             }
@@ -114,6 +114,10 @@ class MyBusListener : public BusListener {
                        name,
                        previousOwner ? previousOwner : "null",
                        newOwner ? newOwner : "null");
+    }
+
+    void SessionLost(SessionId sessionId) {
+        QCC_SyncPrintf("SessionLost(%u) was called\n", sessionId);
     }
 
     SessionId GetSessionId() const { return sessionId; }

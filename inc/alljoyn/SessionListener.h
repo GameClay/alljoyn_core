@@ -46,7 +46,7 @@ class SessionListener {
      *
      * @param sessionId     Id of session that was lost.
      */
-    virtual void SessionLost(const SessionId& sessionId) { }
+    virtual void SessionLost(SessionId sessionId) { }
 };
 
 }

@@ -274,7 +274,7 @@ QStatus BusAttachment::Connect(const char* connectSpec, RemoteEndpoint** newep)
                 assert(ajIface);
                 status = RegisterSignalHandler(busInternal,
                                                static_cast<MessageReceiver::SignalHandler>(&BusAttachment::Internal::AllJoynSignalHandler),
-                                               ajIface->GetMember("BusConnectionLost"),
+                                               ajIface->GetMember("SessionLost"),
                                                NULL);
             }
             if (ER_OK == status) {
@@ -338,7 +338,7 @@ QStatus BusAttachment::Disconnect(const char* connectSpec)
             if (alljoynIface) {
                 UnregisterSignalHandler(this,
                                         static_cast<MessageReceiver::SignalHandler>(&BusAttachment::Internal::AllJoynSignalHandler),
-                                        alljoynIface->GetMember("BusConnectionLost"),
+                                        alljoynIface->GetMember("SessionLost"),
                                         NULL);
             }
         }
@@ -1247,17 +1247,13 @@ void BusAttachment::Internal::AlarmTriggered(const Alarm& alarm, QStatus reason)
             }
             listenersLock.Unlock();
         } else if (0 == strcmp("SessionLost", msg->GetMemberName())) {
-            listenersLock.Lock();
-            list<BusListener*>::iterator it = listeners.begin();
-            while (it != listeners.end()) {
-                SessionId id = static_cast<SessionId>(args[0].v_uint32);
-                map<SessionId, SessionListener*>::iterator slit = sessionListeners.find(id);
-                if (slit != sessionListeners.end()) {
-                    slit->second->SessionLost(id);
-                }
-                it++;
+            sessionListenersLock.Lock();
+            SessionId id = static_cast<SessionId>(args[0].v_uint32);
+            map<SessionId, SessionListener*>::iterator slit = sessionListeners.find(id);
+            if ((slit != sessionListeners.end()) && slit->second) {
+                slit->second->SessionLost(id);
             }
-            listenersLock.Unlock();
+            sessionListenersLock.Unlock();
         } else if (0 == strcmp("NameOwnerChanged", msg->GetMemberName())) {
             listenersLock.Lock();
             list<BusListener*>::iterator it = listeners.begin();
