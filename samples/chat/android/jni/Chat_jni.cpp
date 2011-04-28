@@ -51,6 +51,7 @@ static const char* CHAT_SERVICE_INTERFACE_NAME = "org.alljoyn.bus.samples.chat";
 static const char* CHAT_SERVICE_WELL_KNOWN_NAME = "org.alljoyn.bus.samples.chat";
 static const char* CHAT_SERVICE_OBJECT_PATH = "/chatService";
 static const char* NAME_PREFIX = "org.alljoyn.bus.samples.chat";
+static const int CHAT_PORT = 27;
 
 /* Forward declaration */
 class ChatObject;
@@ -62,26 +63,52 @@ static ChatObject* s_chatObj = NULL;
 static qcc::String s_connectName;
 static qcc::String s_advertisedName;
 static MyBusListener* s_busListener = NULL;
+static SessionId s_sessionId = 0;
+static qcc::String sessionName;
 
 
-class MyBusListener : public BusListener {
+class MyBusListener : public BusListener, public SessionPortListener, public SessionListener {
   public:
     MyBusListener(JavaVM* vm, jobject& jobj) : vm(vm), jobj(jobj) { }
 
-    void FoundName(const char* name, const char* guid, const char* namePrefix, const char* busAddress)
-    {
-        LOGE("Chat", "FoundName signal received from %s", busAddress);
+    void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
+        {
+            const char* convName = name + strlen(NAME_PREFIX);
+            LOGD("Discovered chat conversation: %s \n",name);
 
-        /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
-        uint32_t disposition;
-        QStatus status = s_bus->ConnectToRemoteBus(busAddress, disposition);
-        if ((ER_OK == status) && (ALLJOYN_CONNECT_REPLY_SUCCESS == disposition)) {
-            LOGE("\n Connected to bus %s having well known name %s ", busAddress, name);
-        } else {
-            LOGE("ConnectToRemoteBus failed (status=%s, disposition=%d)", QCC_StatusText(status), disposition);
+            /* Join the conversation */
+
+            SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+            QStatus status = s_bus->JoinSession(name, CHAT_PORT, NULL, s_sessionId, opts);
+            if (ER_OK == status) {
+                LOGD("Joined conversation \"%s\"\n", name);
+            } else {
+                LOGD("JoinSession failed status=%s\n", QCC_StatusText(status));
+            }
         }
 
-    }
+    /* Accept an incoming JoinSession request */
+       bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
+       {
+           if (sessionPort != CHAT_PORT) {
+               LOGE("Rejecting join attempt on non-chat session port %d\n", sessionPort);
+               return false;
+           }
+
+           LOGD("Accepting join session request from %s (opts.proximity=%x, opts.traffic=%x, opts.transports=%x)\n",
+                  joiner, opts.proximity, opts.traffic, opts.transports);
+
+
+           return true;
+       }
+
+       void SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner)
+       {
+           s_sessionId = id;
+           LOGD("SessionJoined with %s (id=%u)\n", joiner, id);
+       }
+
+
     void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner)
     {
     }
@@ -122,10 +149,8 @@ class ChatObject : public BusObject {
     /** Send a Chat signal */
     QStatus SendChatSignal(const char* msg) {
         MsgArg chatArg("s", msg);
-
         uint8_t flags = 0;
-        flags |= ALLJOYN_FLAG_GLOBAL_BROADCAST;
-        return Signal(NULL, *chatSignalMember, &chatArg, 1, 0, flags);
+        return Signal(NULL, s_sessionId, *chatSignalMember, &chatArg, 1, 0, flags);
     }
 
     /** Receive a signal from another Chat client */
@@ -149,69 +174,8 @@ class ChatObject : public BusObject {
     }
 
 
-
-    void NameAcquiredCB(Message& msg, void* context)
-    {
-        /* Check name acquired result */
-        size_t numArgs;
-        const MsgArg* args;
-        msg->GetArgs(numArgs, args);
-
-        if (args[0].v_uint32 == DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
-            /* Begin Advertising the well known name to remote busses */
-            const ProxyBusObject& alljoynObj = s_bus->GetAllJoynProxyObj();
-            MsgArg arg("s", s_advertisedName.c_str());
-            QStatus status = alljoynObj.MethodCallAsync(org::alljoyn::Bus::InterfaceName,
-                                                        "AdvertiseName",
-                                                        this,
-                                                        static_cast<MessageReceiver::ReplyHandler>(&ChatObject::AdvertiseRequestCB),
-                                                        &arg,
-                                                        1);
-            if (ER_OK != status) {
-                LOGE("Sending org.alljoyn.bus.Advertise failed");
-            }
-        } else {
-            LOGE("Failed to obtain name \"%s\". RequestName returned %d", s_advertisedName.c_str(), args[0].v_uint32);
-        }
-
-
-
-    }
-
-
-    void AdvertiseRequestCB(Message& msg, void* context)
-    {
-        /* Make sure request was processed */
-        size_t numArgs;
-        const MsgArg* args;
-        msg->GetArgs(numArgs, args);
-
-        if ((MESSAGE_METHOD_RET != msg->GetType()) || (ALLJOYN_ADVERTISENAME_REPLY_SUCCESS != args[0].v_uint32)) {
-            LOGE("Failed to advertise name \"%s\". org.alljoyn.bus.Advertise returned %d", s_advertisedName.c_str(), args[0].v_uint32);
-        }
-
-    }
-
-
     void ObjectRegistered(void) {
-
-        BusObject::ObjectRegistered();
-
-        /* Request a well-known name */
-        /* Note that you cannot make a blocking method call here */
-        const ProxyBusObject& dbusObj = s_bus->GetDBusProxyObj();
-        MsgArg args[2];
-        args[0].Set("s", s_advertisedName.c_str());
-        args[1].Set("u", 6);
-        QStatus status = dbusObj.MethodCallAsync(org::freedesktop::DBus::InterfaceName,
-                                                 "RequestName",
-                                                 s_chatObj,
-                                                 static_cast<MessageReceiver::ReplyHandler>(&ChatObject::NameAcquiredCB),
-                                                 args,
-                                                 2);
-        if (ER_OK != status) {
-            LOGE("Failed to request name %s ", s_advertisedName.c_str());
-        }
+    	LOGD("\n Object registered \n");
     }
 
     /** Release the well-known name if it was acquired */
@@ -254,69 +218,147 @@ extern "C" {
  */
 JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_chat_Chat_jniOnCreate(JNIEnv* env, jobject jobj)
 {
-    QStatus status = ER_OK;
-    const char* daemonAddr = "unix:abstract=alljoyn";
+
 
     /* Set AllJoyn logging */
-    QCC_SetLogLevels("ALLJOYN=7;ALL=1");
+    //QCC_SetLogLevels("ALLJOYN=7;ALL=1");
     QCC_UseOSLogging(true);
 
     /* Create message bus */
     s_bus = new BusAttachment("chat", true);
+    QStatus status = ER_OK;
+	const char* daemonAddr = "unix:abstract=alljoyn";
 
-    /* Create org.alljoyn.bus.samples.chat interface */
-    InterfaceDescription* chatIntf = NULL;
-    status = s_bus->CreateInterface(CHAT_SERVICE_INTERFACE_NAME, chatIntf);
-    if (ER_OK == status) {
-        chatIntf->AddSignal("Chat", "s",  "str", 0);
-        chatIntf->Activate();
-    } else {
-        LOGE("Failed to create interface \"%s\" (%s)", CHAT_SERVICE_INTERFACE_NAME, QCC_StatusText(status));
-    }
+	/* Create org.alljoyn.bus.samples.chat interface */
+	InterfaceDescription* chatIntf = NULL;
+	status = s_bus->CreateInterface(CHAT_SERVICE_INTERFACE_NAME, chatIntf);
+	if (ER_OK == status) {
+		chatIntf->AddSignal("Chat", "s",  "str", 0);
+		chatIntf->Activate();
+	} else {
+		LOGE("Failed to create interface \"%s\" (%s)", CHAT_SERVICE_INTERFACE_NAME, QCC_StatusText(status));
+	}
 
-    /* Start the msg bus */
-    if (ER_OK == status) {
-        status = s_bus->Start();
-        if (ER_OK != status) {
-            LOGE("BusAttachment::Start failed (%s)", QCC_StatusText(status));
-        }
-    }
+	/* Start the msg bus */
+	if (ER_OK == status) {
+		status = s_bus->Start();
+		if (ER_OK != status) {
+			LOGE("BusAttachment::Start failed (%s)", QCC_StatusText(status));
+		}
+	}
 
-    /* Register a bus listener in order to get discovery indications */
-    if (ER_OK == status) {
-        JavaVM* vm;
-        env->GetJavaVM(&vm);
-        s_busListener = new MyBusListener(vm, jobj);
-        s_bus->RegisterBusListener(*s_busListener);
-    }
+	/* Connect to the daemon */
+	if (ER_OK == status) {
+		status = s_bus->Connect(daemonAddr);
+		if (ER_OK != status) {
+			LOGE("BusAttachment::Connect(\"%s\") failed (%s)", daemonAddr, QCC_StatusText(status));
+		}
+	}
 
-    /* Connect to the daemon */
-    if (ER_OK == status) {
-        status = s_bus->Connect(daemonAddr);
-        if (ER_OK != status) {
-            LOGE("BusAttachment::Connect(\"%s\") failed (%s)", daemonAddr, QCC_StatusText(status));
-        }
-    }
+	/* Create and register the bus object that will be used to send out signals */
+	JavaVM* vm;
+	env->GetJavaVM(&vm);
+	s_chatObj = new ChatObject(*s_bus, CHAT_SERVICE_OBJECT_PATH, vm, jobj);
+	s_bus->RegisterBusObject(*s_chatObj);
+	LOGD("\n Bus Object created and registered \n");
 
-    /* Add a rule to allow org.codeaurora.samples.chat.Chat signals to be routed here */
-    if (ER_OK == status) {
-        MsgArg arg("s", "type='signal',interface='org.alljoyn.bus.samples.chat',member='Chat'");
-        Message reply(*s_bus);
-        const ProxyBusObject& dbusObj = s_bus->GetDBusProxyObj();
-        status = dbusObj.MethodCall(org::freedesktop::DBus::InterfaceName,
-                                    "AddMatch",
-                                    &arg,
-                                    1,
-                                    reply);
-        if (status != ER_OK) {
-            LOGE("Failed to register Match rule for 'org.alljoyn.bus.samples.chat.Chat': %s\n",
-                 QCC_StatusText(status));
-        }
-    }
+	/* Register a bus listener in order to get discovery indications */
+	if (ER_OK == status) {
+		s_busListener = new MyBusListener(vm, jobj);
+		s_bus->RegisterBusListener(*s_busListener);
+	}
 
 
-    return (int) status;
+	if (NULL == s_bus) {
+		return jboolean(false);
+	}
+
+    return (int) ER_OK;
 }
+
+
+
+
+JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_advertise(JNIEnv* env,
+                                                                            jobject jobj,
+                                                                            jstring advertiseStrObj)
+{
+
+    jboolean iscopy;
+
+    const char* advertisedNameStr = env->GetStringUTFChars(advertiseStrObj, &iscopy);
+    s_advertisedName = "";
+    s_advertisedName += NAME_PREFIX;
+    s_advertisedName += ".";
+    s_advertisedName += advertisedNameStr;
+
+    /* Request name */
+    QStatus status = s_bus->RequestName(s_advertisedName.c_str(), DBUS_NAME_FLAG_DO_NOT_QUEUE);
+    if (ER_OK != status) {
+    	LOGE("RequestName(%s) failed (status=%s)\n", s_advertisedName.c_str(), QCC_StatusText(status));
+    }
+    else {
+    	LOGD("\n Request Name was successful");
+    }
+
+    /* Bind the session port*/
+    SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+    if (ER_OK == status) {
+    	SessionPort sp = CHAT_PORT;
+		status = s_bus->BindSessionPort(sp, opts, *s_busListener);
+		if (ER_OK != status) {
+			LOGE("BindSessionPort failed (%s)\n", QCC_StatusText(status));
+		}
+		else {
+			LOGD("\n Bind Session Port to %u was successful \n",CHAT_PORT);
+		}
+    }
+
+   	/* Advertise the name */
+    if (ER_OK == status) {
+    	status = s_bus->AdvertiseName(s_advertisedName.c_str(), opts.transports);
+   		if (status != ER_OK) {
+   			LOGD("Failed to advertise name %s (%s) \n", s_advertisedName.c_str(), QCC_StatusText(status));
+   		}
+   		else {
+   			LOGD("\n Name %s was successfully advertised",s_advertisedName.c_str());
+   		}
+   	}
+
+    env->ReleaseStringUTFChars(advertiseStrObj, advertisedNameStr);
+    return (jboolean) true;
+}
+
+JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_joinSession(JNIEnv* env,
+																			   jobject jobj,
+																			   jstring joinSessionObj){
+
+	LOGD("\n Inside Join session");
+
+	jboolean iscopy;
+	const char* sessionNameStr = env->GetStringUTFChars(joinSessionObj, &iscopy);
+	sessionName = "";
+	sessionName += NAME_PREFIX;
+	sessionName += ".";
+	sessionName += sessionNameStr;
+	LOGD("\n Name of the session to be joined %s ",sessionName.c_str());
+
+	/* Call joinSession method since we have the name */
+	QStatus status = s_bus->FindAdvertisedName(sessionName.c_str());
+	if(ER_OK != status){
+		LOGE("\n Error while calling FindAdvertisedName \n");
+	}
+
+
+
+/*
+	while(!s_joinComplete){
+		sleep(1);
+	}
+*/
+	return (jboolean) true;
+}
+
 
 /**
  * Request the local daemon to disconnect from the remote daemon.
@@ -353,7 +395,7 @@ JNIEXPORT void JNICALL Java_org_alljoyn_bus_samples_chat_Chat_jniOnDestroy(JNIEn
     /* Deregister the ServiceObject. */
     if (s_chatObj) {
         s_chatObj->ReleaseName();
-        s_bus->DeregisterBusObject(*s_chatObj);
+        //s_bus->DeregisterBusObject(*s_chatObj);
         delete s_chatObj;
         s_chatObj = NULL;
     }
@@ -382,61 +424,6 @@ JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_chat_Chat_sendChatMsg(JNIEnv
     env->ReleaseStringUTFChars(chatMsgObj, chatMsg);
     return (jint) status;
 }
-
-JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_advertise(JNIEnv* env,
-                                                                            jobject jobj,
-                                                                            jstring advertiseStrObj)
-{
-
-    if (NULL == s_bus) {
-        return jboolean(false);
-    }
-
-    jboolean iscopy;
-
-    const char* advertisedNameStr = env->GetStringUTFChars(advertiseStrObj, &iscopy);
-    s_advertisedName = "";
-    s_advertisedName += NAME_PREFIX;
-    s_advertisedName += ".";
-    s_advertisedName += advertisedNameStr;
-
-
-    /* Create and register the bus object that will be used to send out signals */
-    JavaVM* vm;
-    env->GetJavaVM(&vm);
-    s_chatObj = new ChatObject(*s_bus, CHAT_SERVICE_OBJECT_PATH, vm, jobj);
-    s_bus->RegisterBusObject(*s_chatObj);
-
-    LOGE("Chat", "---------- Registered Bus Object -----------");
-
-
-
-    Message reply(*s_bus);
-    const ProxyBusObject& alljoynObj = s_bus->GetAllJoynProxyObj();
-
-    // Look for the prefix
-    MsgArg serviceName("s", NAME_PREFIX);
-    QStatus status = alljoynObj.MethodCall(::org::alljoyn::Bus::InterfaceName,
-                                           "FindName",
-                                           &serviceName,
-                                           1,
-                                           reply,
-                                           5000);
-    if (ER_OK == status) {
-        if (reply->GetType() != MESSAGE_METHOD_RET) {
-            status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
-        } else if (reply->GetArg(0)->v_uint32 != ALLJOYN_FINDNAME_REPLY_SUCCESS) {
-            status = ER_FAIL;
-        }
-    } else {
-        LOGE("%s.FindName failed", ::org::alljoyn::Bus::InterfaceName);
-    }
-
-
-    env->ReleaseStringUTFChars(advertiseStrObj, advertisedNameStr);
-    return (jboolean) true;
-}
-
 
 
 #ifdef __cplusplus

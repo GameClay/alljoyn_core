@@ -19,7 +19,7 @@ package org.alljoyn.bus.samples.simpleclient;
 public class FoundName {
 
     public FoundName(String busName, String busAddr, String guid)
-    {
+	{
         this.busName = busName;
         this.busAddr = busAddr;
         this.guid = guid;

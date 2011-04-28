@@ -32,10 +32,12 @@ import android.view.MenuInflater;
 import android.view.inputmethod.EditorInfo;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.View.OnKeyListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.RadioButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -48,6 +50,7 @@ public class Chat extends Activity {
 
     static final int DIALOG_CONNECT = 1;
     static final int DIALOG_ADVERTISE = 2;
+    static final int DIALOG_JOIN_SESSION = 3;
 
     /** Called when activity's onCreate is called */
     private native int jniOnCreate();
@@ -63,6 +66,9 @@ public class Chat extends Activity {
 
     /** Called when user enters a name to be "Advertised" " */
     private native boolean advertise(String wellKnownName);
+    
+    /** Called when user wants to join a session */
+    private native boolean joinSession(String sessionName);
 
     /** Handler used to post messages from C++ into UI thread */
     private Handler handler = new Handler() {
@@ -84,22 +90,41 @@ public class Chat extends Activity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-
+        
+        
         listViewArrayAdapter = new ArrayAdapter<String>(this, R.layout.message);
         listView = (ListView) findViewById(R.id.ListView);
         listView.setAdapter(listViewArrayAdapter);
 
         editText = (EditText) findViewById(R.id.EditText);
+        editText.setOnKeyListener(new OnKeyListener() {
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                // If the event is a key-down event on the "enter" button
+                if ((event.getAction() == KeyEvent.ACTION_DOWN) &&
+                    (keyCode == KeyEvent.KEYCODE_ENTER)) {
+                  // Perform action on key press
+                	Log.d("Chat","\n Calling Chat method ");
+                  return true;
+                }
+                return false;
+            }
+        });
+        
+        /*
         editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
                                                public boolean onEditorAction(TextView view, int actionId, KeyEvent event) {
-                                                   if (actionId == EditorInfo.IME_NULL && event.getAction() == KeyEvent.ACTION_UP) {
+                                            	   Log.d("Chat","\n Calling Chat method \n\n\n");
+                                                   if ( event != null && event.getAction() == KeyEvent.KEYCODE_ENTER) {
+                                                	   //actionId == EditorInfo.IME_NULL
                                                        String message = view.getText().toString();
+                                                       Log.d("Chat","\n Calling Chat method ");
                                                        chat(message);
                                                        view.setText("");
                                                    }
                                                    return true;
                                                }
                                            });
+        */
         setConnectedState(false);
 
         // Initialize the native part of the sample
@@ -110,7 +135,15 @@ public class Chat extends Activity {
             return;
         }
 
-        showDialog(DIALOG_ADVERTISE);
+        setContentView(R.layout.choice);
+        // Ask what would you like to do Advertise a session or join one
+        final RadioButton radio_create_seesion = (RadioButton) findViewById(R.id.radio_create_session);
+        final RadioButton radio_join_session = (RadioButton) findViewById(R.id.radio_join_session);
+        radio_create_seesion.setOnClickListener(radio_listener);
+        radio_join_session.setOnClickListener(radio_listener);
+
+        
+        //showDialog(DIALOG_ADVERTISE);
     }
 
     @Override
@@ -118,7 +151,21 @@ public class Chat extends Activity {
         jniOnDestroy();
         super.onDestroy();
     }
-
+    
+    private OnClickListener radio_listener = new OnClickListener() {
+        public void onClick(View v) {
+            // Perform action on clicks
+            RadioButton rb = (RadioButton) v;
+            if(rb.getId() == R.id.radio_create_session){
+            	Toast.makeText(Chat.this, "You selected " + rb.getText(), Toast.LENGTH_LONG).show();
+            	showDialog(DIALOG_ADVERTISE);
+            }
+            else if (rb.getId() == R.id.radio_join_session){
+            	Toast.makeText(Chat.this, "You selected " + rb.getText(), Toast.LENGTH_LONG).show();
+            	showDialog(DIALOG_JOIN_SESSION);
+            }
+        }
+    };
     // Send a message to all connected chat clients
     private void chat(String message) {
         // Send the AllJoyn signal to other connected chat clients
@@ -172,6 +219,7 @@ public class Chat extends Activity {
                                                 boolean isAdvertised = advertise(text.getText().toString());
                                                 Toast.makeText(getApplicationContext(), text.getText().toString(), Toast.LENGTH_LONG).show();
                                                 dismissDialog(DIALOG_ADVERTISE);
+                                                setContentView(R.layout.main);
 
                                             }
                                         });
@@ -183,11 +231,36 @@ public class Chat extends Activity {
                                                 }
                                             });
             break;
-
+        	
+        case DIALOG_JOIN_SESSION:
+        	dialog = new Dialog(Chat.this);
+            dialog.setContentView(R.layout.joinsession);
+            dialog.setTitle("Name of session you want to join:");
+            Button joinokButton = (Button) dialog.findViewById(R.id.JoinSessionOk);
+            joinokButton.setOnClickListener(new OnClickListener() {
+                                            public void onClick(View v) {
+                                                View r = v.getRootView();
+                                                TextView text = (TextView) r.findViewById(R.id.JoinSessionText);
+                                                boolean isAdvertised = joinSession(text.getText().toString());
+                                                Toast.makeText(getApplicationContext(), text.getText().toString(), Toast.LENGTH_LONG).show();
+                                                dismissDialog(DIALOG_JOIN_SESSION);
+                                                setContentView(R.layout.main);
+                                            }
+                                        });
+            Button joinCancelButton = (Button) dialog.findViewById(R.id.JoinSessionCancel);
+            joinCancelButton.setOnClickListener(new OnClickListener() {
+                                                public void onClick(View v) {
+                                                    dismissDialog(DIALOG_JOIN_SESSION);
+                                                    finish();
+                                                }
+                                            });
+            break;
         default:
             dialog = null;
             break;
         }
+
+        
         return dialog;
     }
 

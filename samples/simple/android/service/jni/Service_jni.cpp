@@ -47,25 +47,67 @@ using namespace ajn;
 static const char* SIMPLE_SERVICE_INTERFACE_NAME = "org.alljoyn.bus.samples.simple";
 static const char* SIMPLE_SERVICE_WELL_KNOWN_NAME_PREFIX = "org.alljoyn.bus.samples.simple.";
 static const char* SIMPLE_SERVICE_OBJECT_PATH = "/simpleService";
+static const int SESSION_PORT = 33;
+static qcc::String wellKnownName;
+static qcc::String serviceName ;
 
 /* Forward decl */
 class ServiceObject;
+class MyBusListener;
 
 /* Static data */
 static BusAttachment* s_bus = NULL;
 static ServiceObject* s_obj = NULL;
+static MyBusListener* s_busListener = NULL;
+static qcc::String s_joinName;
+static SessionId s_sessionId = 0;
+static bool s_joinComplete = false;
+
+
+class MyBusListener : public BusListener , public SessionPortListener, public SessionListener {
+  public:
+    MyBusListener(JavaVM* vm, jobject& jobj) : vm(vm), jobj(jobj) { }
+
+    void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner)
+    {
+    }
+
+    /* Accept an incoming JoinSession request */
+    bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
+    {
+        if (sessionPort != SESSION_PORT) {
+            LOGE("Rejecting join attempt on non-chat session port %d\n", sessionPort);
+            return false;
+        }
+
+        LOGD("Accepting join session request from %s (opts.proximity=%x, opts.traffic=%x, opts.transports=%x)\n",
+               joiner, opts.proximity, opts.traffic, opts.transports);
+
+
+        return true;
+    }
+
+    void SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner)
+    {
+        s_sessionId = id;
+        LOGD("SessionJoined with %s (id=%u)\n", joiner, id);
+    }
+
+
+  private:
+    JavaVM* vm;
+    jobject jobj;
+};
+
 
 /* Bus object */
 class ServiceObject : public BusObject {
   public:
 
-    ServiceObject(BusAttachment& bus, const char* path, const char* serviceName, JavaVM* vm, jobject jobj)
+    ServiceObject(BusAttachment& bus, const char* path, JavaVM* vm, jobject jobj)
         : BusObject(bus, path), vm(vm), jobj(jobj), isNameAcquired(false)
     {
         QStatus status;
-
-        wellKnownName = SIMPLE_SERVICE_WELL_KNOWN_NAME_PREFIX;
-        wellKnownName.append(serviceName);
 
         /* Add the service interface to this object */
         const InterfaceDescription* regTestIntf = bus.GetInterface(SIMPLE_SERVICE_INTERFACE_NAME);
@@ -82,55 +124,8 @@ class ServiceObject : public BusObject {
         }
     }
 
-    void ObjectRegistered(void) {
-        BusObject::ObjectRegistered();
-
-        /* Request a well-known name */
-        /* Note that you cannot make a blocking method call here */
-        const ProxyBusObject& dbusObj = bus.GetDBusProxyObj();
-        MsgArg args[2];
-        args[0].Set("s", wellKnownName.c_str());
-        args[1].Set("u", DBUS_NAME_FLAG_DO_NOT_QUEUE);
-        QStatus status = dbusObj.MethodCallAsync(org::freedesktop::DBus::InterfaceName,
-                                                 "RequestName",
-                                                 this,
-                                                 static_cast<MessageReceiver::ReplyHandler>(&ServiceObject::NameAcquiredCB),
-                                                 args,
-                                                 ARRAY_SIZE(args));
-        if (ER_OK != status) {
-            LOGE("Failed to request name %s (%s)", wellKnownName.c_str(), QCC_StatusText(status));
-        }
-    }
-
-    void NameAcquiredCB(Message& msg, void* context)
-    {
-        /* Note you cannot make a blocking call here since we are in a callback */
-        /* If name request was successful, then advertise the name */
-        if ((msg->GetType() == MESSAGE_METHOD_RET) && (msg->GetArg(0)->v_uint32 == DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER)) {
-            isNameAcquired = true;
-            const ProxyBusObject& alljoynObj = bus.GetAllJoynProxyObj();
-            MsgArg args;
-            args.Set("s", wellKnownName.c_str());
-            LOGE("Advertising name \"%s\"", wellKnownName.c_str());
-            QStatus status = alljoynObj.MethodCallAsync(org::alljoyn::Bus::InterfaceName,
-                                                        "AdvertiseName",
-                                                        this,
-                                                        static_cast<MessageReceiver::ReplyHandler>(&ServiceObject::NameAdvertisedCB),
-                                                        &args,
-                                                        1);
-
-            if (ER_OK != status) {
-                LOGE("Failed to request name %s (%s)", wellKnownName.c_str(), QCC_StatusText(status));
-            }
-        } else {
-            LOGE("Failed to request the name \"%s\"", wellKnownName.c_str());
-        }
-    }
-
-    void NameAdvertisedCB(Message& msg, void* context) {
-        if ((msg->GetType() != MESSAGE_METHOD_RET) || (msg->GetArg(0)->v_uint32 != ALLJOYN_ADVERTISENAME_REPLY_SUCCESS)) {
-            LOGE("Failed to advertisze the name \"%s\"", wellKnownName.c_str());
-        }
+    void ObjectRegistered(void){
+    	LOGD("\n Object registered \n\n");
     }
 
     /** Release the well-known name if it was acquired */
@@ -214,7 +209,6 @@ class ServiceObject : public BusObject {
   private:
     JavaVM* vm;
     jobject jobj;
-    qcc::String wellKnownName;
     bool isNameAcquired;
 };
 
@@ -230,19 +224,39 @@ extern "C" {
 JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_simpleOnCreate(JNIEnv* env, jobject jobj)
 {
     QStatus status = ER_OK;
-    const char* daemonAddr = "unix:abstract=alljoyn";
-    jboolean iscopy;
 
     /* Set AllJoyn logging */
     // QCC_SetLogLevels("ALLJOYN=7;ALL=1");
     QCC_UseOSLogging(true);
 
     /* Create message bus */
-    s_bus = new BusAttachment("bbservice", true);
+    s_bus = new BusAttachment("service", true);
+
+    return status;
+}
+
+/*
+ * Class:     org_alljoyn_bus_samples_simpleservice_Service
+ * Method:    startService
+ * Signature: (Ljava/lang/String;)Z
+ */
+JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_startService(JNIEnv* env, jobject jobj, jstring jServiceName)
+{
+    if (s_obj) {
+        return (jboolean) false;
+    }
+
+    jboolean iscopy;
+    const char* serviceNameStr = env->GetStringUTFChars(jServiceName, &iscopy);
+    serviceName = "";
+    serviceName += SIMPLE_SERVICE_WELL_KNOWN_NAME_PREFIX;
+    serviceName += serviceNameStr;
+
+    const char* daemonAddr = "unix:abstract=alljoyn";
 
     /* Add org.codeaurora.samples.simple interface */
     InterfaceDescription* testIntf = NULL;
-    status = s_bus->CreateInterface(SIMPLE_SERVICE_INTERFACE_NAME, testIntf);
+    QStatus status = s_bus->CreateInterface(SIMPLE_SERVICE_INTERFACE_NAME, testIntf);
     if (ER_OK == status) {
         testIntf->AddMethod("Ping", "s",  "s", "inStr,outStr", 0);
         testIntf->Activate();
@@ -265,30 +279,54 @@ JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_simple
         }
     }
 
-    return status;
-}
-
-/*
- * Class:     org_alljoyn_bus_samples_simpleservice_Service
- * Method:    startService
- * Signature: (Ljava/lang/String;)Z
- */
-JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_startService(JNIEnv* env, jobject jobj, jstring jServiceName)
-{
-    if (s_obj) {
-        return (jboolean) false;
-    }
-
-    jboolean iscopy;
-    const char* serviceName = env->GetStringUTFChars(jServiceName, &iscopy);
-
-    /* Register service object */
+    /* Register the bus listener */
     JavaVM* vm;
     env->GetJavaVM(&vm);
-    s_obj = new ServiceObject(*s_bus, SIMPLE_SERVICE_OBJECT_PATH, serviceName, vm, jobj);
-    s_bus->RegisterBusObject(*s_obj);
+   	if (ER_OK == status) {
+   		s_busListener = new MyBusListener(vm, jobj);
+   		s_bus->RegisterBusListener(*s_busListener);
+   		LOGD("\n Bus Listener registered \n");
+   	}
 
-    env->DeleteLocalRef(jServiceName);
+    /* Register service object */
+   	s_obj = new ServiceObject(*s_bus, SIMPLE_SERVICE_OBJECT_PATH, vm, jobj);
+   	s_bus->RegisterBusObject(*s_obj);
+
+
+    /* Request name */
+    status = s_bus->RequestName(serviceName.c_str(), DBUS_NAME_FLAG_DO_NOT_QUEUE);
+    if (ER_OK != status) {
+    	LOGE("RequestName(%s) failed (status=%s)\n", serviceName.c_str(), QCC_StatusText(status));
+    	status = (status == ER_OK) ? ER_FAIL : status;
+    }
+    else {
+    	LOGD("\n Request Name was successful");
+    }
+
+    /* Bind the session port*/
+    SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+    if (ER_OK == status) {
+    	SessionPort sp = SESSION_PORT;
+    	status = s_bus->BindSessionPort(sp, opts, *s_busListener);
+    	if (ER_OK != status) {
+    		LOGE("BindSessionPort failed (%s)\n", QCC_StatusText(status));
+    	}
+    	else {
+    		LOGD("\n Bind Session Port to %d was successful \n",SESSION_PORT);
+    	}
+    }
+	/* Advertise the name */
+	if (ER_OK == status) {
+		status = s_bus->AdvertiseName(serviceName.c_str(), opts.transports);
+		if (status != ER_OK) {
+			LOGD("Failed to advertise name %s (%s) \n", serviceName.c_str(), QCC_StatusText(status));
+		}
+		else {
+			LOGD("\n Name %s was successfully advertised",serviceName.c_str());
+		}
+	}
+
+	env->DeleteLocalRef(jServiceName);
     return (jboolean) true;
 }
 
@@ -303,7 +341,7 @@ JNIEXPORT void JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_stopSe
     if (s_obj) {
         s_obj->ReleaseName();
         s_obj->CancelAdvertise();
-        s_bus->DeregisterBusObject(*s_obj);
+      //  s_bus->DeregisterBusObject(*s_obj);
         delete s_obj;
         s_obj = NULL;
     }
@@ -319,7 +357,7 @@ JNIEXPORT void JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_simple
     /* Unregister and deallocate service object */
     if (s_obj) {
         if (s_bus) {
-            s_bus->DeregisterBusObject(*s_obj);
+           // s_bus->DeregisterBusObject(*s_obj);
         }
         delete s_obj;
     }
