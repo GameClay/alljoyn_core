@@ -298,7 +298,7 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_st
     if (ER_OK != status) {
         LOGE("RequestName(%s) failed (status=%s)\n", serviceName.c_str(), QCC_StatusText(status));
         status = (status == ER_OK) ? ER_FAIL : status;
-    } else   {
+    } else {
         LOGD("\n Request Name was successful");
     }
 
@@ -309,7 +309,7 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_st
         status = s_bus->BindSessionPort(sp, opts, *s_busListener);
         if (ER_OK != status) {
             LOGE("BindSessionPort failed (%s)\n", QCC_StatusText(status));
-        } else   {
+        } else {
             LOGD("\n Bind Session Port to %d was successful \n", SESSION_PORT);
         }
     }
@@ -318,7 +318,7 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_st
         status = s_bus->AdvertiseName(serviceName.c_str(), opts.transports);
         if (status != ER_OK) {
             LOGD("Failed to advertise name %s (%s) \n", serviceName.c_str(), QCC_StatusText(status));
-        } else   {
+        } else {
             LOGD("\n Name %s was successfully advertised", serviceName.c_str());
         }
     }

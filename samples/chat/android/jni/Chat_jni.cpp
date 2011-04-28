@@ -296,7 +296,7 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_advertise(JNIE
     QStatus status = s_bus->RequestName(s_advertisedName.c_str(), DBUS_NAME_FLAG_DO_NOT_QUEUE);
     if (ER_OK != status) {
         LOGE("RequestName(%s) failed (status=%s)\n", s_advertisedName.c_str(), QCC_StatusText(status));
-    } else   {
+    } else {
         LOGD("\n Request Name was successful");
     }
 
@@ -307,7 +307,7 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_advertise(JNIE
         status = s_bus->BindSessionPort(sp, opts, *s_busListener);
         if (ER_OK != status) {
             LOGE("BindSessionPort failed (%s)\n", QCC_StatusText(status));
-        } else   {
+        } else {
             LOGD("\n Bind Session Port to %u was successful \n", CHAT_PORT);
         }
     }
@@ -317,7 +317,7 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_advertise(JNIE
         status = s_bus->AdvertiseName(s_advertisedName.c_str(), opts.transports);
         if (status != ER_OK) {
             LOGD("Failed to advertise name %s (%s) \n", s_advertisedName.c_str(), QCC_StatusText(status));
-        } else   {
+        } else {
             LOGD("\n Name %s was successfully advertised", s_advertisedName.c_str());
         }
     }
