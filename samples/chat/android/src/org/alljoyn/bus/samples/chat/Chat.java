@@ -44,7 +44,7 @@ import android.widget.Toast;
 
 public class Chat extends Activity {
 
-    private EditText editText;
+	private EditText editText;    
     private ArrayAdapter<String> listViewArrayAdapter;
     private ListView listView;
     private Menu menu;
@@ -90,28 +90,14 @@ public class Chat extends Activity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
         
-        
-        listViewArrayAdapter = new ArrayAdapter<String>(this, R.layout.message);
-        listView = (ListView) findViewById(R.id.ListView);
-        listView.setAdapter(listViewArrayAdapter);
-
-        editText = (EditText) findViewById(R.id.EditText);
-        
-        editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-                                               public boolean onEditorAction(TextView view, int actionId, KeyEvent event) {
-                                            	   Log.d("Chat","\n Calling Chat method \n\n\n");
-                                                   if (actionId == EditorInfo.IME_NULL && event.getAction() == KeyEvent.ACTION_UP) {
-                                                       String message = view.getText().toString();
-                                                       Log.d("Chat","\n Calling Chat method ");
-                                                       //chat(message);
-                                                       view.setText("");
-                                                   }
-                                                   return true;
-                                               }
-                                           });
-        
+        setContentView(R.layout.choice);
+        // Ask what would you like to do Advertise a session or join one
+        final RadioButton radio_create_seesion = (RadioButton) findViewById(R.id.radio_create_session);
+        final RadioButton radio_join_session = (RadioButton) findViewById(R.id.radio_join_session);
+        radio_create_seesion.setOnClickListener(radio_listener);
+        radio_join_session.setOnClickListener(radio_listener);
+                
         setConnectedState(false);
 
         // Initialize the native part of the sample
@@ -121,16 +107,7 @@ public class Chat extends Activity {
             finish();
             return;
         }
-
-        setContentView(R.layout.choice);
-        // Ask what would you like to do Advertise a session or join one
-        final RadioButton radio_create_seesion = (RadioButton) findViewById(R.id.radio_create_session);
-        final RadioButton radio_join_session = (RadioButton) findViewById(R.id.radio_join_session);
-        radio_create_seesion.setOnClickListener(radio_listener);
-        radio_join_session.setOnClickListener(radio_listener);
-
-        
-        //showDialog(DIALOG_ADVERTISE);
+       
     }
 
     @Override
@@ -151,6 +128,8 @@ public class Chat extends Activity {
             	Toast.makeText(Chat.this, "You selected " + rb.getText(), Toast.LENGTH_LONG).show();
             	showDialog(DIALOG_JOIN_SESSION);
             }
+           
+
         }
     };
     // Send a message to all connected chat clients
@@ -206,7 +185,7 @@ public class Chat extends Activity {
                                                 boolean isAdvertised = advertise(text.getText().toString());
                                                 Toast.makeText(getApplicationContext(), text.getText().toString(), Toast.LENGTH_LONG).show();
                                                 dismissDialog(DIALOG_ADVERTISE);
-                                                setContentView(R.layout.main);
+                                                //setContentView(R.layout.main);
 
                                             }
                                         });
@@ -231,7 +210,7 @@ public class Chat extends Activity {
                                                 boolean isAdvertised = joinSession(text.getText().toString());
                                                 Toast.makeText(getApplicationContext(), text.getText().toString(), Toast.LENGTH_LONG).show();
                                                 dismissDialog(DIALOG_JOIN_SESSION);
-                                                setContentView(R.layout.main);
+                                                //setContentView(R.layout.main);
                                             }
                                         });
             Button joinCancelButton = (Button) dialog.findViewById(R.id.JoinSessionCancel);
@@ -246,8 +225,27 @@ public class Chat extends Activity {
             dialog = null;
             break;
         }
-
         
+        setContentView(R.layout.main);
+        
+        listViewArrayAdapter = new ArrayAdapter<String>(this, R.layout.message);
+        listView = (ListView) findViewById(R.id.ListView);
+        listView.setAdapter(listViewArrayAdapter);
+
+        editText = (EditText) findViewById(R.id.EditText);
+        editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+        									public boolean onEditorAction(TextView view, int actionId, KeyEvent event) {
+        										if (actionId == EditorInfo.IME_NULL && event.getAction() == KeyEvent.ACTION_UP) {
+        											String message = view.getText().toString();
+        											Log.d("Chat","\n Calling Chat method ");
+        											chat(message);
+        											view.setText("");
+        										}
+        										return true;
+        									}
+        });
+
+       
         return dialog;
     }
 
