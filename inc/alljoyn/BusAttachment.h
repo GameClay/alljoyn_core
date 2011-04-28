@@ -412,7 +412,7 @@ class BusAttachment : public MessageReceiver {
      * Add a DBus match rule.
      * This method is a shortcut/helper that issues an org.freedesktop.DBus.AddMatch method call to the local daemon.
      *
-     * @param[in]  rule          Match rule to be added (see DBus specification for format of this string).
+     * @param[in]  rule  Match rule to be added (see DBus specification for format of this string).
      *
      * @return
      *      - #ER_OK if the AddMatch request was successful.
@@ -420,6 +420,19 @@ class BusAttachment : public MessageReceiver {
      *      - Other error status codes indicating a failure.
      */
     QStatus AddMatch(const char* rule);
+
+    /**
+     * Remove a DBus match rule.
+     * This method is a shortcut/helper that issues an org.freedesktop.DBus.RemoveMatch method call to the local daemon.
+     *
+     * @param[in]  rule  Match rule to be removed (see DBus specification for format of this string).
+     *
+     * @return
+     *      - #ER_OK if the RemoveMatch request was successful.
+     *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+     *      - Other error status codes indicating a failure.
+     */
+    QStatus RemoveMatch(const char* rule);
 
     /**
      * Advertise the existence of a well-known name to other (possibly disconnected) AllJoyn daemons.

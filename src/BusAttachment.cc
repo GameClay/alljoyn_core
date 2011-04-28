@@ -695,6 +695,31 @@ QStatus BusAttachment::AddMatch(const char* rule)
     return status;
 }
 
+QStatus BusAttachment::RemoveMatch(const char* rule)
+{
+    if (!IsConnected()) {
+        return ER_BUS_NOT_CONNECTED;
+    }
+
+    Message reply(*this);
+    MsgArg args[1];
+    size_t numArgs = ArraySize(args);
+
+    MsgArg::Set(args, numArgs, "s", rule);
+
+    const ProxyBusObject& dbusObj = this->GetDBusProxyObj();
+    QStatus status = dbusObj.MethodCall(org::freedesktop::DBus::InterfaceName, "RemoveMatch", args, numArgs, reply);
+    if (ER_OK != status) {
+        String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        QCC_LogError(status, ("%s.RemoveMatch returned ERROR_MESSAGE (error=%s, \"%s\")",
+                              org::freedesktop::DBus::InterfaceName,
+                              errName,
+                              errMsg.c_str()));
+    }
+    return status;
+}
+
 QStatus BusAttachment::FindAdvertisedName(const char* namePrefix)
 {
     if (!IsConnected()) {
