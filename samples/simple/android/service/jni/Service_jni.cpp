@@ -49,7 +49,7 @@ static const char* SIMPLE_SERVICE_WELL_KNOWN_NAME_PREFIX = "org.alljoyn.bus.samp
 static const char* SIMPLE_SERVICE_OBJECT_PATH = "/simpleService";
 static const int SESSION_PORT = 33;
 static qcc::String wellKnownName;
-static qcc::String serviceName ;
+static qcc::String serviceName;
 
 /* Forward decl */
 class ServiceObject;
@@ -64,7 +64,7 @@ static SessionId s_sessionId = 0;
 static bool s_joinComplete = false;
 
 
-class MyBusListener : public BusListener , public SessionPortListener, public SessionListener {
+class MyBusListener : public BusListener, public SessionPortListener, public SessionListener {
   public:
     MyBusListener(JavaVM* vm, jobject& jobj) : vm(vm), jobj(jobj) { }
 
@@ -81,7 +81,7 @@ class MyBusListener : public BusListener , public SessionPortListener, public Se
         }
 
         LOGD("Accepting join session request from %s (opts.proximity=%x, opts.traffic=%x, opts.transports=%x)\n",
-               joiner, opts.proximity, opts.traffic, opts.transports);
+             joiner, opts.proximity, opts.traffic, opts.transports);
 
 
         return true;
@@ -124,8 +124,8 @@ class ServiceObject : public BusObject {
         }
     }
 
-    void ObjectRegistered(void){
-    	LOGD("\n Object registered \n\n");
+    void ObjectRegistered(void) {
+        LOGD("\n Object registered \n\n");
     }
 
     /** Release the well-known name if it was acquired */
@@ -282,51 +282,48 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_st
     /* Register the bus listener */
     JavaVM* vm;
     env->GetJavaVM(&vm);
-   	if (ER_OK == status) {
-   		s_busListener = new MyBusListener(vm, jobj);
-   		s_bus->RegisterBusListener(*s_busListener);
-   		LOGD("\n Bus Listener registered \n");
-   	}
+    if (ER_OK == status) {
+        s_busListener = new MyBusListener(vm, jobj);
+        s_bus->RegisterBusListener(*s_busListener);
+        LOGD("\n Bus Listener registered \n");
+    }
 
     /* Register service object */
-   	s_obj = new ServiceObject(*s_bus, SIMPLE_SERVICE_OBJECT_PATH, vm, jobj);
-   	s_bus->RegisterBusObject(*s_obj);
+    s_obj = new ServiceObject(*s_bus, SIMPLE_SERVICE_OBJECT_PATH, vm, jobj);
+    s_bus->RegisterBusObject(*s_obj);
 
 
     /* Request name */
     status = s_bus->RequestName(serviceName.c_str(), DBUS_NAME_FLAG_DO_NOT_QUEUE);
     if (ER_OK != status) {
-    	LOGE("RequestName(%s) failed (status=%s)\n", serviceName.c_str(), QCC_StatusText(status));
-    	status = (status == ER_OK) ? ER_FAIL : status;
-    }
-    else {
-    	LOGD("\n Request Name was successful");
+        LOGE("RequestName(%s) failed (status=%s)\n", serviceName.c_str(), QCC_StatusText(status));
+        status = (status == ER_OK) ? ER_FAIL : status;
+    } else   {
+        LOGD("\n Request Name was successful");
     }
 
     /* Bind the session port*/
     SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
     if (ER_OK == status) {
-    	SessionPort sp = SESSION_PORT;
-    	status = s_bus->BindSessionPort(sp, opts, *s_busListener);
-    	if (ER_OK != status) {
-    		LOGE("BindSessionPort failed (%s)\n", QCC_StatusText(status));
-    	}
-    	else {
-    		LOGD("\n Bind Session Port to %d was successful \n",SESSION_PORT);
-    	}
+        SessionPort sp = SESSION_PORT;
+        status = s_bus->BindSessionPort(sp, opts, *s_busListener);
+        if (ER_OK != status) {
+            LOGE("BindSessionPort failed (%s)\n", QCC_StatusText(status));
+        } else   {
+            LOGD("\n Bind Session Port to %d was successful \n", SESSION_PORT);
+        }
     }
-	/* Advertise the name */
-	if (ER_OK == status) {
-		status = s_bus->AdvertiseName(serviceName.c_str(), opts.transports);
-		if (status != ER_OK) {
-			LOGD("Failed to advertise name %s (%s) \n", serviceName.c_str(), QCC_StatusText(status));
-		}
-		else {
-			LOGD("\n Name %s was successfully advertised",serviceName.c_str());
-		}
-	}
+    /* Advertise the name */
+    if (ER_OK == status) {
+        status = s_bus->AdvertiseName(serviceName.c_str(), opts.transports);
+        if (status != ER_OK) {
+            LOGD("Failed to advertise name %s (%s) \n", serviceName.c_str(), QCC_StatusText(status));
+        } else   {
+            LOGD("\n Name %s was successfully advertised", serviceName.c_str());
+        }
+    }
 
-	env->DeleteLocalRef(jServiceName);
+    env->DeleteLocalRef(jServiceName);
     return (jboolean) true;
 }
 
@@ -341,7 +338,7 @@ JNIEXPORT void JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_stopSe
     if (s_obj) {
         s_obj->ReleaseName();
         s_obj->CancelAdvertise();
-      //  s_bus->DeregisterBusObject(*s_obj);
+        //  s_bus->DeregisterBusObject(*s_obj);
         delete s_obj;
         s_obj = NULL;
     }
@@ -357,7 +354,7 @@ JNIEXPORT void JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_simple
     /* Unregister and deallocate service object */
     if (s_obj) {
         if (s_bus) {
-           // s_bus->DeregisterBusObject(*s_obj);
+            // s_bus->DeregisterBusObject(*s_obj);
         }
         delete s_obj;
     }

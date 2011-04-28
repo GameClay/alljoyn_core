@@ -1028,7 +1028,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                                     nameVec[i] = smIt->second.memberNames[i].c_str();
                                 }
                                 replyArgs[3].Set("as", nameVec.size(), &nameVec.front());
-                            }                               
+                            }
                             sessionMapLock.Unlock();
 
                             /* Add routes for new session */
@@ -2602,7 +2602,7 @@ void AllJoynObj::BusConnectionLost(const qcc::String& busAddr)
     while ((it != connectMap.end()) && (0 == busAddr.compare(it->first))) {
         foundName = true;
         connectMap.erase(it++);
-   }
+    }
     connectMapLock.Unlock();
 }
 

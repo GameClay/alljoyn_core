@@ -72,41 +72,41 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
     MyBusListener(JavaVM* vm, jobject& jobj) : vm(vm), jobj(jobj) { }
 
     void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
-        {
-            const char* convName = name + strlen(NAME_PREFIX);
-            LOGD("Discovered chat conversation: %s \n",name);
+    {
+        const char* convName = name + strlen(NAME_PREFIX);
+        LOGD("Discovered chat conversation: %s \n", name);
 
-            /* Join the conversation */
+        /* Join the conversation */
 
-            SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
-            QStatus status = s_bus->JoinSession(name, CHAT_PORT, NULL, s_sessionId, opts);
-            if (ER_OK == status) {
-                LOGD("Joined conversation \"%s\"\n", name);
-            } else {
-                LOGD("JoinSession failed status=%s\n", QCC_StatusText(status));
-            }
+        SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+        QStatus status = s_bus->JoinSession(name, CHAT_PORT, NULL, s_sessionId, opts);
+        if (ER_OK == status) {
+            LOGD("Joined conversation \"%s\"\n", name);
+        } else {
+            LOGD("JoinSession failed status=%s\n", QCC_StatusText(status));
         }
+    }
 
     /* Accept an incoming JoinSession request */
-       bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
-       {
-           if (sessionPort != CHAT_PORT) {
-               LOGE("Rejecting join attempt on non-chat session port %d\n", sessionPort);
-               return false;
-           }
+    bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
+    {
+        if (sessionPort != CHAT_PORT) {
+            LOGE("Rejecting join attempt on non-chat session port %d\n", sessionPort);
+            return false;
+        }
 
-           LOGD("Accepting join session request from %s (opts.proximity=%x, opts.traffic=%x, opts.transports=%x)\n",
-                  joiner, opts.proximity, opts.traffic, opts.transports);
+        LOGD("Accepting join session request from %s (opts.proximity=%x, opts.traffic=%x, opts.transports=%x)\n",
+             joiner, opts.proximity, opts.traffic, opts.transports);
 
 
-           return true;
-       }
+        return true;
+    }
 
-       void SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner)
-       {
-           s_sessionId = id;
-           LOGD("SessionJoined with %s (id=%u)\n", joiner, id);
-       }
+    void SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner)
+    {
+        s_sessionId = id;
+        LOGD("SessionJoined with %s (id=%u)\n", joiner, id);
+    }
 
 
     void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner)
@@ -175,7 +175,7 @@ class ChatObject : public BusObject {
 
 
     void ObjectRegistered(void) {
-    	LOGD("\n Object registered \n");
+        LOGD("\n Object registered \n");
     }
 
     /** Release the well-known name if it was acquired */
@@ -227,51 +227,51 @@ JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_chat_Chat_jniOnCreate(JNIEnv
     /* Create message bus */
     s_bus = new BusAttachment("chat", true);
     QStatus status = ER_OK;
-	const char* daemonAddr = "unix:abstract=alljoyn";
+    const char* daemonAddr = "unix:abstract=alljoyn";
 
-	/* Create org.alljoyn.bus.samples.chat interface */
-	InterfaceDescription* chatIntf = NULL;
-	status = s_bus->CreateInterface(CHAT_SERVICE_INTERFACE_NAME, chatIntf);
-	if (ER_OK == status) {
-		chatIntf->AddSignal("Chat", "s",  "str", 0);
-		chatIntf->Activate();
-	} else {
-		LOGE("Failed to create interface \"%s\" (%s)", CHAT_SERVICE_INTERFACE_NAME, QCC_StatusText(status));
-	}
+    /* Create org.alljoyn.bus.samples.chat interface */
+    InterfaceDescription* chatIntf = NULL;
+    status = s_bus->CreateInterface(CHAT_SERVICE_INTERFACE_NAME, chatIntf);
+    if (ER_OK == status) {
+        chatIntf->AddSignal("Chat", "s",  "str", 0);
+        chatIntf->Activate();
+    } else {
+        LOGE("Failed to create interface \"%s\" (%s)", CHAT_SERVICE_INTERFACE_NAME, QCC_StatusText(status));
+    }
 
-	/* Start the msg bus */
-	if (ER_OK == status) {
-		status = s_bus->Start();
-		if (ER_OK != status) {
-			LOGE("BusAttachment::Start failed (%s)", QCC_StatusText(status));
-		}
-	}
+    /* Start the msg bus */
+    if (ER_OK == status) {
+        status = s_bus->Start();
+        if (ER_OK != status) {
+            LOGE("BusAttachment::Start failed (%s)", QCC_StatusText(status));
+        }
+    }
 
-	/* Connect to the daemon */
-	if (ER_OK == status) {
-		status = s_bus->Connect(daemonAddr);
-		if (ER_OK != status) {
-			LOGE("BusAttachment::Connect(\"%s\") failed (%s)", daemonAddr, QCC_StatusText(status));
-		}
-	}
+    /* Connect to the daemon */
+    if (ER_OK == status) {
+        status = s_bus->Connect(daemonAddr);
+        if (ER_OK != status) {
+            LOGE("BusAttachment::Connect(\"%s\") failed (%s)", daemonAddr, QCC_StatusText(status));
+        }
+    }
 
-	/* Create and register the bus object that will be used to send out signals */
-	JavaVM* vm;
-	env->GetJavaVM(&vm);
-	s_chatObj = new ChatObject(*s_bus, CHAT_SERVICE_OBJECT_PATH, vm, jobj);
-	s_bus->RegisterBusObject(*s_chatObj);
-	LOGD("\n Bus Object created and registered \n");
+    /* Create and register the bus object that will be used to send out signals */
+    JavaVM* vm;
+    env->GetJavaVM(&vm);
+    s_chatObj = new ChatObject(*s_bus, CHAT_SERVICE_OBJECT_PATH, vm, jobj);
+    s_bus->RegisterBusObject(*s_chatObj);
+    LOGD("\n Bus Object created and registered \n");
 
-	/* Register a bus listener in order to get discovery indications */
-	if (ER_OK == status) {
-		s_busListener = new MyBusListener(vm, jobj);
-		s_bus->RegisterBusListener(*s_busListener);
-	}
+    /* Register a bus listener in order to get discovery indications */
+    if (ER_OK == status) {
+        s_busListener = new MyBusListener(vm, jobj);
+        s_bus->RegisterBusListener(*s_busListener);
+    }
 
 
-	if (NULL == s_bus) {
-		return jboolean(false);
-	}
+    if (NULL == s_bus) {
+        return jboolean(false);
+    }
 
     return (int) ER_OK;
 }
@@ -295,68 +295,65 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_advertise(JNIE
     /* Request name */
     QStatus status = s_bus->RequestName(s_advertisedName.c_str(), DBUS_NAME_FLAG_DO_NOT_QUEUE);
     if (ER_OK != status) {
-    	LOGE("RequestName(%s) failed (status=%s)\n", s_advertisedName.c_str(), QCC_StatusText(status));
-    }
-    else {
-    	LOGD("\n Request Name was successful");
+        LOGE("RequestName(%s) failed (status=%s)\n", s_advertisedName.c_str(), QCC_StatusText(status));
+    } else   {
+        LOGD("\n Request Name was successful");
     }
 
     /* Bind the session port*/
     SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
     if (ER_OK == status) {
-    	SessionPort sp = CHAT_PORT;
-		status = s_bus->BindSessionPort(sp, opts, *s_busListener);
-		if (ER_OK != status) {
-			LOGE("BindSessionPort failed (%s)\n", QCC_StatusText(status));
-		}
-		else {
-			LOGD("\n Bind Session Port to %u was successful \n",CHAT_PORT);
-		}
+        SessionPort sp = CHAT_PORT;
+        status = s_bus->BindSessionPort(sp, opts, *s_busListener);
+        if (ER_OK != status) {
+            LOGE("BindSessionPort failed (%s)\n", QCC_StatusText(status));
+        } else   {
+            LOGD("\n Bind Session Port to %u was successful \n", CHAT_PORT);
+        }
     }
 
-   	/* Advertise the name */
+    /* Advertise the name */
     if (ER_OK == status) {
-    	status = s_bus->AdvertiseName(s_advertisedName.c_str(), opts.transports);
-   		if (status != ER_OK) {
-   			LOGD("Failed to advertise name %s (%s) \n", s_advertisedName.c_str(), QCC_StatusText(status));
-   		}
-   		else {
-   			LOGD("\n Name %s was successfully advertised",s_advertisedName.c_str());
-   		}
-   	}
+        status = s_bus->AdvertiseName(s_advertisedName.c_str(), opts.transports);
+        if (status != ER_OK) {
+            LOGD("Failed to advertise name %s (%s) \n", s_advertisedName.c_str(), QCC_StatusText(status));
+        } else   {
+            LOGD("\n Name %s was successfully advertised", s_advertisedName.c_str());
+        }
+    }
 
     env->ReleaseStringUTFChars(advertiseStrObj, advertisedNameStr);
     return (jboolean) true;
 }
 
 JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_joinSession(JNIEnv* env,
-																			   jobject jobj,
-																			   jstring joinSessionObj){
+                                                                              jobject jobj,
+                                                                              jstring joinSessionObj) {
 
-	LOGD("\n Inside Join session");
+    LOGD("\n Inside Join session");
 
-	jboolean iscopy;
-	const char* sessionNameStr = env->GetStringUTFChars(joinSessionObj, &iscopy);
-	sessionName = "";
-	sessionName += NAME_PREFIX;
-	sessionName += ".";
-	sessionName += sessionNameStr;
-	LOGD("\n Name of the session to be joined %s ",sessionName.c_str());
+    jboolean iscopy;
+    const char* sessionNameStr = env->GetStringUTFChars(joinSessionObj, &iscopy);
+    sessionName = "";
+    sessionName += NAME_PREFIX;
+    sessionName += ".";
+    sessionName += sessionNameStr;
+    LOGD("\n Name of the session to be joined %s ", sessionName.c_str());
 
-	/* Call joinSession method since we have the name */
-	QStatus status = s_bus->FindAdvertisedName(sessionName.c_str());
-	if(ER_OK != status){
-		LOGE("\n Error while calling FindAdvertisedName \n");
-	}
+    /* Call joinSession method since we have the name */
+    QStatus status = s_bus->FindAdvertisedName(sessionName.c_str());
+    if (ER_OK != status) {
+        LOGE("\n Error while calling FindAdvertisedName \n");
+    }
 
 
 
 /*
-	while(!s_joinComplete){
-		sleep(1);
-	}
-*/
-	return (jboolean) true;
+        while(!s_joinComplete){
+                sleep(1);
+        }
+ */
+    return (jboolean) true;
 }
 
 

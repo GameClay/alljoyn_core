@@ -74,9 +74,9 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
             if (mid == 0) {
                 LOGE("Failed to get Java FoundNameCallback");
             } else {
-            	qcc::String sessionName = "";
-            	sessionName += SIMPLE_SERVICE_WELL_KNOWN_NAME_PREFIX;
-            	sessionName =+  name ;
+                qcc::String sessionName = "";
+                sessionName += SIMPLE_SERVICE_WELL_KNOWN_NAME_PREFIX;
+                sessionName = +name;
                 jstring jName = env->NewStringUTF(name + prefixLen);
                 jstring jBusAddr = env->NewStringUTF(sessionName.c_str());
                 LOGE("SimpleClient", "Calling FoundNameCallback");
@@ -89,7 +89,7 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
 
     void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner)
     {
-    	LOGD("\n Name ownerchaged received ... busName = %s .... previousOwner = %s, newOwner = %s",busName,previousOwner,newOwner);
+        LOGD("\n Name ownerchaged received ... busName = %s .... previousOwner = %s, newOwner = %s", busName, previousOwner, newOwner);
     }
 
   private:
@@ -157,8 +157,8 @@ JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_simpleOn
     LOGD("\n Looking for ADVERTISED name \n");
     /* Find an advertised name with the Prefix */
     status = s_bus->FindAdvertisedName(SIMPLE_SERVICE_WELL_KNOWN_NAME_PREFIX);
-    if(ER_OK != status) {
-    	LOGE("\n Error while calling FindAdvertisedName \n");
+    if (ER_OK != status) {
+        LOGE("\n Error while calling FindAdvertisedName \n");
     }
 
     return (int) status;
@@ -171,7 +171,7 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_conn
                                                                                     jobject jobj,
                                                                                     jstring jConnectStr)
 {
-	jboolean iscopy;
+    jboolean iscopy;
     if (NULL == s_bus) {
         return jboolean(false);
     }
@@ -179,14 +179,14 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_conn
     /* Join the conversation */
     const char* sessionName = env->GetStringUTFChars(jConnectStr, &iscopy);
 
-    LOGD("\n Joining session with name : %s\n\n",sessionName);
+    LOGD("\n Joining session with name : %s\n\n", sessionName);
 
     SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
     QStatus status = s_bus->JoinSession(sessionName, SESSION_PORT, NULL, s_sessionId, opts);
     if ((ER_OK == status)) {
-    	LOGD("Joined conversation : %s \n \n Session ID : %u", sessionName,s_sessionId);
+        LOGD("Joined conversation : %s \n \n Session ID : %u", sessionName, s_sessionId);
     } else {
-    	LOGD("JoinSession failed .. status=%s\n", QCC_StatusText(status));
+        LOGD("JoinSession failed .. status=%s\n", QCC_StatusText(status));
     }
 
     return jboolean(ER_OK == status);
@@ -244,7 +244,7 @@ JNIEXPORT jstring JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_simpl
                                                                                       jstring jPingStr)
 {
 
-	LOGD("\n Calling ping now ..... \n");
+    LOGD("\n Calling ping now ..... \n");
     /* Call the remote method */
     jboolean iscopy;
     const char* pingStr = env->GetStringUTFChars(jPingStr, &iscopy);
@@ -255,9 +255,9 @@ JNIEXPORT jstring JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_simpl
     qcc::String nameStr(SIMPLE_SERVICE_WELL_KNOWN_NAME_PREFIX);
     nameStr.append(namePrefix);
 
-    LOGD("\n Service Name : %s   \n Object Path : %s \n Session ID : %u ",nameStr.c_str(),SIMPLE_SERVICE_OBJECT_PATH,s_sessionId);
+    LOGD("\n Service Name : %s   \n Object Path : %s \n Session ID : %u ", nameStr.c_str(), SIMPLE_SERVICE_OBJECT_PATH, s_sessionId);
 
-    ProxyBusObject remoteObj = ProxyBusObject(*s_bus, nameStr.c_str(), SIMPLE_SERVICE_OBJECT_PATH,s_sessionId);
+    ProxyBusObject remoteObj = ProxyBusObject(*s_bus, nameStr.c_str(), SIMPLE_SERVICE_OBJECT_PATH, s_sessionId);
     QStatus status = remoteObj.AddInterface(SIMPLE_SERVICE_INTERFACE_NAME);
     if (ER_OK == status) {
         status = remoteObj.MethodCall(SIMPLE_SERVICE_INTERFACE_NAME, "Ping", &pingStrArg, 1, reply, 5000);

@@ -36,7 +36,7 @@ extern "C" {
  * Signature: ()I
  */
 JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_chat_Chat_jniOnCreate
-  (JNIEnv *, jobject);
+    (JNIEnv *, jobject);
 
 /*
  * Class:     org_alljoyn_bus_samples_chat_Chat
@@ -44,7 +44,7 @@ JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_chat_Chat_jniOnCreate
  * Signature: ()V
  */
 JNIEXPORT void JNICALL Java_org_alljoyn_bus_samples_chat_Chat_jniOnDestroy
-  (JNIEnv *, jobject);
+    (JNIEnv *, jobject);
 
 /*
  * Class:     org_alljoyn_bus_samples_chat_Chat
@@ -52,7 +52,7 @@ JNIEXPORT void JNICALL Java_org_alljoyn_bus_samples_chat_Chat_jniOnDestroy
  * Signature: (Ljava/lang/String;)I
  */
 JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_chat_Chat_sendChatMsg
-  (JNIEnv *, jobject, jstring);
+    (JNIEnv *, jobject, jstring);
 
 /*
  * Class:     org_alljoyn_bus_samples_chat_Chat
@@ -60,7 +60,7 @@ JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_chat_Chat_sendChatMsg
  * Signature: ()Z
  */
 JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_disconnect
-  (JNIEnv *, jobject);
+    (JNIEnv *, jobject);
 
 /*
  * Class:     org_alljoyn_bus_samples_chat_Chat
@@ -68,7 +68,7 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_disconnect
  * Signature: (Ljava/lang/String;)Z
  */
 JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_advertise
-  (JNIEnv *, jobject, jstring);
+    (JNIEnv *, jobject, jstring);
 
 /*
  * Class:     org_alljoyn_bus_samples_chat_Chat
@@ -76,7 +76,7 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_advertise
  * Signature: (Ljava/lang/String;)Z
  */
 JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_joinSession
-  (JNIEnv *, jobject, jstring);
+    (JNIEnv *, jobject, jstring);
 
 #ifdef __cplusplus
 }
