@@ -34,6 +34,7 @@ const TransportMask TRANSPORT_LOCAL     = 0x0001;   /**< Local (same device) tra
 const TransportMask TRANSPORT_BLUETOOTH = 0x0002;   /**< Bluetooth transport */
 const TransportMask TRANSPORT_WLAN      = 0x0004;   /**< Wireless local-area network transport */
 const TransportMask TRANSPORT_WWAN      = 0x0008;   /**< Wireless wide-area network transport */
+const TransportMask TRANSPORT_LAN       = 0x0010;   /**< Wired local-area network transport */
 
 }
 

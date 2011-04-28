@@ -138,12 +138,42 @@ class Transport {
     virtual TransportMask GetTransportMask() = 0;
 
     /**
-     * Get the listen spec for a given set of session options.
+     * Get the "best" listen spec for a given set of session options.
      *
      * @return listenSpec (busAddr) to use for given session options (empty string if
      *         session opts are incompatible with this transport.
      */
     virtual qcc::String GetListenAddress(const SessionOpts& opts) { return ""; }
+
+    /**
+     * Get a list of the possible listen specs of the current Transport for a
+     * given set of session options.
+     *
+     * Session options specify high-level characteristics of session, such as
+     * whether or not the underlying transport carries data encapsulated in 
+     * AllJoyn messages, and whether or not delivery is reliable.
+     *
+     * It is possible that there is more than one answer to the question: what
+     * abstract address should I use when talking to another endpoint.  Each
+     * Transports is equipped to understand how many answers there are and also
+     * which answers are better than the others.  This method fills in the
+     * provided vector with a list of currently available busAddresses ordered
+     * according to which the transport thinks would be best.
+     *
+     * If there are no addresses appropriate to the given session options the 
+     * provided vector of String is left unchanged.  If there are addresses,
+     * they are added at the end of the provided vector.
+     *
+     * @param opts Session options describing the desired characteristics of
+     *             an underlying session
+     * @param busAddrs A vector of String to which bus addresses corresponding
+     *                 to IFF_UP interfaces matching the desired characteristics
+     *                 are added.
+     * @return
+     *      - ER_OK if successful.
+     *      - an error status otherwise.
+     */
+    virtual QStatus GetListenAddresses(const SessionOpts& opts, std::vector<qcc::String>& busAddrs) { return ER_NOT_IMPLEMENTED; }
 
     /**
      * Normalize a transport specification.

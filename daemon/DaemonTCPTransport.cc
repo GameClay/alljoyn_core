@@ -28,6 +28,7 @@
 
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/TransportMask.h>
+#include <alljoyn/Session.h>
 
 #include "BusInternal.h"
 #include "RemoteEndpoint.h"
@@ -36,7 +37,7 @@
 #include "NameService.h"
 #include "DaemonTCPTransport.h"
 
-#define QCC_MODULE "ALLJOYN"
+#define QCC_MODULE "ALLJOYN_DAEMON_TCP"
 
 using namespace std;
 using namespace qcc;
@@ -347,6 +348,165 @@ QStatus DaemonTCPTransport::Join(void)
 
     m_stopping = false;
 
+    return ER_OK;
+}
+
+/*
+ * The default interface for the name service to use.  The wildcard character
+ * means to listen and transmit over all interfaces that are up and multicast
+ * capable, with any IP address they happen to have.  This default also applies
+ * to the search for listen address interfaces.
+ */
+static const char* INTERFACES_DEFAULT = "*";
+
+QStatus DaemonTCPTransport::GetListenAddresses(const SessionOpts& opts, std::vector<qcc::String>& busAddrs) const
+{
+    QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses()"));
+
+    /*
+     * We are given a session options structure that defines the kind of 
+     * transports that are being sought.  TCP provides reliable traffic as
+     * understood by the session options, so we only return someting if
+     * the traffic type is TRAFFIC_MESSAGES or TRAFFIC_RAW_RELIABLE.  It's
+     * not an error if we don't match, we just don't have anything to offer.
+     */
+    if (opts.traffic != SessionOpts::TRAFFIC_MESSAGES && opts.traffic != SessionOpts::TRAFFIC_RAW_RELIABLE) {
+        QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses(): traffic mismatch"));
+        return ER_OK;
+    }
+
+    /*
+     * The other session option that we need to filter on is the transport
+     * bitfield.  We have no easy way of figuring out if we are a wireless
+     * local-area, wireless wide-area, wired local-area or local transport,
+     * but we do exist, so we respond if the caller is asking for any of
+     * those: cogito ergo some.
+     */
+    if (!(opts.traffic & (TRANSPORT_WLAN | TRANSPORT_WWAN | TRANSPORT_LAN))) {
+        QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses(): transport mismatch"));
+        return ER_OK;
+    }
+
+    /*
+     * Our goal is here is to match a list of interfaces provided in the
+     * configuration database (or a wildcard) to a list of interfaces that are
+     * IFF_UP in the system.  The first order of business is to get the list of
+     * interfaces in the system.  We do that using a convenient OS-inependent
+     * call into the name service.
+     *
+     * We can't cache this list since it may change as the phone wanders in
+     * and out of range of this and that and the underlying IP addresses change
+     * as DHCP doles out whatever it feels like at any moment.
+     */
+    QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses(): IfConfig()"));
+    assert(m_ns);
+    std::vector<NameService::IfConfigEntry> entries;
+    QStatus status = m_ns->IfConfig(entries);
+    if (status != ER_OK) {
+        QCC_LogError(status, ("DaemonTCPTransport::GetListenAddresses(): ns.IfConfig() failed"));
+        return status;
+    }
+
+    /*
+     * The next thing to do is to get the list of interfaces from the config
+     * file.  These are required to be formatted in a comma separated list, 
+     * with '*' being a wildcard indicating that we want to match any interface.
+     * If there is no configuration item, we default to something rational.
+     */
+    QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses(): GetProperty()"));
+    qcc::String interfaces = ConfigDB::GetConfigDB()->GetProperty(NameService::MODULE_NAME, NameService::INTERFACES_PROPERTY);
+    if (interfaces.size() == 0) {
+        interfaces = INTERFACES_DEFAULT;
+    }
+
+    /*
+     * Check for wildcard anywhere in the configuration string.  This trumps
+     * anything else that may be there and ensures we get only one copy of
+     * the addresses if someone tries to trick us with "*,*".
+     */
+    bool haveWildcard = false;
+    const char *wildcard = "*";
+    size_t i = interfaces.find(wildcard);
+    if (i != qcc::String::npos) {
+        QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses(): wildcard search"));
+        haveWildcard = true;
+        interfaces = wildcard;
+    }
+
+    /*
+     * Walk the comma separated list from the configuration file and and try
+     * to mach it up with interfaces actually found in the system.
+     */
+    while (interfaces.size()) {
+        /*
+         * We got a comma-separated list, so we need to work our way through
+         * the list.  Each entry in the list  may be  an interface name, or a
+         * wildcard.
+         */
+        qcc::String currentInterface;
+        size_t i = interfaces.find(",");
+        if (i != qcc::String::npos) {
+            currentInterface = interfaces.substr(0, i);
+            interfaces = interfaces.substr(i + 1, interfaces.size() - i - 1);
+        } else {
+            currentInterface = interfaces;
+            interfaces.clear();
+        }
+
+        QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses(): looking for interface %s", currentInterface.c_str()));
+
+        /*
+         * Walk the list of interfaces that we got from the system and see if
+         * we find a match.
+         */
+        for (uint32_t i = 0; i < entries.size(); ++i) {
+            QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses(): matching %s", entries[i].m_name.c_str()));
+            /*
+             * To match a configuration entry, the name of the interface must:
+             *
+             *   - match the name in the currentInterface (or be wildcarded);
+             *   - support multicast and so plausibly be the source of an advert;
+             *   - be UP which means it has an IP address assigned;
+             *   - not be the LOOPBACK device and therefore be remotely available.
+             */
+            uint32_t mask = NameService::IfConfigEntry::UP | 
+                NameService::IfConfigEntry::MULTICAST |
+                NameService::IfConfigEntry::LOOPBACK;
+
+            uint32_t state = NameService::IfConfigEntry::UP | 
+                NameService::IfConfigEntry::MULTICAST;
+
+            if ((entries[i].m_flags & mask) == state) {
+                QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses(): %s has correct state", entries[i].m_name.c_str()));
+                if (haveWildcard || entries[i].m_name == currentInterface) {
+                    QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses(): %s has correct name", entries[i].m_name.c_str()));
+                    /*
+                     * This entry matches our search criteria, so we need to
+                     * turn the IP address that we found into a busAddr.  We
+                     * must be a TCP transport, and we have an IP address
+                     * already in a string, so we can easily put together the
+                     * desired busAddr.
+                     *
+                     * Currently, however, the daemon caan't handle IPv6
+                     * addresses, so we filter them out and only let IPv4
+                     * addresses (address family is AF_INET) escape.
+                     */
+                    if (entries[i].m_family == AF_INET) {
+                        QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses(): %s is IPv4.  Match found", entries[i].m_name.c_str()));
+                        qcc::String busAddr = "tcp:addr=" + entries[i].m_addr;
+                        busAddrs.push_back(busAddr);
+                    }
+                }
+            }
+        }
+    }
+
+    /*
+     * If we can get the list and walk it, we have succeeded.  It is not an
+     * error to have no available interfaces.  In fact, it is quite expected
+     * in a phone if it is not associated with an access point over wi-fi.
+     */
+    QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses(): done"));
     return ER_OK;
 }
 
@@ -846,13 +1006,6 @@ QStatus DaemonTCPTransport::Disconnect(const char* connectSpec)
     m_endpointListLock.Unlock();
     return status;
 }
-
-/*
- * The default interface for the name service to use.  The wildcard character
- * means to listen and transmit over all interfaces that are up and multicast
- * capable, with any IP address they happen to have.
- */
-static const char* INTERFACES_DEFAULT = "*";
 
 QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
 {

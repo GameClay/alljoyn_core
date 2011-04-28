@@ -228,6 +228,36 @@ class DaemonTCPTransport : public Transport, public RemoteEndpoint::EndpointList
     TransportMask GetTransportMask() { return TRANSPORT_WLAN; }
 
     /**
+     * Get a list of the possible listen specs of the current Transport for a
+     * given set of session options.
+     *
+     * Session options specify high-level characteristics of session, such as
+     * whether or not the underlying transport carries data encapsulated in 
+     * AllJoyn messages, and whether or not delivery is reliable.
+     *
+     * It is possible that there is more than one answer to the question: what
+     * abstract address should I use when talking to another endpoint.  Each
+     * Transports is equipped to understand how many answers there are and also
+     * which answers are better than the others.  This method fills in the
+     * provided vector with a list of currently available busAddresses ordered
+     * according to which the transport thinks would be best.
+     *
+     * If there are no addresses appropriate to the given session options the 
+     * provided vector of String is left unchanged.  If there are addresses,
+     * they are added at the end of the provided vector.
+     *
+     * @param opts Session options describing the desired characteristics of
+     *             an underlying session
+     * @param busAddrs A vector of String to which bus addresses corresponding
+     *                 to IFF_UP interfaces matching the desired characteristics
+     *                 are added.
+     * @return
+     *      - ER_OK if successful.
+     *      - an error status otherwise.
+     */
+    QStatus GetListenAddresses(const SessionOpts& opts, std::vector<qcc::String>& busAddrs) const;
+
+    /**
      * Indicates whether this transport may be used for a connection between
      * an application and the daemon on the same machine or not.
      *
