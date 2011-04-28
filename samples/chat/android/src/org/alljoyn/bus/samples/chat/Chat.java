@@ -25,6 +25,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
+import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -97,34 +98,20 @@ public class Chat extends Activity {
         listView.setAdapter(listViewArrayAdapter);
 
         editText = (EditText) findViewById(R.id.EditText);
-        editText.setOnKeyListener(new OnKeyListener() {
-            public boolean onKey(View v, int keyCode, KeyEvent event) {
-                // If the event is a key-down event on the "enter" button
-                if ((event.getAction() == KeyEvent.ACTION_DOWN) &&
-                    (keyCode == KeyEvent.KEYCODE_ENTER)) {
-                  // Perform action on key press
-                	Log.d("Chat","\n Calling Chat method ");
-                  return true;
-                }
-                return false;
-            }
-        });
         
-        /*
         editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
                                                public boolean onEditorAction(TextView view, int actionId, KeyEvent event) {
                                             	   Log.d("Chat","\n Calling Chat method \n\n\n");
-                                                   if ( event != null && event.getAction() == KeyEvent.KEYCODE_ENTER) {
-                                                	   //actionId == EditorInfo.IME_NULL
+                                                   if (actionId == EditorInfo.IME_NULL && event.getAction() == KeyEvent.ACTION_UP) {
                                                        String message = view.getText().toString();
                                                        Log.d("Chat","\n Calling Chat method ");
-                                                       chat(message);
+                                                       //chat(message);
                                                        view.setText("");
                                                    }
                                                    return true;
                                                }
                                            });
-        */
+        
         setConnectedState(false);
 
         // Initialize the native part of the sample
