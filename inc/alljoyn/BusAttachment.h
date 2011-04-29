@@ -522,7 +522,7 @@ class BusAttachment : public MessageReceiver {
      * @param[in]     opts             Session options that joiners must agree to in order to
      *                                 successfully join the session.
      *
-     * @param[in]     sessionListener  Called by the bus when session related events occur.
+     * @param[in]     listener  Called by the bus when session related events occur.
      *
      * @return
      *      - #ER_OK iff daemon response was received and the bind operation was successful.
@@ -550,7 +550,7 @@ class BusAttachment : public MessageReceiver {
      *
      * @param[in]  sessionHost      Bus name of attachment that is hosting the session to be joined.
      * @param[in]  sessionPort      SessionPort of sessionHost to be joined.
-     * @param[in]  sessionListener  Optional listener called when session related events occur. May be NULL.
+     * @param[in]  listener  Optional listener called when session related events occur. May be NULL.
      * @param[out] sessionId        Unique identifier for session.
      * @param[out] opts             Session options.
      *

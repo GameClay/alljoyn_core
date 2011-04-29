@@ -32,20 +32,31 @@
 namespace ajn {
 
 /**
+ * @name Bus Events
  * The various bus events.
  */
+// @{
+/** Event indicating an advertised name was found */
 static const uint32_t BUS_EVENT_FOUND_ADVERTISED_NAME = 0x0001;
+/** Event indicating a previously found name has been lost*/
 static const uint32_t BUS_EVENT_LOST_ADVERTISED_NAME  = 0x0002;
+/** Event indicating that the ownership of a bus name has changed. */
 static const uint32_t BUS_EVENT_NAME_OWNER_CHANGED    = 0x0004;
+/** Bit mask that can be used filter Bus Events */
 static const uint32_t BUS_EVENT_ALL                   = 0x00FF;
+/** Bit mask that can be used filter Bus Events */
 static const uint32_t BUS_EVENT_NONE                  = 0x0000;
-
+// @}
 /**
  * Helper class that provides a blocking API that allows application threads to wait for bus events.
  */
 class SimpleBusListener : public BusListener {
   public:
 
+    /**
+     * Indicator used when calling the #WaitForEvent method to indicate that the
+     * listener should wait forever for the specified BusEvent.
+     */
     static const uint32_t FOREVER = -1;
 
     /**
