@@ -610,7 +610,8 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                 uint32_t now = GetTimestamp();
                 if (now > (startTime + 10000)) {
                     replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                    QCC_LogError(ER_FAIL, ("JoinSession timed out waiting for destination to appear"));
+                    QCC_LogError(ER_FAIL, ("JoinSession timed out waiting for %s to appear on %s",
+                                           sessionHost, b2bEp->GetUniqueName().c_str()));
                     break;
                 } else {
                     /* Give up the locks while waiting */
@@ -1948,6 +1949,8 @@ void AllJoynObj::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
 
 QStatus AllJoynObj::ExchangeNames(RemoteEndpoint& endpoint)
 {
+    QCC_DbgTrace(("AllJoynObj::ExchangeNames(endpoint = %s)", endpoint.GetUniqueName().c_str()));
+
     vector<pair<qcc::String, vector<qcc::String> > > names;
     QStatus status;
     const qcc::String& shortGuidStr = endpoint.GetRemoteGUID().ToShortString();
@@ -2006,6 +2009,9 @@ QStatus AllJoynObj::ExchangeNames(RemoteEndpoint& endpoint)
         if (ER_OK == status) {
             status = endpoint.PushMessage(exchangeMsg);
         }
+    }
+    if (status != ER_OK) {
+        QCC_LogError(status, ("Failed to send ExchangeName signal"));
     }
     /*
      * This will also free the inner MsgArgs.

@@ -319,6 +319,7 @@ QStatus BTController::SendSetState(const qcc::String& busName)
             // We are now a minion (or a drone if we have more than one direct connection)
             master = newMaster;
             masterNode = BTNodeInfo(addr, master->GetServiceName());
+            masterNode->SetUUIDRev(otherUUIDRev);
 
             // Wipe out our cache.
             cacheLock.Lock();
@@ -329,6 +330,14 @@ QStatus BTController::SendSetState(const qcc::String& busName)
                 uuidRevCache.erase(ci);
             }
             cacheLock.Unlock();
+
+            status = ImportState(addr, NULL, 0, foundNodeArgs, numFoundNodeArgs);
+            if (status != ER_OK) {
+                QCC_LogError(status, ("Dropping %s due to import state error", busName.c_str()));
+                bt.Disconnect(busName);
+                goto exit;
+            }
+
         } else {
             // We are the still the master
             bool noRotateMinions = !RotateMinions();
@@ -478,6 +487,13 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
 
         if (adNode->IsValid()) {
             UUIDRevCacheMap::iterator ci = LookupUUIDRevCache(adNode->GetUUIDRev(), adBdAddr);
+            if (ci == uuidRevCache.end()) {
+                QCC_LogError(ER_FAIL, ("Could not find %s in cache entry for %08x", adNode->GetBusAddress().ToString().c_str(), adNode->GetUUIDRev()));
+                for (ci = uuidRevCache.begin(); ci != uuidRevCache.end(); ++ci) {
+                    String label("Cache Entry " + U32ToString(ci->first, 16, 0));
+                    ci->second->adInfo->DumpTable(label.c_str());
+                }
+            }
             assert(ci != uuidRevCache.end());
             cacheInfo = ci->second;
 
@@ -526,6 +542,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
             status = bt.GetDeviceInfo(adBdAddr, newUUIDRev, connAddr, *newAdInfo);
             if (status != ER_OK) {
                 delete newAdInfo;
+                cacheLock.Unlock();
                 return;
             }
 
@@ -540,6 +557,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                     QCC_LogError(ER_FAIL, ("No device with connect address %s in advertisement",
                                            connAddr.ToString().c_str()));
                     delete newAdInfo;
+                    cacheLock.Unlock();
                     return;
                 }
             }
@@ -599,6 +617,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
 
             DistributeAdvertisedNameChanges(newAdInfo, &removedDB);
             foundNodeDB.UpdateDB(newAdInfo, &removedDB, false);
+            foundNodeDB.DumpTable("Updated set of found devices");
             uuidRevCache.insert(UUIDRevCacheMapEntry(newUUIDRev, cacheInfo));
         }
 
@@ -629,7 +648,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
 const BTBusAddress& BTController::PrepConnect(const BTBusAddress& addr)
 {
     lock.Lock();
-    if (UseLocalFind()) {
+    if (UseLocalFind() && find.active) {
         /*
          * Gotta shut down the local find operation since a successful
          * connection will cause the exchange of the SetState method call and
@@ -638,7 +657,6 @@ const BTBusAddress& BTController::PrepConnect(const BTBusAddress& addr)
          */
         if (!find.Empty()) {
             QCC_DbgPrintf(("Stopping find..."));
-            assert(find.active);
             bt.StopFind();
             find.active = false;
         }
@@ -703,8 +721,8 @@ void BTController::PostConnect(QStatus status, const RemoteEndpoint* ep)
             if (!find.Empty()) {
                 QCC_DbgPrintf(("Starting find..."));
                 assert(!find.active);
-                bt.StartFind(find.ignoreAddrs);
-                find.active = true;
+                QStatus status = bt.StartFind(find.ignoreAddrs);
+                find.active = (status == ER_OK);
             }
         }
         if (UseLocalAdvertise()) {
@@ -717,8 +735,8 @@ void BTController::PostConnect(QStatus status, const RemoteEndpoint* ep)
                 status = ExtractAdInfo(&advertise.adInfoArgs.front(), advertise.adInfoArgs.size(), adInfo);
                 QCC_DbgPrintf(("Starting advertise..."));
                 assert(!advertise.active);
-                bt.StartAdvertise(masterUUIDRev, self->GetBusAddress().addr, self->GetBusAddress().psm, adInfo);
-                advertise.active = true;
+                QStatus status = bt.StartAdvertise(masterUUIDRev, self->GetBusAddress().addr, self->GetBusAddress().psm, adInfo);
+                advertise.active = (status == ER_OK);
             }
         }
     }
@@ -827,7 +845,7 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
 
         lock.Lock();
         if (master && (master->GetServiceName() == alias)) {
-            QCC_DbgPrintf(("Our master left us: %s", master->GetServiceName().c_str()));
+            QCC_DbgPrintf(("Our master left us: %s", masterNode->GetBusAddress().ToString().c_str()));
             // We are the master now.
             if (IsMinion()) {
                 if (find.active) {
@@ -842,9 +860,6 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                 }
             }
 
-            delete master;
-            master = NULL;
-            masterNode = BTNodeInfo();
 
             BDAddressSet ignoreAddrs;
             BTNodeDB::const_iterator it;
@@ -853,6 +868,12 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
             foundNodeDB.Lock();
             cacheLock.Lock();
             assert(uuidRevCache.empty());
+
+            // Put the master node in our set of found nodes.
+            foundNodeDB.AddNode(masterNode);
+            delete master;
+            master = NULL;
+            masterNode = BTNodeInfo();
 
             BTNodeDB* adInfo;
             for (it = foundNodeDB.Begin(); it != foundNodeDB.End(); ++it) {
@@ -865,8 +886,10 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                     cacheInfo->timeout = Alarm(LOST_DEVICE_TIMEOUT, this, 0, new UUIDRevCacheInfo(cacheInfo));
                     bus.GetInternal().GetDispatcher().AddAlarm(cacheInfo->timeout);
                     uuidRevCache.insert(UUIDRevCacheMapEntry(node->GetUUIDRev(), cacheInfo));
+                    QCC_DbgPrintf(("Added %s to new uuidRev cache entry for %08x", node->GetBusAddress().ToString().c_str(), node->GetUUIDRev()));
                 } else {
                     adInfo = ci->second->adInfo;
+                    QCC_DbgPrintf(("Added %s to existing uuidRev cache entry for %08x", node->GetBusAddress().ToString().c_str(), node->GetUUIDRev()));
                 }
                 adInfo->AddNode(*it);
             }
@@ -893,7 +916,7 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
 
             if (minion->IsValid()) {
                 // Remove the minion's state information.
-                QCC_DbgPrintf(("One of our minions left us: %s", minion->GetUniqueName().c_str()));
+                QCC_DbgPrintf(("One of our minions left us: %s", minion->GetBusAddress().ToString().c_str()));
 
                 bool wasAdvertiseMinion = minion == advertise.minion;
                 bool wasFindMinion = minion == find.minion;
@@ -973,6 +996,18 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                     }
                 }
 
+                // Put the minion in our found node DB and set a cache timeout for it.
+                foundNodeDB.AddNode(minion);
+                cacheLock.Lock();
+                UUIDRevCacheInfo cacheInfo;
+                cacheInfo->adInfo = new BTNodeDB();
+                cacheInfo->adInfo->AddNode(minion);
+                uuidRevCache.insert(UUIDRevCacheMapEntry(minion->GetUUIDRev(), cacheInfo));
+                QCC_DbgPrintf(("Added %s to new uuidRev cache entry for %08x", minion->GetBusAddress().ToString().c_str(), minion->GetUUIDRev()));
+                cacheInfo->timeout = Alarm(0, this, 0, new UUIDRevCacheInfo(cacheInfo));
+                bus.GetInternal().GetDispatcher().AddAlarm(cacheInfo->timeout);
+                cacheLock.Unlock();
+
                 UpdateDelegations(advertise, listening);
                 UpdateDelegations(find);
                 QCC_DEBUG_ONLY(DumpNodeStateTable());
@@ -991,22 +1026,23 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
     QStatus status = ER_OK;
 
     // Now inform everyone of the changes in advertised names.
-    lock.Lock();
-    for (BTNodeDB::const_iterator it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
-        const BTNodeInfo& node = *it;
-        if (!node->FindNamesEmpty() && (node != self)) {
-            QCC_DbgPrintf(("Notify %s of the name changes.", node->GetBusAddress().ToString().c_str()));
-            if (oldAdInfo && oldAdInfo->Size() > 0) {
-                status = SendFoundNamesChange(node, *oldAdInfo, true);
-            }
-            if (newAdInfo && newAdInfo->Size() > 0) {
-                status = SendFoundNamesChange(node, *newAdInfo, false);
+    if (!IsMinion()) {
+        lock.Lock();
+        for (BTNodeDB::const_iterator it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
+            const BTNodeInfo& node = *it;
+            if (!node->FindNamesEmpty() && (node != self)) {
+                QCC_DbgPrintf(("Notify %s of the name changes.", node->GetBusAddress().ToString().c_str()));
+                if (oldAdInfo && oldAdInfo->Size() > 0) {
+                    status = SendFoundNamesChange(node, *oldAdInfo, true);
+                }
+                if (newAdInfo && newAdInfo->Size() > 0) {
+                    status = SendFoundNamesChange(node, *newAdInfo, false);
+                }
             }
         }
+        lock.Unlock();
     }
-    lock.Unlock();
 
-    QCC_DbgPrintf(("Notify ourself of the name changes."));
     BTNodeDB::const_iterator node;
     // Tell ourself about the names (This is best done outside the noseStateLock just in case).
     if (oldAdInfo) {
@@ -1232,6 +1268,11 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     uint64_t rawBDAddr;
     uint16_t psm;
     uint32_t otherUUIDRev;
+    size_t numNodeStateArgs;
+    MsgArg* nodeStateArgs;
+    size_t numFoundNodeArgs;
+    MsgArg* foundNodeArgs;
+
 
     lock.Lock();
     if (UseLocalFind() && find.active) {
@@ -1245,10 +1286,14 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
      * more direct connections then there is no point in extracting all of his
      * names from the second argument.
      */
-    status = msg->GetArg(0)->Get(SIG_MINION_CNT, &numConnections);
-    status = (status != ER_OK) ? status : msg->GetArg(1)->Get(SIG_UUIDREV, &otherUUIDRev);
-    status = (status != ER_OK) ? status : msg->GetArg(2)->Get(SIG_BDADDR, &rawBDAddr);
-    status = (status != ER_OK) ? status : msg->GetArg(3)->Get(SIG_PSM, &psm);
+    status = msg->GetArgs(SIG_SET_STATE_IN,
+                          &numConnections,
+                          &otherUUIDRev,
+                          &rawBDAddr,
+                          &psm,
+                          &numNodeStateArgs, &nodeStateArgs,
+                          &numFoundNodeArgs, &foundNodeArgs);
+
     if (status != ER_OK) {
         MethodReply(msg, "org.alljoyn.Bus.BTController.InternalError", QCC_StatusText(status));
         lock.Unlock();
@@ -1256,6 +1301,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
         return;
     }
 
+    BTBusAddress addr(rawBDAddr, psm);
     MsgArg args[SIG_SET_STATE_OUT_SIZE];
     size_t numArgs = ArraySize(args);
     vector<MsgArg> nodeStateArgsStorage;
@@ -1264,8 +1310,8 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     if (numConnections > directMinions) {
         // We are now a minion (or a drone if we have more than one direct connection)
         master = new ProxyBusObject(bus, sender.c_str(), bluetoothObjPath, 0);
-        BTBusAddress addr(rawBDAddr, psm);
         masterNode = BTNodeInfo(addr, sender);
+        masterNode->SetUUIDRev(otherUUIDRev);
 
         QCC_DbgPrintf(("HandleSetState prep args"));
         FillNodeStateMsgArgs(nodeStateArgsStorage);
@@ -1280,16 +1326,8 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
             uuidRevCache.erase(ci);
         }
         cacheLock.Unlock();
-    } else {
-        // We are still the master
 
-        size_t numNodeStateArgs;
-        MsgArg* nodeStateArgs;
-        size_t numFoundNodeArgs;
-        MsgArg* foundNodeArgs;
-
-        status = msg->GetArg(4)->Get(SIG_NODE_STATES, &numNodeStateArgs, &nodeStateArgs);
-        status = (status != ER_OK) ? status : msg->GetArg(5)->Get(SIG_FOUND_NODES, &numFoundNodeArgs, &foundNodeArgs);
+        status = ImportState(addr, NULL, 0, foundNodeArgs, numFoundNodeArgs);
         if (status != ER_OK) {
             MethodReply(msg, "org.alljoyn.Bus.BTController.InternalError", QCC_StatusText(status));
             lock.Unlock();
@@ -1297,7 +1335,9 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
             return;
         }
 
-        BTBusAddress addr(rawBDAddr, psm);
+    } else {
+        // We are still the master
+
         bool noRotateMinions = !RotateMinions();
         status = ImportState(addr, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs);
         if (status != ER_OK) {
@@ -1400,8 +1440,8 @@ void BTController::HandleDelegateFind(const InterfaceDescription::Member* member
                 }
 
                 QCC_DbgPrintf(("Starting find for %u seconds...", duration));
-                bt.StartFind(ignoreAddrs, duration);
-                find.active = true;
+                status = bt.StartFind(ignoreAddrs, duration);
+                find.active = (status == ER_OK);
             } else {
                 QCC_DbgPrintf(("Stopping find..."));
                 bt.StopFind();
@@ -1461,8 +1501,8 @@ void BTController::HandleDelegateAdvertise(const InterfaceDescription::Member* m
                 BDAddress bdAddr(bdAddrRaw);
 
                 QCC_DbgPrintf(("Starting advertise for %u seconds...", duration));
-                bt.StartAdvertise(uuidRev, bdAddr, psm, adInfo, duration);
-                advertise.active = true;
+                status = bt.StartAdvertise(uuidRev, bdAddr, psm, adInfo, duration);
+                advertise.active = (status == ER_OK);
             } else {
                 QCC_DbgPrintf(("Stopping advertise..."));
                 bt.StopAdvertise();
@@ -1505,12 +1545,14 @@ void BTController::HandleFoundNamesChange(const InterfaceDescription::Member* me
 
     if (status == ER_OK) {
         status = ExtractAdInfo(entries, size, adInfo);
+        adInfo.RemoveNode(self);
     }
 
     if ((status == ER_OK) && (adInfo.Size() > 0)) {
         BTNodeDB::const_iterator nodeit;
 
         foundNodeDB.UpdateDB(lost ? NULL : &adInfo, lost ? &adInfo : NULL);
+        foundNodeDB.DumpTable("Updated set of found devices");
         lock.Lock();
         for (nodeit = adInfo.Begin(); nodeit != adInfo.End(); ++nodeit) {
             vector<String> vectorizedNames;
@@ -1741,9 +1783,12 @@ QStatus BTController::ImportState(const BTBusAddress& addr,
         cacheLock.Unlock();
     }
 
-    ++directMinions;
+    if (IsMaster()) {
+        ++directMinions;
+    }
     DistributeAdvertisedNameChanges(&addedDB, &staleDB);
     foundNodeDB.UpdateDB(&incomingDB, &staleDB);
+    foundNodeDB.DumpTable("Updated set of found devices");
 
     if (find.minion == self) {
         NextDirectMinion(find.minion);
@@ -1978,6 +2023,9 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
             // the associated cache info object.  If it did get refreshed,
             // then we just ignore it.
 
+            QCC_DbgPrintf(("Cache Info expiration: UUIDRev: %08x  connAddr = %s",
+                           (*((*cacheInfo)->adInfo->Begin()))->GetUUIDRev(),
+                           (*((*cacheInfo)->adInfo->Begin()))->GetConnectAddress().ToString().c_str()));
             if (alarm == (*cacheInfo)->timeout) {
                 adInfo = (*cacheInfo)->adInfo;
                 BTNodeInfo node = *(adInfo->Begin());
@@ -1990,13 +2038,13 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
             delete cacheInfo;
             cacheLock.Unlock();
 
-            if (adInfo) {
-                if (IsMaster()) {
-                    DistributeAdvertisedNameChanges(NULL, adInfo);
-                    foundNodeDB.UpdateDB(NULL, adInfo);
-                }
-                delete adInfo;
+            assert(adInfo);
+            if (IsMaster()) {
+                DistributeAdvertisedNameChanges(NULL, adInfo);
+                foundNodeDB.UpdateDB(NULL, adInfo);
+                foundNodeDB.DumpTable("Updated set of found devices");
             }
+            delete adInfo;
         }
     }
 }

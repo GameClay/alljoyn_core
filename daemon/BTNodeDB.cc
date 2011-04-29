@@ -249,7 +249,7 @@ void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool rem
 void BTNodeDB::DumpTable(const char* info) const
 {
     const_iterator nodeit;
-    QCC_DbgPrintf(("Node State Table (%s):", info));
+    QCC_DbgPrintf(("Node DB (%s):", info));
     for (nodeit = Begin(); nodeit != End(); ++nodeit) {
         const BTNodeInfo& node = *nodeit;
         NameSet::const_iterator nameit;
