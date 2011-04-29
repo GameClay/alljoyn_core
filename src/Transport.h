@@ -150,7 +150,7 @@ class Transport {
      * given set of session options.
      *
      * Session options specify high-level characteristics of session, such as
-     * whether or not the underlying transport carries data encapsulated in 
+     * whether or not the underlying transport carries data encapsulated in
      * AllJoyn messages, and whether or not delivery is reliable.
      *
      * It is possible that there is more than one answer to the question: what
@@ -160,7 +160,7 @@ class Transport {
      * provided vector with a list of currently available busAddresses ordered
      * according to which the transport thinks would be best.
      *
-     * If there are no addresses appropriate to the given session options the 
+     * If there are no addresses appropriate to the given session options the
      * provided vector of String is left unchanged.  If there are addresses,
      * they are added at the end of the provided vector.
      *

@@ -364,7 +364,7 @@ QStatus DaemonTCPTransport::GetListenAddresses(const SessionOpts& opts, std::vec
     QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses()"));
 
     /*
-     * We are given a session options structure that defines the kind of 
+     * We are given a session options structure that defines the kind of
      * transports that are being sought.  TCP provides reliable traffic as
      * understood by the session options, so we only return someting if
      * the traffic type is TRAFFIC_MESSAGES or TRAFFIC_RAW_RELIABLE.  It's
@@ -409,7 +409,7 @@ QStatus DaemonTCPTransport::GetListenAddresses(const SessionOpts& opts, std::vec
 
     /*
      * The next thing to do is to get the list of interfaces from the config
-     * file.  These are required to be formatted in a comma separated list, 
+     * file.  These are required to be formatted in a comma separated list,
      * with '*' being a wildcard indicating that we want to match any interface.
      * If there is no configuration item, we default to something rational.
      */
@@ -425,7 +425,7 @@ QStatus DaemonTCPTransport::GetListenAddresses(const SessionOpts& opts, std::vec
      * the addresses if someone tries to trick us with "*,*".
      */
     bool haveWildcard = false;
-    const char *wildcard = "*";
+    const char*wildcard = "*";
     size_t i = interfaces.find(wildcard);
     if (i != qcc::String::npos) {
         QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses(): wildcard search"));
@@ -469,12 +469,12 @@ QStatus DaemonTCPTransport::GetListenAddresses(const SessionOpts& opts, std::vec
              *   - be UP which means it has an IP address assigned;
              *   - not be the LOOPBACK device and therefore be remotely available.
              */
-            uint32_t mask = NameService::IfConfigEntry::UP | 
-                NameService::IfConfigEntry::MULTICAST |
-                NameService::IfConfigEntry::LOOPBACK;
+            uint32_t mask = NameService::IfConfigEntry::UP |
+                            NameService::IfConfigEntry::MULTICAST |
+                            NameService::IfConfigEntry::LOOPBACK;
 
-            uint32_t state = NameService::IfConfigEntry::UP | 
-                NameService::IfConfigEntry::MULTICAST;
+            uint32_t state = NameService::IfConfigEntry::UP |
+                             NameService::IfConfigEntry::MULTICAST;
 
             if ((entries[i].m_flags & mask) == state) {
                 QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses(): %s has correct state", entries[i].m_name.c_str()));
