@@ -450,6 +450,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      *
      * @param sessionPort      SessionPort used in join request.
      * @param src              Unique name of session joiner.
+     * @param sessionHost      Unique name of sessionHost.
      * @param dest             Unique name of session creator.
      * @param remoteB2BName    Unique name of directly connected (next hop) B2B endpoint.
      * @param remoteControllerName  Unique name of bus controller at next hop.
@@ -462,6 +463,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      */
     QStatus SendAttachSession(SessionPort sessionPort,
                               const char* src,
+                              const char* sessionHost,
                               const char* dest,
                               const char* remoteB2BName,
                               const char* remoteControllerName,

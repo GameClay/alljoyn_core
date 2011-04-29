@@ -95,7 +95,7 @@ QStatus org::alljoyn::CreateInterfaces(BusAttachment& bus)
             QCC_LogError(status, ("Failed to create interface \"%s\"", org::alljoyn::Daemon::InterfaceName));
             return status;
         }
-        ifc->AddMethod("AttachSession",  "qssss"SESSIONOPTS_SIG, "uu"SESSIONOPTS_SIG "as", "port,joiner,creator,b2b,busAddr,optsIn,status,id,optsOut,members", 0);
+        ifc->AddMethod("AttachSession",  "qsssss"SESSIONOPTS_SIG, "uu"SESSIONOPTS_SIG "as", "port,joiner,creator,dest,b2b,busAddr,optsIn,status,id,optsOut,members", 0);
         ifc->AddMethod("GetSessionInfo", "sq"SESSIONOPTS_SIG, "s", "creator,port,opts,busAddr", 0);
         ifc->AddSignal("DetachSession",  "us",     "sessionId,joiner",       0);
         ifc->AddSignal("ExchangeNames",  "a(sas)", "uniqueName,aliases",     0);

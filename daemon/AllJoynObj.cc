@@ -579,7 +579,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             /* Step 2: Send a session attach */
             if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
                 const String nextControllerName = b2bEp->GetRemoteName();
-                status = ajObj.SendAttachSession(sessionPort, msg->GetSender(), sessionHost, b2bEpName.c_str(),
+                status = ajObj.SendAttachSession(sessionPort, msg->GetSender(), sessionHost, sessionHost, b2bEpName.c_str(),
                                                  nextControllerName.c_str(), busAddr.c_str(), optsIn, replyCode,
                                                  id, optsOut, membersArg);
                 if (status != ER_OK) {
@@ -733,8 +733,18 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                         ajObj.virtualEndpointsLock.Unlock();
                         ajObj.discoverMapLock.Unlock();
                         ajObj.router.UnlockNameTable();
-                        status = ajObj.SendAttachSession(sessionPort, msg->GetSender(), member, memberB2BEp->GetUniqueName().c_str(),
-                                                         nextControllerName.c_str(), "", sme.opts, replyCode, tId, tOpts, tMembersArg);
+                        status = ajObj.SendAttachSession(sessionPort,
+                                                         msg->GetSender(),
+                                                         sessionHost,
+                                                         member,
+                                                         memberB2BEp->GetUniqueName().c_str(),
+                                                         nextControllerName.c_str(),
+                                                         "",
+                                                         sme.opts,
+                                                         replyCode,
+                                                         tId,
+                                                         tOpts,
+                                                         tMembersArg);
                         ajObj.router.LockNameTable();
                         ajObj.discoverMapLock.Lock();
                         ajObj.virtualEndpointsLock.Lock();
@@ -898,6 +908,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     /* Parse message args */
     SessionPort sessionPort;
     const char* src;
+    const char* sessionHost;
     const char* dest;
     const char* srcB2B;
     const char* busAddr;
@@ -907,18 +918,17 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     size_t na;
     const MsgArg* args;
     msg->GetArgs(na, args);
-    assert(na == 6);
-    QStatus status = MsgArg::Get(args, 5, "qssss", &sessionPort, &src, &dest, &srcB2B, &busAddr);
+    QStatus status = MsgArg::Get(args, 6, "qsssss", &sessionPort, &src, &sessionHost, &dest, &srcB2B, &busAddr);
     if (status == ER_OK) {
-        status = GetSessionOpts(args[5], optsIn);
+        status = GetSessionOpts(args[6], optsIn);
     }
 
     if (status != ER_OK) {
         QCC_DbgTrace(("AllJoynObj::AttachSession(<bad args>)"));
         replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
     } else {
-        QCC_DbgTrace(("AllJoynObj::AttachSession(%d, %s, %s, %s, %s, <%x, %x, %x>)", sessionPort, src, dest, srcB2B, busAddr,
-                      optsIn.traffic, optsIn.proximity, optsIn.transports));
+        QCC_DbgTrace(("AllJoynObj::AttachSession(%d, %s, %s, %s, %s, %s, <%x, %x, %x>)", sessionPort, src, sessionHost,
+                      dest, srcB2B, busAddr, optsIn.traffic, optsIn.proximity, optsIn.transports));
 
         router.LockNameTable();
         discoverMapLock.Lock();
@@ -935,10 +945,12 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
             SessionMapEntry sme;
             bool foundSessionMapEntry = false;
             String destUniqueName = destEp->GetUniqueName();
+            BusEndpoint* sessionHostEp = router.FindEndpoint(sessionHost);
             sessionMapLock.Lock();
             multimap<pair<String, SessionId>, SessionMapEntry>::const_iterator sit = sessionMap.lower_bound(pair<String, SessionId>(destUniqueName, 0));
             while ((sit != sessionMap.end()) && (sit->first.first == destUniqueName)) {
-                if (sit->second.sessionPort == sessionPort) {
+                BusEndpoint* creatorEp = router.FindEndpoint(sit->second.sessionHost);
+                if ((sit->second.sessionPort == sessionPort) && sessionHostEp && (creatorEp == sessionHostEp)) {
                     if (!sit->second.opts.isMultipoint && (sit->first.second != 0)) {
                         /* Block attempt to join a non-multipoint session multiple times */
                         break;
@@ -1098,9 +1110,9 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                 SessionOpts tempOpts;
                 const String nextControllerName = b2bEp->GetRemoteName();
 
-                /* Unlock in preparation for sync method call. Ep pointers are unsafe after this operation */
-                status = SendAttachSession(sessionPort, src, dest, b2bEpName.c_str(), nextControllerName.c_str(), busAddr,
-                                           optsIn, replyCode, tempId, tempOpts, replyArgs[3]);
+                /* Send AttachSession */
+                status = SendAttachSession(sessionPort, src, sessionHost, dest, b2bEpName.c_str(), nextControllerName.c_str(),
+                                           busAddr, optsIn, replyCode, tempId, tempOpts, replyArgs[3]);
 
                 /* If successful, add bi-directional session routes */
                 router.LockNameTable();
@@ -1274,6 +1286,7 @@ void AllJoynObj::GetSessionInfo(const InterfaceDescription::Member* member, Mess
 
 QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
                                       const char* src,
+                                      const char* sessionHost,
                                       const char* dest,
                                       const char* remoteB2BName,
                                       const char* remoteControllerName,
@@ -1285,13 +1298,14 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
                                       MsgArg& members)
 {
     Message reply(bus);
-    MsgArg attachArgs[6];
+    MsgArg attachArgs[7];
     attachArgs[0].Set("q", sessionPort);
     attachArgs[1].Set("s", src);
-    attachArgs[2].Set("s", dest);
-    attachArgs[3].Set("s", remoteB2BName);
-    attachArgs[4].Set("s", busAddr);
-    SetSessionOpts(optsIn, attachArgs[5]);
+    attachArgs[2].Set("s", sessionHost);
+    attachArgs[3].Set("s", dest);
+    attachArgs[4].Set("s", remoteB2BName);
+    attachArgs[5].Set("s", busAddr);
+    SetSessionOpts(optsIn, attachArgs[6]);
     ProxyBusObject controllerObj(bus, remoteControllerName, org::alljoyn::Daemon::ObjectPath, 0);
     controllerObj.AddInterface(*daemonIface);
     QStatus status = controllerObj.SetB2BEndpoint(remoteB2BName);
@@ -1310,12 +1324,13 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
 
     /* Make the method call */
     if (status == ER_OK) {
-        QCC_DbgPrintf(("Sending AttachSession(%u, %s, %s, %s, %s, <%x, %x, %x>) to %s",
+        QCC_DbgPrintf(("Sending AttachSession(%u, %s, %s, %s, %s, %s, <%x, %x, %x>) to %s",
                        attachArgs[0].v_uint16,
                        attachArgs[1].v_string.str,
                        attachArgs[2].v_string.str,
                        attachArgs[3].v_string.str,
                        attachArgs[4].v_string.str,
+                       attachArgs[5].v_string.str,
                        optsIn.proximity, optsIn.traffic, optsIn.transports,
                        remoteControllerName));
 
@@ -1605,7 +1620,7 @@ void AllJoynObj::AdvertiseName(const InterfaceDescription::Member* member, Messa
         vector<String> names;
         names.push_back(advertiseName);
         discoverMapLock.Lock();
-        FoundNames("local:", bus.GetGlobalGUIDString(), transports, &names, numeric_limits<uint8_t>::max());
+        FoundNames("local:", bus.GetGlobalGUIDString(), TRANSPORT_LOCAL, &names, numeric_limits<uint8_t>::max());
         discoverMapLock.Unlock();
     }
 
