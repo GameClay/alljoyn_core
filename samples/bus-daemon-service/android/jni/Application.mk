@@ -1,1 +1,4 @@
-APP_OPTIM := debug
+VARIANT ?= debug
+
+APP_OPTIM := $(VARIANT)
+APP_ABI := armeabi
