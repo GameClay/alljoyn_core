@@ -204,11 +204,11 @@ void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool rem
     if (removed) {
         const_iterator rit;
         for (rit = removed->Begin(); rit != removed->End(); ++rit) {
-            const BTNodeInfo& rnode = *rit;
+            BTNodeInfo rnode = *rit;
             NodeAddrMap::iterator it = addrMap.find(rnode->GetBusAddress());
             if (it != addrMap.end()) {
                 // Remove names from node
-                BTNodeInfo& node = it->second;
+                BTNodeInfo node = it->second;
                 NameSet::const_iterator rnameit;
                 for (rnameit = rnode->GetAdvertiseNamesBegin(); rnameit != rnode->GetAdvertiseNamesEnd(); ++rnameit) {
                     const String& rname = *rnameit;
@@ -226,14 +226,14 @@ void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool rem
         // Add names/nodes
         const_iterator ait;
         for (ait = added->Begin(); ait != added->End(); ++ait) {
-            const BTNodeInfo& anode = *ait;
+            BTNodeInfo anode = *ait;
             NodeAddrMap::iterator it = addrMap.find(anode->GetBusAddress());
             if (it == addrMap.end()) {
                 // New node
                 AddNode(anode);
             } else {
                 // Add names to existing node
-                BTNodeInfo& node = it->second;
+                BTNodeInfo node = it->second;
                 NameSet::const_iterator anameit;
                 for (anameit = anode->GetAdvertiseNamesBegin(); anameit != anode->GetAdvertiseNamesEnd(); ++anameit) {
                     const String& aname = *anameit;
