@@ -9,12 +9,6 @@ What's inside:
     The above folders are identical, except for compilation options.
     The file and folder structure inside them is described below. 
 
- * AllJoyn_Android_NDK_Developer_Guide : PDF document.
-    Introduction to AllJoyn. How to use this SDK and the sample programs.
-
- * NexusOneFiles : zip archive
-    How to update bluetoothd on the Nexus One to support AllJoyn.
-
  * ReleaseNotes
     New features, known issues, etc.
 
@@ -29,7 +23,7 @@ Summary of NDK file and folder structure:
         AllJoyn C++ API (HTML documentation)
 
     ./bin
-        Executable binaries (bus daemon, C++ samples, test programs)
+        Executable binaries and prebuilt APK's (bus daemon, C++ samples, test programs)
         ./bin/bbdaemon
             Simplified bus daemon implementation:
                 Needs no configuration files.
