@@ -186,12 +186,16 @@ QStatus AdvTunnel::Connect(qcc::String address, uint16_t port)
             status = ER_OK;
         }
     }
-    if (status != ER_OK) {
-        qcc::Close(sock);
-    } else {
+    if (status == ER_OK) {
         printf("Connected to advertisement relay\n");
         stream = new qcc::SocketStream(sock);
         status = VersionExchange();
+        if (status != ER_OK) {
+            delete stream;
+            stream = NULL;
+        }
+    } else {
+        qcc::Close(sock);
     }
     return status;
 }
@@ -237,6 +241,12 @@ QStatus AdvTunnel::Listen(uint16_t port)
             printf("Accepted advertisement relay\n");
             stream = new qcc::SocketStream(sock);
             status = VersionExchange();
+            if (status != ER_OK) {
+                delete stream;
+                stream = NULL;
+            }
+        } else {
+            qcc::Close(sock);
         }
     }
     qcc::Close(listenSock);
