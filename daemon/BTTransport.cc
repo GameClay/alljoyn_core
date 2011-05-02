@@ -573,6 +573,9 @@ RemoteEndpoint* BTTransport::LookupEndpoint(const qcc::String& busName)
             break;
         }
     }
+    if (!ep) {
+        threadListLock.Unlock();
+    }
     return ep;
 }
 
