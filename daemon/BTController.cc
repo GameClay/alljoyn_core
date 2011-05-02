@@ -599,7 +599,9 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                         // Gotta restart the timer on otherCacheInfo since we removed it above.
                         Timespec ts;
                         GetTimeNow(&ts);
+                        assert(otherCacheInfo->timeout.GetContext() != NULL);
                         if (static_cast<int64_t>(otherCacheInfo->timeout.GetAlarmTime() - ts) <= static_cast<int64_t>(0)) {
+                            // The timeout expires now, so just put it on the dispatcher with a 0 timeout
                             otherCacheInfo->timeout = Alarm(0, this, 0, otherCacheInfo->timeout.GetContext());
                         }
                         bus.GetInternal().GetDispatcher().AddAlarm(otherCacheInfo->timeout);
@@ -1792,7 +1794,7 @@ QStatus BTController::ImportState(const BTBusAddress& addr,
 
     if (find.minion == self) {
         NextDirectMinion(find.minion);
-        QCC_DbgPrintf(("Selected %s as our find minion.", find.minion->GetUniqueName().c_str()));
+        QCC_DbgPrintf(("Selected %s as our find minion.", find.minion->GetBusAddress().ToString().c_str()));
     }
 
     if ((advertise.minion == self) && (!UseLocalAdvertise())) {
@@ -2213,6 +2215,8 @@ void BTController::AdvertiseNameArgInfo::StartOp(bool restart)
 void BTController::AdvertiseNameArgInfo::StopOp()
 {
     NameArgInfo::StopOp();
+
+    assert(!bto.bus.GetInternal().GetDispatcher().HasAlarm(bto.stopAd));
 
     bto.stopAd = Alarm(DELEGATE_TIME * 1000, &bto);
     bto.bus.GetInternal().GetDispatcher().AddAlarm(bto.stopAd);
