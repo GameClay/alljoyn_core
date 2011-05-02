@@ -6,3 +6,7 @@ build
 *.pdb
 .*.swp
 .cproject
+*.ncb
+*.suo
+*.user
+installer/windows/VS_Projects/AlljoynService/bin/

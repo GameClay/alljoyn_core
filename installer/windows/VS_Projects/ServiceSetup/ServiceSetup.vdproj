@@ -21,7 +21,7 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_6AFEB3158C314A90AF784D2467329261"
+        "MsmKey" = "8:_E19EA141687A4DB0A6303894E8781A21"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -192,10 +192,10 @@
         }
         "File"
         {
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6AFEB3158C314A90AF784D2467329261"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E19EA141687A4DB0A6303894E8781A21"
             {
-            "SourcePath" = "8:..\\..\\..\\..\\build\\windows\\x86\\debug\\dist\\bin\\daemonlib.dll"
-            "TargetName" = "8:daemonlib.dll"
+            "SourcePath" = "8:..\\AlljoynService\\Debug\\DaemonLib.dll"
+            "TargetName" = "8:DaemonLib.dll"
             "Tag" = "8:"
             "Folder" = "8:_BAA6842F451D41F68AB9772735A4618A"
             "Condition" = "8:"
@@ -235,7 +235,7 @@
             "Name" = "8:#1925"
             "AlwaysCreate" = "11:TRUE"
             "Condition" = "8:"
-            "Transitive" = "11:FALSE"
+            "Transitive" = "11:TRUE"
             "Property" = "8:TARGETDIR"
                 "Folders"
                 {
@@ -269,7 +269,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:ServiceSetup"
         "ProductCode" = "8:{544F7727-C2C0-4765-A1D1-49CB1425C038}"
-        "PackageCode" = "8:{B68BCF9C-FEF5-4CF6-878C-C8FE3D36511E}"
+        "PackageCode" = "8:{ED2AD7EA-9DC0-4DFD-9913-14ACD7734D04}"
         "UpgradeCode" = "8:{5F3CB03F-DD62-426E-9126-E5476468BCF3}"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:FALSE"
@@ -300,6 +300,70 @@
             {
                 "Keys"
                 {
+                    "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_03D8FFA57BC84E89801D0243FDFCA75B"
+                    {
+                    "Name" = "8:System"
+                    "Condition" = "8:"
+                    "AlwaysCreate" = "11:FALSE"
+                    "DeleteAtUninstall" = "11:FALSE"
+                    "Transitive" = "11:FALSE"
+                        "Keys"
+                        {
+                            "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_E603088A6C9A4CEB83EFEF6D34F3B3BB"
+                            {
+                            "Name" = "8:CurrentControlSet"
+                            "Condition" = "8:"
+                            "AlwaysCreate" = "11:FALSE"
+                            "DeleteAtUninstall" = "11:FALSE"
+                            "Transitive" = "11:FALSE"
+                                "Keys"
+                                {
+                                    "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_BD80EED2D9D64E8FB242371EE578EC07"
+                                    {
+                                    "Name" = "8:Services"
+                                    "Condition" = "8:"
+                                    "AlwaysCreate" = "11:FALSE"
+                                    "DeleteAtUninstall" = "11:FALSE"
+                                    "Transitive" = "11:FALSE"
+                                        "Keys"
+                                        {
+                                            "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_3F2EC82C8C384353BB3DA90EE11FF5BA"
+                                            {
+                                            "Name" = "8:AlljoynDaemon"
+                                            "Condition" = "8:"
+                                            "AlwaysCreate" = "11:FALSE"
+                                            "DeleteAtUninstall" = "11:FALSE"
+                                            "Transitive" = "11:FALSE"
+                                                "Keys"
+                                                {
+                                                }
+                                                "Values"
+                                                {
+                                                    "{ADCFDA98-8FDD-45E4-90BC-E3D20B029870}:_6E40820DDE214DA299DA61E875AFB7E2"
+                                                    {
+                                                    "Name" = "8:Environment"
+                                                    "Condition" = "8:"
+                                                    "Transitive" = "11:TRUE"
+                                                    "ValueTypes" = "3:2"
+                                                    "Value" = "8:ALLJOYN_LOGGING=[TARGETDIR]logs[~]ALLJOYN_OPTIONS=--no-bt --verbosity=15"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        "Values"
+                                        {
+                                        }
+                                    }
+                                }
+                                "Values"
+                                {
+                                }
+                            }
+                        }
+                        "Values"
+                        {
+                        }
+                    }
                     "{60EA8692-D2D5-43EB-80DC-7906BF13D6EF}:_7EB74CF1DDF0478DA5484EBAAF820513"
                     {
                     "Name" = "8:Software"
