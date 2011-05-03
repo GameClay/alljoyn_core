@@ -677,12 +677,10 @@ const BTBusAddress& BTController::PrepConnect(const BTBusAddress& addr)
         }
     }
 
-    // Unlocks in BTController::PostConnect()
-
     BTNodeInfo node;
     if (!IsMinion()) {
         node = nodeDB.FindNode(addr);
-        if (!node->IsValid()) {
+        if (IsMaster() && !node->IsValid()) {
             node = foundNodeDB.FindNode(addr);
         }
     }
@@ -691,15 +689,17 @@ const BTBusAddress& BTController::PrepConnect(const BTBusAddress& addr)
         node = masterNode;
     }
 
+    lock.Unlock();
+
     return node->GetConnectAddress();
 }
 
 
 void BTController::PostConnect(QStatus status, const RemoteEndpoint* ep)
 {
-    // Assumes lock acquired in BTController::PrepConnect()
     bool restoreOps = true;
 
+    lock.Lock();
     if (status == ER_OK) {
         assert(ep);
         BTBusAddress addr = static_cast<const BTEndpoint*>(ep)->GetBTBusAddress();
@@ -974,7 +974,7 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
 
                         QCC_DbgPrintf(("Selected %s as our find minion.",
                                        (find.minion == self) ? "ourself" :
-                                       find.minion->GetUniqueName().c_str()));
+                                       find.minion->GetBusAddress().ToString().c_str()));
                     }
 
                     if (wasAdvertiseMinion) {
@@ -994,7 +994,7 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
 
                         QCC_DbgPrintf(("Selected %s as our advertise minion.",
                                        (advertise.minion == self) ? "ourself" :
-                                       advertise.minion->GetUniqueName().c_str()));
+                                       advertise.minion->GetBusAddress().ToString().c_str()));
                     }
                 }
 
@@ -1005,8 +1005,9 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                 cacheInfo->adInfo = new BTNodeDB();
                 cacheInfo->adInfo->AddNode(minion);
                 uuidRevCache.insert(UUIDRevCacheMapEntry(minion->GetUUIDRev(), cacheInfo));
-                QCC_DbgPrintf(("Added %s to new uuidRev cache entry for %08x", minion->GetBusAddress().ToString().c_str(), minion->GetUUIDRev()));
-                cacheInfo->timeout = Alarm(0, this, 0, new UUIDRevCacheInfo(cacheInfo));
+                QCC_DbgPrintf(("Added %s to new uuidRev cache entry for %08x",
+                               minion->GetBusAddress().ToString().c_str(), minion->GetUUIDRev()));
+                cacheInfo->timeout = Alarm(minion->AdvertiseNamesEmpty() ? 0 : LOST_DEVICE_TIMEOUT, this, 0, new UUIDRevCacheInfo(cacheInfo));
                 bus.GetInternal().GetDispatcher().AddAlarm(cacheInfo->timeout);
                 cacheLock.Unlock();
 
@@ -1238,11 +1239,6 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
 void BTController::HandleSetState(const InterfaceDescription::Member* member, Message& msg)
 {
     QCC_DbgTrace(("BTController::HandleSetState(member = %s, msg = <>)", member->name.c_str()));
-    if (!IsMaster()) {
-        // We are not the master so we should not get a SetState method call.
-        // Don't send a response as punishment >:)
-        return;
-    }
     qcc::String sender = msg->GetSender();
     BTEndpoint* ep = static_cast<BTEndpoint*>(bt.LookupEndpoint(sender));
 
@@ -1277,6 +1273,11 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
 
 
     lock.Lock();
+    if (!IsMaster()) {
+        // We are not the master so we should not get a SetState method call.
+        // Don't send a response as punishment >:)
+        return;
+    }
     if (UseLocalFind() && find.active) {
         QCC_DbgPrintf(("Stopping find..."));
         bt.StopFind();
@@ -1458,7 +1459,7 @@ void BTController::HandleDelegateFind(const InterfaceDescription::Member* member
 
         // Pick a minion to do the work for us.
         NextDirectMinion(find.minion);
-        QCC_DbgPrintf(("Selected %s as our find minion.", find.minion->GetUniqueName().c_str()));
+        QCC_DbgPrintf(("Selected %s as our find minion.", find.minion->GetBusAddress().ToString().c_str()));
 
         Signal(find.minion->GetUniqueName().c_str(), 0, *find.delegateSignal, args, numArgs);
     }
@@ -1519,7 +1520,7 @@ void BTController::HandleDelegateAdvertise(const InterfaceDescription::Member* m
 
         // Pick a minion to do the work for us.
         NextDirectMinion(advertise.minion);
-        QCC_DbgPrintf(("Selected %s as our advertise minion.", advertise.minion->GetUniqueName().c_str()));
+        QCC_DbgPrintf(("Selected %s as our advertise minion.", advertise.minion->GetBusAddress().ToString().c_str()));
 
         Signal(advertise.minion->GetUniqueName().c_str(), 0, *advertise.delegateSignal, args, numArgs);
     }
@@ -1799,7 +1800,7 @@ QStatus BTController::ImportState(const BTBusAddress& addr,
 
     if ((advertise.minion == self) && (!UseLocalAdvertise())) {
         NextDirectMinion(advertise.minion);
-        QCC_DbgPrintf(("Selected %s as our advertise minion.", advertise.minion->GetUniqueName().c_str()));
+        QCC_DbgPrintf(("Selected %s as our advertise minion.", advertise.minion->GetBusAddress().ToString().c_str()));
     }
 
     return ER_OK;
@@ -2061,7 +2062,7 @@ void BTController::NameArgInfo::AlarmTriggered(const Alarm& alarm, QStatus reaso
         bto.lock.Lock();
         bto.NextDirectMinion(minion);
         QCC_DbgPrintf(("Selected %s as our %s minion.",
-                       minion->GetUniqueName().c_str(),
+                       minion->GetBusAddress().ToString().c_str(),
                        (minion == bto.find.minion) ? "find" : "advertise"));
         bto.Signal(minion->GetUniqueName().c_str(), 0, *delegateSignal, args, argsSize);
         bto.lock.Unlock();
