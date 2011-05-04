@@ -208,6 +208,9 @@ static QStatus ListBusNames(BusAttachment& bus, BusNameMap& names)
     const InterfaceDescription::Member* getNameOwner = ifc->GetMember("GetNameOwner");
     Message rsp(bus);
 
+    robj.AddInterface(org::freedesktop::DBus::InterfaceName);
+    robj.AddInterface(org::freedesktop::DBus::Introspectable::InterfaceName);
+
     status = robj.MethodCall(*listNames, NULL, 0, rsp);
 
     if (status == ER_OK) {
@@ -226,6 +229,9 @@ static QStatus ListBusNames(BusAttachment& bus, BusNameMap& names)
                     Message rsp(bus);
                     MsgArg arg("s", name);
                     ProxyBusObject dbusObj(bus.GetDBusProxyObj());
+                    dbusObj.AddInterface(org::freedesktop::DBus::InterfaceName);
+                    dbusObj.AddInterface(org::freedesktop::DBus::Introspectable::InterfaceName);
+
                     status = dbusObj.MethodCall(*getNameOwner, &arg, 1, rsp);
                     if (status == ER_OK) {
                         names[rsp->GetArg(0)->v_string.str] = name;
@@ -679,6 +685,9 @@ static QStatus MethodCall(BusAttachment& bus, bool introspect)
     qcc::String ifcStr(method.substr(0, ifcEnd));
     qcc::String memberStr(method.substr(ifcEnd + 1));
 
+    robj.AddInterface(org::freedesktop::DBus::InterfaceName);
+    robj.AddInterface(org::freedesktop::DBus::Introspectable::InterfaceName);
+
     if (introspect) {
         status = robj.IntrospectRemoteObject();
         if (status != ER_OK) {
@@ -847,6 +856,8 @@ static QStatus ListAll(BusAttachment& bus)
 static QStatus ListObjects(BusAttachment& bus)
 {
     ProxyBusObject robj(bus, dest.c_str(), "/", 0);
+    robj.AddInterface(org::freedesktop::DBus::InterfaceName);
+    robj.AddInterface(org::freedesktop::DBus::Introspectable::InterfaceName);
     return ListObjectPaths(bus, robj);
 }
 
@@ -857,6 +868,8 @@ static QStatus Introspect(BusAttachment& bus)
     ProxyBusObject robj(bus, dest.c_str(), objPath.c_str(), 0);
     Message rsp(bus);
 
+    robj.AddInterface(org::freedesktop::DBus::InterfaceName);
+    robj.AddInterface(org::freedesktop::DBus::Introspectable::InterfaceName);
     status = robj.IntrospectRemoteObject();
     if (status == ER_OK) {
         size_t numIfaces = robj.GetInterfaces();
