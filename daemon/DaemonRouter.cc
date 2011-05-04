@@ -97,6 +97,8 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
     const char* destination = msg->GetDestination();
     SessionId sessionId = msg->GetSessionId();
 
+    set<BusEndpoint*> recipients;
+
     if (sender != localEndpoint) {
         ALLJOYN_POLICY_DEBUG(Log(LOG_DEBUG, "Checking if OK for %s to send %s.%s to %s...\n",
                                  msg->GetSender(),
@@ -123,11 +125,9 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
 
 
     bool destinationEmpty = destination[0] == '\0';
-    BusEndpoint* destEndpoint = destinationEmpty ? NULL : nameTable.FindEndpoint(destination);
-
     if (!destinationEmpty) {
+        BusEndpoint* destEndpoint = nameTable.FindEndpoint(destination);
         if (destEndpoint) {
-            /* This message has a specific, known destination so send it there. */
             if (destEndpoint != localEndpoint) {
                 ALLJOYN_POLICY_DEBUG(Log(LOG_DEBUG, "Checking OK for %s to receive %s.%s from %s\n",
                                          destEndpoint->GetUniqueName().c_str(),
@@ -172,11 +172,7 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
                         msg->ErrorMsg("org.alljoyn.Bus.Blocked", "Method reply would be blocked because caller does not allow remote messages");
                         PushMessage(msg, *localEndpoint);
                     } else {
-                        if ((sessionId != 0) && (destEndpoint->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
-                            status = static_cast<VirtualEndpoint*>(destEndpoint)->PushMessage(msg, sessionId);
-                        } else {
-                            status = destEndpoint->PushMessage(msg);
-                        }
+                        recipients.insert(destEndpoint);
                     }
                 } else {
                     QCC_DbgPrintf(("Blocking message from %s to %s (serial=%d) because receiver does not allow remote messages",
@@ -258,11 +254,7 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
                     // Broadcast status must not trump directed message
                     // status, especially for eavesdropped messages.
                     if (!((sender->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS) && !dest->AllowRemoteMessages())) {
-                        QStatus bcStatus = dest->PushMessage(msg);
-                        if ((ER_OK != bcStatus) && (ER_BUS_ENDPOINT_CLOSING != bcStatus)) {
-                            QCC_LogError(bcStatus, ("BusEndpoint::PushMessage failed (%s.%s from %s to %s",
-                                                    msg->GetInterface(), msg->GetMemberName(), msg->GetSender(), dest->GetUniqueName().c_str()));
-                        }
+                        recipients.insert(dest);
                     }
                 }
                 ruleTable.AdvanceToNextEndpoint(it);
@@ -279,14 +271,7 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
         vector<RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
         while (it != m_b2bEndpoints.end()) {
             if ((*it) != &origSender) {
-                QStatus tStatus = (*it)->PushMessage(msg);
-                if (tStatus != ER_OK) {
-                    QCC_LogError(tStatus, ("PushMessage failed while sending broadcast to B2B endpoint %s",
-                                           (*it)->GetUniqueName().c_str()));
-                    if (status == ER_OK) {
-                        status = tStatus;
-                    }
-                }
+                recipients.insert(*it);
             }
             ++it;
         }
@@ -299,17 +284,26 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
         pair<SessionId, StringMapKey> key(sessionId, msg->GetSender());
         multimap<pair<SessionId, StringMapKey>, BusEndpoint*>::iterator sit = sessionCastMap.find(key);
         while ((sit != sessionCastMap.end()) && (sit->first == key)) {
-            QStatus tStatus = sit->second->PushMessage(msg);
-            if (tStatus != ER_OK) {
-                QCC_LogError(tStatus, ("PushMessage failed while sending session multicast to %s",
-                                       sit->second->GetUniqueName().c_str()));
+            recipients.insert(sit->second);
+            ++sit;
+        }
+        sessionCastMapLock.Unlock();
+    }
+
+    if (status == ER_OK) {
+        set<BusEndpoint*>::const_iterator destit;
+        for (destit = recipients.begin(); destit != recipients.end(); ++destit) {
+            BusEndpoint* dest = *destit;
+            QStatus tStatus = status;
+            if ((sessionId != 0) && (dest->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
+                tStatus = static_cast<VirtualEndpoint*>(dest)->PushMessage(msg, sessionId);
+            } else {
+                tStatus = dest->PushMessage(msg);
                 if (status == ER_OK) {
                     status = tStatus;
                 }
             }
-            ++sit;
         }
-        sessionCastMapLock.Unlock();
     }
 
     return status;
