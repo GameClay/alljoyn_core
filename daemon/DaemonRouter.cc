@@ -253,7 +253,7 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
                 if (allow) {
                     // Broadcast status must not trump directed message
                     // status, especially for eavesdropped messages.
-                    if (!((sender->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS) && !dest->AllowRemoteMessages())) {
+                    if (policydb->EavesdropEnabled() || !((sender->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS) && !dest->AllowRemoteMessages())) {
                         recipients.insert(dest);
                     }
                 }
