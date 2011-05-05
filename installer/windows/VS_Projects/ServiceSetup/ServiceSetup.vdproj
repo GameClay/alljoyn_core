@@ -15,7 +15,13 @@
     {
         "Entry"
         {
-        "MsmKey" = "8:_136769BC0A04440C824FC90870E08D20"
+        "MsmKey" = "8:_2D2B6138B7BB4F869D0CF126E425C621"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_438ECBFFBDBF44B491EA2CCBCE05DF30"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -28,7 +34,7 @@
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_136769BC0A04440C824FC90870E08D20"
+        "OwnerKey" = "8:_2D2B6138B7BB4F869D0CF126E425C621"
         "MsmSig" = "8:_UNDEFINED"
         }
     }
@@ -113,59 +119,59 @@
     {
         "CustomAction"
         {
-            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_22731EE77059438DAC5D8DCE283F80BF"
+            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_372CC5C92BC54EC79FC517E4E530F927"
             {
-            "Name" = "8:Primary output from AlljoynService (Active)"
+            "Name" = "8:AlljoynService.exe"
             "Condition" = "8:"
-            "Object" = "8:_136769BC0A04440C824FC90870E08D20"
-            "FileType" = "3:2"
-            "InstallAction" = "3:2"
-            "Arguments" = "8:"
-            "EntryPoint" = "8:"
-            "Sequence" = "3:1"
-            "Identifier" = "8:_53538799_029D_47D8_B28E_DC4E4BDB5DF7"
-            "InstallerClass" = "11:TRUE"
-            "CustomActionData" = "8:"
-            }
-            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_69E9B55C2DC8411884454C7FC7F82C15"
-            {
-            "Name" = "8:Primary output from AlljoynService (Active)"
-            "Condition" = "8:"
-            "Object" = "8:_136769BC0A04440C824FC90870E08D20"
-            "FileType" = "3:2"
-            "InstallAction" = "3:3"
-            "Arguments" = "8:"
-            "EntryPoint" = "8:"
-            "Sequence" = "3:1"
-            "Identifier" = "8:_154C09CE_D63A_4791_8B17_4EBEB26CF77E"
-            "InstallerClass" = "11:TRUE"
-            "CustomActionData" = "8:"
-            }
-            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_748DF2218800427D9CE33DA6662A7EA2"
-            {
-            "Name" = "8:Primary output from AlljoynService (Active)"
-            "Condition" = "8:"
-            "Object" = "8:_136769BC0A04440C824FC90870E08D20"
+            "Object" = "8:_2D2B6138B7BB4F869D0CF126E425C621"
             "FileType" = "3:2"
             "InstallAction" = "3:4"
             "Arguments" = "8:"
             "EntryPoint" = "8:"
             "Sequence" = "3:1"
-            "Identifier" = "8:_A839DC1D_91B9_4724_8B13_D925CB4D6A3C"
+            "Identifier" = "8:_639422F3_B820_425C_8CE2_19B8B028990A"
             "InstallerClass" = "11:TRUE"
             "CustomActionData" = "8:"
             }
-            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_FFEE81D7F4E64133A9DAEE34EE324882"
+            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_A0DD621A79BF4BC3A9B8DBF8125EB24F"
             {
-            "Name" = "8:Primary output from AlljoynService (Active)"
+            "Name" = "8:AlljoynService.exe"
             "Condition" = "8:"
-            "Object" = "8:_136769BC0A04440C824FC90870E08D20"
+            "Object" = "8:_2D2B6138B7BB4F869D0CF126E425C621"
+            "FileType" = "3:2"
+            "InstallAction" = "3:3"
+            "Arguments" = "8:"
+            "EntryPoint" = "8:"
+            "Sequence" = "3:1"
+            "Identifier" = "8:_8BA8E81A_7C6B_437F_A9B7_9D44B2D67F7A"
+            "InstallerClass" = "11:TRUE"
+            "CustomActionData" = "8:"
+            }
+            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_B3D3788AB52240DDA676FB2B3BDAAA24"
+            {
+            "Name" = "8:AlljoynService.exe"
+            "Condition" = "8:"
+            "Object" = "8:_2D2B6138B7BB4F869D0CF126E425C621"
+            "FileType" = "3:2"
+            "InstallAction" = "3:2"
+            "Arguments" = "8:"
+            "EntryPoint" = "8:"
+            "Sequence" = "3:1"
+            "Identifier" = "8:_0E3985BE_2766_43CC_92B5_40D19A1B8534"
+            "InstallerClass" = "11:TRUE"
+            "CustomActionData" = "8:"
+            }
+            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_EEB2748B71034194A2F304F25B36CB0F"
+            {
+            "Name" = "8:AlljoynService.exe"
+            "Condition" = "8:"
+            "Object" = "8:_2D2B6138B7BB4F869D0CF126E425C621"
             "FileType" = "3:2"
             "InstallAction" = "3:1"
             "Arguments" = "8:"
             "EntryPoint" = "8:"
             "Sequence" = "3:1"
-            "Identifier" = "8:_9B26728E_48FC_460C_9D26_0A17B794803F"
+            "Identifier" = "8:_313384AE_DFC7_4B5C_AC5D_80D743AA77A5"
             "InstallerClass" = "11:TRUE"
             "CustomActionData" = "8:"
             }
@@ -192,6 +198,57 @@
         }
         "File"
         {
+            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_2D2B6138B7BB4F869D0CF126E425C621"
+            {
+            "AssemblyRegister" = "3:1"
+            "AssemblyIsInGAC" = "11:FALSE"
+            "AssemblyAsmDisplayName" = "8:AlljoynService, Version=1.0.0.0, Culture=neutral, processorArchitecture=x86"
+                "ScatterAssemblies"
+                {
+                    "_2D2B6138B7BB4F869D0CF126E425C621"
+                    {
+                    "Name" = "8:AlljoynService.exe"
+                    "Attributes" = "3:512"
+                    }
+                }
+            "SourcePath" = "8:..\\AlljoynService\\bin\\x86\\Debug\\AlljoynService.exe"
+            "TargetName" = "8:"
+            "Tag" = "8:"
+            "Folder" = "8:_BAA6842F451D41F68AB9772735A4618A"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_438ECBFFBDBF44B491EA2CCBCE05DF30"
+            {
+            "SourcePath" = "8:logo.jpg"
+            "TargetName" = "8:logo.jpg"
+            "Tag" = "8:"
+            "Folder" = "8:_BAA6842F451D41F68AB9772735A4618A"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:TRUE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E19EA141687A4DB0A6303894E8781A21"
             {
             "SourcePath" = "8:..\\AlljoynService\\Debug\\DaemonLib.dll"
@@ -231,7 +288,7 @@
             }
             "{3C67513D-01DD-4637-8A68-80971EB9504F}:_BAA6842F451D41F68AB9772735A4618A"
             {
-            "DefaultLocation" = "8:c:\\Alljoyn\\[ProductName]"
+            "DefaultLocation" = "8:c:\\Alljoyn\\service"
             "Name" = "8:#1925"
             "AlwaysCreate" = "11:TRUE"
             "Condition" = "8:"
@@ -267,14 +324,14 @@
         "Product"
         {
         "Name" = "8:Microsoft Visual Studio"
-        "ProductName" = "8:ServiceSetup"
+        "ProductName" = "8:Alljoyn Daemon Service"
         "ProductCode" = "8:{544F7727-C2C0-4765-A1D1-49CB1425C038}"
-        "PackageCode" = "8:{ED2AD7EA-9DC0-4DFD-9913-14ACD7734D04}"
+        "PackageCode" = "8:{667BB07A-4797-4852-9B43-0B180892A4A9}"
         "UpgradeCode" = "8:{5F3CB03F-DD62-426E-9126-E5476468BCF3}"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:FALSE"
         "DetectNewerInstalledVersion" = "11:TRUE"
-        "InstallAllUsers" = "11:FALSE"
+        "InstallAllUsers" = "11:TRUE"
         "ProductVersion" = "8:1.0.0"
         "Manufacturer" = "8:QuicInc"
         "ARPHELPTELEPHONE" = "8:"
@@ -510,7 +567,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:1"
+                            "Setting" = "3:2"
+                            "Value" = "8:_438ECBFFBDBF44B491EA2CCBCE05DF30"
                             "UsePlugInResources" = "11:TRUE"
                             }
                         }
@@ -532,7 +590,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:1"
+                            "Setting" = "3:2"
+                            "Value" = "8:_438ECBFFBDBF44B491EA2CCBCE05DF30"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "InstallAllUsersVisible"
@@ -567,7 +626,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:1"
+                            "Setting" = "3:2"
+                            "Value" = "8:_438ECBFFBDBF44B491EA2CCBCE05DF30"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "CopyrightWarning"
@@ -674,7 +734,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:1"
+                            "Setting" = "3:2"
+                            "Value" = "8:_438ECBFFBDBF44B491EA2CCBCE05DF30"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "ShowProgress"
@@ -724,7 +785,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:1"
+                            "Setting" = "3:2"
+                            "Value" = "8:_438ECBFFBDBF44B491EA2CCBCE05DF30"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "UpdateText"
@@ -851,34 +913,6 @@
         }
         "ProjectOutput"
         {
-            "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_136769BC0A04440C824FC90870E08D20"
-            {
-            "SourcePath" = "8:..\\AlljoynService\\obj\\x86\\Debug\\AlljoynService.exe"
-            "TargetName" = "8:"
-            "Tag" = "8:"
-            "Folder" = "8:_BAA6842F451D41F68AB9772735A4618A"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            "ProjectOutputGroupRegister" = "3:1"
-            "OutputConfiguration" = "8:"
-            "OutputGroupCanonicalName" = "8:Built"
-            "OutputProjectGuid" = "8:{7963233F-8FBB-4B05-8C49-EE5A2EBCDBE8}"
-            "ShowKeyOutput" = "11:TRUE"
-                "ExcludeFilters"
-                {
-                }
-            }
         }
     }
 }
