@@ -23,6 +23,10 @@ common_hdrs, common_objs = env.SConscript(['../common/SConscript'])
 if env['OS'] == 'windows' or env['OS'] == 'android':
     env.SConscript(['../stlport/SConscript'])
 
+# manually add dependencies for xml to h, and for files included in the xml
+env.Depends('inc/Status.h', 'src/Status.xml');
+env.Depends('inc/Status.h', '../common/src/Status.xml');
+
 # Add support for multiple build targets in the same workset
 env.VariantDir('$OBJDIR', 'src', duplicate = 0)
 env.VariantDir('$OBJDIR/test', 'test', duplicate = 0)
@@ -119,4 +123,3 @@ elif env['DOCS'] == 'pdf':
     Command('./docs/latex/quic.sty','./docs/quic.sty',Copy("$TARGET", "$SOURCE"))
     env.PDF('./docs/latex/refman.pdf', './docs/latex/refman.tex')
     
-
