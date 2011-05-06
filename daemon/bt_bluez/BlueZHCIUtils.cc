@@ -129,7 +129,7 @@ QStatus ConfigureInquiryScan(uint16_t deviceId, uint16_t window, uint16_t interv
     }
 
     hciFd = (SocketFd)socket(AF_BLUETOOTH, QCC_SOCK_RAW, 1);
-    if (!hciFd) {
+    if (hciFd < 0) {
         status = ER_OS_ERROR;
         QCC_LogError(status, ("Failed to create socket (errno %d)", errno));
         return status;
@@ -229,7 +229,7 @@ QStatus ConfigurePeriodicInquiry(uint16_t deviceId, uint16_t minPeriod, uint16_t
     }
 
     hciFd = (SocketFd)socket(AF_BLUETOOTH, QCC_SOCK_RAW, 1);
-    if (!hciFd) {
+    if (hciFd < 0) {
         status = ER_OS_ERROR;
         QCC_LogError(status, ("Failed to create socket (errno %d)", errno));
         return status;
@@ -291,7 +291,7 @@ QStatus ConfigureSimplePairingDebugMode(uint16_t deviceId, bool enable)
     size_t sent;
 
     hciFd = (SocketFd)socket(AF_BLUETOOTH, QCC_SOCK_RAW, 1);
-    if (!hciFd) {
+    if (hciFd < 0) {
         status = ER_OS_ERROR;
         QCC_LogError(status, ("Failed to create socket (errno %d)", errno));
         return status;

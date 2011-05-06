@@ -603,7 +603,7 @@ QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
     l2capLFd = socket(AF_BLUETOOTH, SOCK_SEQPACKET, L2CAP_PROTOCOL_ID);
     if (l2capLFd == -1) {
         status = ER_OS_ERROR;
-        QCC_LogError(status, ("StartConnectable(): Bind socket failed (errno: %d - %s)", errno, strerror(errno)));
+        QCC_LogError(status, ("StartConnectable(): Create socket failed (errno: %d - %s)", errno, strerror(errno)));
     } else {
         QCC_DbgPrintf(("BTTransport::BTAccessor::StartConnectable(): l2capLFd = %d", l2capLFd));
 
