@@ -55,6 +55,18 @@
 #include "BusController.h"
 #include "ConfigDB.h"
 
+#if !defined(DAEMON_LIB)
+#include <sys/prctl.h>
+#include <linux/capability.h>
+extern "C" {
+extern int capset(cap_user_header_t hdrp, const cap_user_data_t datap);
+}
+#if defined(QCC_OS_ANDROID)
+#define BLUETOOTH_UID 1002
+#endif
+#endif
+
+
 #define DAEMON_EXIT_OK            0
 #define DAEMON_EXIT_OPTION_ERROR  1
 #define DAEMON_EXIT_CONFIG_ERROR  2
@@ -129,7 +141,7 @@ class OptParse {
     };
 
     OptParse(int argc, char** argv) :
-        argc(argc), argv(argv), fork(false), noFork(false), noBT(false), noTCP(false),
+        argc(argc), argv(argv), fork(false), noFork(false), noBT(false), noTCP(false), noSwitchUser(false),
         printAddressFd(-1), printPidFd(-1),
         session(false), system(false), internal(false), configService(false), verbosity(LOG_WARNING)
     { }
@@ -141,6 +153,7 @@ class OptParse {
     bool GetNoFork() const { return noFork; }
     bool GetNoBT() const { return noBT; }
     bool GetNoTCP() const { return noTCP; }
+    bool GetNoSwitchUser() const { return noSwitchUser; }
     int GetPrintAddressFd() const { return printAddressFd; }
     int GetPrintPidFd() const { return printPidFd; }
     int GetVerbosity() const { return verbosity; }
@@ -156,6 +169,7 @@ class OptParse {
     bool noFork;
     bool noBT;
     bool noTCP;
+    bool noSwitchUser;
     int printAddressFd;
     int printPidFd;
     bool session;
@@ -174,9 +188,13 @@ void OptParse::PrintUsage()
     cmd = cmd.substr(cmd.find_last_of('/') + 1);
 
     fprintf(stderr,
-            "%s [--session | --system | --internal | --config-file=FILE]\n"
+            "%s [--session | --system | --internal | --config-file=FILE"
+#if defined(QCC_OS_ANDROID) && defined(DAEMON_LIB)
+            " | --config-service"
+#endif
+            "]\n"
             "%*s [--print-address[=DESCRIPTOR]] [--print-pid[=DESCRIPTOR]]\n"
-            "%*s [--fork | --nofork] [--no-bt] [--no-tcp]\n"
+            "%*s [--fork | --nofork] [--no-bt] [--no-tcp] [--no-switch-user]\n"
             "%*s [--verbosity=LEVEL] [--version]\n\n"
             "    --session\n"
             "        Use the standard configuration for the per-login-session message bus.\n\n"
@@ -203,6 +221,13 @@ void OptParse::PrintUsage()
             "        Disable the Bluetooth transport (override config file setting).\n\n"
             "    --no-tcp\n"
             "        Disable the TCP transport (override config file setting).\n\n"
+            "    --no-switch-user\n"
+            "        Don't switch from root to "
+#if defined(QCC_OS_ANDROID)
+            "bluetooth.\n\n"
+#else
+            "the user specified in the config file.\n\n"
+#endif
             "    --verbosity=LEVEL\n"
             "        Set the logging level to LEVEL.\n\n"
             "    --version\n"
@@ -324,6 +349,8 @@ OptParse::ParseResultCode OptParse::ParseResult()
             noBT = true;
         } else if (arg.compare("--no-tcp") == 0) {
             noTCP = true;
+        } else if (arg.compare("--no-switch-user") == 0) {
+            noSwitchUser = true;
         } else if (arg.substr(0, sizeof("--verbosity") - 1).compare("--verbosity") == 0) {
             verbosity = StringToI32(arg.substr(sizeof("--verbosity")));
         } else if ((arg.compare("--help") == 0) || (arg.compare("-h") == 0)) {
@@ -541,6 +568,7 @@ int daemon(OptParse& opts)
     return DAEMON_EXIT_OK;
 }
 
+
 //
 // This code can be run as a native executable, in which case the linker arranges to
 // call main(), or it can be run as an Android Service.  In this case, the daemon
@@ -553,13 +581,13 @@ extern "C" int DaemonMain(int argc, char** argv, char* serviceConfig)
 int main(int argc, char** argv, char** env)
 #endif
 {
-//
-// Initialize the environment for Android if we use the command line to run the
-// daemon.  If we are using the Android service launcher, there is no environment
-// there, so we use arguments and a passed-in config file which we deal with in
-// a bit.
-//
 #if defined(QCC_OS_ANDROID) && !defined(DAEMON_LIB)
+    //
+    // Initialize the environment for Android if we use the command line to
+    // run the daemon.  If we are using the Android service launcher, there is
+    // no environment there, so we use arguments and a passed-in config file
+    // which we deal with in a bit.
+    //
     environ = env;
 #endif
 
@@ -603,27 +631,50 @@ int main(int argc, char** argv, char** env)
     loggerSettings->SetSyslog(config->GetSyslog());
     loggerSettings->SetFile((opts.GetFork() || (config->GetFork() && !opts.GetNoFork())) ? NULL : stderr);
 
-#ifndef QCC_OS_ANDROID
-    if ((getuid() == 0) && !config->GetUser().empty()) {
-        // drop root privileges if <user> is specified.
-        qcc::String user = config->GetUser();
-        struct passwd* pwent;
-        setpwent();
-        while ((pwent = getpwent())) {
-            if (user.compare(pwent->pw_name) == 0) {
-                Log(LOG_INFO, "Dropping root privileges (running as %s)\n", pwent->pw_name);
-                setuid(pwent->pw_uid);
-                break;
+#if !defined(DAEMON_LIB)
+    // Keep all capabilities before switching users
+    prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0);
+
+
+    if (!opts.GetNoSwitchUser()) {
+#if defined(QCC_OS_ANDROID)
+        // Android uses hard coded UIDs.
+        setuid(BLUETOOTH_UID);
+#else
+        if ((getuid() == 0) && !config->GetUser().empty()) {
+            // drop root privileges if <user> is specified.
+            qcc::String user = config->GetUser();
+            struct passwd* pwent;
+            setpwent();
+            while ((pwent = getpwent())) {
+                if (user.compare(pwent->pw_name) == 0) {
+                    Log(LOG_INFO, "Dropping root privileges (running as %s)\n", pwent->pw_name);
+                    setuid(pwent->pw_uid);
+                    break;
+                }
+            }
+            endpwent();
+            if (!pwent) {
+                Log(LOG_ERR, "Failed to drop root privileges - userid does not exist: %s\n",
+                    user.c_str());
+                delete config;
+                return DAEMON_EXIT_CONFIG_ERROR;
             }
         }
-        endpwent();
-        if (!pwent) {
-            Log(LOG_ERR, "Failed to drop root privileges - userid does not exist: %s\n",
-                user.c_str());
-            delete config;
-            return DAEMON_EXIT_CONFIG_ERROR;
-        }
+#endif
     }
+
+    // Set the capabilities we need.
+    struct __user_cap_header_struct header;
+    struct __user_cap_data_struct cap;
+    header.version = _LINUX_CAPABILITY_VERSION;
+    header.pid = 0;
+    cap.permitted = (1 << CAP_NET_RAW |
+                     1 << CAP_NET_ADMIN |
+                     1 << CAP_NET_BIND_SERVICE);
+    cap.effective = cap.permitted;
+    cap.inheritable = 0;
+    capset(&header, &cap);
 #endif
 
     if (opts.GetFork() || (config->GetFork() && !opts.GetNoFork())) {
