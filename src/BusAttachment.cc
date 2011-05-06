@@ -1365,4 +1365,36 @@ QStatus BusAttachment::Internal::SetSessionListener(SessionId id, SessionListene
     return status;
 }
 
+
+QStatus BusAttachment::GetPeerGUID(const char* name, qcc::String& guid)
+{
+    PeerStateTable* peerTable = busInternal->GetPeerStateTable();
+    qcc::String peerName;
+    if (name && *name) {
+        peerName = name;
+    } else {
+        peerName = GetUniqueName();
+    }
+    if (peerTable->IsKnownPeer(peerName)) {
+        guid = peerTable->GetPeerState(peerName)->GetGuid().ToString();
+        return ER_OK;
+    } else {
+        return ER_BUS_NO_PEER_GUID;
+    }
+}
+
+QStatus BusAttachment::ClearKeys(const qcc::String& guid)
+{
+    if (!qcc::GUID::IsGUID(guid)) {
+        return ER_INVALID_GUID;
+    } else {
+        qcc::GUID g(guid);
+        if (busInternal->keyStore.HasKey(g)) {
+            return busInternal->keyStore.DelKey(g);
+        } else {
+            return ER_BUS_KEY_UNAVAILABLE;
+        }
+    }
+}
+
 }

@@ -148,6 +148,10 @@ class MyAuthListener : public AuthListener {
 
         printf("RequestCredentials for authenticating %s using mechanism %s\n", authPeer, authMechanism);
 
+        qcc::String guid;
+        g_msgBus->GetPeerGUID(authPeer, guid);
+        printf("Peer guid %s\n", guid.c_str());
+
         if (strcmp(authMechanism, "ALLJOYN_SRP_KEYX") == 0) {
             if (credMask & AuthListener::CRED_PASSWORD) {
                 if (authCount == 1) {

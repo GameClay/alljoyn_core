@@ -359,6 +359,17 @@ class BusAttachment : public MessageReceiver {
     void ClearKeyStore();
 
     /**
+     * Clear the keys associated with a specific peer identified by its GUID.
+     *
+     * @param guid  The guid of a remote authenticated peer.
+     *
+     * @return  - ER_OK if the key was cleared
+     *          - ER_UNKNOWN_GUID if there is no peer with the specified GUID
+     *          - Other errors
+     */
+    QStatus ClearKeys(const qcc::String& guid);
+
+    /**
      * Adds a logon entry string for the requested authentication mechanism to the key store. This
      * allows an authenticating server to generate offline authentication credentials for securely
      * logging on a remote peer using a user-name and password credentials pair. This only applies
@@ -610,6 +621,20 @@ class BusAttachment : public MessageReceiver {
      *      - An error status otherwise
      */
     QStatus NameHasOwner(const char* name, bool& hasOwner);
+
+    /**
+     * Get the peer GUID for this peer or an authenticated remote peer. Peer GUIDs are used by the
+     * authentication mechanisms to uniquely and identify a remote application instance. The peer
+     * GUID for a remote peer is only available if the remote peer has been authenticated.
+     *
+     * @param name  Name of a remote peer or NULL to get the local (our) peer GUID.
+     * @param guid  Returns the guid for the local or remote peer depending on the value of name.
+     *
+     * @return 
+     *      - #ER_OK if the requested GUID was obtained.
+     *      - An error status otherwise.
+     */
+    QStatus GetPeerGUID(const char* name, qcc::String& guid);
 
     /**
      * This sets the debug level of the local AllJoyn daemon if that daemon
