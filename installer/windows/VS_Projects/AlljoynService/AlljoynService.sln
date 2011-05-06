@@ -7,6 +7,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AlljoynService", "AlljoynSe
 	EndProjectSection
 EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "ServiceSetup", "..\ServiceSetup\ServiceSetup.vdproj", "{8B56270F-F514-4482-8BDC-BFCFA7ADF8DB}"
+	ProjectSection(ProjectDependencies) = postProject
+		{7963233F-8FBB-4B05-8C49-EE5A2EBCDBE8} = {7963233F-8FBB-4B05-8C49-EE5A2EBCDBE8}
+		{E26B3587-A924-4EEC-A60E-D45B4E7B2DC6} = {E26B3587-A924-4EEC-A60E-D45B4E7B2DC6}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DaemonLib", "..\DaemonLib\DaemonLibrary.vcproj", "{E26B3587-A924-4EEC-A60E-D45B4E7B2DC6}"
 EndProject

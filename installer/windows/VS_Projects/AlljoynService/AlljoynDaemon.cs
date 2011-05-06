@@ -19,11 +19,6 @@
  *    limitations under the License.
  ******************************************************************************/
 
-
-// NOTE Uncomment the following #define if you need to debug the service but BEWARE
-// - once this symbol is defined commenting out the symbol will NOT undefine it.
-// it must be removed from the .vcproj file (with notepad or another text editor)
-
 // #define ATTACH_DEBUGGER
 
 using System;
