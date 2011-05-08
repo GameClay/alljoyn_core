@@ -1240,6 +1240,16 @@ QStatus BusAttachment::Internal::DispatchMessage(AlarmListener& listener, Messag
     return status;
 }
 
+void BusAttachment::Internal::LocalEndpointDisconnected()
+{
+    listenersLock.Lock();
+    list<BusListener*>::iterator it = listeners.begin();
+    while (it != listeners.end()) {
+        (*it++)->BusDisconnected();
+    }
+    listenersLock.Unlock();
+}
+
 void BusAttachment::Internal::AllJoynSignalHandler(const InterfaceDescription::Member* member,
                                                    const char* srcPath,
                                                    Message& message)

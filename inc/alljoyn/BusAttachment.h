@@ -630,7 +630,7 @@ class BusAttachment : public MessageReceiver {
      * @param name  Name of a remote peer or NULL to get the local (our) peer GUID.
      * @param guid  Returns the guid for the local or remote peer depending on the value of name.
      *
-     * @return 
+     * @return
      *      - #ER_OK if the requested GUID was obtained.
      *      - An error status otherwise.
      */

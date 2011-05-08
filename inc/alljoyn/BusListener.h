@@ -88,9 +88,15 @@ class BusListener {
     virtual void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner) { }
 
     /**
-     * Called when a bus this listener is registered with is stopping.
+     * Called when a BusAttachment this listener is registered with is stopping.
      */
     virtual void BusStopping() { }
+
+    /**
+     * Called when a BusAttachment this listener is registered with is has become disconnected from
+     * the bus.
+     */
+    virtual void BusDisconnected() { }
 
 };
 

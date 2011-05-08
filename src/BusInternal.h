@@ -220,6 +220,11 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
      */
     QStatus DispatchMessage(AlarmListener& listener, Message& msg, uint32_t delay = 0);
 
+    /**
+     * Called if the bus attachment become disconnected from the bus.
+     */
+    void LocalEndpointDisconnected();
+
   private:
 
     /**
