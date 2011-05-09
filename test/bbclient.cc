@@ -749,14 +749,12 @@ int main(int argc, char** argv)
             }
 
             /* Stop the bus */
-            if (g_msgBus) {
-                if (waitStop) {
-                    g_msgBus->WaitStop();
-                } else {
-                    QStatus s = g_msgBus->Stop();
-                    if (ER_OK != s) {
-                        QCC_LogError(s, ("BusAttachment::Stop failed"));
-                    }
+            if (waitStop) {
+                g_msgBus->WaitStop();
+            } else {
+                QStatus s = g_msgBus->Stop();
+                if (ER_OK != s) {
+                    QCC_LogError(s, ("BusAttachment::Stop failed"));
                 }
             }
 
