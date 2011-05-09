@@ -42,7 +42,7 @@
 				Name="VCCLCompilerTool"
 				AdditionalOptions="/vmm /vmg"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\aj\stlport\cne\stlport\stlport;C:\aj\common\inc;C:\aj\alljoyn_core\inc;C:\aj\alljoyn_core\src;C:\aj\alljoyn_core\daemon"
+				AdditionalIncludeDirectories="..\..\..\..\..\stlport\cne\stlport\stlport;..\..\..\..\..\common\inc;..\..\..\..\..\alljoyn_core\inc;..\..\..\..\..\alljoyn_core\src;..\..\..\..\..\alljoyn_core\daemon"
 				PreprocessorDefinitions="WIN32;WIN32_LEAN_AND_MEAN;_DEBUG;_WINDOWS;_USRDLL;WINSERVICE_EXPORTS;QCC_OS_GROUP_WINDOWS;QCC_CPU_X86;QCC_OS_WINDOWS"
 				MinimalRebuild="true"
 				ExceptionHandling="0"
@@ -66,9 +66,13 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="alljoyn.lib libeay32.lib ssleay32.lib wsock32.lib secur32.lib Iphlpapi.lib ws2_32.lib"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;C:\OpenSSL-Win32\lib&quot;;C:\aj\alljoyn_core\build\windows\x86\debug\dist\lib"
-				IgnoreDefaultLibraryNames="msvcrt.lib"
+				AdditionalLibraryDirectories="&quot;..\..\..\..\..\..\OpenSSL-Win32\lib&quot;;..\..\..\..\build\windows\x86\debug\dist\lib"
+				GenerateManifest="false"
+				UACExecutionLevel="0"
+				UACUIAccess="false"
+				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"
+				ProgramDatabaseFile=""
 				SubSystem="2"
 				TargetMachine="1"
 			/>
@@ -92,7 +96,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="cmd /k pause &amp;&amp; copy $(OutDir)\$(TargetFileName) C:\aj\alljoyn_core\build\windows\x86\debug\dist\bin"
+				CommandLine="cmd /k $(OutDir)\$(TargetFileName) ..\..\..\..\build\windows\x86\debug\dist\bin"
 			/>
 		</Configuration>
 		<Configuration
