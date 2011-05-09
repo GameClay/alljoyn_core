@@ -384,19 +384,8 @@ QStatus BTController::SendSetState(const qcc::String& busName)
                     masterUUIDRev = qcc::Rand32();
                 }
             }
-            UpdateDelegations(advertise, listening);
-            UpdateDelegations(find);
-            if (IsDrone()) {
-                if (advertise.minion != self) {
-                    advertise.minion = self;
-                    QCC_DbgPrintf(("Set advertise minion to ourself"));
-                }
-                if (find.minion != self) {
-                    find.minion = self;
-                    QCC_DbgPrintf(("Set find minion to ourself"));
-                }
-            }
-            QCC_DEBUG_ONLY(DumpNodeStateTable());
+
+            DispatchOperation(new UpdateDelegationsDispatchInfo(IsDrone()), 0);
         }
 
         if (!IsMaster()) {
@@ -612,11 +601,10 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                         Timespec ts;
                         GetTimeNow(&ts);
                         assert(otherCacheInfo->timeout.GetContext() != NULL);
-                        if (static_cast<int64_t>(otherCacheInfo->timeout.GetAlarmTime() - ts) <= static_cast<int64_t>(0)) {
-                            // The timeout expires now, so just put it on the dispatcher with a 0 timeout
-                            otherCacheInfo->timeout = Alarm(0, this, 0, otherCacheInfo->timeout.GetContext());
-                        }
-                        bus.GetInternal().GetDispatcher().AddAlarm(otherCacheInfo->timeout);
+                        int64_t delta = static_cast<int64_t>(otherCacheInfo->timeout.GetAlarmTime() - ts);
+                        assert(delta <= static_cast<int64_t>(numeric_limits<uint32_t>::max()));
+                        uint32_t delay = (delta >= static_cast<int64_t>(0)) ? static_cast<uint32_t>(delta & numeric_limits<uint32_t>::max()) : 0;
+                        otherCacheInfo->timeout = DispatchOperation(new ExpireCacheInfoDispatchInfo(otherCacheInfo), delay);
                     } // else there is still stuff left, it will be cleaned out when the timeout expires
 
                     foundNode->SetUUIDRev(newUUIDRev);
@@ -639,8 +627,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
             cacheLock.Unlock();
         }
 
-        cacheInfo->timeout = Alarm(LOST_DEVICE_TIMEOUT, this, 0, new UUIDRevCacheInfo(cacheInfo));
-        bus.GetInternal().GetDispatcher().AddAlarm(cacheInfo->timeout);
+        cacheInfo->timeout = DispatchOperation(new ExpireCacheInfoDispatchInfo(cacheInfo), LOST_DEVICE_TIMEOUT);
 
     } else {
         // Must be a drone or slave.
@@ -796,9 +783,7 @@ void BTController::BTDeviceAvailable(bool on)
             find.dirty = true;
 
             if (IsMaster()) {
-                UpdateDelegations(advertise, listening);
-                UpdateDelegations(find);
-                QCC_DEBUG_ONLY(DumpNodeStateTable());
+                DispatchOperation(new UpdateDelegationsDispatchInfo(), 0);
             }
         }
     } else {
@@ -866,6 +851,8 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
 
         lock.Lock();
         if (master && (master->GetServiceName() == alias)) {
+            // We are a minion or a drone and our master has left us.
+
             QCC_DbgPrintf(("Our master left us: %s", masterNode->GetBusAddress().ToString().c_str()));
             // We are the master now.
             if (IsMinion()) {
@@ -903,13 +890,18 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                 if (ci == uuidRevCache.end()) {
                     adInfo = new BTNodeDB();
                     UUIDRevCacheInfo cacheInfo(adInfo);
-                    cacheInfo->timeout = Alarm(LOST_DEVICE_TIMEOUT, this, 0, new UUIDRevCacheInfo(cacheInfo));
-                    bus.GetInternal().GetDispatcher().AddAlarm(cacheInfo->timeout);
+                    cacheInfo->timeout = DispatchOperation(new ExpireCacheInfoDispatchInfo(cacheInfo), LOST_DEVICE_TIMEOUT);
                     uuidRevCache.insert(UUIDRevCacheMapEntry(node->GetUUIDRev(), cacheInfo));
-                    QCC_DbgPrintf(("Added %s (%lu names) to new uuidRev cache entry for %08x", node->GetBusAddress().ToString().c_str(), node->AdvertiseNamesSize(), node->GetUUIDRev()));
+                    QCC_DbgPrintf(("Added %s (%lu names) to new uuidRev cache entry for %08x",
+                                   node->GetBusAddress().ToString().c_str(),
+                                   node->AdvertiseNamesSize(),
+                                   node->GetUUIDRev()));
                 } else {
                     adInfo = ci->second->adInfo;
-                    QCC_DbgPrintf(("Added %s (%lu names) to existing uuidRev cache entry for %08x", node->GetBusAddress().ToString().c_str(), node->AdvertiseNamesSize(), node->GetUUIDRev()));
+                    QCC_DbgPrintf(("Added %s (%lu names) to existing uuidRev cache entry for %08x",
+                                   node->GetBusAddress().ToString().c_str(),
+                                   node->AdvertiseNamesSize(),
+                                   node->GetUUIDRev()));
                 }
                 adInfo->AddNode(*it);
             }
@@ -933,7 +925,8 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
             BTNodeInfo minion = nodeDB.FindNode(alias);
 
             if (minion->IsValid()) {
-                // Remove the minion's state information.
+                // We are a master or a drone and one of our minions has left.
+
                 QCC_DbgPrintf(("One of our minions left us: %s", minion->GetBusAddress().ToString().c_str()));
 
                 bool wasAdvertiseMinion = minion == advertise.minion;
@@ -1024,8 +1017,10 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                 uuidRevCache.insert(UUIDRevCacheMapEntry(minion->GetUUIDRev(), cacheInfo));
                 QCC_DbgPrintf(("Added %s to new uuidRev cache entry for %08x",
                                minion->GetBusAddress().ToString().c_str(), minion->GetUUIDRev()));
-                cacheInfo->timeout = Alarm(minion->AdvertiseNamesEmpty() ? 0 : LOST_DEVICE_TIMEOUT, this, 0, new UUIDRevCacheInfo(cacheInfo));
-                bus.GetInternal().GetDispatcher().AddAlarm(cacheInfo->timeout);
+
+                cacheInfo->timeout = DispatchOperation(new ExpireCacheInfoDispatchInfo(cacheInfo),
+                                                       minion->AdvertiseNamesEmpty() ? 0 : LOST_DEVICE_TIMEOUT);
+
                 cacheLock.Unlock();
 
                 updateDelegations = true;
@@ -1033,9 +1028,7 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
         }
 
         if (updateDelegations) {
-            UpdateDelegations(advertise, listening);
-            UpdateDelegations(find);
-            QCC_DEBUG_ONLY(DumpNodeStateTable());
+            DispatchOperation(new UpdateDelegationsDispatchInfo(), 0);
         }
         lock.Unlock();
 
@@ -1169,9 +1162,7 @@ QStatus BTController::DoNameOp(const qcc::String& name,
             }
 #endif
 
-            UpdateDelegations(advertise, listening);
-            UpdateDelegations(find);
-            QCC_DEBUG_ONLY(DumpNodeStateTable());
+            DispatchOperation(new UpdateDelegationsDispatchInfo(), 0);
 
         } else {
             QCC_DbgPrintf(("Sending %s to our master: %s", signal.name.c_str(), master->GetServiceName().c_str()));
@@ -1238,9 +1229,7 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
             }
 
             if (IsMaster()) {
-                UpdateDelegations(advertise, listening);
-                UpdateDelegations(find);
-                QCC_DEBUG_ONLY(DumpNodeStateTable());
+                DispatchOperation(new UpdateDelegationsDispatchInfo(), 0);
 
                 lock.Unlock();
                 if (findOp) {
@@ -1445,9 +1434,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
                 masterUUIDRev = qcc::Rand32();
             }
         }
-        UpdateDelegations(advertise, listening);
-        UpdateDelegations(find);
-        QCC_DEBUG_ONLY(DumpNodeStateTable());
+        DispatchOperation(new UpdateDelegationsDispatchInfo(), 0);
     }
 
     if (!IsMaster()) {
@@ -1850,14 +1837,16 @@ QStatus BTController::ImportState(const BTBusAddress& addr,
 }
 
 
-void BTController::UpdateDelegations(NameArgInfo& nameInfo, bool allow)
+void BTController::UpdateDelegations(NameArgInfo& nameInfo)
 {
     const bool advertiseOp = (&nameInfo == &advertise);
 
-    QCC_DbgTrace(("BTController::UpdateDelegations(nameInfo = <%s>, allow = %s)",
-                  advertiseOp ? "advertise" : "find", allow ? "true" : "false"));
+    QCC_DbgTrace(("BTController::UpdateDelegations(nameInfo = <%s>)",
+                  advertiseOp ? "advertise" : "find"));
 
-    const bool allowConn = allow && IsMaster() && (directMinions < maxConnections);
+    lock.Lock();
+
+    const bool allowConn = (!advertiseOp | listening) && IsMaster() && (directMinions < maxConnections);
     const bool changed = nameInfo.Changed();
     const bool empty = nameInfo.Empty();
     const bool active = nameInfo.active;
@@ -1903,6 +1892,7 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo, bool allow)
         // Clear out the advertise/find arguments.
         nameInfo.StopOp();
     }
+    lock.Unlock();
 }
 
 
@@ -2042,9 +2032,13 @@ void BTController::FillFoundNodesMsgArgs(vector<MsgArg>& args) const
 void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
 {
     QCC_DbgTrace(("BTController::AlarmTriggered(alarm = <>, reasons = %s)", QCC_StatusText(reason)));
+    DispatchInfo* op = static_cast<DispatchInfo*>(alarm.GetContext());
+    assert(op);
 
     if (reason == ER_OK) {
-        if (alarm == stopAd) {
+        switch (op->operation) {
+        case DispatchInfo::STOP_ADVERTISEMENTS: {
+            QCC_DbgPrintf(("Stopping discoverability now."));
             assert(IsMaster());
             lock.Lock();
             bool empty = advertise.Empty();
@@ -2061,11 +2055,31 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
                     Signal(signalDest.c_str(), 0, *advertise.delegateSignal, args->args, args->argsSize);
                 }
             }
-        } else {
-            assert(alarm.GetContext() != NULL);
-            BTNodeDB* adInfo = NULL;
+            break;
+        }
+
+        case DispatchInfo::UPDATE_DELEGATIONS:
+            QCC_DbgPrintf(("Updateing Delegations."));
+            lock.Lock();
+            UpdateDelegations(advertise);
+            UpdateDelegations(find);
+            if (static_cast<UpdateDelegationsDispatchInfo*>(op)->resetMinions) {
+                if (advertise.minion != self) {
+                    advertise.minion = self;
+                    QCC_DbgPrintf(("Set advertise minion to ourself"));
+                }
+                if (find.minion != self) {
+                    find.minion = self;
+                    QCC_DbgPrintf(("Set find minion to ourself"));
+                }
+            }
+            QCC_DEBUG_ONLY(DumpNodeStateTable());
+            lock.Unlock();
+            break;
+
+        case DispatchInfo::EXPIRE_CACHE_INFO: {
             cacheLock.Lock();
-            UUIDRevCacheInfo* cacheInfo = static_cast<UUIDRevCacheInfo*>(alarm.GetContext());
+            UUIDRevCacheInfo cacheInfo = static_cast<ExpireCacheInfoDispatchInfo*>(op)->cacheInfo;
 
             // There is a window of opportunity where the cache is being
             // refreshed just as the timeout expires.  We check that the
@@ -2073,30 +2087,34 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
             // the associated cache info object.  If it did get refreshed,
             // then we just ignore it.
 
-            QCC_DbgPrintf(("Cache Info expiration: UUIDRev: %08x  connAddr = %s",
-                           (*((*cacheInfo)->adInfo->Begin()))->GetUUIDRev(),
-                           (*((*cacheInfo)->adInfo->Begin()))->GetConnectAddress().ToString().c_str()));
-            if (alarm == (*cacheInfo)->timeout) {
-                adInfo = (*cacheInfo)->adInfo;
-                BTNodeInfo node = *(adInfo->Begin());
+            QCC_DbgPrintf(("Cache Info expiration for %s: UUIDRev: %08x  connAddr = %s",
+                           IsMaster() ? "master" : (IsDrone() ? "drone" : "minion"),
+                           (*(cacheInfo->adInfo->Begin()))->GetUUIDRev(),
+                           (*(cacheInfo->adInfo->Begin()))->GetConnectAddress().ToString().c_str()));
 
-                UUIDRevCacheMap::iterator ci  = LookupUUIDRevCache(node->GetUUIDRev(), node->GetBusAddress().addr);
-                assert(ci != uuidRevCache.end());
-                ci->second->timeout = Alarm(Alarm::WAIT_FOREVER, this);
-                uuidRevCache.erase(ci);
-            }
-            delete cacheInfo;
-            cacheLock.Unlock();
+            BTNodeDB* adInfo = cacheInfo->adInfo;
+            BTNodeInfo node = *(adInfo->Begin());
 
-            assert(adInfo);
+            UUIDRevCacheMap::iterator ci  = LookupUUIDRevCache(node->GetUUIDRev(), node->GetBusAddress().addr);
+            assert(ci != uuidRevCache.end());
+            ci->second->timeout = Alarm(Alarm::WAIT_FOREVER, this);
+            uuidRevCache.erase(ci);
+
+            adInfo->DumpTable("Expired ad info");
             if (IsMaster()) {
                 foundNodeDB.UpdateDB(NULL, adInfo);
                 foundNodeDB.DumpTable("Updated set of found devices");
+                cacheLock.Unlock();
                 DistributeAdvertisedNameChanges(NULL, adInfo);
+            } else {
+                cacheLock.Unlock();
             }
-            delete adInfo;
+            break;
+        }
         }
     }
+
+    delete op;
 }
 
 
@@ -2297,8 +2315,9 @@ void BTController::AdvertiseNameArgInfo::StopOp()
 
     assert(!dispatcher.HasAlarm(bto.stopAd));
 
-    bto.stopAd = Alarm(DELEGATE_TIME * 1000, &bto);
-    dispatcher.AddAlarm(bto.stopAd);
+    QCC_DbgPrintf(("Stopping discoverability in %d seconds.", DELEGATE_TIME));
+
+    bto.stopAd = bto.DispatchOperation(new StopAdDispatchInfo(), DELEGATE_TIME * 1000);
 
     // Clear out the advertise arguments (for real this time).
     NameArgs newArgs(argsSize);

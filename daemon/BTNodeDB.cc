@@ -201,6 +201,7 @@ void BTNodeDB::Diff(const BTNodeDB& other, BTNodeDB* added, BTNodeDB* removed) c
 void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool removeNodes)
 {
     // Remove names/nodes
+    Lock();
     if (removed) {
         const_iterator rit;
         for (rit = removed->Begin(); rit != removed->End(); ++rit) {
@@ -242,6 +243,7 @@ void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool rem
             }
         }
     }
+    Unlock();
 }
 
 

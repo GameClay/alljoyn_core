@@ -414,6 +414,7 @@ class BTController :
         }
         void StartAlarm()
         {
+            assert(!dispatcher.HasAlarm(alarm));
             alarm = qcc::Alarm(BTController::DELEGATE_TIME * 1000, this, 0, this);
             dispatcher.AddAlarm(alarm);
         }
@@ -473,6 +474,40 @@ class BTController :
     typedef qcc::ManagedObj<_UUIDRevCacheInfo> UUIDRevCacheInfo;
     typedef std::multimap<uint32_t, UUIDRevCacheInfo> UUIDRevCacheMap;
     typedef std::pair<uint32_t, UUIDRevCacheInfo> UUIDRevCacheMapEntry;
+
+
+    struct DispatchInfo {
+        typedef enum {
+            STOP_ADVERTISEMENTS,
+            UPDATE_DELEGATIONS,
+            EXPIRE_CACHE_INFO
+        } DispatchTypes;
+        DispatchTypes operation;
+
+        DispatchInfo(DispatchTypes operation) : operation(operation) { }
+        virtual ~DispatchInfo() { }
+    };
+
+    struct StopAdDispatchInfo : public DispatchInfo {
+        StopAdDispatchInfo() : DispatchInfo(STOP_ADVERTISEMENTS) { }
+    };
+
+    struct UpdateDelegationsDispatchInfo : public DispatchInfo {
+        bool resetMinions;
+        UpdateDelegationsDispatchInfo(bool resetMinions = false) :
+            DispatchInfo(UPDATE_DELEGATIONS),
+            resetMinions(resetMinions)
+        {
+        }
+    };
+
+    struct ExpireCacheInfoDispatchInfo : public DispatchInfo {
+        UUIDRevCacheInfo cacheInfo;
+        ExpireCacheInfoDispatchInfo(const UUIDRevCacheInfo& cacheInfo) :
+            DispatchInfo(EXPIRE_CACHE_INFO),
+            cacheInfo(cacheInfo)
+        { }
+    };
 
     /**
      * Distribute the advertised name changes to all connected nodes.
@@ -647,9 +682,8 @@ class BTController :
      * participate in more connections.
      *
      * @param nameInfo  Reference to the advertise or find name info struct
-     * @param allow     false = force stop; true = allow normal update
      */
-    void UpdateDelegations(NameArgInfo& nameInfo, bool allow = true);
+    void UpdateDelegations(NameArgInfo& nameInfo);
 
     /**
      * Extract advertisement information from a message arg into the internal
@@ -693,6 +727,15 @@ class BTController :
      * @param args[out] vector of MsgArgs to fill.
      */
     void FillFoundNodesMsgArgs(std::vector<MsgArg>& args) const;
+
+
+    qcc::Alarm DispatchOperation(DispatchInfo* op, uint32_t delay = 0)
+    {
+        qcc::Alarm alarm(delay, this, 0, (void*)op);
+        bus.GetInternal().GetDispatcher().AddAlarm(alarm);
+        return alarm;
+    }
+
 
     void AlarmTriggered(const qcc::Alarm& alarm, QStatus reason);
 
