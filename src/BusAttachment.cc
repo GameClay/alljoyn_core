@@ -1230,12 +1230,27 @@ QStatus BusAttachment::Internal::DispatchMessage(AlarmListener& listener, Messag
     } else if (bus.isStopping) {
         status = ER_BUS_STOPPING;
     } else {
-        Message*mp = new Message(msg);
+        Message* mp = new Message(msg);
         Alarm alarm(delay, &listener, 0, mp);
         status = dispatcher.AddAlarm(alarm);
         if (status != ER_OK) {
             delete mp;
         }
+    }
+    return status;
+}
+
+QStatus BusAttachment::Internal::Dispatch(AlarmListener& listener, void* context, uint32_t delay)
+{
+    QStatus status;
+
+    if (!bus.isStarted || !dispatcher.IsRunning()) {
+        status = ER_BUS_BUS_NOT_STARTED;
+    } else if (bus.isStopping) {
+        status = ER_BUS_STOPPING;
+    } else {
+        Alarm alarm(delay, &listener, 0, context);
+        status = dispatcher.AddAlarm(alarm);
     }
     return status;
 }

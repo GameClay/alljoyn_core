@@ -221,6 +221,15 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
     QStatus DispatchMessage(AlarmListener& listener, Message& msg, uint32_t delay = 0);
 
     /**
+     * This function puts a caller specified context on the dispatch thread and deliver it to the specified alarm listener.
+     *
+     * @param listener  The alarm listener to receive the context.
+     * @param context   The context to queue
+     * @param delay     Time to delay before delivering the message.
+     */
+    QStatus Dispatch(AlarmListener& listener, void* context, uint32_t delay = 0);
+
+    /**
      * Called if the bus attachment become disconnected from the bus.
      */
     void LocalEndpointDisconnected();
