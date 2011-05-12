@@ -352,6 +352,17 @@ class BusAttachment : public MessageReceiver {
     void RegisterKeyStoreListener(KeyStoreListener& listener);
 
     /**
+     * Reloads the key store for this bus attachment. This function would normally only be called in
+     * the case where a single key store is shared between multiple bus attachments, possibly by different
+     * applications. It is up to the applications to coordinate how and when the shared key store is
+     * modified.
+     *
+     * @return - ER_OK if the key store was succesfully reloaded
+     *         - An error status indicating that the key store reload failed.
+     */
+    QStatus ReloadKeyStore();
+
+    /**
      * Clears all stored keys from the key store. All store keys and authentication information is
      * deleted and cannot be recovered. Any passwords or other credentials will need to be reentered
      * when establishing secure peer connections.
