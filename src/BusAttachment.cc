@@ -1408,6 +1408,11 @@ QStatus BusAttachment::GetPeerGUID(const char* name, qcc::String& guid)
     }
 }
 
+QStatus BusAttachment::ReloadKeyStore()
+{
+    return busInternal->keyStore.Reload();
+}
+
 QStatus BusAttachment::ClearKeys(const qcc::String& guid)
 {
     if (!qcc::GUID::IsGUID(guid)) {

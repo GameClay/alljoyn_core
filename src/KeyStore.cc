@@ -158,6 +158,21 @@ QStatus KeyStore::Load(const char* fileName)
     return (storeState == UNAVAILABLE) ?  listener->LoadRequest(*this) : ER_OK;
 }
 
+QStatus KeyStore::Reload()
+{
+    QStatus status;
+    if (storeState == UNAVAILABLE) {
+        status = ER_BUS_KEYSTORE_NOT_LOADED;
+    } else {
+        lock.Lock();
+        keys.clear();
+        storeState = UNAVAILABLE;
+        status = listener->LoadRequest(*this);
+        lock.Unlock();
+    }
+    return status;
+}
+
 static size_t EraseExpiredKeys(map<qcc::GUID, KeyBlob>& keys)
 {
     size_t count = 0;

@@ -91,6 +91,16 @@ class KeyStore {
     QStatus Load(qcc::Source& source, const qcc::String& password);
 
     /**
+     * Re-read keys from the key store
+     *
+     * @return
+     *      - ER_OK if successful
+     *      - An error status otherwise
+     *
+     */
+    QStatus Reload();
+
+    /**
      * Write the current keys from the key store to a specific sink
      *
      * @param sink The sink to write the keys to.
