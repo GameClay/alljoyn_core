@@ -873,15 +873,11 @@ QStatus BusAttachment::CancelAdvertiseName(const char* name, TransportMask trans
         status = reply->GetArgs("u", &disposition);
         if (ER_OK == status) {
             switch (disposition) {
-            case ALLJOYN_ADVERTISENAME_REPLY_SUCCESS:
+            case ALLJOYN_CANCELADVERTISENAME_REPLY_SUCCESS:
                 break;
 
-            case ALLJOYN_ADVERTISENAME_REPLY_ALREADY_ADVERTISING:
-                status = ER_ALLJOYN_ADVERTISENAME_REPLY_ALREADY_ADVERTISING;
-                break;
-
-            case ALLJOYN_ADVERTISENAME_REPLY_FAILED:
-                status = ER_ALLJOYN_ADVERTISENAME_REPLY_FAILED;
+            case ALLJOYN_CANCELADVERTISENAME_REPLY_FAILED:
+                status = ER_ALLJOYN_CANCELADVERTISENAME_REPLY_FAILED;
                 break;
 
             default:
