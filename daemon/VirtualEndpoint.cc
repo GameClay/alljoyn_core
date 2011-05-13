@@ -97,6 +97,19 @@ bool VirtualEndpoint::AddBusToBusEndpoint(RemoteEndpoint& endpoint)
     return !found;
 }
 
+void VirtualEndpoint::GetSessionIdsForB2B(RemoteEndpoint& endpoint, vector<SessionId>& sessionIds)
+{
+    m_b2bEndpointsLock.Lock();
+    multimap<SessionId, RemoteEndpoint*>::iterator it = m_b2bEndpoints.begin();
+    while (it != m_b2bEndpoints.end()) {
+        if (it->first && (it->second == &endpoint)) {
+            sessionIds.push_back(it->first);
+        }
+        ++it;
+    }
+    m_b2bEndpointsLock.Unlock();
+}
+
 bool VirtualEndpoint::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
 {
     QCC_DbgTrace(("VirtualEndpoint::RemoveBusToBusEndpoint(this=%s, b2b=%s)", GetUniqueName().c_str(), endpoint.GetUniqueName().c_str()));

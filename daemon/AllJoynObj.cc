@@ -661,7 +661,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                 ajObj.sessionMapLock.Lock();
                 sme.endpointName = msg->GetSender();
                 sme.id = id;
-                sme.sessionHost = sessionHost;
+                sme.sessionHost = vSessionEp->GetUniqueName();
                 sme.sessionPort = sessionPort;
                 sme.opts = optsOut;
                 for (size_t i = 0; i < numSessionMembers; ++i) {
@@ -1897,6 +1897,42 @@ void AllJoynObj::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
     virtualEndpointsLock.Lock();
     map<qcc::String, VirtualEndpoint*>::iterator it = virtualEndpoints.begin();
     while (it != virtualEndpoints.end()) {
+
+        /* Clean sessionMap and report lost sessions */
+        vector<SessionId> lostSessionIds;
+        sessionMapLock.Lock();
+        it->second->GetSessionIdsForB2B(endpoint, lostSessionIds);
+        for (size_t i = 0; i < lostSessionIds.size(); ++i) {
+            multimap<pair<String, SessionId>, SessionMapEntry>::iterator sit = sessionMap.begin();
+            while (sit != sessionMap.end()) {
+                if (sit->first.second == lostSessionIds[i]) {
+                    SessionMapEntry& sme = sit->second;
+                    if (it->second == router.FindEndpoint(sme.sessionHost)) {
+                        sme.sessionHost.clear();
+                    } else {
+                        vector<String>::iterator mit = sme.memberNames.begin();
+                        while (mit != sme.memberNames.end()) {
+                            if (it->first == *mit) {
+                                mit = sme.memberNames.erase(mit);
+                            } else {
+                                ++mit;
+                            }
+                        }
+                    }
+                    if (sme.memberNames.empty() || ((sme.memberNames.size() == 1) && sme.sessionHost.empty())) {
+                        SendSessionLost(sme);
+                        sessionMap.erase(sit++);
+                    } else {
+                        ++sit;
+                    }
+                } else {
+                    ++sit;
+                }
+            }
+        }
+        sessionMapLock.Unlock();
+
+        /* Remove the B2B endpoint */
         if (it->second->RemoveBusToBusEndpoint(endpoint)) {
 
             /* Remove virtual endpoint with no more b2b eps */
@@ -2289,6 +2325,9 @@ void AllJoynObj::NameOwnerChanged(const qcc::String& alias, const qcc::String* o
                 sessionMap.erase(it++);
             } else if (it->first.second != 0) {
                 /* Remove member entries from existing sessions */
+                if (it->second.sessionHost == alias) {
+                    it->second.sessionHost.clear();
+                }
                 vector<String>::iterator mit = it->second.memberNames.begin();
                 while (mit != it->second.memberNames.end()) {
                     if (*mit == alias) {
@@ -2301,7 +2340,7 @@ void AllJoynObj::NameOwnerChanged(const qcc::String& alias, const qcc::String* o
                  * Remove empty session entry.
                  * Preserve raw sessions until GetSessionFd is called.
                  */
-                if (it->second.memberNames.empty() && (it->second.fd == -1)) {
+                if ((it->second.memberNames.empty() || ((it->second.memberNames.size() == 1) && it->second.sessionHost.empty())) && (it->second.fd == -1)) {
                     SendSessionLost(it->second);
                     sessionMap.erase(it++);
                 } else {

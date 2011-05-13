@@ -25,6 +25,7 @@
 #include <qcc/platform.h>
 
 #include <map>
+#include <vector>
 
 #include "RemoteEndpoint.h"
 
@@ -173,6 +174,14 @@ class VirtualEndpoint : public BusEndpoint {
      * @return true iff the B2B endpoint can be used to route messages for this virtual endpoint.
      */
     bool CanUseRoute(const RemoteEndpoint& b2bEndpoint) const;
+
+    /**
+     * Get the set of sessionIds that route through a given bus-to-bus endpoint.
+     *
+     * @param[IN]   b2bEndpoint   B2B endpoint.
+     * @param[OUT]  set of sessionIds that route through the given endpoint.
+     */
+    void GetSessionIdsForB2B(RemoteEndpoint& endpoint, std::vector<SessionId>& sessionIds);
 
     /**
      * Indicate whether this endpoint is allowed to receive messages from remote devices.
