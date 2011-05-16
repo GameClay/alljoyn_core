@@ -133,7 +133,7 @@ class BusObject : public MessageReceiver {
      * Send a signal.
      *
      * @param destination      The unique or well-known bus name or the signal recipient (NULL for broadcast signals)
-     * @param sessionId
+     * @param sessionId        A unique SessionId for this AllJoyn session instance
      * @param signal           Interface member of signal being emitted.
      * @param args             The arguments for the signal (can be NULL)
      * @param numArgs          The number of arguments
