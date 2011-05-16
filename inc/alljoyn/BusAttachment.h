@@ -469,7 +469,7 @@ class BusAttachment : public MessageReceiver {
     /**
      * Advertise the existence of a well-known name to other (possibly disconnected) AllJoyn daemons.
      *
-     * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.AdvertisedName method call to the local daemon
+     * This method is a shortcut/helper that issues an org.alljoyn.Bus.AdvertisedName method call to the local daemon
      * and interprets the response.
      *
      * @param[in]  name          the well-known name to advertise. (Must be owned by the caller via RequestName).
@@ -485,7 +485,7 @@ class BusAttachment : public MessageReceiver {
     /**
      * Stop advertising the existence of a well-known name to other AllJoyn daemons.
      *
-     * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.CancelAdvertiseName method call to the local daemon
+     * This method is a shortcut/helper that issues an org.alljoyn.Bus.CancelAdvertiseName method call to the local daemon
      * and interprets the response.
      *
      * @param[in]  name          A well-known name that was previously advertised via AdvertiseName.
@@ -500,7 +500,7 @@ class BusAttachment : public MessageReceiver {
 
     /**
      * Register interest in a well-known name prefix for the purpose of discovery.
-     * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.FindAdvertisedName method call to the local daemon
+     * This method is a shortcut/helper that issues an org.alljoyn.Bus.FindAdvertisedName method call to the local daemon
      * and interprets the response.
      *
      * @param[in]  namePrefix    Well-known name prefix that application is interested in receiving
@@ -516,7 +516,7 @@ class BusAttachment : public MessageReceiver {
     /**
      * Cancel interest in a well-known name prefix that was previously
      * registered with FindAdvertisedName.  This method is a shortcut/helper
-     * that issues an org.codeauora.AllJoyn.Bus.CancelFindAdvertisedName method
+     * that issues an org.alljoyn.Bus.CancelFindAdvertisedName method
      * call to the local daemon and interprets the response.
      *
      * @param[in]  namePrefix    Well-known name prefix that application is no longer interested in receiving
@@ -577,7 +577,7 @@ class BusAttachment : public MessageReceiver {
 
     /**
      * Join a session.
-     * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.JoinSession method call to the local daemon
+     * This method is a shortcut/helper that issues an org.alljoyn.Bus.JoinSession method call to the local daemon
      * and interprets the response.
      *
      * @param[in]  sessionHost      Bus name of attachment that is hosting the session to be joined.
@@ -607,7 +607,7 @@ class BusAttachment : public MessageReceiver {
 
     /**
      * Leave an existing session.
-     * This method is a shortcut/helper that issues an org.codeauora.AllJoyn.Bus.LeaveSession method call to the local daemon
+     * This method is a shortcut/helper that issues an org.alljoyn.Bus.LeaveSession method call to the local daemon
      * and interprets the response.
      *
      * @param[in]  sessionId     Session id.
