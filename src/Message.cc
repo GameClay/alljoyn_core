@@ -113,7 +113,7 @@ const bool HeaderFields::Compressible[] = {
     false,            /* ALLJOYN_HDR_FIELD_TIMESTAMP         */
     true,             /* ALLJOYN_HDR_FIELD_TIME_TO_LIVE      */
     false,            /* ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN */
-    true,             /* ALLJOYN_HDR_FIELD_SESSSION_ID       */
+    true,             /* ALLJOYN_HDR_FIELD_SESSION_ID        */
     false             /* ALLJOYN_HDR_FIELD_UNKNOWN           */
 };
 
