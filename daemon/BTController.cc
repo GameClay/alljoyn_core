@@ -318,7 +318,7 @@ QStatus BTController::SendSetState(const qcc::String& busName)
         if (numNodeStateArgs == 0) {
             // We are now a minion (or a drone if we have more than one direct connection)
             master = newMaster;
-            masterNode = BTNodeInfo(addr, master->GetServiceName());
+            masterNode = foundNodeDB.FindNode(addr);
             masterNode->SetUUIDRev(otherUUIDRev);
 
             // Wipe out our cache.
