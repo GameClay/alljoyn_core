@@ -58,8 +58,9 @@ namespace alljoyn {
 namespace alljoyn_test {
 const char* InterfaceName = "org.alljoyn.alljoyn_test";
 const char* DefaultWellKnownName = "org.alljoyn.alljoyn_test";
+const char* DefaultAdvertiseName = "org.alljoyn.alljoyn_sig";
 const char* ObjectPath = "/org/alljoyn/alljoyn_test";
-const SessionPort SessionPort = 11;   /**< Well-known session port value for bbsig */
+const SessionPort SessionPort = 24;   /**< Well-known session port value for bbsig */
 }
 }
 }
@@ -67,6 +68,7 @@ const SessionPort SessionPort = 11;   /**< Well-known session port value for bbs
 /** Static top level message bus object */
 static BusAttachment* g_msgBus = NULL;
 static String g_wellKnownName = ::org::alljoyn::alljoyn_test::DefaultWellKnownName;
+static String g_advertiseName = ::org::alljoyn::alljoyn_test::DefaultAdvertiseName;
 static Event g_discoverEvent;
 
 static bool stopNow = false;
@@ -76,7 +78,7 @@ static bool encryption = false;
 static unsigned long timeToLive = 0;
 
 /** AllJoynListener receives discovery events from AllJoyn */
-class MyBusListener : public BusListener {
+class MyBusListener : public BusListener, public SessionListener {
   public:
     void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
     {
@@ -84,9 +86,8 @@ class MyBusListener : public BusListener {
 
         if (0 == strcmp(name, g_wellKnownName.c_str())) {
             /* We found a remote bus that is advertising bbservice's well-known name so connect to it */
-            SessionId sessionId;
-            SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
-            QStatus status = g_msgBus->JoinSession(name, ::org::alljoyn::alljoyn_test::SessionPort, NULL, sessionId, opts);
+            SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, transport);
+            QStatus status = g_msgBus->JoinSession(name, ::org::alljoyn::alljoyn_test::SessionPort, this, sessionId, opts);
             if (ER_OK == status) {
                 /* Release main thread */
                 g_discoverEvent.SetEvent();
@@ -102,12 +103,17 @@ class MyBusListener : public BusListener {
                        name,
                        previousOwner ? previousOwner : "null",
                        newOwner ? newOwner : "null");
-
-        if (newOwner && (0 == strcmp(name, g_wellKnownName.c_str()))) {
-            /* Inform main thread that name is available */
-            g_discoverEvent.SetEvent();
-        }
     }
+
+    void SessionLost(SessionId sessionId) {
+        QCC_SyncPrintf("SessionLost(%u) was called\n", sessionId);
+        exit(1);
+    }
+
+    SessionId GetSessionId() const { return sessionId; }
+
+  private:
+    SessionId sessionId;
 };
 
 /** Static bus listener */
@@ -180,7 +186,7 @@ class LocalTestObject : public BusObject {
         if (encryption) {
             flags |= ALLJOYN_FLAG_ENCRYPTED;
         }
-        return Signal(NULL, 0, *my_signal_member, &arg, 1, timeToLive, flags);
+        return Signal(NULL, g_busListener.GetSessionId(), *my_signal_member, &arg, 1, timeToLive, flags);
     }
 
     void SignalHandler(const InterfaceDescription::Member* member,
@@ -223,7 +229,7 @@ class LocalTestObject : public BusObject {
         /* Note that you cannot make a blocking method call here */
         const ProxyBusObject& dbusObj = bus.GetDBusProxyObj();
         MsgArg args[2];
-        args[0].Set("s", g_wellKnownName.c_str());
+        args[0].Set("s", g_advertiseName.c_str());
         args[1].Set("u", DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_DO_NOT_QUEUE);
         QStatus status = dbusObj.MethodCallAsync(ajn::org::freedesktop::DBus::InterfaceName,
                                                  "RequestName",
@@ -232,7 +238,7 @@ class LocalTestObject : public BusObject {
                                                  args,
                                                  ArraySize(args));
         if (ER_OK != status) {
-            QCC_LogError(status, ("Failed to request name %s", g_wellKnownName.c_str()));
+            QCC_LogError(status, ("Failed to request name %s", g_advertiseName.c_str()));
         }
     }
 
@@ -248,7 +254,7 @@ class LocalTestObject : public BusObject {
             const ProxyBusObject& alljoynObj = bus.GetAllJoynProxyObj();
             MsgArg args[2];
             size_t numArgs = ArraySize(args);
-            MsgArg::Set(args, numArgs, "sq", g_wellKnownName.c_str(), 0xFFFF);
+            MsgArg::Set(args, numArgs, "sq", g_advertiseName.c_str(), TRANSPORT_ANY);
             QStatus status = alljoynObj.MethodCallAsync(ajn::org::alljoyn::Bus::InterfaceName,
                                                         "AdvertiseName",
                                                         this,
@@ -260,7 +266,7 @@ class LocalTestObject : public BusObject {
             }
         } else {
             QCC_LogError(ER_FAIL, ("Failed to obtain name \"%s\". RequestName returned %d",
-                                   g_wellKnownName.c_str(), args[0].v_uint32));
+                                   g_advertiseName.c_str(), args[0].v_uint32));
         }
     }
 
@@ -273,7 +279,7 @@ class LocalTestObject : public BusObject {
 
         if ((MESSAGE_METHOD_RET != msg->GetType()) || (ALLJOYN_ADVERTISENAME_REPLY_SUCCESS != args[0].v_uint32)) {
             QCC_LogError(ER_FAIL, ("Failed to advertise name \"%s\". org.alljoyn.Bus.Advertise returned %d",
-                                   g_wellKnownName.c_str(),
+                                   g_advertiseName.c_str(),
                                    args[0].v_uint32));
         }
     }
@@ -396,10 +402,11 @@ class MyAuthListener : public AuthListener {
 
 static void usage(void)
 {
-    printf("Usage: bbsig [-n <name> ] [-h] [-l] [-s] [-r #] [-i #] [-c #] [-t #] [-x] [-e[k] <mech>]\n\n");
+    printf("Usage: bbsig [-n <name> ] [-a <name> ] [-h] [-l] [-s] [-r #] [-i #] [-c #] [-t #] [-x] [-e[k] <mech>]\n\n");
     printf("Options:\n");
     printf("   -h              = Print this help message\n");
-    printf("   -n <name>       = Well-known name to advertise\n");
+    printf("   -a <name>       = Well-known name to advertise\n");
+    printf("   -n <name>       = Well-known name to find\n");
     printf("   -s              = Enable stress mode (connect/disconnect w/ server between runs non-stop)\n");
     printf("   -l              = Register signal handler for loopback\n");
     printf("   -r #            = Signal rate (delay in ms between signals sent; default = 0)\n");
@@ -471,6 +478,16 @@ int main(int argc, char** argv)
                 exit(1);
             } else {
                 g_wellKnownName = argv[i];
+            }
+
+        } else if (0 == strcmp("-a", argv[i])) {
+            ++i;
+            if (i == argc) {
+                printf("option %s requires a parameter\n", argv[i - 1]);
+                usage();
+                exit(1);
+            } else {
+                g_advertiseName = argv[i];
             }
 
         } else if (0 == strcmp("-l", argv[i])) {
