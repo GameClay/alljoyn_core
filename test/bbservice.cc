@@ -565,9 +565,10 @@ Mutex LocalTestObject::DelayedResponse::delayedResponseLock;
 
 static void usage(void)
 {
-    printf("Usage: bbservice [-h <name>] [-e] [-x] [-i #] [-n <name>] [-b] [t] [-l]\n\n");
+    printf("Usage: bbservice [-h <name>] [-m] [-e] [-x] [-i #] [-n <name>] [-b] [t] [-l]\n\n");
     printf("Options:\n");
     printf("   -h         = Print this help message\n");
+    printf("   -m         = Session is a multi-point session\n");
     printf("   -e         = Echo received signals back to sender\n");
     printf("   -x         = Compress signals echoed back to sender\n");
     printf("   -i #       = Signal report interval (number of signals rx per update; default = 1000)\n");
@@ -624,6 +625,8 @@ int main(int argc, char** argv)
             } else {
                 g_wellKnownName = argv[i];
             }
+        } else if (0 == strcmp("-m", argv[i])) {
+            opts.isMultipoint = true;
         } else if (0 == strcmp("-b", argv[i])) {
             opts.transports |= TRANSPORT_BLUETOOTH;
         } else if (0 == strcmp("-t", argv[i])) {
