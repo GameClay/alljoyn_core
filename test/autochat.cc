@@ -317,7 +317,7 @@ int main(int argc, char** argv)
         s_bus->RegisterBusListener(*s_busListener);
     }
 
-    /* Add a rule to allow org.codeaurora.samples.chat.Chat signals to be routed here */
+    /* Add a rule to allow org.alljoyn.samples.chat.Chat signals to be routed here */
     if (ER_OK == status) {
         MsgArg arg("s", "type='signal',interface='org.alljoyn.bus.samples.chat',member='Chat'");
         Message reply(*bus);

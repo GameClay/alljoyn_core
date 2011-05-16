@@ -18,7 +18,7 @@ basic_client.cc:
     $ ./basic_client
     AllJoyn Library version: v1.2.1
     AllJoyn Library build info: AllJoyn Library v1.2.1 (Built Mon Apr 19 18:44:15 UTC 2010 on ubuntu ...
-    org.codeaurora.method_sample.cat ( path=/org/codeaurora) returned "Hello World!"
+    org.alljoyn.method_sample.cat ( path=/org/alljoyn) returned "Hello World!"
     basic client exiting with status 0 (ER_OK)    
 
 
@@ -29,7 +29,7 @@ The following show an example of how to emit and subscribe to an AllJoyn signel.
     +nameChange_client.cc
     
 signal_service.cc:
-    will create a service that will join the bus and request the name 'org.codeaurora.signal_sample'.
+    will create a service that will join the bus and request the name 'org.alljoyn.signal_sample'.
     this service will have a property 'name' the name can be changed using Get and Set methouds.
     when the value for 'name' is changed a 'nameChanged' signal will be sent with the new name assigned to the 'name' property.
     
@@ -38,7 +38,7 @@ signalConsumer_client.cc:
      
 nameChange_client.cc:
     will accept a text string as one of its command line arguments.
-    The string will be sent to the 'org.codeaurora.signal_sample' object and will be used as the new 'name' property using the 'set' methoud. 
+    The string will be sent to the 'org.alljoyn.signal_sample' object and will be used as the new 'name' property using the 'set' methoud. 
     
 
         Example output:

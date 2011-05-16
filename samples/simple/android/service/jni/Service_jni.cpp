@@ -254,7 +254,7 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_st
 
     const char* daemonAddr = "unix:abstract=alljoyn";
 
-    /* Add org.codeaurora.samples.simple interface */
+    /* Add org.alljoyn.samples.simple interface */
     InterfaceDescription* testIntf = NULL;
     QStatus status = s_bus->CreateInterface(SIMPLE_SERVICE_INTERFACE_NAME, testIntf);
     if (ER_OK == status) {
