@@ -754,21 +754,22 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
         QCC_LogError(status, ("MarshalMessage expected signature \"%s\" got \"%s\"", expectedSignature.c_str(), signature));
         goto ExitMarshalMessage;
     }
-    /*
-     * Check if we are to do header compression.
-     */
-    if ((msgHeader.flags & ALLJOYN_FLAG_COMPRESSED)) {
-        hdrFields.field[ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN].v_uint32 = bus.GetInternal().GetCompressionRules().GetToken(hdrFields);
-        hdrFields.field[ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN].typeId = ALLJOYN_UINT32;
-    } else {
-        hdrFields.field[ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN].typeId = ALLJOYN_INVALID;
-    }
     /* Check if we are adding a session id */
     if (sessionId != 0) {
         hdrFields.field[ALLJOYN_HDR_FIELD_SESSION_ID].v_uint32 = sessionId;
         hdrFields.field[ALLJOYN_HDR_FIELD_SESSION_ID].typeId = ALLJOYN_UINT32;
     } else {
         hdrFields.field[ALLJOYN_HDR_FIELD_SESSION_ID].typeId = ALLJOYN_INVALID;
+    }
+    /*
+     * Check if we are to do header compression. We must do this last after all the other fields
+     * have been initialized.
+     */
+    if ((msgHeader.flags & ALLJOYN_FLAG_COMPRESSED)) {
+        hdrFields.field[ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN].v_uint32 = bus.GetInternal().GetCompressionRules().GetToken(hdrFields);
+        hdrFields.field[ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN].typeId = ALLJOYN_UINT32;
+    } else {
+        hdrFields.field[ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN].typeId = ALLJOYN_INVALID;
     }
     /*
      * Calculate space required for the header fields
