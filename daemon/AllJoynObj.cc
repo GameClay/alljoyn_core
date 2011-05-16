@@ -1919,7 +1919,7 @@ void AllJoynObj::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
                             }
                         }
                     }
-                    if (sme.memberNames.empty() || ((sme.memberNames.size() == 1) && sme.sessionHost.empty())) {
+                    if ((sme.memberNames.empty() || ((sme.memberNames.size() == 1) && sme.sessionHost.empty())) && (sit->second.fd == -1)) {
                         SendSessionLost(sme);
                         sessionMap.erase(sit++);
                     } else {
