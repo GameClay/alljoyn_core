@@ -310,6 +310,16 @@ class BusAttachment : public MessageReceiver {
                                     const char* srcPath);
 
     /**
+     * Unregister all signal and reply handlers for the specified message receiver. This function is
+     * intended to be called from within the destructor of a MessageReceiver class instance. It
+     * prevents any pending signals or replies from accessing the MessageReceiver after the message
+     * receiver has been freed.
+     *
+     * @param receiver       The message receiver that is being unregistered.
+     */
+    QStatus UnregisterAllHandlers(MessageReceiver* receiver);
+
+    /**
      * Enable peer-to-peer security. This function must be called by applications that want to use
      * secure interfaces. This bus must have been started by calling BusAttachment::Start() before this
      * function is called.

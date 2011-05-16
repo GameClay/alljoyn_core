@@ -526,6 +526,11 @@ QStatus BusAttachment::UnregisterSignalHandler(MessageReceiver* receiver,
     return busInternal->localEndpoint.UnregisterSignalHandler(receiver, signalHandler, member, srcPath);
 }
 
+QStatus BusAttachment::UnregisterAllHandlers(MessageReceiver* receiver)
+{
+    return busInternal->localEndpoint.UnregisterAllHandlers(receiver);
+}
+
 bool BusAttachment::IsConnected() const {
     return busInternal->router->IsBusRunning();
 }

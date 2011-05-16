@@ -168,6 +168,13 @@ class SignalTable {
                 const char* sourcePath);
 
     /**
+     * Remove all entries from the signal hash table for the specified receiver.
+     *
+     * @param receiver    Object receiving the message.
+     */
+    void RemoveAll(MessageReceiver* receiver);
+
+    /**
      * Find Entries based on set of criteria.
      * Signal table lock should be held until iterators are no longer in use.
      *

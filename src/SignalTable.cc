@@ -75,7 +75,22 @@ void SignalTable::Remove(MessageReceiver* receiver,
     lock.Unlock();
 }
 
-
+void SignalTable::RemoveAll(MessageReceiver* receiver)
+{
+    bool removed;
+    lock.Lock();
+    do {
+        removed = false;
+        for (iterator iter = hashTable.begin(); iter != hashTable.end(); ++iter) {
+            if (iter->second.object == receiver) {
+                hashTable.erase(iter);
+                removed = true;
+                break;
+            }
+        }
+    } while (removed);
+    lock.Unlock();
+}
 
 pair<SignalTable::const_iterator, SignalTable::const_iterator> SignalTable::Find(const char* sourcePath,
                                                                                  const char* iface,

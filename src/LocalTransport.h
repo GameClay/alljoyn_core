@@ -185,6 +185,16 @@ class LocalEndpoint : public BusEndpoint, public qcc::AlarmListener, public Mess
                                     const char* srcPath);
 
     /**
+     * Un-Register all signal and reply handlers registered to the specified MessageReceiver.
+     *
+     * @param receiver   The object receiving the signal or waiting for the reply.
+     * @return
+     *      - ER_OK if successful
+     *      - An error status otherwise
+     */
+    QStatus UnregisterAllHandlers(MessageReceiver* receiver);
+
+    /**
      * Get the endpoint's unique name.
      *
      * @return   Unique name for endpoint.

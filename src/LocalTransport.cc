@@ -541,6 +541,32 @@ QStatus LocalEndpoint::UnregisterSignalHandler(MessageReceiver* receiver,
     return ER_OK;
 }
 
+QStatus LocalEndpoint::UnregisterAllHandlers(MessageReceiver* receiver)
+{
+    /*
+     * Remove all the signal handlers for this receiver.
+     */
+    signalTable.RemoveAll(receiver);
+    /*
+     * Remove any reply handlers for this receiver
+     */
+    replyMapLock.Lock();
+    bool removed;
+    do {
+        removed = false;
+        for (map<uint32_t, ReplyContext>::iterator iter = replyMap.begin(); iter != replyMap.end(); ++iter) {
+            if (iter->second.object == receiver) {
+                bus.GetInternal().GetTimer().RemoveAlarm(iter->second.alarm);
+                replyMap.erase(iter);
+                removed = true;
+                break;
+            }
+        }
+    } while (removed);
+    replyMapLock.Unlock();
+    return ER_OK;
+}
+
 void LocalEndpoint::AlarmTriggered(const Alarm& alarm, QStatus reason)
 {
     /*
