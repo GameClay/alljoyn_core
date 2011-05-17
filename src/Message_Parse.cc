@@ -1181,6 +1181,9 @@ QStatus _Message::AddExpansionRule(uint32_t token, const MsgArg* expansionArg)
      */
     QStatus status = ER_BUS_HDR_EXPANSION_INVALID;
     HeaderFields expFields;
+    for (size_t i = 0; i < ArraySize(expFields.field); i++) {
+        expFields.field[i].typeId = ALLJOYN_INVALID;
+    }
     const MsgArg* field = expansionArg->v_array.elements;
     for (size_t i = 0; i < expansionArg->v_array.numElements; i++, field++) {
         const MsgArg* id = &(field->v_struct.members[0]);

@@ -62,23 +62,29 @@ AllJoynPeerObj::AllJoynPeerObj(BusAttachment& bus) : BusObject(bus, org::alljoyn
     /* Add org.alljoyn.Bus.Peer.HeaderCompression interface */
     {
         const InterfaceDescription* ifc = bus.GetInterface(org::alljoyn::Bus::Peer::HeaderCompression::InterfaceName);
-        AddInterface(*ifc);
-        AddMethodHandler(ifc->GetMember("GetExpansion"), static_cast<MessageReceiver::MethodHandler>(&AllJoynPeerObj::GetExpansion));
+        if (ifc) {
+            AddInterface(*ifc);
+            AddMethodHandler(ifc->GetMember("GetExpansion"), static_cast<MessageReceiver::MethodHandler>(&AllJoynPeerObj::GetExpansion));
+        }
     }
     /* Add org.alljoyn.Bus.Peer.Authentication interface */
     {
         const InterfaceDescription* ifc = bus.GetInterface(org::alljoyn::Bus::Peer::Authentication::InterfaceName);
-        AddInterface(*ifc);
-        AddMethodHandler(ifc->GetMember("AuthChallenge"), static_cast<MessageReceiver::MethodHandler>(&AllJoynPeerObj::AuthChallenge));
-        AddMethodHandler(ifc->GetMember("ExchangeGuids"), static_cast<MessageReceiver::MethodHandler>(&AllJoynPeerObj::ExchangeGuids));
-        AddMethodHandler(ifc->GetMember("GenSessionKey"), static_cast<MessageReceiver::MethodHandler>(&AllJoynPeerObj::GenSessionKey));
-        AddMethodHandler(ifc->GetMember("ExchangeGroupKeys"), static_cast<MessageReceiver::MethodHandler>(&AllJoynPeerObj::ExchangeGroupKeys));
+        if (ifc) {
+            AddInterface(*ifc);
+            AddMethodHandler(ifc->GetMember("AuthChallenge"), static_cast<MessageReceiver::MethodHandler>(&AllJoynPeerObj::AuthChallenge));
+            AddMethodHandler(ifc->GetMember("ExchangeGuids"), static_cast<MessageReceiver::MethodHandler>(&AllJoynPeerObj::ExchangeGuids));
+            AddMethodHandler(ifc->GetMember("GenSessionKey"), static_cast<MessageReceiver::MethodHandler>(&AllJoynPeerObj::GenSessionKey));
+            AddMethodHandler(ifc->GetMember("ExchangeGroupKeys"), static_cast<MessageReceiver::MethodHandler>(&AllJoynPeerObj::ExchangeGroupKeys));
+        }
     }
     /* Add org.alljoyn.Bus.Peer.Session interface */
     {
         const InterfaceDescription* ifc = bus.GetInterface(org::alljoyn::Bus::Peer::Session::InterfaceName);
-        AddInterface(*ifc);
-        AddMethodHandler(ifc->GetMember("AcceptSession"), static_cast<MessageReceiver::MethodHandler>(&AllJoynPeerObj::AcceptSession));
+        if (ifc) {
+            AddInterface(*ifc);
+            AddMethodHandler(ifc->GetMember("AcceptSession"), static_cast<MessageReceiver::MethodHandler>(&AllJoynPeerObj::AcceptSession));
+        }
     }
 }
 

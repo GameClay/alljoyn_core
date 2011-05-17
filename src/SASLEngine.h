@@ -156,6 +156,16 @@ class SASLEngine {
   private:
 
     /**
+     * Copy constructor is private and does nothing
+     */
+    SASLEngine(const SASLEngine& other) : bus(other.bus), listener(NULL), authMechanism(NULL), extHandler(NULL) { }
+
+    /**
+     * Assigment operator is private and does nothing
+     */
+    SASLEngine& operator=(const SASLEngine& other) { return *this; }
+
+    /**
      * Default constructor is private
      */
     SASLEngine();
