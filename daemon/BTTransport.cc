@@ -521,6 +521,7 @@ QStatus BTTransport::Connect(const BTBusAddress& addr,
     if (status != ER_OK) {
         QCC_LogError(status, ("BTEndpoint::Establish failed"));
         EndpointExit(conn);
+        conn = NULL;
         goto exit;
     }
 
@@ -531,6 +532,7 @@ QStatus BTTransport::Connect(const BTBusAddress& addr,
     if (status != ER_OK) {
         QCC_LogError(status, ("BTEndpoint::Start failed"));
         EndpointExit(conn);
+        conn = NULL;
         goto exit;
     }
 
@@ -550,7 +552,8 @@ exit:
         }
     }
 
-    btController->PostConnect(status, conn);
+    String emptyName;
+    btController->PostConnect(status, addr, conn ? conn->GetRemoteName() : emptyName);
 
     return status;
 }

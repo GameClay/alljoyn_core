@@ -142,6 +142,12 @@ const InterfaceDesc btmIfcTable[] = {
 
 BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
     BusObject(bus, bluetoothObjPath),
+#ifndef NDEBUG
+    dbgIface(this),
+    discoverTimer(dbgIface.LookupTimingProperty("DiscoverTimes")),
+    sdpQueryTimer(dbgIface.LookupTimingProperty("SDPQueryTimes")),
+    connectTimer(dbgIface.LookupTimingProperty("ConnectTimes")),
+#endif
     bus(bus),
     bt(bt),
     master(NULL),
@@ -536,10 +542,14 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
              */
 
             newAdInfo = new BTNodeDB();
+
+            QCC_DEBUG_ONLY(discoverTimer.RecordTime(adBdAddr, discoverStartTime));
         }
 
         if (newAdInfo) {
+            QCC_DEBUG_ONLY(sdpQueryStartTime = sdpQueryTimer.StartTime());
             status = bt.GetDeviceInfo(adBdAddr, newUUIDRev, connAddr, *newAdInfo);
+            QCC_DEBUG_ONLY(sdpQueryTimer.RecordTime(adBdAddr, sdpQueryStartTime));
             if (status != ER_OK) {
                 delete newAdInfo;
                 cacheLock.Unlock();
@@ -691,25 +701,28 @@ const BTBusAddress& BTController::PrepConnect(const BTBusAddress& addr)
 
     lock.Unlock();
 
+    QCC_DEBUG_ONLY(connectStartTimes[addr.addr] = connectTimer.StartTime());
+
     return node->GetConnectAddress();
 }
 
 
-void BTController::PostConnect(QStatus status, const RemoteEndpoint* ep)
+void BTController::PostConnect(QStatus status, const BTBusAddress& addr, const String& remoteName)
 {
     bool restoreOps = true;
 
+
     lock.Lock();
     if (status == ER_OK) {
-        assert(ep);
-        BTBusAddress addr = static_cast<const BTEndpoint*>(ep)->GetBTBusAddress();
+        QCC_DEBUG_ONLY(connectTimer.RecordTime(addr.addr, connectStartTimes[addr.addr]));
+        assert(!remoteName.empty());
         if (!master && !nodeDB.FindNode(addr)->IsValid()) {
             /* Only call SendSetState for new outgoing connections.  If we
              * have a master then the connection can't be new.  If we are the
              * master then there should be node device with the same bus
              * address as the endpoint.
              */
-            SendSetState(ep->GetRemoteName());
+            SendSetState(remoteName);
             restoreOps = false;
         }
     }
@@ -888,7 +901,7 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                     cacheInfo->timeout = Alarm(LOST_DEVICE_TIMEOUT, this, 0, new UUIDRevCacheInfo(cacheInfo));
                     bus.GetInternal().GetDispatcher().AddAlarm(cacheInfo->timeout);
                     uuidRevCache.insert(UUIDRevCacheMapEntry(node->GetUUIDRev(), cacheInfo));
-                    QCC_DbgPrintf(("Added %s to new uuidRev cache entry for %08x", node->GetBusAddress().ToString().c_str(), node->GetUUIDRev()));
+                    QCC_DbgPrintf(("Added %s (%lu names) to new uuidRev cache entry for %08x", node->GetBusAddress().ToString().c_str(), node->AdvertiseNamesSize(), node->GetUUIDRev()));
                 } else {
                     adInfo = ci->second->adInfo;
                     QCC_DbgPrintf(("Added %s to existing uuidRev cache entry for %08x", node->GetBusAddress().ToString().c_str(), node->GetUUIDRev()));
@@ -1122,6 +1135,12 @@ QStatus BTController::DoNameOp(const qcc::String& name,
     if (devAvailable) {
         if (IsMaster()) {
             QCC_DbgPrintf(("Handling %s locally (we're the master)", signal.name.c_str()));
+
+#ifndef NDEBUG
+            if (add && (&nameArgInfo == static_cast<NameArgInfo*>(&find))) {
+                discoverStartTime = discoverTimer.StartTime();
+            }
+#endif
 
             UpdateDelegations(advertise, listening);
             UpdateDelegations(find);
@@ -2345,6 +2364,25 @@ void BTController::DumpNodeStateTable() const
             QCC_DbgPrintf(("            %s", nameit->c_str()));
         }
     }
+}
+
+
+void BTController::FlushCachedNames()
+{
+    cacheLock.Lock();
+
+    UUIDRevCacheMap::iterator ci = uuidRevCache.begin();
+    while (ci != uuidRevCache.end()) {
+        bus.GetInternal().GetDispatcher().RemoveAlarm(ci->second->timeout);
+        delete ci->second->adInfo;
+        uuidRevCache.erase(ci);
+        ci = uuidRevCache.begin();
+    }
+
+    DistributeAdvertisedNameChanges(NULL, &foundNodeDB);
+
+    foundNodeDB.Clear();
+    cacheLock.Unlock();
 }
 #endif
 

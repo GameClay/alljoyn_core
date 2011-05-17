@@ -41,6 +41,10 @@
 #include "Bus.h"
 #include "NameTable.h"
 
+#ifndef NDEBUG
+#include "BTDebug.h"
+#endif
+
 
 namespace ajn {
 
@@ -165,7 +169,13 @@ class BluetoothDeviceInterface {
  * used by the Bluetooth transport for the purposes of maintaining a sane
  * topology.
  */
-class BTController : public BusObject, public NameListener, public qcc::AlarmListener {
+class BTController :
+#ifndef NDEBUG
+    public debug::BTDebugObjAccess,
+#endif
+    public BusObject,
+    public NameListener,
+    public qcc::AlarmListener {
   public:
     /**
      * Constructor
@@ -289,10 +299,11 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
      * when the connect operation failed and there are no other Bluetooth
      * AllJoyn connections.
      *
-     * @param status    Status result of creating the connection.
-     * @param ep        Pointer to the newly created enpoint if status == ER_OK.
+     * @param status        Status result of creating the connection.
+     * @param addr          Bus address of device connected to.
+     * @param remoteName    Unique bus name of the AllJoyn daemon on the other side (only if status == ER_OK)
      */
-    void PostConnect(QStatus status, const RemoteEndpoint* ep);
+    void PostConnect(QStatus status, const BTBusAddress& addr, const qcc::String& remoteName);
 
     /**
      * Function for the BT Transport to inform a change in the
@@ -651,6 +662,17 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
 
 #ifndef NDEBUG
     void DumpNodeStateTable() const;
+    void FlushCachedNames();
+
+    debug::BTDebugObj dbgIface;
+
+    debug::BTDebugObj::BTDebugTimingProperty& discoverTimer;
+    debug::BTDebugObj::BTDebugTimingProperty& sdpQueryTimer;
+    debug::BTDebugObj::BTDebugTimingProperty& connectTimer;
+
+    uint64_t discoverStartTime;
+    uint64_t sdpQueryStartTime;
+    std::map<BDAddress, uint64_t> connectStartTimes;
 #endif
 
     BusAttachment& bus;
@@ -703,7 +725,6 @@ class BTController : public BusObject, public NameListener, public qcc::AlarmLis
             } Bus;
         } alljoyn;
     } org;
-
 };
 
 }

@@ -136,7 +136,6 @@ LocalEndpoint::~LocalEndpoint()
 QStatus LocalEndpoint::Start()
 {
     QStatus status = ER_OK;
-
     /* Set the local endpoint's unique name */
     SetUniqueName(bus.GetInternal().GetRouter().GenerateUniqueName());
 
@@ -157,17 +156,6 @@ QStatus LocalEndpoint::Start()
         if (mintf) {
             alljoynObj = new ProxyBusObject(bus, org::alljoyn::Bus::WellKnownName, org::alljoyn::Bus::ObjectPath, 0);
             alljoynObj->AddInterface(*mintf);
-        } else {
-            status = ER_BUS_NO_SUCH_INTERFACE;
-        }
-    }
-
-    if (!alljoynDebugObj && (ER_OK == status)) {
-        /* Register well known org.alljoyn.Bus remote object */
-        const InterfaceDescription* dintf = bus.GetInterface(org::alljoyn::Daemon::Debug::InterfaceName);
-        if (dintf) {
-            alljoynDebugObj = new ProxyBusObject(bus, org::alljoyn::Daemon::WellKnownName, org::alljoyn::Daemon::Debug::ObjectPath, 0);
-            alljoynDebugObj->AddInterface(*dintf);
         } else {
             status = ER_BUS_NO_SUCH_INTERFACE;
         }
@@ -283,7 +271,7 @@ QStatus LocalEndpoint::PushMessage(Message& message)
 
     if (!running) {
         status = ER_BUS_STOPPING;
-        QCC_LogError(status, ("Local transport not running discarding %s", message->Description().c_str()));
+        QCC_DbgHLPrintf(("Local transport not running discarding %s", message->Description().c_str()));
     } else {
         if (IncrementAndFetch(&refCount) > 1) {
             Thread* thread = Thread::GetThread();
@@ -778,7 +766,7 @@ QStatus LocalEndpoint::HandleMethodReply(Message& message)
     } else {
         replyMapLock.Unlock();
         status = ER_BUS_UNMATCHED_REPLY_SERIAL;
-        QCC_LogError(status, ("%s does not match any current method calls", message->Description().c_str()));
+        QCC_DbgHLPrintf(("%s does not match any current method calls: %s", message->Description().c_str(), QCC_StatusText(status)));
     }
     return status;
 }
@@ -797,5 +785,25 @@ void LocalEndpoint::BusIsConnected()
         }
     }
 }
+
+
+const ProxyBusObject& LocalEndpoint::GetAllJoynDebugObj() {
+    if (!alljoynDebugObj) {
+        /* Register well known org.alljoyn.Bus.Debug remote object */
+        alljoynDebugObj = new ProxyBusObject(bus, org::alljoyn::Daemon::WellKnownName, org::alljoyn::Daemon::Debug::ObjectPath, 0);
+        const InterfaceDescription* intf;
+        intf = bus.GetInterface(org::alljoyn::Daemon::Debug::InterfaceName);
+        if (intf) {
+            alljoynDebugObj->AddInterface(*intf);
+        }
+        intf = bus.GetInterface(org::freedesktop::DBus::Properties::InterfaceName);
+        if (intf) {
+            alljoynDebugObj->AddInterface(*intf);
+        }
+    }
+
+    return *alljoynDebugObj;
+}
+
 
 }

@@ -29,6 +29,7 @@ progs = [
     env.Program('bbdisco',       ['bbdisco.cc']),
     env.Program('bbsig',         ['bbsig.cc']),
     env.Program('bbclient',      ['bbclient.cc']),
+    env.Program('bttimingclient', ['bttimingclient.cc']),
     env.Program('marshal',       ['marshal.cc']),
     env.Program('names',         ['names.cc']),
     env.Program('compression',   ['compression.cc']),

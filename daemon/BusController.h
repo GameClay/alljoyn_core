@@ -65,7 +65,7 @@ class BusController {
 
 #ifndef NDEBUG
     /** BusObject responsible for org.alljoyn.Debug */
-    AllJoynDebugObj alljoynDebugObj;
+    debug::AllJoynDebugObj alljoynDebugObj;
 #endif
 
     /** Bus object responsible for org.freedesktop.DBus */

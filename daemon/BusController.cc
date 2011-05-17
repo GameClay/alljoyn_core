@@ -49,11 +49,17 @@ BusController::BusController(Bus& bus, QStatus& status) :
     if (ER_OK == status) {
         status = alljoynObj.Init();
     }
+
 #ifndef NDEBUG
+    // AlljoynDebugObj must be initialized last.
     if (ER_OK == status) {
         status = alljoynDebugObj.Init();
     }
 #endif
 }
+
+#ifndef NDEBUG
+debug::AllJoynDebugObj* debug::AllJoynDebugObj::self = NULL;
+#endif
 
 }

@@ -257,7 +257,7 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
                      *
                      */
                     if ((router.IsDaemon() && !bus2bus) || (status == ER_BUS_SIGNATURE_MISMATCH) || (status == ER_BUS_UNMATCHED_REPLY_SERIAL)) {
-                        QCC_LogError(status, ("Discarding %s", msg->Description().c_str()));
+                        QCC_DbgHLPrintf(("Discarding %s: %s", msg->Description().c_str(), QCC_StatusText(status)));
                         status = ER_OK;
                     }
                 }
@@ -308,7 +308,7 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
             }
         }
     }
-    if ((ER_OK != status) && (ER_STOPPING_THREAD != status) && (ER_SOCK_OTHER_END_CLOSED != status)) {
+    if ((status != ER_OK) && (status != ER_STOPPING_THREAD) && (status != ER_SOCK_OTHER_END_CLOSED) && (status != ER_BUS_STOPPING)) {
         QCC_LogError(status, ("Endpoint Rx thread (%s) exiting", GetName().c_str()));
     }
 

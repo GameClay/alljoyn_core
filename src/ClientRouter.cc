@@ -63,7 +63,7 @@ QStatus ClientRouter::PushMessage(Message& msg, BusEndpoint& sender)
     }
 
     if (ER_OK != status) {
-        QCC_LogError(status, ("ClientRouter::PushMessage failed"));
+        QCC_DbgHLPrintf(("ClientRouter::PushMessage failed: %s", QCC_StatusText(status)));
     }
     return status;
 }
