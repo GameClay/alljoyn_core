@@ -502,7 +502,7 @@ int main(int argc, char** argv)
             // connections are dropped too soon after being established too
             // often.  A small random delay helps simulate more real world
             // activity.
-            Sleep(Rand32() % 2000 + 4000);
+            qcc::Sleep(Rand32() % 2000 + 4000);
 
             status = msgBus.LeaveSession(busListener.GetSessionId());
             if (status != ER_OK) {
@@ -543,7 +543,7 @@ int main(int argc, char** argv)
             // Bluetooth dongles seem to lose their little minds if
             // connections are created too soon after being dropped too often.
             // A small random delay helps simulate more real world activity.
-            Sleep(Rand32() % 2000 + 4000);
+            qcc::Sleep(Rand32() % 2000 + 4000);
         }
 
     }
