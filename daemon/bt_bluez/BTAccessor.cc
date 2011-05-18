@@ -1446,7 +1446,7 @@ void BTTransport::BTAccessor::ProcessXMLAdvertisementsAttr(const XmlElement* ele
                 bool gotNames = false;
                 BTNodeInfo nodeInfo;
                 BDAddress addr;
-                uint16_t psm;
+                uint16_t psm = bt::INVALID_PSM;
 
                 for (size_t j = 0; j < tupleElements.size(); ++j) {
                     if (tupleElements[j]) {

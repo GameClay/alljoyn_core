@@ -22,7 +22,6 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <error.h>
 #include <signal.h>
 #include <stdio.h>
 
@@ -414,7 +413,6 @@ int main(int argc, char** argv)
 
 
     for (unsigned long i = 0; i < repCount; ++i) {
-        ProxyBusObject btTimingObj;
         Timespec nowts;
         uint64_t startTime;
 
@@ -423,7 +421,7 @@ int main(int argc, char** argv)
 
             /* Create message bus */
             BusAttachment msgBus("bttimingclient", true);
-            g_msgBus = &msgBus;
+            ProxyBusObject btTimingObj;
 
             InterfaceDescription* testIntf = NULL;
             status = msgBus.CreateInterface("org.alljoyn.Bus.Debug.BT", testIntf);
@@ -456,6 +454,7 @@ int main(int argc, char** argv)
                 QCC_LogError(status, ("BusAttachment::Start failed"));
                 goto exit;
             }
+            g_msgBus = &msgBus;
 
             btTimingObj = msgBus.GetAllJoynDebugObj();  // make a copy
             btTimingObj.AddInterface(*testIntf);
