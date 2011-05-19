@@ -70,7 +70,7 @@
 				GenerateManifest="false"
 				UACExecutionLevel="0"
 				UACUIAccess="false"
-				IgnoreDefaultLibraryNames=""
+				IgnoreDefaultLibraryNames="MSVCRT"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=""
 				SubSystem="2"
@@ -96,7 +96,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="cmd /k $(OutDir)\$(TargetFileName) ..\..\..\..\build\windows\x86\debug\dist\bin"
+				CommandLine="copy $(OutDir)\$(TargetFileName) ..\..\..\..\build\windows\x86\debug\dist\bin"
 			/>
 		</Configuration>
 		<Configuration
