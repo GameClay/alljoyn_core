@@ -341,8 +341,13 @@ class BTController :
         bool active;
         bool dirty;
         size_t count;
-        NameArgInfo(BTController& bto, size_t size, qcc::Timer& dispatcher) :
-            bto(bto), argsSize(size), dispatcher(dispatcher), active(false), dirty(false), count(0)
+        NameArgInfo(BTController& bto, size_t size) :
+            bto(bto),
+            argsSize(size),
+            dispatcher(bto.bus.GetInternal().GetDispatcher()),
+            active(false),
+            dirty(false),
+            count(0)
         {
             args = new MsgArg[size];
             minion = bto.self;
@@ -382,7 +387,7 @@ class BTController :
 
     struct AdvertiseNameArgInfo : public NameArgInfo {
         std::vector<MsgArg> adInfoArgs;
-        AdvertiseNameArgInfo(BTController& bto, qcc::Timer& dispatcher);
+        AdvertiseNameArgInfo(BTController& bto);
         void AddName(const qcc::String& name, BTNodeInfo& node);
         void RemoveName(const qcc::String& name, BTNodeInfo& node);
         void SetArgs();
@@ -398,7 +403,7 @@ class BTController :
         qcc::String resultDest;
         BDAddressSet ignoreAddrs;
         std::vector<uint64_t> ignoreAddrsCache;
-        FindNameArgInfo(BTController& bto, qcc::Timer& dispatcher);
+        FindNameArgInfo(BTController& bto);
         void AddName(const qcc::String& name, BTNodeInfo& node);
         void RemoveName(const qcc::String& name, BTNodeInfo& node);
         void SetArgs();

@@ -157,8 +157,8 @@ BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
                        ABSOLUTE_MAX_CONNECTIONS)),
     listening(false),
     devAvailable(false),
-    advertise(*this, bus.GetInternal().GetDispatcher()),
-    find(*this, bus.GetInternal().GetDispatcher())
+    advertise(*this),
+    find(*this)
 {
     while (masterUUIDRev == bt::INVALID_UUIDREV) {
         masterUUIDRev = qcc::Rand32();
@@ -2121,6 +2121,10 @@ void BTController::NameArgInfo::StartOp(bool restart)
         }
     }
 
+    if (status != ER_OK) {
+        QCC_LogError(status, ("StartOp(restart = %d) failed", restart));
+    }
+
     active = (status == ER_OK);
 }
 
@@ -2141,12 +2145,16 @@ void BTController::NameArgInfo::StopOp()
         }
     }
 
+    if (status != ER_OK) {
+        QCC_LogError(status, ("StopOp() failed"));
+    }
+
     active = !(status == ER_OK);
 }
 
 
-BTController::AdvertiseNameArgInfo::AdvertiseNameArgInfo(BTController& bto, qcc::Timer& dispatcher) :
-    NameArgInfo(bto, SIG_DELEGATE_AD_SIZE, dispatcher)
+BTController::AdvertiseNameArgInfo::AdvertiseNameArgInfo(BTController& bto) :
+    NameArgInfo(bto, SIG_DELEGATE_AD_SIZE)
 {
 }
 
@@ -2225,7 +2233,7 @@ void BTController::AdvertiseNameArgInfo::ClearArgs()
 void BTController::AdvertiseNameArgInfo::StartOp(bool restart)
 {
     if (!restart) {
-        bto.bus.GetInternal().GetDispatcher().RemoveAlarm(bto.stopAd);
+        dispatcher.RemoveAlarm(bto.stopAd);
     }
 
     NameArgInfo::StartOp(restart);
@@ -2236,10 +2244,10 @@ void BTController::AdvertiseNameArgInfo::StopOp()
 {
     NameArgInfo::StopOp();
 
-    assert(!bto.bus.GetInternal().GetDispatcher().HasAlarm(bto.stopAd));
+    assert(!dispatcher.HasAlarm(bto.stopAd));
 
     bto.stopAd = Alarm(DELEGATE_TIME * 1000, &bto);
-    bto.bus.GetInternal().GetDispatcher().AddAlarm(bto.stopAd);
+    dispatcher.AddAlarm(bto.stopAd);
 
     // Clear out the advertise arguments (for real this time).
     size_t argsSize = this->argsSize;
@@ -2277,8 +2285,8 @@ QStatus BTController::AdvertiseNameArgInfo::StopLocal()
 }
 
 
-BTController::FindNameArgInfo::FindNameArgInfo(BTController& bto, qcc::Timer& dispatcher) :
-    NameArgInfo(bto, SIG_DELEGATE_FIND_SIZE, dispatcher)
+BTController::FindNameArgInfo::FindNameArgInfo(BTController& bto) :
+    NameArgInfo(bto, SIG_DELEGATE_FIND_SIZE)
 {
 }
 
