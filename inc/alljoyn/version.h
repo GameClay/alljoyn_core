@@ -23,6 +23,18 @@
 
 #include <qcc/platform.h>
 
+/** Macro to compute the version number into a single value. */
+#define GenerateVersionValue(_arch, _api, _rel) (((_arch) << 24) | ((_api) << 16) | (_rel))
+
+/** Macro to extract the architecture level from unified version value. */
+#define GetVersionArch(_ver) (((_ver) >> 24) & 0xff)
+
+/** Macro to extract the API level from unified version value. */
+#define GetVersionAPILevel(_ver) (((_ver) >> 16) & 0xff)
+
+/** Macro to extract the release from unified version value. */
+#define GetVersionRelease(_ver) ((_ver) & 0xffff)
+
 namespace ajn {
 const char* GetVersion();        /**< Gives the version of AllJoyn Library */
 const char* GetBuildInfo();      /**< Gives build information of AllJoyn Library */

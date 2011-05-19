@@ -226,8 +226,9 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
                                  BDAddress* connAddr,
                                  uint16_t* connPSM,
                                  BTNodeDB* adInfo);
-    static void ProcessXMLAdvertisementsAttr(const qcc::XmlElement* elem,
-                                             BTNodeDB& adInfo);
+    static QStatus ProcessXMLAdvertisementsAttr(const qcc::XmlElement* elem,
+                                                BTNodeDB& adInfo,
+                                                uint32_t remoteVersion);
     QStatus GetDeviceObjPath(const BDAddress& bdAddr,
                              qcc::String& devObjPath);
     QStatus DiscoveryControl(const InterfaceDescription::Member& method);

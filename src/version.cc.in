@@ -44,5 +44,5 @@ const char * ajn::GetBuildInfo()
 
 uint32_t ajn::GetNumericVersion()
 {
-    return (architecture << 24) | (apiLevel << 16) | release;
+    return GenerateVersionValue(architecture, apiLevel, release);
 }

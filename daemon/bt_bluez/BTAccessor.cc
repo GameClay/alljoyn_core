@@ -1289,6 +1289,7 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
     bool foundUUIDRev = !uuidRev;
     bool foundPSM = !connPSM;
     bool foundAdInfo = !adInfo;
+    uint32_t remoteVersion = 0;
     QStatus status;
 
     status = XmlElement::Parse(xmlctx);
@@ -1335,7 +1336,27 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                     break;
 
                 case ALLJOYN_BT_VERSION_NUM_ATTR:
-                    QCC_DbgPrintf(("    Attribute ID: %04x  ALLJOYN_BT_VERSION_NUM_ATTR", attrId));
+                    while ((valElem != valElements.end()) && ((*valElem)->GetName().compare("uint32") != 0)) {
+                        ++valElem;
+                    }
+                    if (valElem == valElements.end()) {
+                        status = ER_FAIL;
+                        QCC_LogError(status, ("Missing uint32 value for Alljoyn version number"));
+                        goto exit;
+                    } else {
+                        String verStr = (*valElem)->GetAttributes().find("value")->second;
+                        remoteVersion = StringToU32(verStr);
+                        if (remoteVersion < GenerateVersionValue(2, 0, 0)) {
+                            QCC_DbgHLPrintf(("Remote device is running an unsupported version of AllJoyn"));
+                            status = ER_FAIL;
+                            goto exit;
+                        }
+                    }
+                    QCC_DbgPrintf(("    Attribute ID: %04x  ALLJOYN_BT_VERSION_NUM_ATTR: %u.%u.%u",
+                                   attrId,
+                                   GetVersionArch(remoteVersion),
+                                   GetVersionAPILevel(remoteVersion),
+                                   GetVersionRelease(remoteVersion)));
                     break;
 
                 case ALLJOYN_BT_CONN_ADDR_ATTR:
@@ -1381,7 +1402,17 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
 
                 case ALLJOYN_BT_ADVERTISEMENTS_ATTR:
                     if (adInfo) {
-                        ProcessXMLAdvertisementsAttr(*valElem, *adInfo);
+                        if (remoteVersion == 0) {
+                            status = ER_FAIL;
+                            QCC_LogError(status, ("AllJoyn version attribute must appear before the advertisements in the SDP record."));
+                            goto exit;
+                        }
+                        status = ProcessXMLAdvertisementsAttr(*valElem, *adInfo, remoteVersion);
+                        if (status != ER_OK) {
+                            status = ER_FAIL;
+                            QCC_LogError(status, ("Failed to parse advertisement information"));
+                            goto exit;
+                        }
                         foundAdInfo = true;
 
 #ifndef NDEBUG
@@ -1406,7 +1437,7 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
             }
         }
 
-        if (((!connPSM || (*connPSM == bt::INVALID_PSM))) ||
+        if ((connPSM && (*connPSM == bt::INVALID_PSM)) ||
             (!foundConnAddr || !foundUUIDRev || !foundPSM || !foundAdInfo)) {
             status = ER_FAIL;
         }
@@ -1416,18 +1447,26 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
     }
 
 exit:
+    if (status != ER_OK) {
+        if (uuidRev) *uuidRev = bt::INVALID_UUIDREV;
+        if (connAddr) *connAddr = BDAddress();
+        if (connPSM) *connPSM = bt::INVALID_PSM;
+        if (adInfo) adInfo->Clear();
+    }
+
     return status;
 }
 
 
-void BTTransport::BTAccessor::ProcessXMLAdvertisementsAttr(const XmlElement* elem, BTNodeDB& adInfo)
+QStatus BTTransport::BTAccessor::ProcessXMLAdvertisementsAttr(const XmlElement* elem, BTNodeDB& adInfo, uint32_t remoteVersion)
 {
+    QStatus status = ER_OK;
     /*
      * The levels of sequence tags is a bit confusing when parsing.  The first
-     * sequence level is for the list of bus_GUID:name_list mappings.  The
-     * second sequence level is the actual tuple of the bus_GUID and
-     * name_list.  The third sequence level is the list of names for the
-     * associated bus GUID.
+     * sequence level is effectively an array of tuples.  The second sequence
+     * level is effectively the tuple of bus GUID, Bluetooth device address,
+     * L2CAP PSM, and an array of advertised names.  The third sequence level
+     * is just the list of advertised names.
      */
 
     if (elem && (elem->GetName().compare("sequence") == 0)) {
@@ -1448,41 +1487,55 @@ void BTTransport::BTAccessor::ProcessXMLAdvertisementsAttr(const XmlElement* ele
                 BDAddress addr;
                 uint16_t psm = bt::INVALID_PSM;
 
-                for (size_t j = 0; j < tupleElements.size(); ++j) {
-                    if (tupleElements[j]) {
-                        if (tupleElements[j]->GetName().compare("text") == 0) {
-                            String guidStr = tupleElements[j]->GetAttribute("value");
-                            nodeInfo->SetGUID(Trim(guidStr));
-                            gotGUID = true;
-                        } else if (tupleElements[j]->GetName().compare("uint64") == 0) {
-                            String addrStr = Trim(tupleElements[j]->GetAttribute("value"));
-                            addr.SetRaw(StringToU64(addrStr, 0));
-                            gotBDAddr = true;
-                        } else if (tupleElements[j]->GetName().compare("uint16") == 0) {
-                            String psmStr = Trim(tupleElements[j]->GetAttribute("value"));
-                            psm = StringToU32(psmStr, 0, bt::INVALID_PSM);
-                            gotPSM = true;
-                        } else if (tupleElements[j]->GetName().compare("sequence") == 0) {
-                            // This sequence is just the list of advertised names for the given node.
-                            const vector<XmlElement*>& nameList = tupleElements[j]->GetChildren();
-                            for (size_t k = 0; k < nameList.size(); ++k) {
-                                if (nameList[k] && (nameList[k]->GetName().compare("text") == 0)) {
-                                    // A bug in BlueZ adds a space to the end of our text string.
-                                    const qcc::String name = Trim(nameList[k]->GetAttribute("value"));
-                                    nodeInfo->AddAdvertiseName(name);
-                                }
-                            }
-                            gotNames = true;
+                /*
+                 * The first four elements must be the GUID, BT devie address,
+                 * PSM, and list of advertised names.  Future versions of
+                 * AllJoyn may extend the SDP record with additional elements,
+                 * but this set in this order is the minimum requirement.  Any
+                 * missing information means the SDP record is malformed and
+                 * we should ignore it.
+                 */
+                if ((tupleElements[0]) && (tupleElements[0]->GetName().compare("text") == 0)) {
+                    String guidStr = tupleElements[0]->GetAttribute("value");
+                    nodeInfo->SetGUID(Trim(guidStr));
+                    gotGUID = !guidStr.empty();
+                }
+                if ((tupleElements[1]) && (tupleElements[1]->GetName().compare("uint64") == 0)) {
+                    String addrStr = Trim(tupleElements[1]->GetAttribute("value"));
+                    addr.SetRaw(StringToU64(addrStr, 0));
+                    gotBDAddr = addr.GetRaw() != 0;
+                }
+                if ((tupleElements[2]) && (tupleElements[2]->GetName().compare("uint16") == 0)) {
+                    String psmStr = Trim(tupleElements[2]->GetAttribute("value"));
+                    psm = StringToU32(psmStr, 0, bt::INVALID_PSM);
+                    gotPSM = psm != bt::INVALID_PSM;
+                }
+                if ((tupleElements[3]) && (tupleElements[3]->GetName().compare("sequence") == 0)) {
+                    // This sequence is just the list of advertised names for the given node.
+                    const vector<XmlElement*>& nameList = tupleElements[3]->GetChildren();
+                    for (size_t k = 0; k < nameList.size(); ++k) {
+                        if (nameList[k] && (nameList[k]->GetName().compare("text") == 0)) {
+                            // A bug in BlueZ adds a space to the end of our text string.
+                            const qcc::String name = Trim(nameList[k]->GetAttribute("value"));
+                            nodeInfo->AddAdvertiseName(name);
                         }
                     }
+                    gotNames = true;
                 }
                 if (gotGUID && gotBDAddr && gotPSM && gotNames) {
                     nodeInfo->SetBusAddress(BTBusAddress(addr, psm));
                     adInfo.AddNode(nodeInfo);
+                } else {
+                    // Malformed SDP record, ignore this device.
+                    status = ER_FAIL;
+                    goto exit;
                 }
             }
         }
     }
+
+exit:
+    return status;
 }
 
 
