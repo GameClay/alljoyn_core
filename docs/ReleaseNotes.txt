@@ -3,8 +3,8 @@ AllJoyn Version 2.0.0 Release Notes
 
 Platform Support
 ----------------
-1) Linux Ubuntu 9.10 32-bit (x86)
-2) Linux Ubnto 10.10 64-bit (x86-64)
+1) Linux Ubuntu  9.10 32-bit (x86)
+2) Linux Ubuntu 10.10 64-bit (x86-64)
 3) Android Froyo 2.2 (ARM7)
 
 
@@ -22,8 +22,8 @@ NA
 Known issues and limitations with this release
 ----------------------------------------------
 1) In this release all session names must be advertised and discovered via
-   AdvertiseName and FindAdvertsiedName. Failure to adhere to this rule will
-   cause some JoinSession attemts to fail.
+   AdvertiseName and FindAdvertisedName. Failure to adhere to this rule will
+   cause some JoinSession attempts to fail.
 
 2) Bluetooth related issues:
    - There is erratic behavior with Bluetooth when built in release mode.
@@ -46,7 +46,7 @@ The AllJoyn external APIs have changed. Applications written for AllJoyn 1.X
 will need to be modified and rebuilt for use with AllJoyn 2.0 and later.
 
 The AllJoyn daemon-to-daemon protocol has changed. Alljoyn version 2.X daemons
-are not backwards compatibile with AllJoyn 1.X daemons.
+are not backwards compatible with AllJoyn 1.X daemons.
 
 
 Change history
