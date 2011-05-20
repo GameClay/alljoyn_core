@@ -519,7 +519,7 @@ class _BTNodeInfo {
     _BTNodeInfo(const _BTNodeInfo& other) { }
 
     /**
-     * Private assignmentoperator to catch potential coding errors.
+     * Private assignment operator to catch potential coding errors.
      */
     _BTNodeInfo& operator=(const _BTNodeInfo& other) { return *this; }
 
@@ -602,6 +602,7 @@ class BTNodeDB {
     void AddNode(const BTNodeInfo& node)
     {
         Lock();
+        nodes.erase(node);  // remove the old one (if it exists) before adding the new one with updated info
         nodes.insert(node);
         addrMap[node->GetBusAddress()] = node;
         if (!node->GetUniqueName().empty()) {
