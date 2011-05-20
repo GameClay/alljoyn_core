@@ -125,7 +125,7 @@ static const char* bluetoothTopoMgrIfcName = "org.alljoyn.Bus.BluetoothControlle
 
 const InterfaceDesc btmIfcTable[] = {
     /* Methods */
-    { MESSAGE_METHOD_CALL, "SetState", SIG_SET_STATE_IN, SIG_SET_STATE_OUT, "minionCnt,uuidRev,busAddr,psm,nodeStates,foudnNodes,uuidRev,busAddr,psm,nodeStates,foundNodes" },
+    { MESSAGE_METHOD_CALL, "SetState", SIG_SET_STATE_IN, SIG_SET_STATE_OUT, "minionCnt,uuidRev,busAddr,psm,nodeStates,foundNodes,uuidRev,busAddr,psm,nodeStates,foundNodes" },
 
     /* Signals */
     { MESSAGE_SIGNAL, "FindName",            SIG_NAME_OP,       NULL, "requestorAddr,requestorPSM,findName" },
@@ -495,10 +495,12 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
             UUIDRevCacheMap::iterator ci = LookupUUIDRevCache(adNode->GetUUIDRev(), adBdAddr);
             if (ci == uuidRevCache.end()) {
                 QCC_LogError(ER_FAIL, ("Could not find %s in cache entry for %08x", adNode->GetBusAddress().ToString().c_str(), adNode->GetUUIDRev()));
+#ifndef NDEBUG
                 for (ci = uuidRevCache.begin(); ci != uuidRevCache.end(); ++ci) {
                     String label("Cache Entry " + U32ToString(ci->first, 16, 0));
                     ci->second->adInfo->DumpTable(label.c_str());
                 }
+#endif
             }
             assert(ci != uuidRevCache.end());
             cacheInfo = ci->second;
@@ -627,10 +629,10 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
 
             cacheInfo = UUIDRevCacheInfo(newAdInfo);
 
-            DistributeAdvertisedNameChanges(newAdInfo, &removedDB);
             foundNodeDB.UpdateDB(newAdInfo, &removedDB, false);
             foundNodeDB.DumpTable("Updated set of found devices");
             uuidRevCache.insert(UUIDRevCacheMapEntry(newUUIDRev, cacheInfo));
+            DistributeAdvertisedNameChanges(newAdInfo, &removedDB);
         }
 
         cacheInfo->timeout = Alarm(LOST_DEVICE_TIMEOUT, this, 0, new UUIDRevCacheInfo(cacheInfo));
@@ -765,7 +767,7 @@ void BTController::BTDeviceAvailable(bool on)
     devAvailable = on;
     lock.Lock();
     if (on) {
-        BTBusAddress addr;
+        BTBusAddress listenAddr;
         QStatus status = bt.StartListen(listenAddr.addr, listenAddr.psm);
         if (status == ER_OK) {
             assert(listenAddr.IsValid());
@@ -812,9 +814,7 @@ void BTController::BTDeviceAvailable(bool on)
             }
         }
         if (listening) {
-            listenAddr.addr.SetRaw(0);
-            listenAddr.psm = bt::INVALID_PSM;
-            self->SetBusAddress(listenAddr);
+            self->SetBusAddress(BTBusAddress());
             bt.StopListen();
             listening = false;
         }
@@ -904,7 +904,7 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                     QCC_DbgPrintf(("Added %s (%lu names) to new uuidRev cache entry for %08x", node->GetBusAddress().ToString().c_str(), node->AdvertiseNamesSize(), node->GetUUIDRev()));
                 } else {
                     adInfo = ci->second->adInfo;
-                    QCC_DbgPrintf(("Added %s to existing uuidRev cache entry for %08x", node->GetBusAddress().ToString().c_str(), node->GetUUIDRev()));
+                    QCC_DbgPrintf(("Added %s (%lu names) to existing uuidRev cache entry for %08x", node->GetBusAddress().ToString().c_str(), node->AdvertiseNamesSize(), node->GetUUIDRev()));
                 }
                 adInfo->AddNode(*it);
             }
@@ -1060,7 +1060,7 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
     }
 
     BTNodeDB::const_iterator node;
-    // Tell ourself about the names (This is best done outside the noseStateLock just in case).
+    // Tell ourself about the names (This is best done outside the Lock just in case).
     if (oldAdInfo) {
         for (node = oldAdInfo->Begin(); node != oldAdInfo->End(); ++node) {
             if (((*node)->AdvertiseNamesSize() > 0) && (*node != self)) {
@@ -1151,8 +1151,8 @@ QStatus BTController::DoNameOp(const qcc::String& name,
             MsgArg args[SIG_NAME_OP_SIZE];
             size_t argsSize = ArraySize(args);
             MsgArg::Set(args, argsSize, SIG_NAME_OP,
-                        listenAddr.addr.GetRaw(),
-                        listenAddr.psm,
+                        self->GetBusAddress().addr.GetRaw(),
+                        self->GetBusAddress().psm,
                         name.c_str());
             status = Signal(master->GetServiceName().c_str(), 0, signal, args, argsSize);
         }
@@ -1758,10 +1758,8 @@ QStatus BTController::ImportState(const BTBusAddress& addr,
             continue;
         }
 
-        BTNodeInfo connNode = incomingDB.FindNode(connNodeAddr);
-        if (!connNode->IsValid()) {
-            connNode = BTNodeInfo(connNodeAddr);
-        }
+        assert(!incomingDB.FindNode(connNodeAddr)->IsValid());
+        BTNodeInfo connNode = BTNodeInfo(connNodeAddr);
 
         for (j = 0; j < adMapSize; ++j) {
             char* guidStr;
@@ -1808,9 +1806,9 @@ QStatus BTController::ImportState(const BTBusAddress& addr,
     if (IsMaster()) {
         ++directMinions;
     }
-    DistributeAdvertisedNameChanges(&addedDB, &staleDB);
     foundNodeDB.UpdateDB(&incomingDB, &staleDB);
     foundNodeDB.DumpTable("Updated set of found devices");
+    DistributeAdvertisedNameChanges(&addedDB, &staleDB);
 
     if (find.minion == self) {
         NextDirectMinion(find.minion);
@@ -2062,9 +2060,9 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
 
             assert(adInfo);
             if (IsMaster()) {
-                DistributeAdvertisedNameChanges(NULL, adInfo);
                 foundNodeDB.UpdateDB(NULL, adInfo);
                 foundNodeDB.DumpTable("Updated set of found devices");
+                DistributeAdvertisedNameChanges(NULL, adInfo);
             }
             delete adInfo;
         }

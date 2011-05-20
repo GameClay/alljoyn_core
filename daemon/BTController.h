@@ -323,6 +323,39 @@ class BTController :
      */
     bool CheckIncomingAddress(const BDAddress& addr) const;
 
+
+    /**
+     * Get the "best" listen spec for a given set of session options.
+     *
+     * @return listenSpec (busAddr) to use for given session options (empty string if
+     *         session opts are incompatible with this transport.
+     */
+    qcc::String GetListenAddress()
+    {
+        return self->IsValid() ? self->GetBusAddress().ToSpec() : "";
+    }
+
+    /**
+     * Get a list of the possible listen specs of the current BT Transport.
+     *
+     * @param busAddrs A vector of String to which bus addresses corresponding
+     *                 to IFF_UP interfaces matching the desired characteristics
+     *                 are added.
+     * @return
+     *      - ER_OK if successful.
+     *      - an error status otherwise.
+     */
+    QStatus GetListenAddresses(std::vector<qcc::String>& busAddrs)
+    {
+        if (self->IsValid()) {
+            busAddrs.push_back(self->GetBusAddress().ToSpec());
+            return ER_OK;
+        }
+        return ER_FAIL;
+    }
+
+
+
     void NameOwnerChanged(const qcc::String& alias,
                           const qcc::String* oldOwner,
                           const qcc::String* newOwner);
@@ -698,8 +731,6 @@ class BTController :
     BTNodeInfo self;
 
     mutable qcc::Mutex lock;
-
-    BTBusAddress listenAddr;
 
     AdvertiseNameArgInfo advertise;
     FindNameArgInfo find;
