@@ -10,7 +10,8 @@ Platform Support
 
 Features added in this release
 ------------------------------
-Streaming connections and session management.
+Support for sessions.
+Support for topology management.
 
 
 Issues Addressed in this Release
@@ -20,20 +21,24 @@ NA
 
 Known issues and limitations with this release
 ----------------------------------------------
-1) This is an alpha release, intended only to preview the new 2.0
-   feature set.  The new 2.0 features are not fully implemented.
-
-2) The AllJoyn Java language binding is not supported in this
-   alpha release.
-
-3) Multicast sessions are not supported in this release
-
-4) Local sessions (involving only 1 daemon) are not supported in this release.
-
-5) In this release, all session names must be advertised and discovered via
+1) In this release all session names must be advertised and discovered via
    AdvertiseName and FindAdvertsiedName. Failure to adhere to this rule will
    cause some JoinSession attemts to fail.
 
+2) Bluetooth related issues:
+   - There is erratic behavior with Bluetooth when built in release mode.
+   - ALLJOYN-492 Multiple clients/services on a single piconet may cause
+     connection failures.
+   - Scatternets have not been significantly tested.
+   - Bluetooth does not support RAW session types at this time.
+   - Sending large messages (megabytes) between devices over Bluetooth may
+     impact Bluetooth topology manager operations.
+
+3) ALLJOYN-456: Multipoint sessions exited with LeaveSession may not generate
+   NameOwnerChanged/SessionLost indications for other nodes on the bus.
+
+4) ALLJOYN-394: ProxyBusObject::GetChild() does not work from the root "/"
+   object.
 
 Compatibility
 -------------
