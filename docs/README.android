@@ -46,6 +46,21 @@ Summary of NDK file and folder structure:
     ./samples
         C++ sample programs for AllJoyn (see Developers Guide)
 
-#   =================================================================================
-#   NOTE: The AllJoyn Java language binding is java is NOT supported in release 2.0.0
-#   =================================================================================
+ * The remaining top-level folder (java) contains a similar structure
+   underneath it, supporting the AllJoyn Java language binding:
+
+    ./java/docs
+        AllJoyn Java API (HTML documentation)
+
+    ./java/lib
+        liballjoyn_java.so
+
+    ./java/samples
+        Java sample programs for AllJoyn (see README)
+
+    ./java/samples/bin
+        prebuilt APK's
+
+    ./java/jar
+        alljoyn.jar, alljoyn_test.jar
+
