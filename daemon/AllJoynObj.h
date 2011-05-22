@@ -608,6 +608,14 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      */
     void GetAdvertisedNames(std::vector<qcc::String>& names);
 
+    /**
+     * Utility function used to clean up the session map when a session participant.
+     * leaves a session.
+     *
+     * @param endpoint  Endpoint (virtual or remote) that has left the session.
+     * @param id        Session id.
+     */
+    void RemoveSessionRefs(BusEndpoint& endpoint, SessionId id);
 };
 
 }

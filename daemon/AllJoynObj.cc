@@ -409,11 +409,24 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             String creatorName = rSessionEp->GetUniqueName();
             bool foundSessionMapEntry = false;
             multimap<pair<String, SessionId>, SessionMapEntry>::iterator sit = ajObj.sessionMap.lower_bound(pair<String, SessionId>(creatorName, 0));
-            while ((sit != ajObj.sessionMap.end()) && (creatorName == sit->first.first) && (sit->first.second == 0)) {
-                if (sit->second.sessionPort == sessionPort) {
+            while ((sit != ajObj.sessionMap.end()) && (creatorName == sit->first.first)) {
+                if ((sit->first.second == 0) && (sit->second.sessionPort == sessionPort)) {
                     sme = sit->second;
                     foundSessionMapEntry = true;
-                    break;
+                    if (!sme.opts.isMultipoint) {
+                        break;
+                    }
+                } else if ((sit->first.second != 0) && (sit->second.sessionPort == sessionPort)) {
+                    /* Check if this joiner has already joined and reject in that case */
+                    vector<String>::iterator mit = sit->second.memberNames.begin();
+                    while (mit != sit->second.memberNames.end()) {
+                        if (*mit == msg->GetSender()) {
+                            foundSessionMapEntry = false;
+                            replyCode = ALLJOYN_JOINSESSION_REPLY_ALREADY_JOINED;
+                            break;
+                        }
+                        ++mit;
+                    }
                 }
                 ++sit;
             }
@@ -519,7 +532,9 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                     }
                 }
             } else {
-                replyCode = ALLJOYN_JOINSESSION_REPLY_NO_SESSION;
+                if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
+                    replyCode = ALLJOYN_JOINSESSION_REPLY_NO_SESSION;
+                }
             }
         } else {
             /* Session is with a connected or unconnected remote device */
@@ -863,8 +878,11 @@ void AllJoynObj::LeaveSession(const InterfaceDescription::Member* member, Messag
             qcc::Shutdown(it->second.fd);
             qcc::Close(it->second.fd);
         }
-        /* Remove entry from sessionMap */
-        sessionMap.erase(it);
+        /* Remove entries from sessionMap */
+        BusEndpoint* senderEp = router.FindEndpoint(msg->GetSender());
+        if (senderEp) {
+            RemoveSessionRefs(*senderEp, id);
+        }
         sessionMapLock.Unlock();
 
         /* Send DetachSession signal to all daemons */
@@ -1235,6 +1253,42 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
         }
         sessionMapLock.Unlock();
     }
+}
+
+void AllJoynObj::RemoveSessionRefs(BusEndpoint& endpoint, SessionId id)
+{
+    String epName = endpoint.GetUniqueName();
+    sessionMapLock.Lock();
+    multimap<pair<String, SessionId>, SessionMapEntry>::iterator it = sessionMap.begin();
+    while (it != sessionMap.end()) {
+        if (it->first.second == id) {
+            if (it->first.first == endpoint.GetUniqueName()) {
+                sessionMap.erase(it++);
+            } else {
+                if (&endpoint == router.FindEndpoint(it->second.sessionHost)) {
+                    it->second.sessionHost.clear();
+                } else {
+                    vector<String>::iterator mit = it->second.memberNames.begin();
+                    while (mit != it->second.memberNames.end()) {
+                        if (epName == *mit) {
+                            mit = it->second.memberNames.erase(mit);
+                        } else {
+                            ++mit;
+                        }
+                    }
+                }
+                if (it->second.memberNames.empty() || ((it->second.memberNames.size() == 1) && it->second.sessionHost.empty())) {
+                    SendSessionLost(it->second);
+                    sessionMap.erase(it++);
+                } else {
+                    ++it;
+                }
+            }
+        } else {
+            ++it;
+        }
+    }
+    sessionMapLock.Unlock();
 }
 
 void AllJoynObj::GetSessionInfo(const InterfaceDescription::Member* member, Message& msg)
@@ -1903,32 +1957,7 @@ void AllJoynObj::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
         sessionMapLock.Lock();
         it->second->GetSessionIdsForB2B(endpoint, lostSessionIds);
         for (size_t i = 0; i < lostSessionIds.size(); ++i) {
-            multimap<pair<String, SessionId>, SessionMapEntry>::iterator sit = sessionMap.begin();
-            while (sit != sessionMap.end()) {
-                if (sit->first.second == lostSessionIds[i]) {
-                    SessionMapEntry& sme = sit->second;
-                    if (it->second == router.FindEndpoint(sme.sessionHost)) {
-                        sme.sessionHost.clear();
-                    } else {
-                        vector<String>::iterator mit = sme.memberNames.begin();
-                        while (mit != sme.memberNames.end()) {
-                            if (it->first == *mit) {
-                                mit = sme.memberNames.erase(mit);
-                            } else {
-                                ++mit;
-                            }
-                        }
-                    }
-                    if ((sme.memberNames.empty() || ((sme.memberNames.size() == 1) && sme.sessionHost.empty())) && (sit->second.fd == -1)) {
-                        SendSessionLost(sme);
-                        sessionMap.erase(sit++);
-                    } else {
-                        ++sit;
-                    }
-                } else {
-                    ++sit;
-                }
-            }
+            RemoveSessionRefs(endpoint, lostSessionIds[i]);
         }
         sessionMapLock.Unlock();
 

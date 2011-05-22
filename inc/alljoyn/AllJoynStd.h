@@ -152,6 +152,7 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
 #define ALLJOYN_JOINSESSION_REPLY_CONNECT_FAILED       4   /**< JoinSession reply: Connect to advertised address */
 #define ALLJOYN_JOINSESSION_REPLY_REJECTED             5   /**< JoinSession reply: The session creator rejected the join req */
 #define ALLJOYN_JOINSESSION_REPLY_BAD_SESSION_OPTS     6   /**< JoinSession reply: Failed due to session option incompatibilities */
+#define ALLJOYN_JOINSESSION_REPLY_ALREADY_JOINED       7   /**< JoinSession reply: Caller has already joined this session */
 #define ALLJOYN_JOINSESSION_REPLY_FAILED              10   /**< JoinSession reply: Failed for unknown reason */
 // @}
 

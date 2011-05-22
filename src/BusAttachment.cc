@@ -1119,6 +1119,10 @@ QStatus BusAttachment::JoinSession(const char* sessionHost, SessionPort sessionP
                 status = ER_ALLJOYN_JOINSESSION_REPLY_BAD_SESSION_OPTS;
                 break;
 
+            case ALLJOYN_JOINSESSION_REPLY_ALREADY_JOINED:
+                status = ER_ALLJOYN_JOINSESSION_REPLY_ALREADY_JOINED;
+                break;
+
             case ALLJOYN_JOINSESSION_REPLY_FAILED:
                 status = ER_ALLJOYN_JOINSESSION_REPLY_FAILED;
                 break;
