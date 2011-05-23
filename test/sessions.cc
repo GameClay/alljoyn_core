@@ -14,6 +14,7 @@
  *    limitations under the License.
  */
 
+#include <qcc/platform.h>
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/ProxyBusObject.h>
 #include <alljoyn/BusObject.h>
@@ -22,10 +23,10 @@
 #include <alljoyn/AllJoynStd.h>
 #include <qcc/Log.h>
 #include <qcc/String.h>
+#include <qcc/StringUtil.h>
 #include <qcc/Mutex.h>
 #include <cassert>
 #include <cstdio>
-#include <cstdlib>
 
 #include <set>
 #include <map>

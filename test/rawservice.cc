@@ -222,10 +222,10 @@ int main(int argc, char** argv)
                 printf("Failed to write testMessage (%s)\n", ::strerror(errno));
                 status = ER_FAIL;
             }
+            qcc::Sleep(1000);
 #ifdef WIN32
             closesocket(sockFd);
 #else
-            qcc::Sleep(1000);
             ::shutdown(sockFd, SHUT_RDWR);
             ::close(sockFd);
 #endif
