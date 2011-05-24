@@ -55,7 +55,7 @@ static const uint8_t MEMBER_ANNOTATE_DEPRECATED = 2; /**< Deprecated annotate fl
  * Class for describing message bus interfaces. %InterfaceDescription objects describe the methods,
  * signals and properties of a %BusObject or %ProxyBusObject.
  *
- * Calling %ProxyBusObject::AddInterface() adds the AllJoyn interface described by an
+ * Calling %ProxyBusObject::AddInterface(const char*) adds the AllJoyn interface described by an
  * %InterfaceDescription to a %ProxyBusObject instance. After an  %InterfaceDescription has been
  * added, the methods described in the interface can be called. Similarly calling
  * %BusObject::AddInterface adds the interface and it methods, properties, and signal to a

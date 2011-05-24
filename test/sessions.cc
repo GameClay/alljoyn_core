@@ -352,7 +352,7 @@ static void DoList()
     printf("  %s\n", s_bus->GetUniqueName().c_str());
     set<String>::const_iterator nit = s_requestedNames.begin();
     while (nit != s_requestedNames.end()) {
-        printf(" %s\n", nit++->c_str());
+        printf("  %s\n", nit++->c_str());
     }
 
     printf("---------Outgoing Advertisments----------------\n");

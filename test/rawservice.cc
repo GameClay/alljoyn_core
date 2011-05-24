@@ -217,7 +217,7 @@ int main(int argc, char** argv)
             size_t sent;
             status = qcc::Send(sockFd, testMessage, testMessageLen, sent);
             if (status == ER_OK) {
-                printf("Wrote %lu of %lu bytes of testMessage to socket\n", sent, testMessageLen);
+                printf("Wrote %lu of %lu bytes of testMessage to socket\n", (long unsigned int) sent, (long unsigned int) testMessageLen);
             } else {
                 printf("Failed to write testMessage (%s)\n", ::strerror(errno));
                 status = ER_FAIL;

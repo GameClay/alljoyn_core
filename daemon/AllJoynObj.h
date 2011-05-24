@@ -33,7 +33,6 @@
 
 #include <alljoyn/BusObject.h>
 #include <alljoyn/Message.h>
-#include <alljoyn/QosInfo.h>
 
 #include "Bus.h"
 #include "NameTable.h"

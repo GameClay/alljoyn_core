@@ -263,6 +263,7 @@ class _Message {
      *
      * @param signature  The signature to match against the message arguments.
      * @param ...        Pointers to return references to the unpacked values.
+     * @return  ER_OK if successful.
      */
     QStatus GetArgs(const char* signature, ...);
 

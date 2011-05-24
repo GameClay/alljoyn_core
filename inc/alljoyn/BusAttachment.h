@@ -316,6 +316,7 @@ class BusAttachment : public MessageReceiver {
      * receiver has been freed.
      *
      * @param receiver       The message receiver that is being unregistered.
+     * @return ER_OK if successful.
      */
     QStatus UnregisterAllHandlers(MessageReceiver* receiver);
 
