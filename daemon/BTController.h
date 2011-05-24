@@ -364,9 +364,21 @@ class BTController :
     static const uint32_t DELEGATE_TIME = 30;   /**< Delegate ad/find operations to minion for 30 seconds. */
 
     struct NameArgInfo : public AlarmListener {
+        class _NameArgs {
+          public:
+            MsgArg* args;
+            const size_t argsSize;
+            _NameArgs(size_t size) : argsSize(size) { args = new MsgArg[size]; }
+            ~_NameArgs() { delete[] args; }
+          private:
+            _NameArgs() : argsSize(0) { }
+            _NameArgs(const _NameArgs& other) : argsSize(0) { }
+        };
+        typedef qcc::ManagedObj<_NameArgs> NameArgs;
+
         BTController& bto;
         BTNodeInfo minion;
-        MsgArg* args;
+        NameArgs args;
         const size_t argsSize;
         const InterfaceDescription::Member* delegateSignal;
         qcc::Timer& dispatcher;
@@ -376,16 +388,16 @@ class BTController :
         size_t count;
         NameArgInfo(BTController& bto, size_t size) :
             bto(bto),
+            args(size),
             argsSize(size),
             dispatcher(bto.bus.GetInternal().GetDispatcher()),
             active(false),
             dirty(false),
             count(0)
         {
-            args = new MsgArg[size];
             minion = bto.self;
         }
-        virtual ~NameArgInfo() { delete[] args; }
+        virtual ~NameArgInfo() { }
         virtual void SetArgs() = 0;
         virtual void ClearArgs() = 0;
         virtual void AddName(const qcc::String& name, BTNodeInfo& node) = 0;
@@ -477,15 +489,17 @@ class BTController :
      * Send the FoundNames signal to the node interested in one or more of the
      * names on that bus.
      *
-     * @param destNode The minion that should receive the message.
-     * @param adInfo   Advertise information to send.
-     * @param lost     Set to true if names are lost, false otherwise.
+     * @param destNode      The minion that should receive the message.
+     * @param adInfo        Advertise information to send.
+     * @param lost          Set to true if names are lost, false otherwise.
+     * @param lockAdInfo    Acquire the adInfo mutex when filling message arg info
      *
      * @return ER_OK if successful.
      */
     QStatus SendFoundNamesChange(const BTNodeInfo& destNode,
                                  const BTNodeDB& adInfo,
-                                 bool lost);
+                                 bool lost,
+                                 bool lockAdInfo);
 
     /**
      * Send the one of the following specified signals to the node we believe
