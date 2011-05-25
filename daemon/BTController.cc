@@ -2145,7 +2145,7 @@ void BTController::NameArgInfo::AlarmTriggered(const Alarm& alarm, QStatus reaso
 QStatus BTController::NameArgInfo::SendDelegateSignal()
 {
     QCC_DbgPrintf(("Sending %s signal to %s", delegateSignal->name.c_str(),
-                   minion->GetUniqueName().c_str()));
+                   minion->GetBusAddress().ToString().c_str()));
     assert(minion != bto.self);
     String signalDest = minion->GetUniqueName();
     NameArgs localArgs = args;
@@ -2462,27 +2462,53 @@ void BTController::DumpNodeStateTable() const
 
 void BTController::FlushCachedNames()
 {
-    cacheLock.Lock();
+    if (IsMaster()) {
+        cacheLock.Lock();
 
-    UUIDRevCacheMap::iterator ci = uuidRevCache.begin();
-    while (ci != uuidRevCache.end()) {
-        bus.GetInternal().GetDispatcher().RemoveAlarm(ci->second->timeout);
-        delete ci->second->adInfo;
-        uuidRevCache.erase(ci);
-        ci = uuidRevCache.begin();
+        UUIDRevCacheMap::iterator ci = uuidRevCache.begin();
+        while (ci != uuidRevCache.end()) {
+            bus.GetInternal().GetDispatcher().RemoveAlarm(ci->second->timeout);
+            delete ci->second->adInfo;
+            uuidRevCache.erase(ci);
+            ci = uuidRevCache.begin();
+        }
+
+        /*
+         * Technically calling DistributeAdvertisedNameChanges() with cacheLock
+         * held could cause a possible dead lock.  This risk is acceptable here
+         * since this function is only available in debug builds and can only be
+         * invoked when a test program calls a specific method.  This is only for
+         * certain types of testing so the risk is acceptable.
+         */
+        DistributeAdvertisedNameChanges(NULL, &foundNodeDB);
+
+        foundNodeDB.Clear();
+        cacheLock.Unlock();
+    } else {
+        const InterfaceDescription* ifc;
+        ifc = master->GetInterface("org.alljoyn.Bus.Debug.BT");
+        if (!ifc) {
+            ifc = bus.GetInterface("org.alljoyn.Bus.Debug.BT");
+            if (!ifc) {
+                InterfaceDescription* newIfc;
+                bus.CreateInterface("org.alljoyn.Bus.Debug.BT", newIfc);
+                newIfc->AddMethod("FlushDiscoverTimes", NULL, NULL, NULL, 0);
+                newIfc->AddMethod("FlushSDPQueryTimes", NULL, NULL, NULL, 0);
+                newIfc->AddMethod("FlushConnectTimes", NULL, NULL, NULL, 0);
+                newIfc->AddMethod("FlushCachedNames", NULL, NULL, NULL, 0);
+                newIfc->AddProperty("DiscoverTimes", "a(su)", PROP_ACCESS_READ);
+                newIfc->AddProperty("SDPQueryTimes", "a(su)", PROP_ACCESS_READ);
+                newIfc->AddProperty("ConnectTimes", "a(su)", PROP_ACCESS_READ);
+                newIfc->Activate();
+                ifc = newIfc;
+            }
+            master->AddInterface(*ifc);
+        }
+
+        if (ifc) {
+            master->MethodCall("org.alljoyn.Bus.Debug.BT", "FlushCachedNames", NULL, 0);
+        }
     }
-
-    /*
-     * Technically calling DistributeAdvertisedNameChanges() with cacheLock
-     * held could cause a possible dead lock.  This risk is acceptable here
-     * since this function is only available in debug builds and can only be
-     * invoked when a test program calls a specific method.  This is only for
-     * certain types of testing so the risk is acceptable.
-     */
-    DistributeAdvertisedNameChanges(NULL, &foundNodeDB);
-
-    foundNodeDB.Clear();
-    cacheLock.Unlock();
 }
 #endif
 
