@@ -290,13 +290,11 @@ QStatus BTController::SendSetState(const qcc::String& busName)
         goto exit;
     }
 
-    lock.Unlock();
     status = newMaster->MethodCall(*org.alljoyn.Bus.BTController.SetState, args, ArraySize(args), reply);
     if (status != ER_OK) {
         delete newMaster;
         QCC_LogError(status, ("Dropping %s due to internal error", busName.c_str()));
         bt.Disconnect(busName);
-        lock.Lock();
         goto exit;
     } else {
         size_t numNodeStateArgs;
@@ -389,7 +387,6 @@ QStatus BTController::SendSetState(const qcc::String& busName)
             UpdateDelegations(advertise, listening);
             UpdateDelegations(find);
             if (IsDrone()) {
-                lock.Lock();
                 if (advertise.minion != self) {
                     advertise.minion = self;
                     QCC_DbgPrintf(("Set advertise minion to ourself"));
@@ -398,12 +395,10 @@ QStatus BTController::SendSetState(const qcc::String& busName)
                     find.minion = self;
                     QCC_DbgPrintf(("Set find minion to ourself"));
                 }
-                lock.Unlock();
             }
             QCC_DEBUG_ONLY(DumpNodeStateTable());
         }
 
-        lock.Lock();
         if (!IsMaster()) {
             bus.GetInternal().GetDispatcher().RemoveAlarm(stopAd);
         }
