@@ -487,7 +487,7 @@ class NameService : public qcc::Thread {
     void SetCallback(Callback<void, const qcc::String&, const qcc::String&, std::vector<qcc::String>&, uint8_t>* cb);
 
     /**
-     * @brief Set the endpoint information for the currend daemon.
+     * @brief Set the endpoint information for the current daemon.
      *
      * If an AllJoyn daemon wants to advertise its presence on the local subnet(s)
      * it must call this method before making any actual advertisements in order
@@ -518,6 +518,37 @@ class NameService : public qcc::Thread {
      * @see Init()
      */
     QStatus SetEndpoints(const qcc::String& ipv4address, const qcc::String& ipv6address, uint16_t port);
+
+    /**
+     * @brief Set the endpoint information for the current daemon.
+     *
+     * If an AllJoyn daemon wants to advertise its presence on the local subnet(s)
+     * it must call this method before making any actual advertisements in order
+     * to set its IPv4 address (if any), its IPv6 address (if any) and port.
+     *
+     * Addresses must be provided in presentation format (dotted decimal for
+     * IPV4 or colon-separated hex for IPV6).  It must also provide the port on
+     * which it may be contacted.
+     *
+     * In order to avoid confusion on the network, this method may only be called
+     * once.
+     *
+     * @param[out] ipv4address The IPv4 address of the daemon.  If this address
+     *     has been provided to the name service in a previous call to
+     *     SetEndpoints it will be returned, otherwise the referenced string
+     *     will be set to empty.
+     * @param[out] ipv6address The IPv6 address of the daemon.  If this address
+     *     has been provided to the name service in a previous call to
+     *     SetEndpoints it will be returned, otherwise the referenced string
+     *     will be set to empty.
+     * @param[out] port The port on which the calling daemon listens.  Must have
+     *     been previously set in a call to SetEndpoints.
+     *
+     * @return Status of the operation.  Returns ER_OK on success.
+     *
+     * @see Init()
+     */
+    QStatus GetEndpoints(qcc::String& ipv4address, qcc::String& ipv6address, uint16_t& port);
 
     /**
      * @brief Advertise an AllJoyn daemon service.

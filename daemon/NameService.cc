@@ -1692,6 +1692,22 @@ QStatus NameService::SetEndpoints(
     return ER_OK;
 }
 
+QStatus NameService::GetEndpoints(
+    qcc::String& ipv4address,
+    qcc::String& ipv6address,
+    uint16_t& port)
+{
+    QCC_DbgHLPrintf(("NameService::GetEndpoints(%s, %s, %d)\n", ipv4address.c_str(), ipv6address.c_str(), port));
+
+    m_mutex.Lock();
+    ipv4address = m_ipv4address;
+    ipv6address = m_ipv6address;
+    port = m_port;
+    m_mutex.Unlock();
+
+    return ER_OK;
+}
+
 QStatus NameService::Advertise(const qcc::String& wkn)
 {
     QCC_DbgHLPrintf(("NameService::Advertise(): %s\n", wkn.c_str()));
