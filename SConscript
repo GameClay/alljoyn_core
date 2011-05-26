@@ -73,16 +73,17 @@ env.Install('$DISTDIR', 'README.md')
 env.Install('$DISTDIR', 'NOTICE')
 
 # Whitespace policy
-import os.path
-wscmd_default = 'python ' + os.path.abspath('../build_core/tools/bin/whitespace.py')
 if env['WS'] != 'off' and not env.GetOption('clean'):
-    if env['WS'] == 'check':
-        wscmd = wscmd_default
-    elif env['WS'] == 'detail':
-        wscmd = wscmd_default + " detail"
-    elif env['WS'] == 'fix':
-        wscmd = wscmd_default + " fix"
-    env.Command('dmy', '$DISTDIR', wscmd)
+    import sys
+    sys.path.append('../build_core/tools/bin')
+    import whitespace
+    
+    def wsbuild(target, source, env):
+        print "Evaluating whitespace compliance..."
+        print "Note: enter 'scons -h' to see whitespace (WS) options"
+        return whitespace.main(env['WS'])
+        
+    env.Command('ws', Dir('$DISTDIR'), wsbuild)
 
 # Build docs
 if env['DOCS'] == 'html':
