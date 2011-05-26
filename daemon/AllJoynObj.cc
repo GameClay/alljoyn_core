@@ -1506,7 +1506,7 @@ QStatus AllJoynObj::SendGetSessionInfo(const char* creatorName,
                        sendArgs[1].v_uint16,
                        opts.proximity, opts.traffic, opts.transports,
                        controllerName.c_str()));
-        
+
         status = rObj.MethodCall(org::alljoyn::Daemon::InterfaceName,
                                  "GetSessionInfo",
                                  sendArgs,
@@ -1520,7 +1520,7 @@ QStatus AllJoynObj::SendGetSessionInfo(const char* creatorName,
             reply->GetArgs(na, replyArgs);
             replyArgs[0].Get("as", &numBusAddrs, &busAddrArgs);
             for (size_t i = numBusAddrs; i > 0; --i) {
-                busAddrs.push_back(busAddrArgs[i-1].v_string.str);
+                busAddrs.push_back(busAddrArgs[i - 1].v_string.str);
             }
         }
     }
