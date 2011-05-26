@@ -236,7 +236,7 @@ void UnixTransport::EndpointExit(RemoteEndpoint* ep)
 
 
 
-QStatus UnixTransport::NormalizeTransportSpec(const char* inSpec, qcc::String& outSpec, map<qcc::String, qcc::String>& argMap)
+QStatus UnixTransport::NormalizeTransportSpec(const char* inSpec, qcc::String& outSpec, map<qcc::String, qcc::String>& argMap) const
 {
     /*
      * Take the string in inSpec, which must start with "unix:" and parse it,

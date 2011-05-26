@@ -135,15 +135,7 @@ class Transport {
      *
      * @return the TransportMask for this transport.
      */
-    virtual TransportMask GetTransportMask() = 0;
-
-    /**
-     * Get the "best" listen spec for a given set of session options.
-     *
-     * @return listenSpec (busAddr) to use for given session options (empty string if
-     *         session opts are incompatible with this transport.
-     */
-    virtual qcc::String GetListenAddress(const SessionOpts& opts) { return ""; }
+    virtual TransportMask GetTransportMask() const = 0;
 
     /**
      * Get a list of the possible listen specs of the current Transport for a
@@ -173,7 +165,7 @@ class Transport {
      *      - ER_OK if successful.
      *      - an error status otherwise.
      */
-    virtual QStatus GetListenAddresses(const SessionOpts& opts, std::vector<qcc::String>& busAddrs) { return ER_NOT_IMPLEMENTED; }
+    virtual QStatus GetListenAddresses(const SessionOpts& opts, std::vector<qcc::String>& busAddrs) const = 0;
 
     /**
      * Normalize a transport specification.
@@ -187,7 +179,7 @@ class Transport {
      */
     virtual QStatus NormalizeTransportSpec(const char* inSpec,
                                            qcc::String& outSpec,
-                                           std::map<qcc::String, qcc::String>& argMap) = 0;
+                                           std::map<qcc::String, qcc::String>& argMap) const = 0;
 
     /**
      * Connect to a specified remote AllJoyn/DBus address.
@@ -283,7 +275,7 @@ class Transport {
     /**
      * Returns the name of the transport
      */
-    virtual const char* GetTransportName() = 0;
+    virtual const char* GetTransportName() const = 0;
 
     /**
      * Indicates whether this transport may be used for a connection between

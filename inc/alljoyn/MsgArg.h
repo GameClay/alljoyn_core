@@ -378,6 +378,8 @@ class MsgArg {
      *
      *  - @c 'a'  The array length followed by:
      *            - If the element type is a basic type a pointer to an array of values of that type.
+     *            - If the element type is string a pointer to array of const char* or NULL followed 
+     *                  by a pointer to an array of const qcc::String.
      *            - If the element type is an @ref ALLJOYN_ARRAY "ARRAY", @ref ALLJOYN_STRUCT "STRUCT",
      *              @ref ALLJOYN_DICT_ENTRY "DICT_ENTRY" or @ref ALLJOYN_VARIANT "VARIANT" a pointer to an
      *              array of MsgArgs where each MsgArg has the signature specified by the element type.

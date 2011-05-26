@@ -388,7 +388,7 @@ void* DaemonUnixTransport::Run(void* arg)
     return (void*) status;
 }
 
-QStatus DaemonUnixTransport::NormalizeTransportSpec(const char* inSpec, qcc::String& outSpec, map<qcc::String, qcc::String>& argMap)
+QStatus DaemonUnixTransport::NormalizeTransportSpec(const char* inSpec, qcc::String& outSpec, map<qcc::String, qcc::String>& argMap) const
 {
     QStatus status = ParseArguments("unix", inSpec, argMap);
     qcc::String path = Trim(argMap["path"]);

@@ -503,13 +503,13 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * @param       creatorName    Bus name of session creator.
      * @param       sessionPort    Session port value.
      * @param       opts           Requested session options.
-     * @param[out]  busAddr        Returned busAddr for session (if return value is ER_OK)
+     * @param[out]  busAddrs       Returned busAddrs for session (if return value is ER_OK)
      * @return  ER_OK if successful.
      */
     QStatus SendGetSessionInfo(const char* creatorName,
                                SessionPort sessionPort,
                                const SessionOpts& opts,
-                               qcc::String& busAddr);
+                               std::vector<qcc::String>& busAddrs);
 
     /**
      * Add a virtual endpoint with a given unique name.

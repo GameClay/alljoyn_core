@@ -218,6 +218,14 @@ class TCPTransport : public Transport, public RemoteEndpoint::EndpointListener {
     TransportMask GetTransportMask() { return TRANSPORT_WLAN; }
 
     /**
+     * Get a list of the possible listen specs for a given set of session options.
+     * @param[IN]    opts      Session options.
+     * @param[OUT]   busAddrs  Set of listen addresses. Always empty for this transport.
+     * @return ER_OK if successful.
+     */
+    QStatus GetListenAddresses(const SessionOpts& opts, std::vector<qcc::String>& busAddrs) const { return ER_OK; }
+
+    /**
      * Indicates whether this transport may be used for a connection between
      * an application and the daemon on the same machine or not.
      *

@@ -108,7 +108,7 @@ class DaemonUnixTransport : public Transport, public RemoteEndpoint::EndpointLis
      *
      * @return ER_OK if successful.
      */
-    QStatus NormalizeTransportSpec(const char* inSpec, qcc::String& outSpec, std::map<qcc::String, qcc::String>& argMap);
+    QStatus NormalizeTransportSpec(const char* inSpec, qcc::String& outSpec, std::map<qcc::String, qcc::String>& argMap) const;
 
     /**
      * Connect to a specified remote AllJoyn/DBus address.
@@ -215,12 +215,20 @@ class DaemonUnixTransport : public Transport, public RemoteEndpoint::EndpointLis
      *
      * @return the TransportMask for this transport.
      */
-    TransportMask GetTransportMask() { return TRANSPORT_NONE; }
+    TransportMask GetTransportMask() const { return TRANSPORT_NONE; }
+
+    /**
+     * Get a list of the possible listen specs for a given set of session options.
+     * @param[IN]    opts      Session options.
+     * @param[OUT]   busAddrs  Set of listen addresses. Always empty for this transport.
+     * @return ER_OK if successful.
+     */
+    QStatus GetListenAddresses(const SessionOpts& opts, std::vector<qcc::String>& busAddrs) const { return ER_OK; }
 
     /**
      * Returns the name of this transport
      */
-    const char* GetTransportName()  { return TransportName(); }
+    const char* GetTransportName() const { return TransportName(); }
 
     /**
      * Indicates whether this transport may be used for a connection between

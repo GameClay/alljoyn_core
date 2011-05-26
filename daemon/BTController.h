@@ -335,27 +335,6 @@ class BTController :
         return self->IsValid() ? self->GetBusAddress().ToSpec() : "";
     }
 
-    /**
-     * Get a list of the possible listen specs of the current BT Transport.
-     *
-     * @param busAddrs A vector of String to which bus addresses corresponding
-     *                 to IFF_UP interfaces matching the desired characteristics
-     *                 are added.
-     * @return
-     *      - ER_OK if successful.
-     *      - an error status otherwise.
-     */
-    QStatus GetListenAddresses(std::vector<qcc::String>& busAddrs)
-    {
-        if (self->IsValid()) {
-            busAddrs.push_back(self->GetBusAddress().ToSpec());
-            return ER_OK;
-        }
-        return ER_FAIL;
-    }
-
-
-
     void NameOwnerChanged(const qcc::String& alias,
                           const qcc::String* oldOwner,
                           const qcc::String* newOwner);

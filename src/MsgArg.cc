@@ -817,12 +817,13 @@ QStatus MsgArg::BuildArray(MsgArg* arry, const qcc::String elemSig, va_list* arg
     case 's':
         if (numElements > 0) {
             char** strings = va_arg(argp, char**);
+            String* strs = strings ? NULL : va_arg(argp, String*);
             elements = new MsgArg[numElements];
             arry->flags |= OwnsArgs;
             for (size_t i = 0; i < numElements; ++i) {
                 elements[i].typeId = (AllJoynTypeId)(elemSig[0]);
-                elements[i].v_string.str = strings[i];
-                elements[i].v_string.len = strlen(strings[i]);
+                elements[i].v_string.str = strings ? strings[i] : strs[i].c_str();
+                elements[i].v_string.len = strlen(elements[i].v_string.str);
             }
         } else {
             va_arg(argp, void*);

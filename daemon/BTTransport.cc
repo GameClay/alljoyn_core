@@ -87,7 +87,7 @@ BTTransport::~BTTransport()
     }
 }
 
-QStatus BTTransport::NormalizeTransportSpec(const char* inSpec, qcc::String& outSpec, map<qcc::String, qcc::String>& argMap)
+QStatus BTTransport::NormalizeTransportSpec(const char* inSpec, qcc::String& outSpec, map<qcc::String, qcc::String>& argMap) const
 {
     if (!btmActive) {
         return ER_BUS_TRANSPORT_NOT_AVAILABLE;

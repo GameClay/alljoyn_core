@@ -544,11 +544,11 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             ajObj.router.LockNameTable();
             ajObj.discoverMapLock.Lock();
             ajObj.virtualEndpointsLock.Lock();
-            String busAddr;
+            vector<String> busAddrs;
             multimap<String, NameMapEntry>::iterator nmit = ajObj.nameMap.lower_bound(sessionHost);
             while (nmit != ajObj.nameMap.end() && (nmit->first == sessionHost)) {
                 if (nmit->second.transport & optsIn.transports) {
-                    busAddr = nmit->second.busAddr;
+                    busAddrs.push_back(nmit->second.busAddr);
                     break;
                 }
                 ++nmit;
@@ -557,38 +557,45 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             ajObj.discoverMapLock.Unlock();
             ajObj.router.UnlockNameTable();
 
-#if 0
             /*
              * Step 1b: If no advertisment (busAddr) and we are connected to the sesionHost, then ask it directly
              * for the busAddr
              */
-            if (vSessionEp && busAddr.empty()) {
-                status = ajObj.SendGetSessionInfo(sessionHost, sessionPort, optsIn, busAddr);
+            if (vSessionEp && busAddrs.empty()) {
+                status = ajObj.SendGetSessionInfo(sessionHost, sessionPort, optsIn, busAddrs);
                 if (status != ER_OK) {
-                    busAddr.clear();
+                    busAddrs.clear();
                     QCC_LogError(status, ("GetSessionInfo failed"));
                 }
             }
-#endif
+
             String b2bEpName;
-            if (!busAddr.empty()) {
-                /* Ask the transport that provided the advertisement for an endpoint */
-                TransportList& transList = ajObj.bus.GetInternal().GetTransportList();
-                Transport* trans = transList.GetTransport(busAddr);
-                if (trans == NULL) {
-                    replyCode = ALLJOYN_JOINSESSION_REPLY_UNREACHABLE;
-                } else {
-                    status = trans->Connect(busAddr.c_str(), &b2bEp);
-                    if (status == ER_OK) {
-                        b2bEpName = b2bEp->GetUniqueName();
-                    } else {
-                        QCC_LogError(status, ("trans->Connect(%s) failed", busAddr.c_str()));
-                        replyCode = ALLJOYN_JOINSESSION_REPLY_CONNECT_FAILED;
+            String busAddr;
+            if (!busAddrs.empty()) {
+                /* Try busAddrs in priority order until connect succeeds */
+                for (size_t i = 0; i < busAddrs.size(); ++i) {
+                    /* Ask the transport that provided the advertisement for an endpoint */
+                    TransportList& transList = ajObj.bus.GetInternal().GetTransportList();
+                    Transport* trans = transList.GetTransport(busAddrs[i]);
+                    if (trans != NULL) {
+                        status = trans->Connect(busAddrs[i].c_str(), &b2bEp);
+                        if (status == ER_OK) {
+                            b2bEpName = b2bEp->GetUniqueName();
+                            busAddr = busAddrs[i];
+                            break;
+                        } else {
+                            QCC_LogError(status, ("trans->Connect(%s) failed", busAddrs[i].c_str()));
+                            replyCode = ALLJOYN_JOINSESSION_REPLY_CONNECT_FAILED;
+                        }
                     }
                 }
             } else {
                 /* No advertisment or existing route to session creator */
                 replyCode = ALLJOYN_JOINSESSION_REPLY_NO_SESSION;
+            }
+
+            if (busAddr.empty()) {
+                replyCode = ALLJOYN_JOINSESSION_REPLY_UNREACHABLE;
             }
 
             /* Step 2: Send a session attach */
@@ -1299,7 +1306,7 @@ void AllJoynObj::GetSessionInfo(const InterfaceDescription::Member* member, Mess
     const char* creatorName;
     SessionPort sessionPort;
     SessionOpts optsIn;
-    String busAddr;
+    vector<String> busAddrs;
 
     size_t na;
     const MsgArg* args;
@@ -1309,7 +1316,7 @@ void AllJoynObj::GetSessionInfo(const InterfaceDescription::Member* member, Mess
         status = GetSessionOpts(args[2], optsIn);
     }
 
-    if (status != ER_OK) {
+    if (status == ER_OK) {
         QCC_DbgTrace(("AllJoynObj::GetSessionInfo(%s, %u, <%x, %x, %x>)", creatorName, sessionPort, optsIn.traffic, optsIn.proximity, optsIn.transports));
 
         /* Ask the appropriate transport for the listening busAddr */
@@ -1317,8 +1324,7 @@ void AllJoynObj::GetSessionInfo(const InterfaceDescription::Member* member, Mess
         for (size_t i = 0; i < transList.GetNumTransports(); ++i) {
             Transport* trans = transList.GetTransport(i);
             if (trans && (trans->GetTransportMask() & optsIn.transports)) {
-                busAddr = trans->GetListenAddress(optsIn);
-                break;
+                trans->GetListenAddresses(optsIn, busAddrs);
             } else if (!trans) {
                 QCC_LogError(ER_BUS_TRANSPORT_NOT_AVAILABLE, ("NULL transport pointer found in transportList"));
             }
@@ -1327,10 +1333,11 @@ void AllJoynObj::GetSessionInfo(const InterfaceDescription::Member* member, Mess
         QCC_LogError(status, ("AllJoynObj::GetSessionInfo cannot parse args"));
     }
 
-    if (busAddr.empty()) {
+    if (busAddrs.empty()) {
         status = MethodReply(msg, ER_BUS_NO_SESSION);
     } else {
-        MsgArg replyArg("s", busAddr.c_str());
+        MsgArg replyArg("as", busAddrs.size(), NULL, &busAddrs[0]);
+        printf("replyArg=%s\n", replyArg.ToString().c_str());
         status = MethodReply(msg, &replyArg, 1);
     }
 
@@ -1476,8 +1483,10 @@ void AllJoynObj::SendSessionLost(const SessionMapEntry& sme)
 QStatus AllJoynObj::SendGetSessionInfo(const char* creatorName,
                                        SessionPort sessionPort,
                                        const SessionOpts& opts,
-                                       String& busAddr)
+                                       vector<String>& busAddrs)
 {
+    QStatus status = ER_BUS_NO_ENDPOINT;
+
     /* Send GetSessionInfo to creatorName */
     Message reply(bus);
     MsgArg sendArgs[3];
@@ -1485,32 +1494,35 @@ QStatus AllJoynObj::SendGetSessionInfo(const char* creatorName,
     sendArgs[1].Set("q", sessionPort);
     SetSessionOpts(opts, sendArgs[2]);
 
-    String controllerName(creatorName);
-    controllerName = controllerName.substr(0, controllerName.find_first_of('.') + 1);
-    controllerName.append('1');
-
-    ProxyBusObject rObj(bus, controllerName.c_str(), org::alljoyn::Daemon::ObjectPath, 0);
-    const InterfaceDescription* intf = bus.GetInterface(org::alljoyn::Daemon::InterfaceName);
-    assert(intf);
-    rObj.AddInterface(*intf);
-    QCC_DbgPrintf(("Calling GetSessionInfo(%s, %u, <%x, %x, %x>) on %s",
-                   sendArgs[0].v_string.str,
-                   sendArgs[1].v_uint16,
-                   opts.proximity, opts.traffic, opts.transports,
-                   controllerName.c_str()));
-
-    QStatus status = rObj.MethodCall(org::alljoyn::Daemon::InterfaceName,
-                                     "AcceptSession",
-                                     sendArgs,
-                                     ArraySize(sendArgs),
-                                     reply);
-    if (status == ER_OK) {
-        size_t na;
-        const MsgArg* replyArgs;
-        const char* busAddrChars;
-        reply->GetArgs(na, replyArgs);
-        replyArgs[0].Get("s", &busAddrChars);
-        busAddr = String(busAddrChars);
+    BusEndpoint* creatorEp = router.FindEndpoint(creatorName);
+    if (creatorEp) {
+        String controllerName = creatorEp->GetControllerUniqueName();
+        ProxyBusObject rObj(bus, controllerName.c_str(), org::alljoyn::Daemon::ObjectPath, 0);
+        const InterfaceDescription* intf = bus.GetInterface(org::alljoyn::Daemon::InterfaceName);
+        assert(intf);
+        rObj.AddInterface(*intf);
+        QCC_DbgPrintf(("Calling GetSessionInfo(%s, %u, <%x, %x, %x>) on %s",
+                       sendArgs[0].v_string.str,
+                       sendArgs[1].v_uint16,
+                       opts.proximity, opts.traffic, opts.transports,
+                       controllerName.c_str()));
+        
+        status = rObj.MethodCall(org::alljoyn::Daemon::InterfaceName,
+                                 "GetSessionInfo",
+                                 sendArgs,
+                                 ArraySize(sendArgs),
+                                 reply);
+        if (status == ER_OK) {
+            size_t na;
+            const MsgArg* replyArgs;
+            const MsgArg* busAddrArgs;
+            size_t numBusAddrs;
+            reply->GetArgs(na, replyArgs);
+            replyArgs[0].Get("as", &numBusAddrs, &busAddrArgs);
+            for (size_t i = numBusAddrs; i > 0; --i) {
+                busAddrs.push_back(busAddrArgs[i-1].v_string.str);
+            }
+        }
     }
     return status;
 }

@@ -118,7 +118,7 @@ class DaemonTCPTransport : public Transport, public RemoteEndpoint::EndpointList
      *
      * @return ER_OK if successful.
      */
-    QStatus NormalizeTransportSpec(const char* inSpec, qcc::String& outSpec, std::map<qcc::String, qcc::String>& argMap);
+    QStatus NormalizeTransportSpec(const char* inSpec, qcc::String& outSpec, std::map<qcc::String, qcc::String>& argMap) const;
 
     /**
      * Connect to a specified remote AllJoyn/DBus address.
@@ -218,14 +218,14 @@ class DaemonTCPTransport : public Transport, public RemoteEndpoint::EndpointList
     /**
      * Returns the name of this transport
      */
-    const char* GetTransportName()  { return TransportName(); }
+    const char* GetTransportName() const { return TransportName(); }
 
     /**
      * Get the transport mask for this transport
      *
      * @return the TransportMask for this transport.
      */
-    TransportMask GetTransportMask() { return TRANSPORT_WLAN; }
+    TransportMask GetTransportMask() const { return TRANSPORT_WLAN; }
 
     /**
      * Get a list of the possible listen specs of the current Transport for a
@@ -299,7 +299,6 @@ class DaemonTCPTransport : public Transport, public RemoteEndpoint::EndpointList
     std::list<std::pair<qcc::String, qcc::SocketFd> > m_listenFds; /**< file descriptors the transport is listening on */
     qcc::Mutex m_listenFdsLock;                                    /**< Mutex that protects m_listenFds */
 
-
     /**
      * @internal
      * @brief Thread entry point.
@@ -331,7 +330,7 @@ class DaemonTCPTransport : public Transport, public RemoteEndpoint::EndpointList
      *
      * @return ER_OK if successful.
      */
-    QStatus NormalizeListenSpec(const char* inSpec, qcc::String& outSpec, std::map<qcc::String, qcc::String>& argMap);
+    QStatus NormalizeListenSpec(const char* inSpec, qcc::String& outSpec, std::map<qcc::String, qcc::String>& argMap) const;
 
     class FoundCallback {
       public:

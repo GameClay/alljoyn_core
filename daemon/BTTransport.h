@@ -78,21 +78,7 @@ class BTTransport :
      *
      * @return the TransportMask for this transport.
      */
-    TransportMask GetTransportMask() { return TRANSPORT_BLUETOOTH; }
-
-    /**
-     * Get the "best" listen spec for a given set of session options.
-     *
-     * @return listenSpec (busAddr) to use for given session options (empty string if
-     *         session opts are incompatible with this transport.
-     */
-    qcc::String GetListenAddress(const SessionOpts& opts)
-    {
-        if ((opts.transports & GetTransportMask()) == GetTransportMask()) {
-            return btController->GetListenAddress();
-        }
-        return "";
-    }
+    TransportMask GetTransportMask() const { return TRANSPORT_BLUETOOTH; }
 
     /**
      * Get a list of the possible listen specs of the current Transport for a
@@ -122,12 +108,15 @@ class BTTransport :
      *      - ER_OK if successful.
      *      - an error status otherwise.
      */
-    QStatus GetListenAddresses(const SessionOpts& opts, std::vector<qcc::String>& busAddrs)
+    QStatus GetListenAddresses(const SessionOpts& opts, std::vector<qcc::String>& busAddrs) const
     {
-        if ((opts.transports & GetTransportMask()) == GetTransportMask()) {
-            return btController->GetListenAddresses(busAddrs);
+        if (opts.transports & GetTransportMask()) {
+            qcc::String listenAddr = btController->GetListenAddress();
+            if (!listenAddr.empty()) {
+                busAddrs.push_back(listenAddr);
+            }
         }
-        return ER_FAIL;
+        return ER_OK;
     }
 
 
@@ -141,7 +130,7 @@ class BTTransport :
      *      - ER_OK if successful.
      *      - ER_BUS_BAD_TRANSPORT_ARGS  is unable to parse the Input transport connect specification
      */
-    QStatus NormalizeTransportSpec(const char* inSpec, qcc::String& outSpec, std::map<qcc::String, qcc::String>& argMap);
+    QStatus NormalizeTransportSpec(const char* inSpec, qcc::String& outSpec, std::map<qcc::String, qcc::String>& argMap) const;
 
     /**
      * Create a Bluetooth connection based Transport.
@@ -316,7 +305,7 @@ class BTTransport :
      * Returns the name of this transport
      * @return The name of this transport.
      */
-    const char* GetTransportName()  { return TransportName(); };
+    const char* GetTransportName() const { return TransportName(); };
 
     /**
      * Indicates whether this transport may be used for a connection between
