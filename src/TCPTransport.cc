@@ -211,7 +211,7 @@ void TCPTransport::EndpointExit(RemoteEndpoint* ep)
     delete tep;
 }
 
-QStatus TCPTransport::NormalizeTransportSpec(const char* inSpec, qcc::String& outSpec, map<qcc::String, qcc::String>& argMap)
+QStatus TCPTransport::NormalizeTransportSpec(const char* inSpec, qcc::String& outSpec, map<qcc::String, qcc::String>& argMap) const
 {
     /*
      * Take the string in inSpec, which must start with "tcp:" and parse it,
