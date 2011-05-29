@@ -378,7 +378,8 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
     size_t numArgs;
     const MsgArg* args;
     SessionMapEntry sme;
-
+    String b2bEpName;
+        
     /* Parse the message args */
     msg->GetArgs(numArgs, args);
     const char* sessionHost = NULL;
@@ -569,7 +570,6 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                 }
             }
 
-            String b2bEpName;
             String busAddr;
             if (!busAddrs.empty()) {
                 /* Try busAddrs in priority order until connect succeeds */
@@ -602,7 +602,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
             if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
                 const String nextControllerName = b2bEp->GetRemoteName();
                 status = ajObj.SendAttachSession(sessionPort, msg->GetSender(), sessionHost, sessionHost, b2bEpName.c_str(),
-                                                 nextControllerName.c_str(), busAddr.c_str(), optsIn, replyCode,
+                                                 nextControllerName.c_str(), 0, busAddr.c_str(), optsIn, replyCode,
                                                  id, optsOut, membersArg);
                 if (status != ER_OK) {
                     QCC_LogError(status, ("AttachSession to %s failed", nextControllerName.c_str()));
@@ -731,81 +731,88 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
 
     /* Send AttachSession to all other members of the multicast session */
     if ((replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) && sme.opts.isMultipoint) {
-        if (status == ER_OK) {
-            for (size_t i = 0; i < sme.memberNames.size(); ++i) {
-                const char* member = sme.memberNames[i].c_str();
-                /* Skip this joiner since it is attached already */
-                if (::strcmp(member, msg->GetSender()) == 0) {
-                    continue;
-                }
-                ajObj.router.LockNameTable();
-                ajObj.discoverMapLock.Lock();
-                ajObj.virtualEndpointsLock.Lock();
-                BusEndpoint* joinerEp = ajObj.router.FindEndpoint(msg->GetSender());
-                BusEndpoint* memberEp = ajObj.router.FindEndpoint(member);
-                RemoteEndpoint* memberB2BEp = NULL;
-                if (memberEp && (memberEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
-                    /* Endpoint is not served directly by this daemon so forward the attach */
-                    VirtualEndpoint* vMemberEp = static_cast<VirtualEndpoint*>(memberEp);
-                    memberB2BEp = vMemberEp->GetSessionCompatibleB2B(sme.opts);
-                    if (memberB2BEp) {
-                        MsgArg tMembersArg;
-                        SessionId tId;
-                        SessionOpts tOpts;
-                        const String nextControllerName = memberB2BEp->GetRemoteName();
-                        ajObj.virtualEndpointsLock.Unlock();
-                        ajObj.discoverMapLock.Unlock();
-                        ajObj.router.UnlockNameTable();
-                        status = ajObj.SendAttachSession(sessionPort,
-                                                         msg->GetSender(),
-                                                         sessionHost,
-                                                         member,
-                                                         memberB2BEp->GetUniqueName().c_str(),
-                                                         nextControllerName.c_str(),
-                                                         "",
-                                                         sme.opts,
-                                                         replyCode,
-                                                         tId,
-                                                         tOpts,
-                                                         tMembersArg);
-                        ajObj.router.LockNameTable();
-                        ajObj.discoverMapLock.Lock();
-                        ajObj.virtualEndpointsLock.Lock();
-                        /* Reacquire endpoints since locks were given up */
-                        joinerEp = ajObj.router.FindEndpoint(msg->GetSender());
-                        memberEp = ajObj.router.FindEndpoint(member);
-                        memberB2BEp = vMemberEp->GetSessionCompatibleB2B(sme.opts);
-                        if (status != ER_OK) {
-                            QCC_LogError(status, ("Failed to attach session %u to %s", id, member));
-                        } else if (id != tId) {
-                            status = ER_FAIL;
-                            QCC_LogError(status, ("Session id mismatch (expected=%u, actual=%u)", id, tId));
-                        }
-                    } else {
-                        status = ER_BUS_BAD_SESSION_OPTS;
-                        QCC_LogError(status, ("Unable to add existing member %s to session %u", vMemberEp->GetUniqueName().c_str(), id));
-                    }
-                }
-                /* Add session routing */
-                if (memberEp && joinerEp && (status == ER_OK)) {
-                    status = ajObj.router.AddSessionRoute(msg->GetSender(), id, *memberEp, memberB2BEp);
-                    if (status == ER_OK) {
-                        RemoteEndpoint* tEp = NULL;
-                        status = ajObj.router.AddSessionRoute(memberEp->GetUniqueName().c_str(), id, *joinerEp, tEp);
-                        if (status != ER_OK) {
-                            replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                            ajObj.router.RemoveSessionRoute(msg->GetSender(), id, *memberEp);
-                            QCC_LogError(status, ("AddSessionRoute %s->%s failed", memberEp->GetUniqueName().c_str(), joinerEp->GetUniqueName().c_str()));
-                        }
-                    } else {
-                        replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                        QCC_LogError(status, ("AddSessionRoute %s->%s failed", msg->GetSender(), memberEp->GetUniqueName().c_str()));
-                    }
-                }
-                ajObj.virtualEndpointsLock.Unlock();
-                ajObj.discoverMapLock.Unlock();
-                ajObj.router.UnlockNameTable();
+        for (size_t i = 0; i < sme.memberNames.size(); ++i) {
+            const char* member = sme.memberNames[i].c_str();
+            /* Skip this joiner since it is attached already */
+            if (::strcmp(member, msg->GetSender()) == 0) {
+                continue;
             }
+            ajObj.router.LockNameTable();
+            ajObj.discoverMapLock.Lock();
+            ajObj.virtualEndpointsLock.Lock();
+            BusEndpoint* joinerEp = ajObj.router.FindEndpoint(msg->GetSender());
+            BusEndpoint* memberEp = ajObj.router.FindEndpoint(member);
+            RemoteEndpoint* memberB2BEp = NULL;
+            if (memberEp && (memberEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
+                /* Endpoint is not served directly by this daemon so forward the attach using existing b2bEp connection with session creator */
+                VirtualEndpoint* vMemberEp = static_cast<VirtualEndpoint*>(memberEp);
+                if (b2bEpName.empty()) {
+                    /* Local session creator */
+                    memberB2BEp = vMemberEp->GetBusToBusEndpoint(id);
+                } else {
+                    /* Remote session creator */
+                    memberB2BEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
+                }
+                if (memberB2BEp) {
+                    MsgArg tMembersArg;
+                    SessionId tId;
+                    SessionOpts tOpts;
+                    const String nextControllerName = memberB2BEp->GetRemoteName();
+                    uint32_t tReplyCode;
+                    ajObj.virtualEndpointsLock.Unlock();
+                    ajObj.discoverMapLock.Unlock();
+                    ajObj.router.UnlockNameTable();
+                    status = ajObj.SendAttachSession(sessionPort,
+                                                     msg->GetSender(),
+                                                     sessionHost,
+                                                     member,
+                                                     memberB2BEp->GetUniqueName().c_str(),
+                                                     nextControllerName.c_str(),
+                                                     id, 
+                                                     "",
+                                                     sme.opts,
+                                                     tReplyCode,
+                                                     tId,
+                                                     tOpts,
+                                                     tMembersArg);
+                    ajObj.router.LockNameTable();
+                    ajObj.discoverMapLock.Lock();
+                    ajObj.virtualEndpointsLock.Lock();
+                    /* Reacquire endpoints since locks were given up */
+                    joinerEp = ajObj.router.FindEndpoint(msg->GetSender());
+                    memberEp = ajObj.router.FindEndpoint(member);
+                    memberB2BEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
+                    if (status != ER_OK) {
+                        QCC_LogError(status, ("Failed to attach session %u to %s", id, member));
+                    } else if (tReplyCode != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
+                        status = ER_FAIL;
+                        QCC_LogError(status, ("Failed to attach session %u to %s (reply=%d)", id, member, tReplyCode));
+                    } else if (id != tId) {
+                        status = ER_FAIL;
+                        QCC_LogError(status, ("Session id mismatch (expected=%u, actual=%u)", id, tId));
+                    }
+                } else {
+                    status = ER_BUS_BAD_SESSION_OPTS;
+                    QCC_LogError(status, ("Unable to add existing member %s to session %u", vMemberEp->GetUniqueName().c_str(), id));
+                }
+            }
+            /* Add session routing */
+            if (memberEp && joinerEp && (status == ER_OK)) {
+                status = ajObj.router.AddSessionRoute(msg->GetSender(), id, *memberEp, memberB2BEp);
+                if (status == ER_OK) {
+                    RemoteEndpoint* tEp = NULL;
+                    status = ajObj.router.AddSessionRoute(memberEp->GetUniqueName().c_str(), id, *joinerEp, tEp);
+                    if (status != ER_OK) {
+                        ajObj.router.RemoveSessionRoute(msg->GetSender(), id, *memberEp);
+                        QCC_LogError(status, ("AddSessionRoute %s->%s failed", memberEp->GetUniqueName().c_str(), joinerEp->GetUniqueName().c_str()));
+                    }
+                } else {
+                    QCC_LogError(status, ("AddSessionRoute %s->%s failed", msg->GetSender(), memberEp->GetUniqueName().c_str()));
+                }
+            }
+            ajObj.virtualEndpointsLock.Unlock();
+            ajObj.discoverMapLock.Unlock();
+            ajObj.router.UnlockNameTable();
         }
     }
 
@@ -1096,25 +1103,22 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
             }
         } else {
             /* This daemon will attempt to route indirectly to dest */
-            virtualEndpointsLock.Unlock();
-            discoverMapLock.Unlock();
-            router.UnlockNameTable();
             RemoteEndpoint* b2bEp = NULL;
             String b2bEpName;
-            if (busAddr[0] == '\0') {
-                /* Reuse existing endpoints if busAddr is not given (multipoint sessions) */
-                if (destEp && ((destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL))) {
-                    b2bEp = static_cast<VirtualEndpoint*>(destEp)->GetSessionCompatibleB2B(optsIn);
-                    if (b2bEp) {
-                        b2bEpName = b2bEp->GetUniqueName();
-                    } else {
-                        replyCode = ALLJOYN_JOINSESSION_REPLY_BAD_SESSION_OPTS;
-                    }
-                } else {
-                    replyCode = ALLJOYN_JOINSESSION_REPLY_NO_SESSION;
-                }
-            } else {
+            if ((busAddr[0] == '\0') && (msg->GetSessionId() != 0) && destEp && (destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
+                /* This is a multipoint (secondary) attach.
+                 * Forward the attach to the dest over the existing session id's B2BEp */
+                VirtualEndpoint *vep = static_cast<VirtualEndpoint*>(destEp);
+                b2bEp = vep->GetBusToBusEndpoint(msg->GetSessionId());
+                b2bEpName = b2bEp ? b2bEp->GetUniqueName() : "";
+                virtualEndpointsLock.Unlock();
+                discoverMapLock.Unlock();
+                router.UnlockNameTable();
+            } else if (busAddr[0] != '\0') {
                 /* Ask the transport for an endpoint */
+                virtualEndpointsLock.Unlock();
+                discoverMapLock.Unlock();
+                router.UnlockNameTable();
                 TransportList& transList = bus.GetInternal().GetTransportList();
                 Transport* trans = transList.GetTransport(busAddr);
                 if (trans == NULL) {
@@ -1130,14 +1134,19 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                 }
             }
 
-            if (!b2bEpName.empty()) {
+            if (b2bEpName.empty()) {
+                replyCode = ALLJOYN_JOINSESSION_REPLY_NO_SESSION;
+                router.LockNameTable();
+                discoverMapLock.Lock();
+                virtualEndpointsLock.Lock();
+            } else {
                 /* Forward AttachSession to next hop */
                 SessionId tempId;
                 SessionOpts tempOpts;
                 const String nextControllerName = b2bEp->GetRemoteName();
 
                 /* Send AttachSession */
-                status = SendAttachSession(sessionPort, src, sessionHost, dest, b2bEpName.c_str(), nextControllerName.c_str(),
+                status = SendAttachSession(sessionPort, src, sessionHost, dest, b2bEpName.c_str(), nextControllerName.c_str(), msg->GetSessionId(),
                                            busAddr, optsIn, replyCode, tempId, tempOpts, replyArgs[3]);
 
                 /* If successful, add bi-directional session routes */
@@ -1178,7 +1187,6 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                             virtualEndpointsLock.Lock();
                         }
                     }
-
                     BusEndpoint* ep = router.FindEndpoint(srcB2B);
                     RemoteEndpoint* srcB2BEp2 = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
                     ep = router.FindEndpoint(src);
@@ -1208,17 +1216,9 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                     replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
                     QCC_LogError(status, ("AttachSession failed"));
                 }
-            } else {
-                router.LockNameTable();
-                discoverMapLock.Lock();
-                virtualEndpointsLock.Lock();
             }
         }
     }
-
-    virtualEndpointsLock.Unlock();
-    discoverMapLock.Unlock();
-    router.UnlockNameTable();
 
     /* Reply to request */
     replyArgs[0].Set("u", replyCode);
@@ -1228,6 +1228,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     /* On success, ensure that reply goes over the new b2b connection. Otherwise a race condition
      * related to shutting down endpoints that are to become raw will occur.
      */
+    srcB2BEp = srcB2B ? static_cast<RemoteEndpoint*>(router.FindEndpoint(srcB2B)) : NULL;
     if (srcB2BEp) {
         status = msg->ReplyMsg(replyArgs, ArraySize(replyArgs));
         if (status == ER_OK) {
@@ -1236,11 +1237,15 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     } else {
         status = MethodReply(msg, replyArgs, ArraySize(replyArgs));
     }
+    virtualEndpointsLock.Unlock();
+    discoverMapLock.Unlock();
+    router.UnlockNameTable();
+
     QCC_DbgPrintf(("AllJoynObj::AttachSession(%d) returned (%d,%u) (status=%s)", sessionPort, replyCode, id, QCC_StatusText(status)));
 
     /* Log error if reply could not be sent */
     if (ER_OK != status) {
-        QCC_LogError(status, ("Failed to respond to org.alljoyn.Daemon.AttachSession"));
+        QCC_LogError(status, ("Failed to respond to org.alljoyn.Daemon.AttachSession."));
     }
 
     /* If the session is raw, then close the new ep and preserve the fd */
@@ -1337,7 +1342,6 @@ void AllJoynObj::GetSessionInfo(const InterfaceDescription::Member* member, Mess
         status = MethodReply(msg, ER_BUS_NO_SESSION);
     } else {
         MsgArg replyArg("as", busAddrs.size(), NULL, &busAddrs[0]);
-        printf("replyArg=%s\n", replyArg.ToString().c_str());
         status = MethodReply(msg, &replyArg, 1);
     }
 
@@ -1352,6 +1356,7 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
                                       const char* dest,
                                       const char* remoteB2BName,
                                       const char* remoteControllerName,
+                                      SessionId outgoingSessionId,
                                       const char* busAddr,
                                       const SessionOpts& optsIn,
                                       uint32_t& replyCode,
@@ -1368,7 +1373,7 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
     attachArgs[4].Set("s", remoteB2BName);
     attachArgs[5].Set("s", busAddr);
     SetSessionOpts(optsIn, attachArgs[6]);
-    ProxyBusObject controllerObj(bus, remoteControllerName, org::alljoyn::Daemon::ObjectPath, 0);
+    ProxyBusObject controllerObj(bus, remoteControllerName, org::alljoyn::Daemon::ObjectPath, outgoingSessionId);
     controllerObj.AddInterface(*daemonIface);
     QStatus status = controllerObj.SetB2BEndpoint(remoteB2BName);
 

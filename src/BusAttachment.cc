@@ -1373,7 +1373,9 @@ void BusAttachment::Internal::CallJoinedListeners(SessionPort sessionPort, Sessi
     map<SessionPort, SessionPortListener*>::iterator it = sessionPortListeners.find(sessionPort);
     if (it != sessionPortListeners.end()) {
         /* Add entry to sessionListeners */
-        sessionListeners[sessionId] = NULL;
+        if (sessionListeners.find(sessionId) == sessionListeners.end()) {
+            sessionListeners[sessionId] = NULL;
+        }
         /* Notify user */
         it->second->SessionJoined(sessionPort, sessionId, joiner);
     } else {

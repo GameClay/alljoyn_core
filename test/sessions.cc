@@ -60,6 +60,7 @@ struct SessionPortInfo {
     SessionPort port;
     String sessionHost;
     SessionOpts opts;
+    SessionPortInfo() : port(0) { }
     SessionPortInfo(SessionPort port, const String& sessionHost, const SessionOpts& opts) : port(port), sessionHost(sessionHost), opts(opts) { }
 };
 
@@ -67,6 +68,7 @@ struct SessionInfo {
     SessionId id;
     SessionPortInfo portInfo;
     vector<String> peerNames;
+    SessionInfo() : id(0) { }
     SessionInfo(SessionId id, const SessionPortInfo& portInfo) : id(0), portInfo(portInfo) { }
 };
 
@@ -190,9 +192,12 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
         map<SessionPort, SessionPortInfo>::iterator it = s_sessionPortMap.find(sessionPort);
         if (it != s_sessionPortMap.end()) {
             s_bus->SetSessionListener(id, this);
-            SessionInfo sessionInfo(id, it->second);
-            sessionInfo.peerNames.push_back(joiner);
-            s_sessionMap.insert(pair<SessionId, SessionInfo>(id, sessionInfo));
+            map<SessionId, SessionInfo>::iterator sit = s_sessionMap.find(id);
+            if (sit == s_sessionMap.end()) {
+                SessionInfo sessionInfo(id, it->second);
+                s_sessionMap[id] = sessionInfo;
+            }
+            s_sessionMap[id].peerNames.push_back(joiner);
             s_lock.Unlock();
             printf("SessionJoined with %s (id=%u)\n", joiner, id);
         } else {
@@ -393,8 +398,9 @@ static void DoList()
         if (!sit->second.peerNames.empty()) {
             printf("    Peers: ");
             for (size_t j = 0; j < sit->second.peerNames.size(); ++j) {
-                printf("%s%s\n", sit->second.peerNames[j].c_str(), (j == sit->second.peerNames.size() - 1) ? "" : ",");
+                printf("%s%s", sit->second.peerNames[j].c_str(), (j == sit->second.peerNames.size() - 1) ? "" : ",");
             }
+            printf("\n");
         }
         ++sit;
     }

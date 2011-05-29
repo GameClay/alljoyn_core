@@ -152,14 +152,6 @@ class VirtualEndpoint : public BusEndpoint {
     QStatus AddSessionRef(SessionId sessionId, SessionOpts* opts, RemoteEndpoint*& b2bEp);
 
     /**
-     * Return the "best" matching B2B endpoint for session opts.
-     *
-     * @param opts   Session options to use for measuring acceptibility of B2B endpoints.
-     * @return       Session options compatibile B2B endpoint or NULL if none is found.
-     */
-    RemoteEndpoint* GetSessionCompatibleB2B(const SessionOpts& opts);
-
-    /**
      * Remove (counted) mapping of sessionId to B2B endpoint.
      *
      * @param sessionId  The session id.

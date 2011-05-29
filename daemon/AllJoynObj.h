@@ -453,6 +453,8 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * @param dest             Unique name of session creator.
      * @param remoteB2BName    Unique name of directly connected (next hop) B2B endpoint.
      * @param remoteControllerName  Unique name of bus controller at next hop.
+     * @param outgoingSessionId     SessionId to use for outgoing AttachSession message. Should
+     *                              be 0 for newly created (non-multipoint) sessions.
      * @param busAddr          Destination bus address from advertisment or GetSessionInfo.
      * @param optsIn           Session options requested by joiner.
      * @param replyCode        [OUT] SessionAttach response code
@@ -466,6 +468,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
                               const char* dest,
                               const char* remoteB2BName,
                               const char* remoteControllerName,
+                              SessionId outgoingSessionId,
                               const char* busAddr,
                               const SessionOpts& optsIn,
                               uint32_t& replyCode,

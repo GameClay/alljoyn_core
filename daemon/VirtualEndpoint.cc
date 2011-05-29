@@ -215,18 +215,4 @@ bool VirtualEndpoint::CanUseRoute(const RemoteEndpoint& b2bEndpoint) const
     return isFound;
 }
 
-RemoteEndpoint* VirtualEndpoint::GetSessionCompatibleB2B(const SessionOpts& opts)
-{
-    RemoteEndpoint* ret = NULL;
-    m_b2bEndpointsLock.Lock();
-    multimap<SessionId, RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
-    while ((it != m_b2bEndpoints.end()) && (it->first == 0)) {
-        // TODO: Need to qualify endpoint with opts
-        ret = it->second;
-        break;
-    }
-    m_b2bEndpointsLock.Unlock();
-    return ret;
-}
-
 }
