@@ -720,7 +720,9 @@ ProxyBusObject::~ProxyBusObject()
         while (it != components->waitingThreads.end()) {
             (*it++)->Alert(SYNC_METHOD_ALERTCODE_ABORT);
         }
-        bus->UnregisterAllHandlers(this);
+        if (bus) {
+            bus->UnregisterAllHandlers(this);
+        }
         delete components;
     }
 }

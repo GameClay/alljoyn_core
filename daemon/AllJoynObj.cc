@@ -379,7 +379,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
     const MsgArg* args;
     SessionMapEntry sme;
     String b2bEpName;
-        
+
     /* Parse the message args */
     msg->GetArgs(numArgs, args);
     const char* sessionHost = NULL;
@@ -768,7 +768,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                                                      member,
                                                      memberB2BEp->GetUniqueName().c_str(),
                                                      nextControllerName.c_str(),
-                                                     id, 
+                                                     id,
                                                      "",
                                                      sme.opts,
                                                      tReplyCode,
@@ -1108,7 +1108,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
             if ((busAddr[0] == '\0') && (msg->GetSessionId() != 0) && destEp && (destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
                 /* This is a multipoint (secondary) attach.
                  * Forward the attach to the dest over the existing session id's B2BEp */
-                VirtualEndpoint *vep = static_cast<VirtualEndpoint*>(destEp);
+                VirtualEndpoint*vep = static_cast<VirtualEndpoint*>(destEp);
                 b2bEp = vep->GetBusToBusEndpoint(msg->GetSessionId());
                 b2bEpName = b2bEp ? b2bEp->GetUniqueName() : "";
                 virtualEndpointsLock.Unlock();

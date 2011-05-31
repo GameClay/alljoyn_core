@@ -157,23 +157,22 @@ int main(int argc, char** argv, char** envArg)
 #endif
     }
 
-    ProxyBusObject remoteObj;
     if (ER_OK == status) {
-        remoteObj = ProxyBusObject(*g_msgBus, SERVICE_NAME, SERVICE_PATH, s_sessionId);
+        ProxyBusObject remoteObj(*g_msgBus, SERVICE_NAME, SERVICE_PATH, s_sessionId);
         status = remoteObj.IntrospectRemoteObject();
         if (ER_OK != status) {
             printf("Introspection of %s (path=%s) failed\n", SERVICE_NAME, SERVICE_PATH);
             printf("Make sure the service is running before launching the client.\n");
+        } else {
+            if (argc > 1) {
+                status = remoteObj.SetProperty(SERVICE_NAME, "name", argv[1]);
+                if (status != ER_OK) {
+                    printf("Error calling SetProperty to change the 'name' property.\n");
+                }
+            } else {
+                printf("Error new name not given: nameChange_client [new name]\n");
+            }
         }
-    }
-
-    if (argc > 1) {
-        status = remoteObj.SetProperty(SERVICE_NAME, "name", argv[1]);
-        if (status != ER_OK) {
-            printf("Error calling SetProperty to change the 'name' property.\n");
-        }
-    } else {
-        printf("Error new name not given: nameChange_client [new name]\n");
     }
 
     /* Stop the bus (not strictly necessary since we are going to delete it anyways) */

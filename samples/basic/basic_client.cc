@@ -174,15 +174,12 @@ int main(int argc, char** argv, char** envArg)
 #endif
     }
 
-    ProxyBusObject remoteObj;
-    if (ER_OK == status) {
-        remoteObj = ProxyBusObject(*g_msgBus, SERVICE_NAME, SERVICE_PATH, s_sessionId);
+    if (status == ER_OK) {
+        ProxyBusObject remoteObj(*g_msgBus, SERVICE_NAME, SERVICE_PATH, s_sessionId);
         const InterfaceDescription* alljoynTestIntf = g_msgBus->GetInterface(INTERFACE_NAME);
         assert(alljoynTestIntf);
         remoteObj.AddInterface(*alljoynTestIntf);
-    }
 
-    if (status == ER_OK) {
         Message reply(*g_msgBus);
         MsgArg inputs[2];
         inputs[0].Set("s", "Hello ");
