@@ -48,6 +48,26 @@ class RemoteEndpoint;
  */
 class BusAttachment : public MessageReceiver {
   public:
+
+    /**
+     * Pure virtual base class implemented by classes that wish to call JoinSessionAsync().
+     */
+    class JoinSessionAsyncCB {
+    public:
+        /** Destructor */
+        virtual ~JoinSessionAsyncCB() { }
+
+        /**
+         * Called when JoinSessionAsync() completes.
+         *
+         * @param status       ER_OK if successful
+         * @param sessionId    Unique identifier for session.
+         * @param opts         Session options.
+         * @param context      User defined context which will be passed as-is to callback.
+         */
+        virtual void JoinSessionCB(QStatus status, SessionId sessionId, SessionOpts opts, void* context) = 0;
+    };
+
     /**
      * Construct a BusAttachment.
      *
@@ -583,9 +603,9 @@ class BusAttachment : public MessageReceiver {
      *
      * @param[in]  sessionHost      Bus name of attachment that is hosting the session to be joined.
      * @param[in]  sessionPort      SessionPort of sessionHost to be joined.
-     * @param[in]  listener  Optional listener called when session related events occur. May be NULL.
+     * @param[in]  listener         Optional listener called when session related events occur. May be NULL.
      * @param[out] sessionId        Unique identifier for session.
-     * @param[out] opts             Session options.
+     * @param[in,out] opts          Session options.
      *
      * @return
      *      - #ER_OK iff daemon response was received and the session was successfully joined.
@@ -594,6 +614,32 @@ class BusAttachment : public MessageReceiver {
      */
     QStatus JoinSession(const char* sessionHost, SessionPort sessionPort, SessionListener* listener,
                         SessionId& sessionId, SessionOpts& opts);
+
+    /**
+     * Join a session.
+     * This method is a shortcut/helper that issues an org.alljoyn.Bus.JoinSession method call to the local daemon
+     * and interprets the response.
+     *
+     * This call executes asynchronously. When the JoinSession response is received, the callback will be called.
+     *
+     * @param[in]  sessionHost      Bus name of attachment that is hosting the session to be joined.
+     * @param[in]  sessionPort      SessionPort of sessionHost to be joined.
+     * @param[in]  listener         Optional listener called when session related events occur. May be NULL.
+     * @param[in]  opts             Session options.
+     * @param[in]  callback         Called when JoinSession response is received.
+     * @param[in]  context          User defined context which will be passed as-is to callback.
+     *
+     * @return
+     *      - #ER_OK iff method call to local daemon response was was successful.
+     *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+     *      - Other error status codes indicating a failure.
+     */
+    QStatus JoinSessionAsync(const char* sessionHost, 
+                             SessionPort sessionPort, 
+                             SessionListener* listener,
+                             const SessionOpts& opts, 
+                             BusAttachment::JoinSessionAsyncCB* callback,
+                             void* context = NULL);
 
     /**
      * Set the SessionListener for an existing sessionId.
@@ -751,6 +797,11 @@ class BusAttachment : public MessageReceiver {
      * Copy constructor is private.
      */
     BusAttachment(const BusAttachment& other) { }
+
+    /**
+     * JoinSession method_reply handler. (Internal use only)
+     */
+    void JoinSessionMethodCB(Message& message, void* context);
 
     bool isStarted;           /**< Indicates if the bus has been started */
     bool isStopping;          /**< Indicates Stop has been called */

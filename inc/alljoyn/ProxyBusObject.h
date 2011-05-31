@@ -56,6 +56,9 @@ class ProxyBusObject : public MessageReceiver {
     /**
      * Pure virtual base class implemented by classes that wish to receive
      * ProxyBusObject related messages.
+     *
+     * @internal Do not use this pattern for creating public Async versions of the APIs.  See
+     * BusAttachment::JoinSessionAsync() instead.
      */
     class Listener {
       public:
@@ -133,7 +136,7 @@ class ProxyBusObject : public MessageReceiver {
      * children that exist. Use this information to populate this object's
      * interfaces and children.
      *
-     * This call executes asynchronously. Then the introspection response
+     * This call executes asynchronously. When the introspection response
      * is received from the actual remote object, this ProxyBusObject will
      * be updated and the callback will be called.
      *

@@ -1066,6 +1066,116 @@ QStatus BusAttachment::UnbindSessionPort(SessionPort sessionPort)
     return status;
 }
 
+struct _JoinSessionMethodCBContext {
+    BusAttachment::JoinSessionAsyncCB* callback;
+    SessionListener* sessionListener;
+    void* context;
+    _JoinSessionMethodCBContext(BusAttachment::JoinSessionAsyncCB* callback, SessionListener* sessionListener, void* context)
+        : callback(callback), sessionListener(sessionListener), context(context) {}
+};
+
+QStatus BusAttachment::JoinSessionAsync(const char* sessionHost, SessionPort sessionPort, SessionListener* sessionListener,
+                                        const SessionOpts& opts, BusAttachment::JoinSessionAsyncCB* callback, void* context)
+{
+    if (!IsConnected()) {
+        return ER_BUS_NOT_CONNECTED;
+    }
+    if (!IsLegalBusName(sessionHost)) {
+        return ER_BUS_BAD_BUS_NAME;
+    }
+
+    MsgArg args[3];
+    size_t numArgs = 2;
+
+    MsgArg::Set(args, numArgs, "sq", sessionHost, sessionPort);
+    SetSessionOpts(opts, args[2]);
+
+    const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
+    QStatus status = alljoynObj.MethodCallAsync(org::alljoyn::Bus::InterfaceName, 
+                                                "JoinSession", 
+                                                this, 
+                                                static_cast<MessageReceiver::ReplyHandler>(&BusAttachment::JoinSessionMethodCB),
+                                                args, ArraySize(args), 
+                                                reinterpret_cast<void*>(new _JoinSessionMethodCBContext(callback, sessionListener, context)));
+    return status;
+}
+
+void BusAttachment::JoinSessionMethodCB(Message& reply, void* context)
+{
+    _JoinSessionMethodCBContext* ctx = reinterpret_cast<_JoinSessionMethodCBContext*>(context);
+
+    QStatus status;
+    SessionId sessionId;
+    SessionOpts opts;
+    if (reply->GetType() == MESSAGE_METHOD_RET) {
+        const MsgArg* replyArgs;
+        size_t na;
+        reply->GetArgs(na, replyArgs);
+        assert(na == 3);
+        uint32_t disposition = replyArgs[0].v_uint32;
+        sessionId = replyArgs[1].v_uint32;
+        status = GetSessionOpts(replyArgs[2], opts);
+        if (status != ER_OK) {
+            sessionId = 0;
+        } else {
+            switch (disposition) {
+            case ALLJOYN_JOINSESSION_REPLY_SUCCESS:
+                break;
+
+            case ALLJOYN_JOINSESSION_REPLY_NO_SESSION:
+                status = ER_ALLJOYN_JOINSESSION_REPLY_NO_SESSION;
+                break;
+
+            case ALLJOYN_JOINSESSION_REPLY_UNREACHABLE:
+                status = ER_ALLJOYN_JOINSESSION_REPLY_UNREACHABLE;
+                break;
+
+            case ALLJOYN_JOINSESSION_REPLY_CONNECT_FAILED:
+                status = ER_ALLJOYN_JOINSESSION_REPLY_CONNECT_FAILED;
+                break;
+
+            case ALLJOYN_JOINSESSION_REPLY_REJECTED:
+                status = ER_ALLJOYN_JOINSESSION_REPLY_REJECTED;
+                break;
+
+            case ALLJOYN_JOINSESSION_REPLY_BAD_SESSION_OPTS:
+                status = ER_ALLJOYN_JOINSESSION_REPLY_BAD_SESSION_OPTS;
+                break;
+
+            case ALLJOYN_JOINSESSION_REPLY_ALREADY_JOINED:
+                status = ER_ALLJOYN_JOINSESSION_REPLY_ALREADY_JOINED;
+                break;
+
+            case ALLJOYN_JOINSESSION_REPLY_FAILED:
+                status = ER_ALLJOYN_JOINSESSION_REPLY_FAILED;
+                break;
+
+            default:
+                status = ER_BUS_UNEXPECTED_DISPOSITION;
+                break;
+            }
+        }
+    } else if (reply->GetType() == MESSAGE_ERROR) {
+        status = ER_BUS_REPLY_IS_ERROR_MESSAGE;
+        String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        sessionId = 0;
+        QCC_LogError(status, ("%s.JoinSession returned ERROR_MESSAGE (error=%s, \"%s\")",
+                              org::alljoyn::Bus::InterfaceName,
+                              errName,
+                              errMsg.c_str()));
+    }
+    if (ctx->sessionListener && (status == ER_OK)) {
+        busInternal->listenersLock.Lock();
+        busInternal->sessionListeners[sessionId] = ctx->sessionListener;
+        busInternal->listenersLock.Unlock();
+    }
+
+    /* Call the callback */
+    ctx->callback->JoinSessionCB(status, sessionId, opts, ctx->context);
+    delete ctx;
+}
+
 QStatus BusAttachment::JoinSession(const char* sessionHost, SessionPort sessionPort, SessionListener* listener, SessionId& sessionId, SessionOpts& opts)
 {
     if (!IsConnected()) {
