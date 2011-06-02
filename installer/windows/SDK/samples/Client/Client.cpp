@@ -4,7 +4,9 @@
  */
 
 /******************************************************************************
- * Copyright 2011, Qualcomm Innovation Center, Inc.
+ *
+ *
+ * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -61,7 +63,7 @@ static void SigIntHandler(int sig)
 }
 
 /** AllJoynListener receives discovery events from AllJoyn */
-class MyBusListener : public BusListener {
+class MyBusListener : public BusListener, public SessionListener {
   public:
     void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
     {
@@ -157,11 +159,9 @@ int main(int argc, char** argv, char** envArg)
 
     /* Begin discovery on the well-known name of the service to be called */
     if (ER_OK == status) {
-        uint32_t returnValue = 0;
-        status = g_msgBus->FindAdvertisedName(SERVICE_NAME, returnValue);
-        if ((status != ER_OK) || (returnValue != ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS)) {
-            printf("org.alljoyn.Bus.FindAdvertisedName failed (%s) (returnValue=%d)\n", QCC_StatusText(status), returnValue);
-            status = (status == ER_OK) ? ER_FAIL : status;
+        status = g_msgBus->FindAdvertisedName(SERVICE_NAME);
+        if (status != ER_OK) {
+            printf("org.alljoyn.Bus.FindAdvertisedName failed (%s))\n", QCC_StatusText(status));
         }
     }
 
@@ -174,15 +174,12 @@ int main(int argc, char** argv, char** envArg)
 #endif
     }
 
-    ProxyBusObject remoteObj;
-    if (ER_OK == status) {
-        remoteObj = ProxyBusObject(*g_msgBus, SERVICE_NAME, SERVICE_PATH, s_sessionId);
+    if (status == ER_OK) {
+        ProxyBusObject remoteObj(*g_msgBus, SERVICE_NAME, SERVICE_PATH, s_sessionId);
         const InterfaceDescription* alljoynTestIntf = g_msgBus->GetInterface(INTERFACE_NAME);
         assert(alljoynTestIntf);
         remoteObj.AddInterface(*alljoynTestIntf);
-    }
 
-    if (status == ER_OK) {
         Message reply(*g_msgBus);
         MsgArg inputs[2];
         inputs[0].Set("s", "Hello ");
