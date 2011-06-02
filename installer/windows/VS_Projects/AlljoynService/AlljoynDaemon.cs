@@ -76,29 +76,35 @@ public partial class AlljoynDaemon : ServiceBase {
             } else
                 _cl += " " + a;
         }
-        if (_logPath.Length == 0) {
-#if DEBUG
-            Debug.WriteLine("ERROR : Path name for logfile not found {0}", _cl);
-#endif
-            return;
+        // if there is no log path defined attempt to create in the installation folder
+        if (_logPath == null) {
+            _logPath = _exeName.Replace("AlljoynService.exe", "logs");
         }
-        // Directory methods do not like quotes
-        if (_logPath.IndexOf('"') > 0) {
-#if DEBUG
-            Debug.WriteLine("ERROR : Quoted path name not allowed. {0}", _cl);
-#endif
-            return;
+        // remove quotes
+        if (_logPath[_logPath.Length - 1] == '"') {
+            _logPath = _logPath.Remove(_logPath.Length - 1, 1);
+            _logPath = _logPath.Remove(0, 1);
         }
-
         if (!Directory.Exists(_logPath)) {
             try{
                 Directory.CreateDirectory(_logPath);
             }catch{
                 Debug.WriteLine("ERROR : Access denied {0}", _logPath);
-                return;
+                _logPath = "";
             }
         }
-
+        // if that failed make one last attempt using TEMP
+        if (_logPath == "") {
+            _logPath = @"\TEMP\alljoyn\logs";
+            if (!Directory.Exists(_logPath)) {
+                try{
+                    Directory.CreateDirectory(_logPath);
+                }catch{
+                    Debug.WriteLine("ERROR : Cannot create log file, shutting down");
+                    return;
+                }
+            }
+        }
         _logPath += @"\" + generateLogName();
         ServiceDLL.SetLogFile(_logPath);      // pass to unmanaged code
 
