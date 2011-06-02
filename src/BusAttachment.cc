@@ -1071,7 +1071,7 @@ struct _JoinSessionMethodCBContext {
     SessionListener* sessionListener;
     void* context;
     _JoinSessionMethodCBContext(BusAttachment::JoinSessionAsyncCB* callback, SessionListener* sessionListener, void* context)
-        : callback(callback), sessionListener(sessionListener), context(context) {}
+        : callback(callback), sessionListener(sessionListener), context(context) { }
 };
 
 QStatus BusAttachment::JoinSessionAsync(const char* sessionHost, SessionPort sessionPort, SessionListener* sessionListener,
@@ -1091,11 +1091,11 @@ QStatus BusAttachment::JoinSessionAsync(const char* sessionHost, SessionPort ses
     SetSessionOpts(opts, args[2]);
 
     const ProxyBusObject& alljoynObj = this->GetAllJoynProxyObj();
-    QStatus status = alljoynObj.MethodCallAsync(org::alljoyn::Bus::InterfaceName, 
-                                                "JoinSession", 
-                                                this, 
+    QStatus status = alljoynObj.MethodCallAsync(org::alljoyn::Bus::InterfaceName,
+                                                "JoinSession",
+                                                this,
                                                 static_cast<MessageReceiver::ReplyHandler>(&BusAttachment::JoinSessionMethodCB),
-                                                args, ArraySize(args), 
+                                                args, ArraySize(args),
                                                 reinterpret_cast<void*>(new _JoinSessionMethodCBContext(callback, sessionListener, context)));
     return status;
 }

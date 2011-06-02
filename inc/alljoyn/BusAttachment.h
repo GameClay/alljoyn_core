@@ -53,7 +53,7 @@ class BusAttachment : public MessageReceiver {
      * Pure virtual base class implemented by classes that wish to call JoinSessionAsync().
      */
     class JoinSessionAsyncCB {
-    public:
+      public:
         /** Destructor */
         virtual ~JoinSessionAsyncCB() { }
 
@@ -634,10 +634,10 @@ class BusAttachment : public MessageReceiver {
      *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
      *      - Other error status codes indicating a failure.
      */
-    QStatus JoinSessionAsync(const char* sessionHost, 
-                             SessionPort sessionPort, 
+    QStatus JoinSessionAsync(const char* sessionHost,
+                             SessionPort sessionPort,
                              SessionListener* listener,
-                             const SessionOpts& opts, 
+                             const SessionOpts& opts,
                              BusAttachment::JoinSessionAsyncCB* callback,
                              void* context = NULL);
 
