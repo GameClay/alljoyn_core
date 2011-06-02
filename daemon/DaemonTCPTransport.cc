@@ -493,8 +493,43 @@ QStatus DaemonTCPTransport::GetListenAddresses(const SessionOpts& opts, std::vec
                      */
                     if (entries[i].m_family == AF_INET) {
                         QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses(): %s is IPv4.  Match found", entries[i].m_name.c_str()));
-                        qcc::String busAddr = "tcp:addr=" + entries[i].m_addr;
-                        busAddrs.push_back(busAddr);
+
+                        /*
+                         * We know we have an interface that speaks IPv4 and
+                         * which has an IPv4 address we can pass back.  We know
+                         * it is capable of receiving incoming connections, but
+                         * the $64,000 questions are, does it have a listener
+                         * and what port is that listener listening on.
+                         *
+                         * There is one name service associated with the daemon
+                         * TCP transport, and it is advertising at most one port.
+                         * It may be advertising that port over multiple
+                         * interfaces, but there is currently just one port being
+                         * advertised.  If multiple listeners are created, the
+                         * name service only advertises the lastly set port.  In
+                         * the future we may need to add the ability to advertise
+                         * different ports on different interfaces, but the answer
+                         * is simple now.  Ask the name service for the one port
+                         * it is advertising and that must be the answer.
+                         */
+                        qcc::String ipv4address, ipv6address;
+                        uint16_t port;
+                        m_ns->GetEndpoints(ipv4address, ipv6address, port);
+
+                        /*
+                         * If the port is zero, then it hasn't been set and this
+                         * implies that DaemonTCPTransport::StartListen hasn't
+                         * been called and there is no listener for this transport.
+                         * We should only return an address if we have a listener.
+                         */
+                        if (port) {
+                            /*
+                             * Now put this information together into a bus address
+                             * that the rest of the AllJoyn world can understand.
+                             */
+                            qcc::String busAddr = "tcp:addr=" + entries[i].m_addr + ",port=" + port;
+                            busAddrs.push_back(busAddr);
+                        }
                     }
                 }
             }
