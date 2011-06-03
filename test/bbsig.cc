@@ -410,7 +410,7 @@ static void usage(void)
     printf("   -s              = Enable stress mode (connect/disconnect w/ server between runs non-stop)\n");
     printf("   -l              = Register signal handler for loopback\n");
     printf("   -r #            = Signal rate (delay in ms between signals sent; default = 0)\n");
-    printf("   -d #            = Delay (in ms) between sending last signal and disconnecting (stress mode only)\n");
+    printf("   -y #            = Delay (in ms) between sending last signal and disconnecting (stress mode only)\n");
     printf("   -i #            = Signal report interval (number of signals tx/rx per update; default = 1000)\n");
     printf("   -c #            = Max number of signals to send, default = 1000000)\n");
     printf("   -t #            = TTL for the signals\n");
@@ -503,7 +503,7 @@ int main(int argc, char** argv)
             } else {
                 signalDelay = strtoul(argv[i], NULL, 10);
             }
-        } else if (0 == strcmp("-d", argv[i])) {
+        } else if (0 == strcmp("-y", argv[i])) {
             ++i;
             if (i == argc) {
                 printf("option %s requires a parameter\n", argv[i - 1]);
