@@ -987,7 +987,7 @@ QStatus DaemonTCPTransport::Connect(const char* connectSpec, RemoteEndpoint** ne
         QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Checking for implicit connection to self"));
         std::vector<NameService::IfConfigEntry> entries;
         QStatus status = m_ns->IfConfig(entries);
-        
+
         /*
          * Only do the check for self-ness if we can get interfaces to check.
          * This is a non-fatal error since we know that there is an end-to-end
