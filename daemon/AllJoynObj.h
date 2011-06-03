@@ -321,6 +321,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
   private:
     Bus& bus;                             /**< The bus */
     DaemonRouter& router;                 /**< The router */
+    qcc::Mutex stateLock;                 /**< Lock that protects AlljoynObj state */
 
     const InterfaceDescription* daemonIface;               /**< org.alljoyn.Daemon interface */
 
@@ -330,15 +331,12 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
 
     /** Map of open connectSpecs to local endpoint name(s) that require the connection. */
     std::multimap<qcc::String, qcc::String> connectMap;
-    qcc::Mutex connectMapLock;            /**< Mutex that protects connectMap */
 
     /** Map of active advertised names to requesting local endpoint name(s) */
     std::multimap<qcc::String, std::pair<TransportMask, qcc::String> > advertiseMap;
-    qcc::Mutex advertiseMapLock;          /**< Mutex that protects advertiseMap */
 
     /** Map of active discovery names to requesting local endpoint name(s) */
     std::multimap<qcc::String, qcc::String> discoverMap;
-    qcc::Mutex discoverMapLock;            /**< Mutex that protects discoverMap */
 
     /** Map of discovered bus names (protected by discoverMapLock) */
     struct NameMapEntry {
@@ -375,7 +373,6 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
             streamingEp(NULL) { }
     };
     std::multimap<std::pair<qcc::String, SessionId>, SessionMapEntry> sessionMap;  /**< Map (endpointName,sessionId) to session info */
-    qcc::Mutex sessionMapLock;                           /**< Protect sessionMap */
 
     const qcc::GUID& guid;                               /**< Global GUID of this daemon */
 
@@ -383,11 +380,8 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     const InterfaceDescription::Member* detachSessionSignal;   /**< org.alljoyn.Daemon.DetachSession signal member */
 
     std::map<qcc::String, VirtualEndpoint*> virtualEndpoints;  /**< Map of endpoints that reside behind a connected AllJoyn daemon */
-    qcc::Mutex virtualEndpointsLock;                     /**< Mutex that protects virtualEndpoints map */
 
     std::map<qcc::StringMapKey, RemoteEndpoint*> b2bEndpoints;    /**< Map of bus-to-bus endpoints that are connected to external daemons */
-
-    qcc::Mutex b2bEndpointsLock;                         /**< Mutex that protects b2bEndpoints map */
 
     /** NameMapReaperThread removes expired names from the nameMap */
     class NameMapReaperThread : public qcc::Thread {
@@ -420,6 +414,16 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     std::vector<JoinSessionThread*> joinSessionThreads;  /**< List of outstanding join session requests */
     qcc::Mutex joinSessionThreadsLock;                   /**< Lock that protects joinSessionThreads */
     bool isStopping;                                     /**< True while waiting for threads to exit */
+
+    /**
+     * Acquire AllJoynObj locks.
+     */
+    void AcquireLocks();
+
+    /**
+     * Release AllJoynObj locks.
+     */
+    void ReleaseLocks();
 
     /**
      * Utility function used to send a single FoundName signal.

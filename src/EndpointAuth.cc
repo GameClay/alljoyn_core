@@ -91,6 +91,7 @@ QStatus EndpointAuth::Hello()
      */
     remoteName = response->GetSender();
     QCC_DbgHLPrintf(("EP remote %sname %s", endpoint.features.isBusToBus ? "(bus-to-bus) " : "", remoteName.c_str()));
+
     /*
      * bus-to-bus establishment uses an extended "hello" method.
      */
@@ -100,7 +101,12 @@ QStatus EndpointAuth::Hello()
             uniqueName = response->GetArg(0)->v_string.str;
             remoteGUID = qcc::GUID(response->GetArg(1)->v_string.str);
             remoteProtocolVersion = response->GetArg(2)->v_uint32;
-            QCC_DbgPrintf(("Connection id: \"%s\", remoteGUID: \"%s\"\n", uniqueName.c_str(), remoteGUID.ToString().c_str()));
+            if (remoteGUID == bus.GetInternal().GetGlobalGUID()) {
+                QCC_DbgPrintf(("BusHello was sent to self"));
+                return ER_BUS_SELF_CONNECT;
+            } else {
+                QCC_DbgPrintf(("Connection id: \"%s\", remoteGUID: \"%s\"\n", uniqueName.c_str(), remoteGUID.ToString().c_str()));
+            }
         } else {
             return status;
         }
@@ -180,6 +186,10 @@ QStatus EndpointAuth::WaitHello()
             if ((ER_OK == status) && (2 == numArgs) && (ALLJOYN_STRING == args[0].typeId) && (ALLJOYN_UINT32 == args[1].typeId)) {
                 remoteGUID = qcc::GUID(args[0].v_string.str);
                 remoteProtocolVersion = args[1].v_uint32;
+                if (remoteGUID == bus.GetInternal().GetGlobalGUID()) {
+                    QCC_DbgPrintf(("BusHello was sent by self"));
+                    return ER_BUS_SELF_CONNECT;
+                }
             } else {
                 QCC_DbgPrintf(("BusHello expected 2 args with signature \"su\""));
                 return ER_BUS_ESTABLISH_FAILED;
