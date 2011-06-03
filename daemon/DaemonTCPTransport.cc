@@ -527,7 +527,7 @@ QStatus DaemonTCPTransport::GetListenAddresses(const SessionOpts& opts, std::vec
                              * Now put this information together into a bus address
                              * that the rest of the AllJoyn world can understand.
                              */
-                            qcc::String busAddr = "tcp:addr=" + entries[i].m_addr + ",port=" + port;
+                            qcc::String busAddr = "tcp:addr=" + entries[i].m_addr + ",port=" + U32ToString(port);
                             busAddrs.push_back(busAddr);
                         }
                     }
