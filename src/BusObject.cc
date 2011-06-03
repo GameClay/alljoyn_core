@@ -418,9 +418,12 @@ QStatus BusObject::Signal(const char* destination,
     Message msg(bus);
 
     /*
-     * If the interface is secure the signal message must be encrypted.
+     * If the interface is secure or encryption is explicitly rerquested the method call must be encrypted.
      */
     if (signalMember.iface->IsSecure()) {
+        flags |= ALLJOYN_FLAG_ENCRYPTED;
+    }
+    if (flags & ALLJOYN_FLAG_ENCRYPTED) {
         status = bus.GetInternal().GetLocalEndpoint().GetPeerObj()->SecurePeerConnection(destination);
         /*
          * Not recoverable if the connection could not be secured

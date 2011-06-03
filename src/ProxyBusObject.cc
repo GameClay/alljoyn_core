@@ -377,9 +377,12 @@ QStatus ProxyBusObject::MethodCallAsync(const InterfaceDescription::Member& meth
         flags |= ALLJOYN_FLAG_NO_REPLY_EXPECTED;
     }
     /*
-     * If the interface is secure the method call must be encrypted.
+     * If the interface is secure or encryption is explicitly rerquested the method call must be encrypted.
      */
     if (method.iface->IsSecure()) {
+        flags |= ALLJOYN_FLAG_ENCRYPTED;
+    }
+    if (flags & ALLJOYN_FLAG_ENCRYPTED) {
         status = localEndpoint.GetPeerObj()->SecurePeerConnection(serviceName);
         /*
          * Not recoverable if the connection could not be secured
@@ -478,7 +481,7 @@ QStatus ProxyBusObject::MethodCall(const InterfaceDescription::Member& method,
         goto MethodCallExit;
     }
     /*
-     * If the interface is secure the method call must be encrypted.
+     * If the interface is secure or encryption is explicitly rerquested the method call must be encrypted.
      */
     if (method.iface->IsSecure()) {
         flags |= ALLJOYN_FLAG_ENCRYPTED;
