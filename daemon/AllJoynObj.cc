@@ -962,6 +962,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
             String destUniqueName = destEp->GetUniqueName();
             BusEndpoint* sessionHostEp = router.FindEndpoint(sessionHost);
             multimap<pair<String, SessionId>, SessionMapEntry>::const_iterator sit = sessionMap.lower_bound(pair<String, SessionId>(destUniqueName, 0));
+            replyCode = ALLJOYN_JOINSESSION_REPLY_SUCCESS;
             while ((sit != sessionMap.end()) && (sit->first.first == destUniqueName)) {
                 BusEndpoint* creatorEp = router.FindEndpoint(sit->second.sessionHost);
                 if ((sit->second.sessionPort == sessionPort) && sessionHostEp && (creatorEp == sessionHostEp)) {
@@ -982,22 +983,35 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                             if (sit != sessionMap.end()) {
                                 sme = sit->second;
                                 foundSessionMapEntry = true;
+                                /* make sure session is not already joined by this joiner */
+                                vector<String>::const_iterator mit = sit->second.memberNames.begin();
+                                while (mit != sit->second.memberNames.end()) {
+                                    printf("Checking %s == %s\n", mit->c_str(), src);
+                                    if (*mit++ == src) {
+                                        replyCode = ALLJOYN_JOINSESSION_REPLY_ALREADY_JOINED;
+                                        foundSessionMapEntry = false;
+                                        break;
+                                    }
+                                }
                             }
                         } else {
                             foundSessionMapEntry = true;
                         }
                     }
-                    if (!foundSessionMapEntry) {
-                        sessionMap.insert(pair<pair<String, SessionId>, SessionMapEntry>(pair<String, SessionId>(sme.endpointName, sme.id), sme));
+                    if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
+                        if (!foundSessionMapEntry) {
+                            sessionMap.insert(pair<pair<String, SessionId>, SessionMapEntry>(pair<String, SessionId>(sme.endpointName, sme.id), sme));
+                        }
+                        foundSessionMapEntry = true;
                     }
-                    foundSessionMapEntry = true;
                     break;
                 }
                 ++sit;
             }
             if (!foundSessionMapEntry) {
-                /* No such session */
-                replyCode = ALLJOYN_JOINSESSION_REPLY_NO_SESSION;
+                if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
+                    replyCode = ALLJOYN_JOINSESSION_REPLY_NO_SESSION;
+                }
             } else if (!sme.opts.IsCompatible(optsIn)) {
                 replyCode = ALLJOYN_JOINSESSION_REPLY_BAD_SESSION_OPTS;
                 optsOut = sme.opts;
