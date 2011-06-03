@@ -140,10 +140,9 @@ class SessionTestObject : public BusObject {
     }
 
     /** Send a Chat signal */
-    QStatus SendChatSignal(SessionId id, const char* msg) {
+    QStatus SendChatSignal(SessionId id, const char* msg, uint8_t flags) {
 
         MsgArg chatArg("s", msg);
-        uint8_t flags = 0;
         return Signal(NULL, id, *chatSignalMember, &chatArg, 1, 0, flags);
     }
 
@@ -509,7 +508,15 @@ int main(int argc, char** argv)
     while ((ER_OK == status) && (get_line(buf, bufSize, stdin))) {
         String line(buf);
         String cmd = NextTok(line);
-        if (cmd == "requestname") {
+        if (cmd == "debug") {
+            String module = NextTok(line);
+            String level = NextTok(line);
+            if (module.empty() || level.empty()) {
+                printf("Usage: debug <modulename> <level>\n");
+            } else {
+                QCC_SetDebugLevel(module.c_str(), StringToU32(level));
+            }
+        } else if (cmd == "requestname") {
             String name = NextTok(line);
             if (name.empty()) {
                 printf("Usage: requestname <name>\n");
@@ -595,16 +602,23 @@ int main(int argc, char** argv)
             }
             DoLeave(id);
         } else if (cmd == "chat") {
-            SessionId id = StringToU32(NextTok(line));
+            uint8_t flags = 0;
+            qcc::String tok = NextTok(line);
+            if (tok == "-c") {
+                flags |= ALLJOYN_FLAG_COMPRESSED;
+                tok = NextTok(line);
+            }
+            SessionId id = StringToU32(tok);
             String chatMsg = Trim(line);
             if ((id == 0) || chatMsg.empty()) {
-                printf("Usage: chat <sessionId> <msg>\n");
+                printf("Usage: chat [-c] <sessionId> <msg>\n");
                 continue;
             }
-            sessionTestObj.SendChatSignal(id, chatMsg.c_str());
+            sessionTestObj.SendChatSignal(id, chatMsg.c_str(), flags);
         } else if (cmd == "exit") {
             break;
         } else if (cmd == "help") {
+            printf("debug <module_name> <level>                                   - Set debug level for a module\n");
             printf("requestname <name>                                            - Request a well-known name\n");
             printf("releasename <name>                                            - Release a well-known name\n");
             printf("bind <port> [isMultipoint] [traffic] [proximity] [transports] - Bind a session port\n");
@@ -616,7 +630,8 @@ int main(int argc, char** argv)
             printf("list                                                          - List port bindings, discovered names and active sessions\n");
             printf("join <name> <port> [isMultipoint] [traffic] [proximity] [transports] - Join a session\n");
             printf("leave <sessionId>                                             - Leave a session\n");
-            printf("chat <sessionId> <msg>                                        - Send a message over a given session\n");
+            printf("chat [-c] <sessionId> <msg>                                   - Send a message over a given session\n");
+            printf("                                                                If present option -c means use header compression\n");
             printf("exit                                                          - Exit this program\n");
             printf("\n");
         } else {
