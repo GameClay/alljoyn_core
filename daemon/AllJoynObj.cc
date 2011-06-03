@@ -1640,15 +1640,16 @@ void AllJoynObj::AdvertiseName(const InterfaceDescription::Member* member, Messa
     }
 
     /* Reply to request */
+    String advNameStr = advertiseName;   /* Needed since advertiseName will be corrupt after MethodReply */
     replyArg.Set("u", replyCode);
     status = MethodReply(msg, &replyArg, 1);
 
-    QCC_DbgPrintf(("AllJoynObj::Advertise(%s) returned %d (status=%s)", advertiseName, replyCode, QCC_StatusText(status)));
+    QCC_DbgPrintf(("AllJoynObj::Advertise(%s) returned %d (status=%s)", advNameStr.c_str(), replyCode, QCC_StatusText(status)));
 
     /* Add advertisement to local nameMap so local discoverers can see this advertisement */
     if ((replyCode == ALLJOYN_ADVERTISENAME_REPLY_SUCCESS) && (transports & TRANSPORT_LOCAL)) {
         vector<String> names;
-        names.push_back(advertiseName);
+        names.push_back(advNameStr);
         FoundNames("local:", bus.GetGlobalGUIDString(), TRANSPORT_LOCAL, &names, numeric_limits<uint8_t>::max());
     }
 
@@ -1680,13 +1681,14 @@ void AllJoynObj::CancelAdvertiseName(const InterfaceDescription::Member* member,
     uint32_t replyCode = (ER_OK == status) ? ALLJOYN_CANCELADVERTISENAME_REPLY_SUCCESS : ALLJOYN_CANCELADVERTISENAME_REPLY_FAILED;
 
     /* Reply to request */
+    String advNameStr = advertiseName;   /* Needed since advertiseName will be corrupt after MethodReply */
     MsgArg replyArg("u", replyCode);
     status = MethodReply(msg, &replyArg, 1);
 
     /* Remove advertisement from local nameMap so local discoverers are notified of advertisement going away */
     if ((replyCode == ALLJOYN_ADVERTISENAME_REPLY_SUCCESS) && (transports & TRANSPORT_LOCAL)) {
         vector<String> names;
-        names.push_back(advertiseName);
+        names.push_back(advNameStr);
         FoundNames("local:", bus.GetGlobalGUIDString(), TRANSPORT_LOCAL, &names, 0);
     }
 
