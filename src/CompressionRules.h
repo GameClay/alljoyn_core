@@ -159,6 +159,15 @@ class CompressionRules {
                     }
                     break;
 
+                case ALLJOYN_HDR_FIELD_SESSION_ID:
+                    if (f1->typeId != f2->typeId) {
+                        return false;
+                    }
+                    if (f1->v_uint32 != f2->v_uint32) {
+                        return false;
+                    }
+                    break;
+
                 case ALLJOYN_HDR_FIELD_TIME_TO_LIVE:
                     if (f1->typeId != f2->typeId) {
                         return false;
