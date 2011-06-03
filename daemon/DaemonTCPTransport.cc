@@ -884,6 +884,7 @@ QStatus DaemonTCPTransport::Connect(const char* connectSpec, RemoteEndpoint** ne
      * Don't bother trying to create new endpoints if we're shutting down.
      */
     if (IsRunning() == false || m_stopping == true) {
+        QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Shutting down; exiting"));
         return ER_BUS_TRANSPORT_NOT_STARTED;
     }
 
@@ -904,6 +905,120 @@ QStatus DaemonTCPTransport::Connect(const char* connectSpec, RemoteEndpoint** ne
     uint16_t port = StringToU32(argMap["port"]);   // Guaranteed to be there.
 
     /*
+     * The semantics of the Connect method tell us that we want to connect to a
+     * remote daemon.  TCP will happily allow us to connect to ourselves, but
+     * this is not always possible in the various transports AllJoyn may use.
+     * To avoid unnecessary differences, we do not allow a requested connection
+     * to "ourself" to succeed.
+     *
+     * The code here is not a failsafe way to prevent this since thre are going
+     * to be multiple processes involved that have no knowledge of what the
+     * other is doing (for example, the wireless supplicant and this daemon).
+     * This means we can't synchronize and there will be race conditions that
+     * can cause the tests for selfness to fail.  The final check is made in the
+     * bus hello protocol, which will abort the connection if it detects it is
+     * conected to itself.  We just attempt to short circuit the process where
+     * we can and not allow connections to proceed that will be bound to fail.
+     *
+     * One defintion of a connection to ourself is if we find that a listener
+     * has has been started via a call to our own StartListener() with the same
+     * connectSpec as we have now.  This is the simple case, but it also turns
+     * out to be the uncommon case.
+     *
+     * It is perfectly legal to start a listener using the INADDR_ANY address,
+     * which tells the system to listen for connections on any network interface
+     * that happens to be up or that may come up in the future.  This is the
+     * default listen address and is the most common case.  If this option has
+     * been used, we expect to find a listener with a normalized adresss that
+     * looks like "addr=0.0.0.0,port=y".  If we detect this kind of connectSpec
+     * we have to look at the currently up interfaces and see if any of them
+     * match the address provided in the connectSpec.  If so, we are attempting
+     * to connect to ourself and we must fail that request.
+     */
+    char anyspec[28];
+    snprintf(anyspec, sizeof(anyspec), "tcp:addr=0.0.0.0,port=%d", port & 0xffff);
+
+    qcc::String normAnySpec;
+    map<qcc::String, qcc::String> normArgMap;
+    status = NormalizeListenSpec(anyspec, normAnySpec, normArgMap);
+    if (ER_OK != status) {
+        QCC_LogError(status, ("TCPTransport::Connect(): Invalid INADDR_ANY connect spec"));
+        return status;
+    }
+
+    /*
+     * Look to see if we are already listening on the provided connectSpec
+     * either explicitly or via the INADDR_ANY address.
+     */
+    QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Checking for connection to self"));
+    m_listenFdsLock.Lock();
+    bool anyEncountered = false;
+    for (list<pair<qcc::String, SocketFd> >::iterator i = m_listenFds.begin(); i != m_listenFds.end(); ++i) {
+        QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Checking listenSpec %s", i->first.c_str()));
+
+        /*
+         * If the provided connectSpec is already explicitly listened to, it is
+         * an error.
+         */
+        if (i->first == normSpec) {
+            m_listenFdsLock.Unlock();
+            QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Exlicit connection to self"));
+            return ER_BUS_ALREADY_LISTENING;
+        }
+
+        /*
+         * If we are listening to INADDR_ANY and the supplied port, then we have
+         * to look to the currently UP interfaces to decide if this call is bogus
+         * or not.  Set a flag to remind us.
+         */
+        if (i->first == normAnySpec) {
+            QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Possible implicit connection to self detected"));
+            anyEncountered = true;
+        }
+    }
+    m_listenFdsLock.Unlock();
+
+    /*
+     * If we are listening to INADDR_ANY, we are going to have to see if any
+     * currently UP interfaces have an address that matches the connectSpec
+     * addr.
+     */
+    if (anyEncountered) {
+        QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Checking for implicit connection to self"));
+        std::vector<NameService::IfConfigEntry> entries;
+        QStatus status = m_ns->IfConfig(entries);
+        
+        /*
+         * Only do the check for self-ness if we can get interfaces to check.
+         * This is a non-fatal error since we know that there is an end-to-end
+         * check happening in the bus hello exchange, so if there is a problem
+         * it will simply be detected later.
+         */
+        if (status == ER_OK) {
+            /*
+             * Loop through the network interface entries looking for an UP
+             * interface that has the same IP address as the one we're trying to
+             * connect to.  We know any match on the address will be a hit since
+             * we matched the port during the listener check above.  Since we
+             * have a listener listening on *any* UP interface on the specified
+             * port, a match on the interface address with the connect address
+             * is a hit.
+             */
+            for (uint32_t i = 0; i < entries.size(); ++i) {
+                QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Checking interface %s", entries[i].m_name.c_str()));
+                if (entries[i].m_flags & NameService::IfConfigEntry::UP) {
+                    QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Interface UP with addresss %s", entries[i].m_addr.c_str()));
+                    IPAddress foundAddr(entries[i].m_addr);
+                    if (foundAddr == ipAddr) {
+                        QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Attempted connection to self; exiting"));
+                        return ER_BUS_ALREADY_LISTENING;
+                    }
+                }
+            }
+        }
+    }
+
+    /*
      * This is a new not previously satisfied connection request, so attempt
      * to connect to the remote TCP address and port specified in the connectSpec.
      */
@@ -912,13 +1027,14 @@ QStatus DaemonTCPTransport::Connect(const char* connectSpec, RemoteEndpoint** ne
     if (status == ER_OK) {
 
         /*
-         * Got a socket, now tell TCP to connect to the remote address and port.
+         * We got a socket, now tell TCP to connect to the remote address and
+         * port.
          */
         status = qcc::Connect(sockFd, ipAddr, port);
         if (status == ER_OK) {
             /*
-             * We have a TCP connection established, but DBus (the wire protocol
-             * of which we are using) requires that every connection,
+             * We now have a TCP connection established, but DBus (the wire
+             * protocol which we are using) requires that every connection,
              * irrespective of transport, start with a single zero byte.  This
              * is so that the Unix-domain socket transport used by DBus can pass
              * SCM_RIGHTS out-of-band when that byte is sent.
