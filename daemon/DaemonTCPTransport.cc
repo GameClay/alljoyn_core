@@ -611,7 +611,7 @@ void* DaemonTCPTransport::Run(void* arg)
      * exceeding this number, we drop the new connection.
      */
     uint32_t maxConnConfig = config->GetLimit("max_completed_connections_tcp");
-    uint32_t maxConn = maxConnConfig ? maxConnConfig : ALLJOYN_MAX_INCOMPLETE_CONNECTIONS_TCP_DEFAULT;
+    uint32_t maxConn = maxConnConfig ? maxConnConfig : ALLJOYN_MAX_COMPLETED_CONNECTIONS_TCP_DEFAULT;
 
     QStatus status = ER_OK;
 
@@ -669,6 +669,8 @@ void* DaemonTCPTransport::Run(void* arg)
 
             status = Accept((*i)->GetFD(), remoteAddr, remotePort, newSock);
             if (status == ER_OK) {
+                QCC_DbgHLPrintf(("DaemonTCPTransport::Run(): Accepting connection"));
+
                 /*
                  * We have a request for a new connection.  We need to
                  * Authenticate before naively allowing, and we can't do
@@ -702,6 +704,7 @@ void* DaemonTCPTransport::Run(void* arg)
                  * will never touch the endpoint object so it is safe to delete.
                  * Note the use of Meyers' idiom to erase while iterating.
                  */
+                QCC_DbgHLPrintf(("DaemonTCPTransport::Run(): Scavenging failed authentications"));
                 for (list<DaemonTCPEndpoint*>::iterator j = m_authList.begin(); j != m_authList.end();) {
                     if ((*j)->IsFailed()) {
                         delete *j;
@@ -718,6 +721,10 @@ void* DaemonTCPTransport::Run(void* arg)
                  * (timed out).  Note that we join any thread that may be
                  * working behind the scenes in the endpoint with the Abort().
                  */
+                QCC_DbgHLPrintf(("DaemonTCPTransport::Run(): maxAuth == %d", maxAuth));
+                QCC_DbgHLPrintf(("DaemonTCPTransport::Run(): maxConn == %d", maxConn));
+                QCC_DbgHLPrintf(("DaemonTCPTransport::Run(): mAuthList.size() == %d", m_authList.size()));
+                QCC_DbgHLPrintf(("DaemonTCPTransport::Run(): mEndpointList.size() == %d", m_endpointList.size()));
                 assert(m_authList.size() + m_endpointList.size() <= maxConn);
                 if (m_authList.size() == maxAuth) {
                     DaemonTCPEndpoint* conn = m_authList.back();
