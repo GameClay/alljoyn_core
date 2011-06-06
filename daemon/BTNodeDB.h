@@ -23,6 +23,7 @@
 
 #include <qcc/platform.h>
 
+#include <limits>
 #include <set>
 #include <vector>
 
@@ -30,6 +31,7 @@
 #include <qcc/Mutex.h>
 #include <qcc/String.h>
 #include <qcc/StringUtil.h>
+#include <qcc/time.h>
 
 #include "BDAddress.h"
 #include "BTTransportConsts.h"
@@ -163,7 +165,8 @@ class _BTNodeInfo {
         nodeAddr(),
         directMinion(false),
         connectProxyNode(NULL),
-        uuidRev(bt::INVALID_UUIDREV)
+        uuidRev(bt::INVALID_UUIDREV),
+        expireTime(std::numeric_limits<uint64_t>::max())
     { }
 
     /**
@@ -177,7 +180,8 @@ class _BTNodeInfo {
         nodeAddr(nodeAddr),
         directMinion(false),
         connectProxyNode(NULL),
-        uuidRev(bt::INVALID_UUIDREV)
+        uuidRev(bt::INVALID_UUIDREV),
+        expireTime(std::numeric_limits<uint64_t>::max())
     { }
 
     /**
@@ -192,7 +196,8 @@ class _BTNodeInfo {
         nodeAddr(nodeAddr),
         directMinion(false),
         connectProxyNode(NULL),
-        uuidRev(bt::INVALID_UUIDREV)
+        uuidRev(bt::INVALID_UUIDREV),
+        expireTime(std::numeric_limits<uint64_t>::max())
     { }
 
     /**
@@ -208,7 +213,8 @@ class _BTNodeInfo {
         nodeAddr(nodeAddr),
         directMinion(false),
         connectProxyNode(NULL),
-        uuidRev(bt::INVALID_UUIDREV)
+        uuidRev(bt::INVALID_UUIDREV),
+        expireTime(std::numeric_limits<uint64_t>::max())
     { }
 
     /**
@@ -408,7 +414,10 @@ class _BTNodeInfo {
     const qcc::String& GetUniqueName() const { return uniqueName; }
 
     /**
-     * Set the unique name of the AllJoyn controller object.
+     * Set the unique name of the AllJoyn controller object.  Care must be
+     * taken when setting this.  It is used as a lookup key in BTNodeDB and
+     * setting this for a node contained by BTNodeDB will _NOT_ update that
+     * index.
      *
      * @param name  The unique name of the AllJoyn controller object.
      */
@@ -422,7 +431,9 @@ class _BTNodeInfo {
     const BTBusAddress& GetBusAddress() const { return nodeAddr; }
 
     /**
-     * Set the Bluetooth bus address.
+     * Set the Bluetooth bus address.  Care must be taken when setting this.
+     * It is used as a lookup key in BTNodeDB and setting this for a node
+     * contained by BTNodeDB will _NOT_ update that index.
      *
      * @param addr  The Bluetooth bus address.
      */
@@ -447,11 +458,21 @@ class _BTNodeInfo {
      *
      * @return  Bus address accepting connections for us
      */
-    const BTBusAddress& GetConnectAddress() const;
+    const BTBusAddress& GetConnectAddress() const
+    {
+        const _BTNodeInfo* next = this;
+        while (next->connectProxyNode) {
+            next = &(*(*(next->connectProxyNode)));
+        }
+        return next->GetBusAddress();
+    }
 
     /**
      * Set the node that accepts connections for us.  It may actually have
-     * node that accepts connections for it, thus producing a chain.
+     * node that accepts connections for it, thus producing a chain.  Care
+     * must be taken when setting this.  It is used as a lookup key in
+     * BTNodeDB and setting this for a node contained by BTNodeDB will _NOT_
+     * update that index.
      *
      * @param node  Node that will accept connections for us.
      */
@@ -484,6 +505,26 @@ class _BTNodeInfo {
      * @param uuidRev   The UUID revision.
      */
     void SetUUIDRev(uint32_t uuidRev) { this->uuidRev = uuidRev; }
+
+    /**
+     * Get the absolute expire time in milliseconds.  If value is
+     * numeric_limits<uint64_t>::max() then no expiration timeout set.
+     *
+     * @return  Absolute expiration time in milliseconds
+     */
+    uint64_t GetExpireTime() const { return expireTime; }
+
+    /**
+     * Set the expiration time.  Care must be taken when setting this.  It is
+     * used as a lookup key in BTNodeDB and setting this for a node contained
+     * by BTNodeDB will _NOT_ update that index.
+     *
+     * @param expireTime    Absolute expiration time in milliseconds
+     */
+    void SetExpireTime(uint64_t expireTime)
+    {
+        this->expireTime = expireTime;
+    }
 
     /**
      * Equivalence operator.
@@ -531,6 +572,7 @@ class _BTNodeInfo {
     NameSet adNames;              /**< Set of advertise names. */
     NameSet findNames;            /**< Set of find names. */
     uint32_t uuidRev;             /**< UUID revision of the advertisement this node was found in. */
+    uint64_t expireTime;          /**< Time when advertised information is considered stale. */
 };
 
 
@@ -595,43 +637,18 @@ class BTNodeDB {
     BTNodeInfo FindDirectMinion(const BTNodeInfo& start, const BTNodeInfo& skip) const;
 
     /**
-     * Add a node to the DB.
+     * Add a node to the DB with no expiration time.
      *
      * @param node  Node to be added to the DB.
      */
-    void AddNode(const BTNodeInfo& node)
-    {
-        Lock();
-        nodes.erase(node);  // remove the old one (if it exists) before adding the new one with updated info
-        nodes.insert(node);
-        addrMap[node->GetBusAddress()] = node;
-        if (!node->GetUniqueName().empty()) {
-            nameMap[node->GetUniqueName()] = node;
-        }
-        Unlock();
-    }
+    void AddNode(const BTNodeInfo& node);
 
     /**
      * Remove a node from the DB.
      *
      * @param node  Node to be removed from the DB.
      */
-    void RemoveNode(const BTNodeInfo& node)
-    {
-        Lock();
-        addrMap.erase(node->GetBusAddress());
-        /* It is possible to get a different instance of BTNodeInfo with the
-         * same address that does not have the uniqueName filled out so find
-         * the instance stored in the DB and use the uniqueName stored there
-         * for removal from the nameMap.
-         */
-        iterator it = nodes.find(node);
-        if ((it != nodes.end()) && !(*it)->GetUniqueName().empty()) {
-            nameMap.erase((*it)->GetUniqueName());
-        }
-        nodes.erase(node);
-        Unlock();
-    }
+    void RemoveNode(const BTNodeInfo& node);
 
     /**
      * Determine the difference between this DB and another DB.  Nodes in
@@ -658,6 +675,74 @@ class BTNodeDB {
      *                      - false: keep empty nodes
      */
     void UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool removeNodes = true);
+
+    /**
+     * Updates the expiration time of all nodes.
+     *
+     * @param expireDelta   Number of milliseconds from now to set the
+     *                      expiration time.
+     */
+    void RefreshExpiration(uint32_t expireDelta);
+
+    /**
+     * Updates the expiration time of all nodes that may be connected to via
+     * connAddr.
+     *
+     * @param connAddr      BusAddress of the device accepting connections on
+     *                      behalf of other nodes.
+     * @param expireDelta   Number of milliseconds from now to set the
+     *                      expiration time.
+     */
+    void RefreshExpiration(const BTBusAddress& connAddr, uint32_t expireDelta);
+
+    /**
+     * Updates the expiration time of the specified node.
+     *
+     * @param node          Node to refresh the expiration for.
+     * @param expireDelta   Number of milliseconds from now to set the
+     *                      expiration time.
+     */
+    void RefreshExpiration(const BTNodeInfo& node, uint32_t expireDelta);
+
+    /**
+     * Fills a BTNodeDB with the set of nodes that are connectable via
+     * connAddr.
+     *
+     * @param connAddr  BusAddress of the device accepting connections on
+     *                  behalf of other nodes.
+     * @param subDB     Sub-set BTNodeDB to store the found nodes in.
+     */
+    void GetNodesFromConnectAddr(const BTBusAddress& connAddr, BTNodeDB& subDB) const
+    {
+        ConnAddrMap::const_iterator cmit = connMap.lower_bound(connAddr);
+        ConnAddrMap::const_iterator end = connMap.upper_bound(connAddr);
+
+        while (cmit != end) {
+            subDB.AddNode(cmit->second);
+            ++cmit;
+        }
+    }
+
+    void PopExpiredNodes(BTNodeDB& expiredDB)
+    {
+        Lock();
+        qcc::Timespec now;
+        qcc::GetTimeNow(&now);
+        while (!expireSet.empty() && ((*expireSet.begin())->GetExpireTime() <= now.GetAbsoluteMillis())) {
+            BTNodeInfo node = *expireSet.begin();
+            RemoveNode(node);
+            expiredDB.AddNode(node);
+        }
+        Unlock();
+    }
+
+    uint64_t NextNodeExpiration()
+    {
+        if (!expireSet.empty()) {
+            return (*expireSet.begin())->GetExpireTime();
+        }
+        return std::numeric_limits<uint64_t>::max();
+    }
 
     /**
      * Lock the mutex that protects the database from unsafe access.
@@ -699,7 +784,7 @@ class BTNodeDB {
     /**
      * Clear out the DB.
      */
-    void Clear() { nodes.clear(); addrMap.clear(); nameMap.clear(); }
+    void Clear() { nodes.clear(); addrMap.clear(); nameMap.clear(); connMap.clear(); expireSet.clear(); }
 
 #ifndef NDEBUG
     void DumpTable(const char* info) const;
@@ -710,15 +795,34 @@ class BTNodeDB {
 
   private:
 
+    class ExpireNodeComp {
+      public:
+        bool operator()(const BTNodeInfo& lhs, const BTNodeInfo& rhs) const
+        {
+            return ((lhs->GetExpireTime() < rhs->GetExpireTime()) ||
+                    ((lhs->GetExpireTime() == rhs->GetExpireTime()) && (lhs < rhs)));
+        }
+    };
+
     /** Convenience typedef for the lookup table keyed off the bus address. */
     typedef std::map<BTBusAddress, BTNodeInfo> NodeAddrMap;
+
+    /** Convenience typedef for the lookup table keyed off the bus address. */
+    typedef std::multimap<BTBusAddress, BTNodeInfo> ConnAddrMap;
 
     /** Convenience typedef for the lookup table keyed off the unique bus name. */
     typedef std::map<qcc::String, BTNodeInfo> NodeNameMap;
 
+    /** Convenience typedef for the lookup table sorted by expiration time. */
+    typedef std::set<BTNodeInfo, ExpireNodeComp> NodeExpireSet;
+
+    /** Convenience typedef for the lookup table sorted by connect address. */
+
     std::set<BTNodeInfo> nodes;     /**< The node DB storage. */
     NodeAddrMap addrMap;            /**< Lookup table keyed off the bus address. */
     NodeNameMap nameMap;            /**< Lookup table keyed off the unique bus name. */
+    NodeExpireSet expireSet;        /**< Lookup table sorted by the expiration time. */
+    ConnAddrMap connMap;         /**< Lookup table keyed off the connect node. */
 
     mutable qcc::Mutex lock;        /**< Mutext to protect the DB. */
 

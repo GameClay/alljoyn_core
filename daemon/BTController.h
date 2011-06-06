@@ -439,27 +439,11 @@ class BTController :
     };
 
 
-    struct _UUIDRevCacheInfo {
-        BTNodeDB* adInfo;
-        qcc::Alarm timeout;
-        _UUIDRevCacheInfo() : adInfo(NULL) { }
-        _UUIDRevCacheInfo(BTNodeDB* adInfo) : adInfo(adInfo) { }
-        bool operator==(const _UUIDRevCacheInfo& other) const
-        {
-            return (adInfo == other.adInfo) && (timeout == other.timeout);
-        }
-    };
-
-    typedef qcc::ManagedObj<_UUIDRevCacheInfo> UUIDRevCacheInfo;
-    typedef std::multimap<uint32_t, UUIDRevCacheInfo> UUIDRevCacheMap;
-    typedef std::pair<uint32_t, UUIDRevCacheInfo> UUIDRevCacheMapEntry;
-
-
     struct DispatchInfo {
         typedef enum {
             STOP_ADVERTISEMENTS,
             UPDATE_DELEGATIONS,
-            EXPIRE_CACHE_INFO
+            EXPIRE_CACHED_NODES
         } DispatchTypes;
         DispatchTypes operation;
 
@@ -480,11 +464,9 @@ class BTController :
         }
     };
 
-    struct ExpireCacheInfoDispatchInfo : public DispatchInfo {
-        UUIDRevCacheInfo cacheInfo;
-        ExpireCacheInfoDispatchInfo(const UUIDRevCacheInfo& cacheInfo) :
-            DispatchInfo(EXPIRE_CACHE_INFO),
-            cacheInfo(cacheInfo)
+    struct ExpireCachedNodesDispatchInfo : public DispatchInfo {
+        ExpireCachedNodesDispatchInfo() :
+            DispatchInfo(EXPIRE_CACHED_NODES)
         { }
     };
 
@@ -506,14 +488,12 @@ class BTController :
      * @param destNode      The minion that should receive the message.
      * @param adInfo        Advertise information to send.
      * @param lost          Set to true if names are lost, false otherwise.
-     * @param lockAdInfo    Acquire the adInfo mutex when filling message arg info
      *
      * @return ER_OK if successful.
      */
     QStatus SendFoundNamesChange(const BTNodeInfo& destNode,
                                  const BTNodeDB& adInfo,
-                                 bool lost,
-                                 bool lockAdInfo);
+                                 bool lost);
 
     /**
      * Send the one of the following specified signals to the node we believe
@@ -640,20 +620,6 @@ class BTController :
                         size_t numFoundNodes);
 
     /**
-     * Lookup the UUID revision cache iterator for the specified UUIDRev and
-     * Bluetooth address.
-     *
-     * @param lookupUUIDRev     UUIDRev to lookup
-     * @param bdAddr            Bluetooth address of a node that must be in the
-     *                          cached advertisement information.
-     *
-     * @return  iterator into the uuidRevCache map or UUIDRevCacheMap::end() if
-     *          not found.
-     */
-    UUIDRevCacheMap::iterator LookupUUIDRevCache(uint32_t lookupUUIDRev,
-                                                 const BDAddress& bdAddr);
-
-    /**
      * Updates the find/advertise name information on the minion assigned to
      * perform the specified name discovery operation.  It will update the
      * delegation for find or advertise based on current activity, whether we
@@ -716,13 +682,22 @@ class BTController :
      * @param args[out] vector of MsgArgs to fill.
      * @param adInfo    source advertisement information
      */
-    static void FillFoundNodesMsgArgs(std::vector<MsgArg>& args,
-                                      const BTNodeDB& adInfo);
+    void FillFoundNodesMsgArgs(std::vector<MsgArg>& args,
+                               const BTNodeDB& adInfo);
 
 
     qcc::Alarm DispatchOperation(DispatchInfo* op, uint32_t delay = 0)
     {
         qcc::Alarm alarm(delay, this, 0, (void*)op);
+        bus.GetInternal().GetDispatcher().AddAlarm(alarm);
+        return alarm;
+    }
+
+
+    qcc::Alarm DispatchOperation(DispatchInfo* op, uint64_t dispatchTime)
+    {
+        qcc::Timespec ts(dispatchTime);
+        qcc::Alarm alarm(ts, this, 0, (void*)op);
         bus.GetInternal().GetDispatcher().AddAlarm(alarm);
         return alarm;
     }
@@ -784,9 +759,7 @@ class BTController :
     FindNameArgInfo find;
 
     qcc::Alarm stopAd;
-
-    UUIDRevCacheMap uuidRevCache;
-    qcc::Mutex cacheLock;
+    qcc::Alarm expireAlarm;
 
     struct {
         struct {
