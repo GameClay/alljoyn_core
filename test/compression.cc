@@ -64,9 +64,10 @@ class MyMessage : public _Message {
                    const char* objPath,
                    const char* interface,
                    const char* signalName,
-                   uint16_t ttl)
+                   uint16_t ttl,
+                   uint32_t sessionId = 0)
     {
-        return SignalMsg("", destination, 0, objPath, interface, signalName, NULL, 0, ALLJOYN_FLAG_COMPRESSED, ttl);
+        return SignalMsg("", destination, sessionId, objPath, interface, signalName, NULL, 0, ALLJOYN_FLAG_COMPRESSED, ttl);
     }
 
     QStatus Unmarshal(RemoteEndpoint& ep, const qcc::String& endpointName, bool pedantic = true)
@@ -182,10 +183,30 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    status = msg.Signal(":1.99", "/foo/bar/gorn", "foo.bar", "test", 0, 1234);
+    if (status != ER_OK) {
+        printf("Error %s\n", QCC_StatusText(status));
+    }
+    tok1 = msg.GetCompressionToken();
+
+    status = msg.Signal(":1.99", "/foo/bar/gorn", "foo.bar", "test", 0, 5678);
+    if (status != ER_OK) {
+        printf("Error %s\n", QCC_StatusText(status));
+        return -1;
+    }
+    tok2 = msg.GetCompressionToken();
+
+    /* Expect messages with different session id's to have different token */
+    if (tok1 == tok2) {
+        printf("\nFAILED 3\n");
+        return -1;
+    }
+
     /* No do a real marshal unmarshal round trip */
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 20; ++i) {
+        SessionId sess = 1000 + i % 3;
         qcc::String sig = "test" + qcc::U32ToString(i);
-        status = msg.Signal(":1.1234", "/fun/games", "boo.far", sig.c_str(), 1900);
+        status = msg.Signal(":1.1234", "/fun/games", "boo.far", sig.c_str(), 1900, sess);
         if (status != ER_OK) {
             printf("Error %s\n", QCC_StatusText(status));
             return -1;
@@ -197,12 +218,17 @@ int main(int argc, char** argv)
         }
     }
 
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 20; ++i) {
+        SessionId sess = 1000 + i % 3;
         qcc::String sig = "test" + qcc::U32ToString(i);
         MyMessage msg2(bus);
         status = msg2.Unmarshal(ep, ":88.88");
         if (status != ER_OK) {
             printf("Error %s\n", QCC_StatusText(status));
+            return -1;
+        }
+        if (msg2.GetSessionId() != sess) {
+            printf("\nFAILED 6.%d\n", i);
             return -1;
         }
         if (sig != msg2.GetMemberName()) {
