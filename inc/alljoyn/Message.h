@@ -120,12 +120,12 @@ class HeaderFields {
     /**
      * Table to identify which header fields can be compressed.
      */
-    static const bool Compressible[];
+    static const bool Compressible[ALLJOYN_HDR_FIELD_UNKNOWN + 1];
 
     /**
      * Table to map the header field to a AllJoynTypeId
      */
-    static const AllJoynTypeId FieldType[];
+    static const AllJoynTypeId FieldType[ALLJOYN_HDR_FIELD_UNKNOWN + 1];
 
     /**
      * Returns a string representation of the header fields.
