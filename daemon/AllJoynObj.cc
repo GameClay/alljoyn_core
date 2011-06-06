@@ -1828,16 +1828,17 @@ void AllJoynObj::FindAdvertisedName(const InterfaceDescription::Member* member, 
     /* Send FoundAdvertisedName signals if there are existing matches for namePrefix */
     if (ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS == replyCode) {
         multimap<String, NameMapEntry>::iterator it = nameMap.lower_bound(namePrefix);
-        set<String> sentSet;
+        set< pair<String,String> > sentSet;
         while ((it != nameMap.end()) && (0 == strncmp(it->first.c_str(), namePrefix.c_str(), namePrefix.size()))) {
-            if (sentSet.find(sender) == sentSet.end()) {
+            pair<String, String> sentSetEntry(sender, it->first);
+            if (sentSet.find(sentSetEntry) == sentSet.end()) {
                 String foundName = it->first;
                 NameMapEntry nme = it->second;
                 ReleaseLocks();
                 status = SendFoundAdvertisedName(sender, foundName, nme.transport, namePrefix);
                 AcquireLocks();
                 it = nameMap.lower_bound(namePrefix);
-                sentSet.insert(sender);
+                sentSet.insert(sentSetEntry);
                 if (ER_OK != status) {
                     QCC_LogError(status, ("Cannot send FoundAdvertisedName to %s for name=%s", sender.c_str(), foundName.c_str()));
                 }
