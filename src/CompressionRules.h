@@ -108,7 +108,7 @@ class CompressionRules {
     qcc::Mutex lock;
 
     /**
-     * Hash funcion for header compression. Hash value is computed over member and interface only
+     * Hash funcion for header compression. Hash value is computed over member and interface only.
      * on the reasonable assumption that there will only be one compression for a specific message.
      */
     struct HdrFieldHash {
@@ -126,56 +126,49 @@ class CompressionRules {
     };
 
     /**
-     * Function for testing message header fields for equality.
+     * Function for testing compressible message header fields for equality.
      */
     struct HdrFieldsEq {
         inline bool operator()(const HeaderFields* k1, const HeaderFields* k2) const {
             const MsgArg* f1 = k1->field;
             const MsgArg* f2 = k2->field;
-            for (int i = 0; i <= ALLJOYN_HDR_FIELD_TIME_TO_LIVE; i++, f1++, f2++) {
-                if ((f1->typeId == ALLJOYN_INVALID) && (f2->typeId == ALLJOYN_INVALID)) {
-                    continue;
-                }
-                switch (i) {
-                case ALLJOYN_HDR_FIELD_PATH:
-                case ALLJOYN_HDR_FIELD_INTERFACE:
-                case ALLJOYN_HDR_FIELD_MEMBER:
-                case ALLJOYN_HDR_FIELD_DESTINATION:
-                case ALLJOYN_HDR_FIELD_SENDER:
+            for (int i = 0; i < ALLJOYN_HDR_FIELD_UNKNOWN; i++, f1++, f2++) {
+                if (HeaderFields::Compressible[i]) {
                     if (f1->typeId != f2->typeId) {
                         return false;
                     }
-                    if (strcmp(f1->v_string.str, f2->v_string.str) != 0) {
-                        return false;
-                    }
-                    break;
+                    switch (f1->typeId) {
+                    case ALLJOYN_INVALID:
+                        break;
 
-                case ALLJOYN_HDR_FIELD_SIGNATURE:
-                    if (f1->typeId != f2->typeId) {
-                        return false;
-                    }
-                    if (strcmp(f1->v_signature.sig, f2->v_signature.sig) != 0) {
-                        return false;
-                    }
-                    break;
+                    case ALLJOYN_STRING:
+                    case ALLJOYN_OBJECT_PATH:
+                        if (strcmp(f1->v_string.str, f2->v_string.str) != 0) {
+                            return false;
+                        }
+                        break;
 
-                case ALLJOYN_HDR_FIELD_SESSION_ID:
-                    if (f1->typeId != f2->typeId) {
-                        return false;
-                    }
-                    if (f1->v_uint32 != f2->v_uint32) {
-                        return false;
-                    }
-                    break;
+                    case ALLJOYN_SIGNATURE:
+                        if (strcmp(f1->v_signature.sig, f2->v_signature.sig) != 0) {
+                            return false;
+                        }
+                        break;
 
-                case ALLJOYN_HDR_FIELD_TIME_TO_LIVE:
-                    if (f1->typeId != f2->typeId) {
-                        return false;
+                    case ALLJOYN_UINT16:
+                        if (f1->v_uint16 != f2->v_uint16) {
+                            return false;
+                        }
+                        break;
+
+                    case ALLJOYN_UINT32:
+                        if (f1->v_uint32 != f2->v_uint32) {
+                            return false;
+                        }
+                        break;
+
+                    default:
+                        assert(!"invalid header field type");
                     }
-                    if (f1->v_uint16 != f2->v_uint16) {
-                        return false;
-                    }
-                    break;
                 }
             }
             return true;
