@@ -269,7 +269,7 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
                  * rule from the endpoint that sent it.
                  */
                 status = bus.GetInternal().GetLocalEndpoint().GetPeerObj()->RequestHeaderExpansion(msg, ep);
-                if (router.IsDaemon()) {
+                if ((status != ER_OK) && router.IsDaemon()) {
                     QCC_LogError(status, ("Discarding %s", msg->Description().c_str()));
                     status = ER_OK;
                 }
