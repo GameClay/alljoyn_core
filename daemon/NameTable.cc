@@ -208,12 +208,12 @@ void NameTable::RemoveAlias(const qcc::String& aliasName,
                 queue.pop_front();
                 newOwner = &queue[0].endpoint->GetUniqueName();
             } else {
-                aliasNames.erase(it);
                 /* Check to see if there is a (now unmasked) remote owner for the alias */
                 map<qcc::StringMapKey, VirtualEndpoint*>::const_iterator vit = virtualAliasNames.find(aliasName);
                 if (vit != virtualAliasNames.end()) {
                     newOwner = &vit->second->GetUniqueName();
                 }
+                aliasNames.erase(it);
             }
             oldOwner = &ownerName;
             disposition = DBUS_RELEASE_NAME_REPLY_RELEASED;

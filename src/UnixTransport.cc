@@ -340,6 +340,7 @@ QStatus UnixTransport::Connect(const char* connectArgs, RemoteEndpoint** newep)
     struct ucred* cred;
     struct iovec iov[] = { { &nulbuf, sizeof(nulbuf) } };
     char cbuf[CMSG_SPACE(sizeof(struct ucred))];
+    ::memset(cbuf, 0, sizeof(cbuf));
     struct msghdr msg;
     msg.msg_name = NULL;
     msg.msg_namelen = 0;
