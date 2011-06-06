@@ -573,47 +573,50 @@ exit:
         fclose(gpFile);
         String datafn = gnuplotfn + ".script";
         gpFile = fopen(datafn.c_str(), "w");
-        fprintf(gpFile, "# gnuplot script\n");
-        fprintf(gpFile, "set title 'Bluetooth connect times with discovery %s name found.'\n",
-                stopDiscover ? "turned off when" : "left on after");
-        fprintf(gpFile, "set xlabel 'Samples'\n");
-        fprintf(gpFile, "set ylabel 'Time in seconds'\n");
-        fprintf(gpFile, "set grid xtics ytics\n");
-        fprintf(gpFile, "set key outside center bottom horizontal\n");
-        fprintf(gpFile, "set terminal png font ',8' linewidth 1 size 800,600\n");
-        fprintf(gpFile, "set output '%s.png'\n", gnuplotfn.c_str());
-        fprintf(gpFile, "plot ");
-        fprintf(gpFile, "'%s.dat' using 1:2 ls 1 title 'Overall time (%s/%s/%s)' with lines,",
-                gnuplotfn.c_str(),
-                stat.Time2String(stat.minDelta.overall, 1).c_str(),
-                stat.Avg(stat.sum.overall, 1).c_str(),
-                stat.Time2String(stat.maxDelta.overall, 1).c_str());
-        fprintf(gpFile, "'%s.dat' using 1:2 ls 1 notitle with points,",
-                gnuplotfn.c_str());
-        fprintf(gpFile, "'%s.dat' using 1:3 ls 2 title 'Discover time (%s/%s/%s)' with lines,",
-                gnuplotfn.c_str(),
-                stat.Time2String(stat.minDelta.discover, 1).c_str(),
-                stat.Avg(stat.sum.discover, 1).c_str(),
-                stat.Time2String(stat.maxDelta.discover, 1).c_str());
-        fprintf(gpFile, "'%s.dat' using 1:3 ls 2 notitle with points,",
-                gnuplotfn.c_str());
-        fprintf(gpFile, "'%s.dat' using 1:4 ls 3 title 'SDP Query time (%s/%s/%s)' with lines,",
-                gnuplotfn.c_str(),
-                stat.Time2String(stat.minDelta.sdpQuery, 1).c_str(),
-                stat.Avg(stat.sum.sdpQuery, 1).c_str(),
-                stat.Time2String(stat.maxDelta.sdpQuery, 1).c_str());
-        fprintf(gpFile, "'%s.dat' using 1:4 ls 3 notitle with points,",
-                gnuplotfn.c_str());
-        fprintf(gpFile, "'%s.dat' using 1:5 ls 4 title 'Connect time (%s/%s/%s)' with lines,",
-                gnuplotfn.c_str(),
-                stat.Time2String(stat.minDelta.connect, 1).c_str(),
-                stat.Avg(stat.sum.connect, 1).c_str(),
-                stat.Time2String(stat.maxDelta.connect, 1).c_str());
-        fprintf(gpFile, "'%s.dat' using 1:5 ls 4 notitle with points\n",
-                gnuplotfn.c_str());
-        fclose(gpFile);
+        if (gpFile) {
+            fprintf(gpFile, "# gnuplot script\n");
+            fprintf(gpFile, "set title 'Bluetooth connect times with discovery %s name found.'\n",
+                    stopDiscover ? "turned off when" : "left on after");
+            fprintf(gpFile, "set xlabel 'Samples'\n");
+            fprintf(gpFile, "set ylabel 'Time in seconds'\n");
+            fprintf(gpFile, "set grid xtics ytics\n");
+            fprintf(gpFile, "set key outside center bottom horizontal\n");
+            fprintf(gpFile, "set terminal png font ',8' linewidth 1 size 800,600\n");
+            fprintf(gpFile, "set output '%s.png'\n", gnuplotfn.c_str());
+            fprintf(gpFile, "plot ");
+            fprintf(gpFile, "'%s.dat' using 1:2 ls 1 title 'Overall time (%s/%s/%s)' with lines,",
+                    gnuplotfn.c_str(),
+                    stat.Time2String(stat.minDelta.overall, 1).c_str(),
+                    stat.Avg(stat.sum.overall, 1).c_str(),
+                    stat.Time2String(stat.maxDelta.overall, 1).c_str());
+            fprintf(gpFile, "'%s.dat' using 1:2 ls 1 notitle with points,",
+                    gnuplotfn.c_str());
+            fprintf(gpFile, "'%s.dat' using 1:3 ls 2 title 'Discover time (%s/%s/%s)' with lines,",
+                    gnuplotfn.c_str(),
+                    stat.Time2String(stat.minDelta.discover, 1).c_str(),
+                    stat.Avg(stat.sum.discover, 1).c_str(),
+                    stat.Time2String(stat.maxDelta.discover, 1).c_str());
+            fprintf(gpFile, "'%s.dat' using 1:3 ls 2 notitle with points,",
+                    gnuplotfn.c_str());
+            fprintf(gpFile, "'%s.dat' using 1:4 ls 3 title 'SDP Query time (%s/%s/%s)' with lines,",
+                    gnuplotfn.c_str(),
+                    stat.Time2String(stat.minDelta.sdpQuery, 1).c_str(),
+                    stat.Avg(stat.sum.sdpQuery, 1).c_str(),
+                    stat.Time2String(stat.maxDelta.sdpQuery, 1).c_str());
+            fprintf(gpFile, "'%s.dat' using 1:4 ls 3 notitle with points,",
+                    gnuplotfn.c_str());
+            fprintf(gpFile, "'%s.dat' using 1:5 ls 4 title 'Connect time (%s/%s/%s)' with lines,",
+                    gnuplotfn.c_str(),
+                    stat.Time2String(stat.minDelta.connect, 1).c_str(),
+                    stat.Avg(stat.sum.connect, 1).c_str(),
+                    stat.Time2String(stat.maxDelta.connect, 1).c_str());
+            fprintf(gpFile, "'%s.dat' using 1:5 ls 4 notitle with points\n",
+                    gnuplotfn.c_str());
+            fclose(gpFile);
+        }
     }
 
 
+    g_msgBus = NULL;
     return (int) status;
 }

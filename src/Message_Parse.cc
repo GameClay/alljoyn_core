@@ -869,6 +869,7 @@ QStatus _Message::Unmarshal(RemoteEndpoint& endpoint, bool checkSender, bool ped
         numHandles = maxFds;
         status = source.PullBytesAndFds(&msgHeader, sizeof(MessageHeader), pulled, fdList, numHandles, timeout ? timeout : Event::WAIT_FOREVER);
     } else {
+        numHandles = 0;
         status = source.PullBytes(&msgHeader, sizeof(MessageHeader), pulled, timeout ? timeout : Event::WAIT_FOREVER);
     }
     if (status != ER_OK) {

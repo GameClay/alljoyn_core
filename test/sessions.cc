@@ -74,7 +74,6 @@ struct SessionInfo {
 
 /* static data */
 static ajn::BusAttachment* s_bus = NULL;
-static SessionTestObject* s_testObj = NULL;
 static MyBusListener* s_busListener = NULL;
 
 static set<String> s_requestedNames;
@@ -468,7 +467,6 @@ int main(int argc, char** argv)
     /* Create and register the bus object that will be used to send and receive signals */
     SessionTestObject sessionTestObj(*bus, TEST_SERVICE_OBJECT_PATH);
     bus->RegisterBusObject(sessionTestObj);
-    s_testObj = &sessionTestObj;
 
     /* Start the msg bus */
     if (ER_OK == status) {

@@ -204,9 +204,13 @@ static QStatus ListBusNames(BusAttachment& bus, BusNameMap& names)
     QStatus status;
     ProxyBusObject robj(bus, "org.freedesktop.DBus", "/org/freedesktop/DBus", 0);
     const InterfaceDescription* ifc = bus.GetInterface(org::freedesktop::DBus::InterfaceName);
-    const InterfaceDescription::Member* listNames = ifc->GetMember("ListNames");
-    const InterfaceDescription::Member* getNameOwner = ifc->GetMember("GetNameOwner");
+    const InterfaceDescription::Member* listNames = ifc ? ifc->GetMember("ListNames") : NULL;
+    const InterfaceDescription::Member* getNameOwner = ifc ? ifc->GetMember("GetNameOwner") : NULL;
     Message rsp(bus);
+
+    if (!listNames || !getNameOwner) {
+        return ER_FAIL;
+    }
 
     robj.AddInterface(org::freedesktop::DBus::InterfaceName);
     robj.AddInterface(org::freedesktop::DBus::Introspectable::InterfaceName);

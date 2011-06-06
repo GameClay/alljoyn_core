@@ -190,7 +190,6 @@ class AllJoynDebugObj : public BusObject {
 
         if (methodEntries) {
             status = AddMethodHandlers(methodEntries, methodInfoSize);
-            delete[] methodEntries;
             if (status != ER_OK) goto exit;
         }
 
@@ -198,6 +197,7 @@ class AllJoynDebugObj : public BusObject {
 
     exit:
         bus.RegisterBusObject(*this);
+        if (methodEntries) delete[] methodEntries;
         return status;
     }
 

@@ -1104,8 +1104,8 @@ void BusAttachment::JoinSessionMethodCB(Message& reply, void* context)
 {
     _JoinSessionMethodCBContext* ctx = reinterpret_cast<_JoinSessionMethodCBContext*>(context);
 
-    QStatus status;
-    SessionId sessionId;
+    QStatus status = ER_FAIL;
+    SessionId sessionId = 0;
     SessionOpts opts;
     if (reply->GetType() == MESSAGE_METHOD_RET) {
         const MsgArg* replyArgs;
@@ -1115,9 +1115,7 @@ void BusAttachment::JoinSessionMethodCB(Message& reply, void* context)
         uint32_t disposition = replyArgs[0].v_uint32;
         sessionId = replyArgs[1].v_uint32;
         status = GetSessionOpts(replyArgs[2], opts);
-        if (status != ER_OK) {
-            sessionId = 0;
-        } else {
+        if (status == ER_OK) {
             switch (disposition) {
             case ALLJOYN_JOINSESSION_REPLY_SUCCESS:
                 break;
