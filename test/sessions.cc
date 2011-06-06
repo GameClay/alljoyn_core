@@ -148,7 +148,7 @@ class SessionTestObject : public BusObject {
     /** Receive a signal from another Chat client */
     void ChatSignalHandler(const InterfaceDescription::Member* member, const char* srcPath, Message& msg)
     {
-        printf("RX chat from %s: %s\n", msg->GetSender(), msg->GetArg(0)->v_string.str);
+        printf("RX chat from %s[%u]: %s\n", msg->GetSender(), msg->GetSessionId(), msg->GetArg(0)->v_string.str);
     }
 
   private:
