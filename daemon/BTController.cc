@@ -1292,6 +1292,8 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
         }
         return;
     }
+
+    uint32_t remoteProtocolVersion = ep->GetRemoteProtocolVersion();
     bt.ReturnEndpoint(ep);
 
     uint8_t numConnections;
@@ -1343,7 +1345,8 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     vector<MsgArg> nodeStateArgsStorage;
     vector<MsgArg> foundNodeArgsStorage;
 
-    if (numConnections > directMinions) {
+    if ((remoteProtocolVersion > ALLJOYN_PROTOCOL_VERSION) ||
+        ((remoteProtocolVersion == ALLJOYN_PROTOCOL_VERSION) && (numConnections > directMinions))) {
         // We are now a minion (or a drone if we have more than one direct connection)
         master = new ProxyBusObject(bus, sender.c_str(), bluetoothObjPath, 0);
         masterNode = BTNodeInfo(addr, sender);

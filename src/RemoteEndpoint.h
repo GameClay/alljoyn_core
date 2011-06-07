@@ -186,6 +186,14 @@ class RemoteEndpoint : public BusEndpoint, public qcc::ThreadListener {
     const qcc::String& GetRemoteName() const { return auth.GetRemoteName(); }
 
     /**
+     * Get the protocol version used by the remote end of this endpoint.
+     *
+     * @return  - The protocol version use by the remote side
+     *          - 0 if called before the endpoint has been established
+     */
+    uint32_t GetRemoteProtocolVersion() const { return auth.GetRemoteProtocolVersion(); }
+
+    /**
      * Establish a connection.
      *
      * @param authMechanisms  The authentication mechanism(s) to use.
