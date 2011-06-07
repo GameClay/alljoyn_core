@@ -30,6 +30,8 @@
 #include <qcc/String.h>
 #include <qcc/StringUtil.h>
 
+#include <alljoyn/AllJoynStd.h>
+
 #include "BTController.h"
 #include "BTEndpoint.h"
 
@@ -1878,7 +1880,7 @@ QStatus BTController::ExtractNodeInfo(const MsgArg* entries, size_t size, BTNode
 {
     QCC_DbgTrace(("BTController::ExtractNodeInfo()"));
 
-    QStatus status;
+    QStatus status = ER_OK;
     for (size_t i = 0; i < size; ++i) {
         uint64_t connAddrRaw;
         uint16_t connPSM;
