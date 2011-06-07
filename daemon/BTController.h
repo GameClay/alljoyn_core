@@ -665,15 +665,17 @@ class BTController :
     void UpdateDelegations(NameArgInfo& nameInfo);
 
     /**
-     * Extract advertisement information from a message arg into the internal
-     * representation.
+     * Extract advertisement information from an array message args into the
+     * internal representation.
      *
-     * @param entries   Array of MsgArgs all with type dict entry:
-     *                  - Key: Bus GUID associated with advertise names
-     *                  - Value: Array of bus names advertised by device with
-     *                           associated Bus GUID
-     * @param size      Number of entries in the array
-     * @param adInfo    Advertisement information to be filled
+     * @param entries       Array of MsgArgs all with type struct:
+     *                      - Bus GUID associated with advertise names
+     *                      - BT device address (part of bus address)
+     *                      - L2CAP PSM (part of bus address)
+     *                      - Array of bus names advertised by device with
+     *                        associated Bus GUID/Address
+     * @param size          Number of entries in the array
+     * @param adInfo[out]   Advertisement information to be filled
      *
      * @return  ER_OK if advertisment information successfully extracted.
      */
@@ -682,14 +684,22 @@ class BTController :
                                  BTNodeDB& adInfo);
 
     /**
-     * Convenience function for filling a vector of MsgArgs with advertise
-     * name information.
+     * Extract node information from an array of message args into the
+     * internal representation.
      *
-     * @param args[out] vector of MsgArgs to fill.
-     * @param adInfo    source advertisement information
+     * @param entries   Array of MsgArgs all with type struct:
+     *                  - BT device address of the connect device
+     *                  - L2CAP PSM of the connect device
+     *                  - UUIDRev of advertised names
+     *                  - Array of advertisement information.
+     * @param size      Number of entries in the array
+     * @param db[out]   BTNodeDB to be updated with information from entries
+     *
+     * @return  ER_OK if advertisment information successfully extracted.
      */
-    static void FillAdvertiseNamesMsgArgs(std::vector<MsgArg>& args,
-                                          const BTNodeDB& adInfo);
+    QStatus ExtractNodeInfo(const MsgArg* entries,
+                            size_t size,
+                            BTNodeDB& db);
 
     /**
      * Convenience function for filling a vector of MsgArgs with the node
@@ -704,8 +714,10 @@ class BTController :
      * found nodes.
      *
      * @param args[out] vector of MsgArgs to fill.
+     * @param adInfo    source advertisement information
      */
-    void FillFoundNodesMsgArgs(std::vector<MsgArg>& args) const;
+    static void FillFoundNodesMsgArgs(std::vector<MsgArg>& args,
+                                      const BTNodeDB& adInfo);
 
 
     qcc::Alarm DispatchOperation(DispatchInfo* op, uint32_t delay = 0)

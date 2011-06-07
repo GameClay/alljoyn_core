@@ -117,8 +117,8 @@ static const char* bluetoothTopoMgrIfcName = "org.alljoyn.Bus.BluetoothControlle
 #define SIG_DELEGATE_AD_SIZE        (SIG_UUIDREV_SIZE + SIG_BUSADDR_SIZE + SIG_AD_NAME_MAP_SIZE + SIG_DURATION_SIZE)
 #define SIG_DELEGATE_FIND           SIG_NAME SIG_FIND_FILTER_LIST SIG_DURATION
 #define SIG_DELEGATE_FIND_SIZE      (SIG_NAME_SIZE + SIG_FIND_FILTER_LIST_SIZE + SIG_DURATION_SIZE)
-#define SIG_FOUND_NAMES             SIG_AD_NAME_MAP
-#define SIG_FOUND_NAMES_SIZE        (SIG_AD_NAME_MAP_SIZE)
+#define SIG_FOUND_NAMES             SIG_FOUND_NODES
+#define SIG_FOUND_NAMES_SIZE        (SIG_FOUND_NODES_SIZE)
 #define SIG_FOUND_DEV               SIG_BDADDR SIG_UUIDREV
 #define SIG_FOUND_DEV_SIZE          (SIG_BDADDR_SIZE + SIG_UUIDREV_SIZE)
 
@@ -274,7 +274,7 @@ QStatus BTController::SendSetState(const qcc::String& busName)
 
     QCC_DbgPrintf(("SendSetState prep args"));
     FillNodeStateMsgArgs(nodeStateArgsStorage);
-    FillFoundNodesMsgArgs(foundNodeArgsStorage);
+    FillFoundNodesMsgArgs(foundNodeArgsStorage, foundNodeDB);
 
     status = MsgArg::Set(args, numArgs, SIG_SET_STATE_IN,
                          directMinions,
@@ -645,7 +645,8 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
         String resultDest = find.resultDest;
         lock.Unlock();
 
-        Signal(resultDest.c_str(), 0, *org.alljoyn.Bus.BTController.FoundDevice, args, numArgs);
+        status = Signal(resultDest.c_str(), 0, *org.alljoyn.Bus.BTController.FoundDevice, args, numArgs);
+
     }
 }
 
@@ -1114,9 +1115,7 @@ QStatus BTController::SendFoundNamesChange(const BTNodeInfo& destNode,
 
     vector<MsgArg> nodeList;
 
-    if (lockAdInfo) adInfo.Lock();
-    FillAdvertiseNamesMsgArgs(nodeList, adInfo);
-    if (lockAdInfo) adInfo.Unlock();
+    FillFoundNodesMsgArgs(nodeList, adInfo);
 
     MsgArg arg(SIG_FOUND_NAMES, nodeList.size(), &nodeList.front());
     QStatus status;
@@ -1352,7 +1351,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
 
         QCC_DbgPrintf(("HandleSetState prep args"));
         FillNodeStateMsgArgs(nodeStateArgsStorage);
-        FillFoundNodesMsgArgs(foundNodeArgsStorage);
+        FillFoundNodesMsgArgs(foundNodeArgsStorage, foundNodeDB);
 
         // Wipe out our cache.
         cacheLock.Lock();
@@ -1581,8 +1580,7 @@ void BTController::HandleFoundNamesChange(const InterfaceDescription::Member* me
     QStatus status = msg->GetArgs(SIG_FOUND_NAMES, &size, &entries);
 
     if (status == ER_OK) {
-        status = ExtractAdInfo(entries, size, adInfo);
-        adInfo.RemoveNode(self);
+        status = ExtractNodeInfo(entries, size, adInfo);
     }
 
     if ((status == ER_OK) && (adInfo.Size() > 0)) {
@@ -1750,71 +1748,8 @@ QStatus BTController::ImportState(const BTBusAddress& addr,
     }
 
     incomingDB.Clear();
-    for (i = 0; i < numFoundNodes; ++i) {
-        uint64_t connAddrRaw;
-        uint16_t connPSM;
-        uint32_t uuidRev;
-        size_t adMapSize;
-        MsgArg* adMap;
-        size_t j;
-        BTNodeDB* adInfo = new BTNodeDB();
-
-        status = foundNodeArgs[i].Get(SIG_FOUND_NODE_ENTRY, &connAddrRaw, &connPSM, &uuidRev, &adMapSize, &adMap);
-        if (status != ER_OK) {
-            return status;
-        }
-
-        BTBusAddress connNodeAddr(BDAddress(connAddrRaw), connPSM);
-        if ((self->GetBusAddress() == connNodeAddr) || nodeDB.FindNode(connNodeAddr)->IsValid()) {
-            // Don't add ourself or any node on our piconet/scatternet to foundNodeDB.
-            QCC_DbgPrintf(("Skipping nodes with connect address: %s", connNodeAddr.ToString().c_str()));
-            continue;
-        }
-
-        assert(!incomingDB.FindNode(connNodeAddr)->IsValid());
-        BTNodeInfo connNode = BTNodeInfo(connNodeAddr);
-
-        for (j = 0; j < adMapSize; ++j) {
-            char* guidStr;
-            uint64_t rawBdAddr;
-            uint16_t psm;
-            size_t anSize;
-            MsgArg* anList;
-            size_t k;
-
-            status = adMap[j].Get(SIG_AD_NAME_MAP_ENTRY, &guidStr, &rawBdAddr, &psm, &anSize, &anList);
-            if (status != ER_OK) {
-                return status;
-            }
-
-            BTBusAddress nodeAddr(BDAddress(rawBdAddr), psm);
-            BTNodeInfo node = (nodeAddr == connNode->GetBusAddress()) ? connNode : BTNodeInfo(nodeAddr);
-
-            QCC_DbgPrintf(("Processing names for new found device %s (connectable via %s):",
-                           nodeAddr.ToString().c_str(),
-                           connNodeAddr.ToString().c_str()));
-
-            node->SetGUID(String(guidStr));
-            node->SetConnectNode(connNode);
-            node->SetUUIDRev(uuidRev);
-            for (k = 0; k < anSize; ++k) {
-                char* n;
-                status = anList[k].Get(SIG_NAME, &n);
-                if (status != ER_OK) {
-                    return status;
-                }
-                QCC_DbgPrintf(("    Ad Name: %s", n));
-                String name(n);
-                node->AddAdvertiseName(name);
-            }
-            incomingDB.AddNode(node);
-            addedDB.AddNode(node);
-            adInfo->AddNode(node);
-        }
-        cacheLock.Lock();
-        uuidRevCache.insert(UUIDRevCacheMapEntry(uuidRev, UUIDRevCacheInfo(adInfo)));
-        cacheLock.Unlock();
-    }
+    status = ExtractNodeInfo(foundNodeArgs, numFoundNodes, incomingDB);
+    addedDB.UpdateDB(&incomingDB, NULL);
 
     if (IsMaster()) {
         ++directMinions;
@@ -1936,29 +1871,77 @@ QStatus BTController::ExtractAdInfo(const MsgArg* entries, size_t size, BTNodeDB
 }
 
 
-void BTController::FillAdvertiseNamesMsgArgs(vector<MsgArg>& args, const BTNodeDB& adInfo)
+QStatus BTController::ExtractNodeInfo(const MsgArg* entries, size_t size, BTNodeDB& db)
 {
-    args.reserve(adInfo.Size());
-    BTNodeDB::const_iterator it;
-    for (it = adInfo.Begin(); it != adInfo.End(); ++it) {
-        const BTNodeInfo& node = *it;
-        QCC_DbgPrintf(("    Advertised node %s:", node->GetBusAddress().ToString().c_str()));
-        NameSet::const_iterator nit;
+    QCC_DbgTrace(("BTController::ExtractNodeInfo()"));
 
-        vector<const char*> nodeAdNames;
-        nodeAdNames.reserve(node->AdvertiseNamesSize());
-        for (nit = node->GetAdvertiseNamesBegin(); nit != node->GetAdvertiseNamesEnd(); ++nit) {
-            QCC_DbgPrintf(("        Ad name: %s", nit->c_str()));
-            nodeAdNames.push_back(nit->c_str());
+    QStatus status;
+    for (size_t i = 0; i < size; ++i) {
+        uint64_t connAddrRaw;
+        uint16_t connPSM;
+        uint32_t uuidRev;
+        size_t adMapSize;
+        MsgArg* adMap;
+        size_t j;
+        BTNodeDB* adInfo = new BTNodeDB();
+
+        status = entries[i].Get(SIG_FOUND_NODE_ENTRY, &connAddrRaw, &connPSM, &uuidRev, &adMapSize, &adMap);
+        if (status != ER_OK) {
+            QCC_LogError(status, ("Failed MsgArg::Get()"));
+            return status;
         }
 
-        args.push_back(MsgArg(SIG_AD_NAME_MAP_ENTRY,
-                              node->GetGUID().c_str(),
-                              node->GetBusAddress().addr.GetRaw(),
-                              node->GetBusAddress().psm,
-                              nodeAdNames.size(), &nodeAdNames.front()));
-        args.back().Stabilize();
+        BTBusAddress connNodeAddr(BDAddress(connAddrRaw), connPSM);
+        if ((self->GetBusAddress() == connNodeAddr) || nodeDB.FindNode(connNodeAddr)->IsValid()) {
+            // Don't add ourself or any node on our piconet/scatternet to foundNodeDB.
+            QCC_DbgPrintf(("Skipping nodes with connect address: %s", connNodeAddr.ToString().c_str()));
+            continue;
+        }
+
+        assert(!db.FindNode(connNodeAddr)->IsValid());
+        BTNodeInfo connNode = BTNodeInfo(connNodeAddr);
+
+        for (j = 0; j < adMapSize; ++j) {
+            char* guidStr;
+            uint64_t rawBdAddr;
+            uint16_t psm;
+            size_t anSize;
+            MsgArg* anList;
+            size_t k;
+
+            status = adMap[j].Get(SIG_AD_NAME_MAP_ENTRY, &guidStr, &rawBdAddr, &psm, &anSize, &anList);
+            if (status != ER_OK) {
+                return status;
+            }
+
+            BTBusAddress nodeAddr(BDAddress(rawBdAddr), psm);
+            BTNodeInfo node = (nodeAddr == connNode->GetBusAddress()) ? connNode : BTNodeInfo(nodeAddr);
+
+            QCC_DbgPrintf(("Processing names for new found device %s (connectable via %s):",
+                           nodeAddr.ToString().c_str(),
+                           connNodeAddr.ToString().c_str()));
+
+            node->SetGUID(String(guidStr));
+            node->SetConnectNode(connNode);
+            node->SetUUIDRev(uuidRev);
+            for (k = 0; k < anSize; ++k) {
+                char* n;
+                status = anList[k].Get(SIG_NAME, &n);
+                if (status != ER_OK) {
+                    return status;
+                }
+                QCC_DbgPrintf(("    Ad Name: %s", n));
+                String name(n);
+                node->AddAdvertiseName(name);
+            }
+            db.AddNode(node);
+            adInfo->AddNode(node);
+        }
+        cacheLock.Lock();
+        uuidRevCache.insert(UUIDRevCacheMapEntry(uuidRev, UUIDRevCacheInfo(adInfo)));
+        cacheLock.Unlock();
     }
+    return status;
 }
 
 
@@ -2000,15 +1983,15 @@ void BTController::FillNodeStateMsgArgs(vector<MsgArg>& args) const
 }
 
 
-void BTController::FillFoundNodesMsgArgs(vector<MsgArg>& args) const
+void BTController::FillFoundNodesMsgArgs(vector<MsgArg>& args, const BTNodeDB& adInfo)
 {
     BTNodeDB::const_iterator it;
     map<BTBusAddress, BTNodeDB> xformMap;
-    foundNodeDB.Lock();
-    for (it = foundNodeDB.Begin(); it != foundNodeDB.End(); ++it) {
+    adInfo.Lock();
+    for (it = adInfo.Begin(); it != adInfo.End(); ++it) {
         xformMap[(*it)->GetConnectAddress()].AddNode(*it);
     }
-    foundNodeDB.Unlock();
+    adInfo.Unlock();
 
     args.reserve(xformMap.size());
     map<BTBusAddress, BTNodeDB>::const_iterator xmit;
@@ -2017,8 +2000,28 @@ void BTController::FillFoundNodesMsgArgs(vector<MsgArg>& args) const
 
         BTNodeInfo connNode = xmit->second.FindNode(xmit->first);
         assert(connNode->IsValid());
+        const BTNodeDB& db = xmit->second;
 
-        FillAdvertiseNamesMsgArgs(adNamesArgs, xmit->second);
+        adNamesArgs.reserve(adInfo.Size());
+        for (it = db.Begin(); it != db.End(); ++it) {
+            const BTNodeInfo& node = *it;
+            NameSet::const_iterator nit;
+
+            vector<const char*> nodeAdNames;
+            nodeAdNames.reserve(node->AdvertiseNamesSize());
+            for (nit = node->GetAdvertiseNamesBegin(); nit != node->GetAdvertiseNamesEnd(); ++nit) {
+                nodeAdNames.push_back(nit->c_str());
+            }
+
+            adNamesArgs.push_back(MsgArg(SIG_AD_NAME_MAP_ENTRY,
+                                         node->GetGUID().c_str(),
+                                         node->GetBusAddress().addr.GetRaw(),
+                                         node->GetBusAddress().psm,
+                                         nodeAdNames.size(), &nodeAdNames.front()));
+            adNamesArgs.back().Stabilize();
+        }
+
+
         args.push_back(MsgArg(SIG_FOUND_NODE_ENTRY,
                               xmit->first.addr.GetRaw(),
                               xmit->first.psm,
