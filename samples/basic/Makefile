@@ -19,26 +19,25 @@ default: all
 all: basic_client basic_service nameChange_client signal_service signalConsumer_client
 
 basic_client:
-	make -f Make_basic_client
+	$(MAKE) -f Make_basic_client
 
-basic_service: 
-	make -f Make_basic_service
+basic_service:
+	$(MAKE) -f Make_basic_service
 
-nameChange_client: 
-	make -f Make_nameChange_client
+nameChange_client:
+	$(MAKE) -f Make_nameChange_client
 
-signal_service: 
-	make -f Make_signal_service
+signal_service:
+	$(MAKE) -f Make_signal_service
 
 signalConsumer_client:
-	make -f Make_signalConsumer_client
+	$(MAKE) -f Make_signalConsumer_client
 
 clean:
-	make -f Make_basic_client clean
-	make -f Make_basic_service clean
-	make -f Make_nameChange_client clean
-	make -f Make_signal_service clean
-	make -f Make_signalConsumer_client clean
-	make -f Make_basic_client clean
-	
+	$(MAKE) -f Make_basic_client clean
+	$(MAKE) -f Make_basic_service clean
+	$(MAKE) -f Make_nameChange_client clean
+	$(MAKE) -f Make_signal_service clean
+	$(MAKE) -f Make_signalConsumer_client clean
+	$(MAKE) -f Make_basic_client clean
 
