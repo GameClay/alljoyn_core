@@ -81,7 +81,6 @@ class MyBusListener : public BusListener, public SessionListener {
     {
         endTime = GetTimestamp();
         QCC_SyncPrintf("FindAdvertisedName takes %d ms \n", (endTime - startTime));
-        
         QCC_SyncPrintf("FoundAdvertisedName(name=%s, transport=0x%x, prefix=%s)\n", name, transport, namePrefix);
 
         if (0 == ::strcmp(name, g_wellKnownName.c_str())) {
