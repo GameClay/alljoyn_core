@@ -68,6 +68,8 @@ const char* InterfaceName = "org.alljoyn.alljoyn_test.values";
 static BusAttachment* g_msgBus = NULL;
 static Event g_discoverEvent;
 static String g_wellKnownName = ::org::alljoyn::alljoyn_test::DefaultWellKnownName;
+static uint32_t startTime = 0;
+static uint32_t endTime = 0;
 
 /** AllJoynListener receives discovery events from AllJoyn */
 class MyBusListener : public BusListener, public SessionListener {
@@ -77,6 +79,9 @@ class MyBusListener : public BusListener, public SessionListener {
 
     void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
     {
+        endTime = GetTimestamp();
+        QCC_SyncPrintf("FindAdvertisedName takes %d ms \n", (endTime - startTime));
+        
         QCC_SyncPrintf("FoundAdvertisedName(name=%s, transport=0x%x, prefix=%s)\n", name, transport, namePrefix);
 
         if (0 == ::strcmp(name, g_wellKnownName.c_str())) {
@@ -91,6 +96,8 @@ class MyBusListener : public BusListener, public SessionListener {
                 }
             }
 
+            startTime = GetTimestamp();
+
             status = g_msgBus->JoinSession(name, ::org::alljoyn::alljoyn_test::SessionPort, this, sessionId, opts);
             if (ER_OK != status) {
                 QCC_LogError(status, ("JoinSession(%s) failed", name));
@@ -98,6 +105,9 @@ class MyBusListener : public BusListener, public SessionListener {
 
             /* Release the main thread */
             if (ER_OK == status) {
+                endTime = GetTimestamp();
+                QCC_SyncPrintf("JoinSession takes %d ms \n", (endTime - startTime));
+
                 g_discoverEvent.SetEvent();
             }
         }
@@ -570,6 +580,8 @@ int main(int argc, char** argv)
                                             reply);
             } else if (discoverRemote) {
                 /* Begin discovery on the well-known name of the service to be called */
+                startTime = GetTimestamp();
+
                 status = g_msgBus->FindAdvertisedName(g_wellKnownName.c_str());
                 if (status != ER_OK) {
                     QCC_LogError(status, ("FindAdvertisedName failed"));
