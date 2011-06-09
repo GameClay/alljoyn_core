@@ -169,7 +169,7 @@ qcc::String _Message::Description() const
         break;
 
     case MESSAGE_SIGNAL:
-        outStr += " ";
+        outStr = outStr + "[" + U32ToString(msgHeader.serialNum) + "] ";
         if (hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].typeId == ALLJOYN_STRING) {
             outStr = outStr + hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].v_string.str + ".";
         }
