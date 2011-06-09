@@ -1,4 +1,4 @@
-AllJoyn Version 2.0.0 Release Notes
+AllJoyn Version 2.0.1 Release Notes
 -----------------------------------
 
 Platform Support
@@ -51,5 +51,7 @@ are not backwards compatible with AllJoyn 1.X daemons.
 
 Change history
 --------------
+2.0.0 - Added sessions and topology management.
+        API's and daemon protocols changed.
 1.8.0 - Initial Open Source Release
 
