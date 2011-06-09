@@ -888,7 +888,7 @@ void AllJoynObj::LeaveSession(const InterfaceDescription::Member* member, Messag
         MsgArg detachSessionArgs[2];
         detachSessionArgs[0].Set("u", id);
         detachSessionArgs[1].Set("s", msg->GetSender());
-        QStatus status = Signal(NULL, 0, *detachSessionSignal, detachSessionArgs, ArraySize(detachSessionArgs));
+        QStatus status = Signal(NULL, id, *detachSessionSignal, detachSessionArgs, ArraySize(detachSessionArgs));
         if (status != ER_OK) {
             replyCode = ALLJOYN_LEAVESESSION_REPLY_FAILED;
             QCC_LogError(status, ("Error sending org.alljoyn.Daemon.DetachSession signal"));
@@ -1246,7 +1246,7 @@ void AllJoynObj::RemoveSessionRefs(BusEndpoint& endpoint, SessionId id)
     multimap<pair<String, SessionId>, SessionMapEntry>::iterator it = sessionMap.begin();
     while (it != sessionMap.end()) {
         if (it->first.second == id) {
-            if (it->first.first == endpoint.GetUniqueName()) {
+            if (it->first.first == epName) {
                 sessionMap.erase(it++);
             } else {
                 if (&endpoint == router.FindEndpoint(it->second.sessionHost)) {
@@ -1828,7 +1828,7 @@ void AllJoynObj::FindAdvertisedName(const InterfaceDescription::Member* member, 
     /* Send FoundAdvertisedName signals if there are existing matches for namePrefix */
     if (ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS == replyCode) {
         multimap<String, NameMapEntry>::iterator it = nameMap.lower_bound(namePrefix);
-        set< pair<String, TransportMask> > sentSet;
+        set<pair<String, TransportMask> > sentSet;
         while ((it != nameMap.end()) && (0 == strncmp(it->first.c_str(), namePrefix.c_str(), namePrefix.size()))) {
             pair<String, TransportMask> sentSetEntry(it->first, it->second.transport);
             if (sentSet.find(sentSetEntry) == sentSet.end()) {
@@ -1950,7 +1950,7 @@ void AllJoynObj::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
         vector<SessionId> lostSessionIds;
         it->second->GetSessionIdsForB2B(endpoint, lostSessionIds);
         for (size_t i = 0; i < lostSessionIds.size(); ++i) {
-            RemoveSessionRefs(endpoint, lostSessionIds[i]);
+            RemoveSessionRefs(*it->second, lostSessionIds[i]);
         }
 
         /* Remove the B2B endpoint */
@@ -2246,6 +2246,9 @@ VirtualEndpoint& AllJoynObj::AddVirtualEndpoint(const qcc::String& uniqueName, R
                                                                         new VirtualEndpoint(uniqueName.c_str(), busToBusEndpoint)));
         vep = ret.first->second;
         added = true;
+
+        /* Register the endpoint with the router */
+        router.RegisterEndpoint(*vep, false);
     } else {
         /* Add the busToBus endpoint to the existing virtual endpoint */
         vep = it->second;
@@ -2253,8 +2256,6 @@ VirtualEndpoint& AllJoynObj::AddVirtualEndpoint(const qcc::String& uniqueName, R
     }
     ReleaseLocks();
 
-    /* Register the endpoint with the router */
-    router.RegisterEndpoint(*vep, false);
 
     if (wasAdded) {
         *wasAdded = added;
