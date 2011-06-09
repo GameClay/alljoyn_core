@@ -1266,6 +1266,12 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
                     break;
                 }
             }
+        } else {
+            qcc::String errMsg;
+            const char* errName = rsp->GetErrorName(&errMsg);
+            QCC_LogError(status, ("Failed to get the AllJoyn service information for %s: %s - %s",
+                                  addr.ToString().c_str(),
+                                  errName, errMsg.c_str()));
         }
     }
 

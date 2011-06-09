@@ -205,17 +205,6 @@ class BTController :
     QStatus Init();
 
     /**
-     * Send the SetState method call to the Master node we are connecting to.
-     *
-     * @param busName           Unique name of the endpoint with the
-     *                          BTController object on the device just
-     *                          connected to
-     *
-     * @return ER_OK if successful.
-     */
-    QStatus SendSetState(const qcc::String& busName);
-
-    /**
      * Send the AdvertiseName signal to the node we believe is the Master node
      * (may actually be a drone node).
      *
@@ -314,6 +303,14 @@ class BTController :
     void BTDeviceAvailable(bool on);
 
     /**
+     * Deals with the power/availability change of the Bluetooth device on the
+     * BTController dispatch thread.
+     *
+     * @param on    true if BT device is powered on and available, false otherwise.
+     */
+    void DeferredBTDeviceAvailable(bool on);
+
+    /**
      * Check if it is OK to accept the incoming connection from the specified
      * address.
      *
@@ -339,6 +336,9 @@ class BTController :
                           const qcc::String* oldOwner,
                           const qcc::String* newOwner);
 
+    void DeferredNameLostHander(const qcc::String& name);
+
+
   private:
     static const uint32_t DELEGATE_TIME = 30;   /**< Delegate ad/find operations to minion for 30 seconds. */
 
@@ -360,7 +360,6 @@ class BTController :
         NameArgs args;
         const size_t argsSize;
         const InterfaceDescription::Member* delegateSignal;
-        qcc::Timer& dispatcher;
         qcc::Alarm alarm;
         bool active;
         bool dirty;
@@ -369,7 +368,6 @@ class BTController :
             bto(bto),
             args(size),
             argsSize(size),
-            dispatcher(bto.bus.GetInternal().GetDispatcher()),
             active(false),
             dirty(false),
             count(0)
@@ -393,11 +391,11 @@ class BTController :
         }
         void StartAlarm()
         {
-            assert(!dispatcher.HasAlarm(alarm));
+            assert(!bto.dispatcher.HasAlarm(alarm));
             alarm = qcc::Alarm(BTController::DELEGATE_TIME * 1000, this, 0, this);
-            dispatcher.AddAlarm(alarm);
+            bto.dispatcher.AddAlarm(alarm);
         }
-        void StopAlarm() { dispatcher.RemoveAlarm(alarm); }
+        void StopAlarm() { bto.dispatcher.RemoveAlarm(alarm); }
         virtual bool UseLocal() = 0;
         virtual void StartOp(bool restart = false);
         void RestartOp() { assert(active); StartOp(true); }
@@ -443,7 +441,13 @@ class BTController :
         typedef enum {
             STOP_ADVERTISEMENTS,
             UPDATE_DELEGATIONS,
-            EXPIRE_CACHED_NODES
+            EXPIRE_CACHED_NODES,
+            NAME_LOST,
+            BT_DEVICE_AVAILABLE,
+            SEND_SET_STATE,
+            HANDLE_SET_STATE,
+            HANDLE_DELEGATE_FIND,
+            HANDLE_DELEGATE_ADVERTISE
         } DispatchTypes;
         DispatchTypes operation;
 
@@ -460,15 +464,62 @@ class BTController :
         UpdateDelegationsDispatchInfo(bool resetMinions = false) :
             DispatchInfo(UPDATE_DELEGATIONS),
             resetMinions(resetMinions)
-        {
-        }
+        { }
     };
 
     struct ExpireCachedNodesDispatchInfo : public DispatchInfo {
-        ExpireCachedNodesDispatchInfo() :
-            DispatchInfo(EXPIRE_CACHED_NODES)
+        ExpireCachedNodesDispatchInfo() : DispatchInfo(EXPIRE_CACHED_NODES) { }
+    };
+
+    struct NameLostDispatchInfo : public DispatchInfo {
+        qcc::String name;
+        NameLostDispatchInfo(const qcc::String& name) :
+            DispatchInfo(NAME_LOST),
+            name(name)
         { }
     };
+
+    struct BTDevAvailDispatchInfo : public DispatchInfo {
+        bool on;
+        BTDevAvailDispatchInfo(bool on) : DispatchInfo(BT_DEVICE_AVAILABLE), on(on) { }
+    };
+
+    struct SendSetStateDispatchInfo : public DispatchInfo {
+        qcc::String busName;
+        SendSetStateDispatchInfo(const qcc::String& busName) :
+            DispatchInfo(SEND_SET_STATE),
+            busName(busName)
+        { }
+    };
+
+    struct HandleSetStateDispatchInfo : public DispatchInfo {
+        Message msg;
+        HandleSetStateDispatchInfo(const Message& msg) :
+            DispatchInfo(HANDLE_SET_STATE),
+            msg(msg)
+        { }
+    };
+
+    struct HandleDelegateOpDispatchInfo : public DispatchInfo {
+        Message msg;
+        HandleDelegateOpDispatchInfo(const Message& msg, bool findOp) :
+            DispatchInfo(findOp ? HANDLE_DELEGATE_FIND : HANDLE_DELEGATE_ADVERTISE),
+            msg(msg)
+        { }
+    };
+
+
+
+    /**
+     * Send the SetState method call to the Master node we are connecting to.
+     *
+     * @param busName           Unique name of the endpoint with the
+     *                          BTController object on the device just
+     *                          connected to
+     *
+     * @return ER_OK if successful.
+     */
+    QStatus DeferredSendSetState(const qcc::String& busName);
 
     /**
      * Distribute the advertised name changes to all connected nodes.
@@ -528,6 +579,15 @@ class BTController :
      * Handle the incoming SetState method call.
      *
      * @param member    Member.
+     * @param msg       The incoming message
+     */
+    void HandleSetState(const InterfaceDescription::Member* member,
+                        Message& msg);
+
+    /**
+     * Handle the incoming SetState method call on the BTController dispatch
+     * thread.
+     *
      * @param msg       The incoming message - "y(ssasas)":
      *                    - Number of direct minions
      *                    - struct:
@@ -536,37 +596,41 @@ class BTController :
      *                        - List of names to advertise
      *                        - List of names to find
      */
-    void HandleSetState(const InterfaceDescription::Member* member,
-                        Message& msg);
+    void DeferredHandleSetState(Message& msg);
 
     /**
-     * Handle the incoming DelegateFind signal.
+     * Handle the incoming DelegateFind and DelegateAdvertise signals.
      *
      * @param member        Member.
      * @param sourcePath    Object path of signal sender.
+     * @param msg           The incoming message
+     */
+    void HandleDelegateOp(const InterfaceDescription::Member* member,
+                          const char* sourcePath,
+                          Message& msg);
+
+    /**
+     * Handle the incoming DelegateFind signal on the BTController dispatch
+     * thread.
+     *
      * @param msg           The incoming message - "sas":
      *                        - Master node's bus name
      *                        - List of names to find
      *                        - Bluetooth UUID revision to ignore
      */
-    void HandleDelegateFind(const InterfaceDescription::Member* member,
-                            const char* sourcePath,
-                            Message& msg);
+    void DeferredHandleDelegateFind(Message& msg);
 
     /**
-     * Handle the incoming DelegateAdvertise signal.
+     * Handle the incoming DelegateAdvertise signal on the BTController
+     * dispatch thread.
      *
-     * @param member        Member.
-     * @param sourcePath    Object path of signal sender.
      * @param msg           The incoming message - "ssqas":
      *                        - Bluetooth UUID
      *                        - BD Address
      *                        - L2CAP PSM
      *                        - List of names to advertise
      */
-    void HandleDelegateAdvertise(const InterfaceDescription::Member* member,
-                                 const char* sourcePath,
-                                 Message& msg);
+    void DeferredHandleDelegateAdvertise(Message& msg);
 
     /**
      * Handle the incoming FoundNames signal.
@@ -689,7 +753,7 @@ class BTController :
     qcc::Alarm DispatchOperation(DispatchInfo* op, uint32_t delay = 0)
     {
         qcc::Alarm alarm(delay, this, 0, (void*)op);
-        bus.GetInternal().GetDispatcher().AddAlarm(alarm);
+        dispatcher.AddAlarm(alarm);
         return alarm;
     }
 
@@ -698,7 +762,7 @@ class BTController :
     {
         qcc::Timespec ts(dispatchTime);
         qcc::Alarm alarm(ts, this, 0, (void*)op);
-        bus.GetInternal().GetDispatcher().AddAlarm(alarm);
+        dispatcher.AddAlarm(alarm);
         return alarm;
     }
 
@@ -758,6 +822,7 @@ class BTController :
     AdvertiseNameArgInfo advertise;
     FindNameArgInfo find;
 
+    qcc::Timer dispatcher;
     qcc::Alarm stopAd;
     qcc::Alarm expireAlarm;
 
