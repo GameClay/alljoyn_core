@@ -428,7 +428,7 @@ QStatus DaemonRouter::AddSessionRoute(const char* src, SessionId id, BusEndpoint
 QStatus DaemonRouter::RemoveSessionRoute(const char* src, SessionId id, BusEndpoint& destEp)
 {
     QStatus status = ER_OK;
-    RemoteEndpoint *b2bEp = NULL;
+    RemoteEndpoint*b2bEp = NULL;
     if (id == 0) {
         status = ER_BUS_NO_SESSION;
     } else if (destEp.GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL) {
@@ -460,7 +460,7 @@ void DaemonRouter::RemoveSessionRoutes(const char* src, SessionId id)
     String srcStr = src;
     set<SessionCastEntry>::iterator it = sessionCastSet.begin();
     while (it != sessionCastSet.end()) {
-        if (((it->id == id) && (it->src == src)) || 
+        if (((it->id == id) && (it->src == src)) ||
             (((it->id == 0) || (it->id == id)) && (it->destEp == ep))) {
             if ((it->id != 0) && (it->destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
                 static_cast<VirtualEndpoint*>(it->destEp)->RemoveSessionRef(id);

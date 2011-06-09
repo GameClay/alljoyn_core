@@ -308,7 +308,7 @@ class DaemonRouter : public Router {
         qcc::String src;
         RemoteEndpoint* b2bEp;
         BusEndpoint* destEp;
-        
+
         SessionCastEntry(SessionId id, const qcc::String& src, RemoteEndpoint* b2bEp, BusEndpoint* destEp) :
             id(id), src(src), b2bEp(b2bEp), destEp(destEp) { }
 
