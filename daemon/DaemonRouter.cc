@@ -280,14 +280,18 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
 
     /* Send session multicast messages */
     if (destinationEmpty && (sessionId != 0)) {
-        sessionCastMapLock.Lock();
-        pair<SessionId, StringMapKey> key(sessionId, msg->GetSender());
-        multimap<pair<SessionId, StringMapKey>, BusEndpoint*>::iterator sit = sessionCastMap.find(key);
-        while ((sit != sessionCastMap.end()) && (sit->first == key)) {
-            recipients.insert(sit->second);
+        sessionCastSetLock.Lock();
+        RemoteEndpoint* lastB2b = NULL;
+        SessionCastEntry sce(sessionId, msg->GetSender(), NULL, NULL);
+        set<SessionCastEntry>::iterator sit = sessionCastSet.lower_bound(sce);
+        while ((sit != sessionCastSet.end()) && (sit->id == sce.id) && (sit->src == sce.src)) {
+            if (!sit->b2bEp || (sit->b2bEp != lastB2b)) {
+                recipients.insert(sit->destEp);
+                lastB2b = sit->b2bEp;
+            }
             ++sit;
         }
-        sessionCastMapLock.Unlock();
+        sessionCastSetLock.Unlock();
     }
 
     if (status == ER_OK) {
@@ -414,10 +418,9 @@ QStatus DaemonRouter::AddSessionRoute(const char* src, SessionId id, BusEndpoint
 
     if (status == ER_OK) {
         String srcStr = src;
-        pair<pair<SessionId, StringMapKey>, BusEndpoint*> entry(pair<SessionId, StringMapKey>(id, srcStr), &destEp);
-        sessionCastMapLock.Lock();
-        sessionCastMap.insert(entry);
-        sessionCastMapLock.Unlock();
+        sessionCastSetLock.Lock();
+        sessionCastSet.insert(SessionCastEntry(id, srcStr, b2bEp, &destEp));
+        sessionCastSetLock.Unlock();
     }
     return status;
 }
@@ -425,26 +428,23 @@ QStatus DaemonRouter::AddSessionRoute(const char* src, SessionId id, BusEndpoint
 QStatus DaemonRouter::RemoveSessionRoute(const char* src, SessionId id, BusEndpoint& destEp)
 {
     QStatus status = ER_OK;
+    RemoteEndpoint *b2bEp = NULL;
     if (id == 0) {
         status = ER_BUS_NO_SESSION;
     } else if (destEp.GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL) {
-        static_cast<VirtualEndpoint&>(destEp).RemoveSessionRef(id);
+        VirtualEndpoint& vDestEp = static_cast<VirtualEndpoint&>(destEp);
+        b2bEp = vDestEp.GetBusToBusEndpoint(id);
+        vDestEp.RemoveSessionRef(id);
     }
 
     if (status == ER_OK) {
         String srcStr = src;
-        sessionCastMapLock.Lock();
-        pair<SessionId, StringMapKey> key(id, srcStr);
-        multimap<pair<SessionId, StringMapKey>, BusEndpoint*>::iterator it = sessionCastMap.lower_bound(key);
-        while ((it != sessionCastMap.end()) && (it->first == key)) {
-            if (it->second == &destEp) {
-                sessionCastMap.erase(it);
-                break;
-            } else {
-                ++it;
-            }
+        sessionCastSetLock.Lock();
+        set<SessionCastEntry>::iterator it = sessionCastSet.find(SessionCastEntry(id, srcStr, b2bEp, &destEp));
+        if (it != sessionCastSet.end()) {
+            sessionCastSet.erase(it);
         }
-        sessionCastMapLock.Unlock();
+        sessionCastSetLock.Unlock();
     }
     return status;
 }
@@ -456,20 +456,21 @@ void DaemonRouter::RemoveSessionRoutes(const char* src, SessionId id)
         QCC_LogError(ER_BUS_NO_ENDPOINT, ("Cannot find %s", src));
     }
 
-    sessionCastMapLock.Lock();
-    pair<SessionId, StringMapKey> key(id, src);
-    multimap<pair<SessionId, StringMapKey>, BusEndpoint*>::iterator it = sessionCastMap.begin();
-    while (it != sessionCastMap.end()) {
-        if ((key == it->first) || (((id == 0) || (id == it->first.first)) && (ep == it->second))) {
-            if ((id != 0) && (it->second->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
-                static_cast<VirtualEndpoint*>(it->second)->RemoveSessionRef(id);
+    sessionCastSetLock.Lock();
+    String srcStr = src;
+    set<SessionCastEntry>::iterator it = sessionCastSet.begin();
+    while (it != sessionCastSet.end()) {
+        if (((it->id == id) && (it->src == src)) || 
+            (((it->id == 0) || (it->id == id)) && (it->destEp == ep))) {
+            if ((it->id != 0) && (it->destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
+                static_cast<VirtualEndpoint*>(it->destEp)->RemoveSessionRef(id);
             }
-            sessionCastMap.erase(it++);
+            sessionCastSet.erase(it++);
         } else {
             ++it;
         }
     }
-    sessionCastMapLock.Unlock();
+    sessionCastSetLock.Unlock();
 }
 
 }

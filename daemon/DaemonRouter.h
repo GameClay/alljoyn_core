@@ -303,8 +303,25 @@ class DaemonRouter : public Router {
     qcc::Mutex m_b2bEndpointsLock;       /**< Lock that protects m_b2bEndpoints */
 
     /** Session multicast destination map */
-    std::multimap<std::pair<SessionId, qcc::StringMapKey>, BusEndpoint*> sessionCastMap;
-    qcc::Mutex sessionCastMapLock;      /**< Lock that protects sessionCastMap */
+    struct SessionCastEntry {
+        SessionId id;
+        qcc::String src;
+        RemoteEndpoint* b2bEp;
+        BusEndpoint* destEp;
+        
+        SessionCastEntry(SessionId id, const qcc::String& src, RemoteEndpoint* b2bEp, BusEndpoint* destEp) :
+            id(id), src(src), b2bEp(b2bEp), destEp(destEp) { }
+
+        bool operator<(const SessionCastEntry& other) const {
+            return (id < other.id) || ((id == other.id) && ((src < other.src) || ((src == other.src) && ((b2bEp < other.b2bEp) || ((b2bEp == other.b2bEp) && (destEp < other.destEp))))));
+        }
+
+        bool operator==(const SessionCastEntry& other) const {
+            return (id == other.id)  && (src == other.src) && (b2bEp == other.b2bEp) && (destEp == other.destEp);
+        }
+    };
+    std::set<SessionCastEntry> sessionCastSet;
+    qcc::Mutex sessionCastSetLock;      /**< Lock that protects sessionCastSet */
 };
 
 }
