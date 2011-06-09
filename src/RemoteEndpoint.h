@@ -380,6 +380,7 @@ class RemoteEndpoint : public BusEndpoint, public qcc::ThreadListener {
     int32_t refCount;                        /**< Number of active users of this remote endpoint */
     bool isSocket;                           /**< True iff this endpoint contains a SockStream as its 'stream' member */
     bool armRxPause;                         /**< Pause Rx after receiving next METHOD_REPLY message */
+    int32_t numWaiters;                      /**< Number of threads currently running in PushMessage */
 };
 
 }

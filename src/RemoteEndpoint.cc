@@ -26,6 +26,7 @@
 #include <qcc/atomic.h>
 #include <qcc/Thread.h>
 #include <qcc/SocketStream.h>
+#include <qcc/atomic.h>
 
 #include <alljoyn/BusAttachment.h>
 
@@ -71,7 +72,8 @@ RemoteEndpoint::RemoteEndpoint(BusAttachment& bus,
     processId(-1),
     refCount(0),
     isSocket(isSocket),
-    armRxPause(false)
+    armRxPause(false),
+    numWaiters(0)
 {
 }
 
@@ -185,13 +187,11 @@ QStatus RemoteEndpoint::PauseAfterRxReply()
 
 QStatus RemoteEndpoint::Join(void)
 {
-    /* Join any threads that are on the wait queue */
-    txQueueLock.Lock();
-    deque<Thread*>::iterator it = txWaitQueue.begin();
-    while (it != txWaitQueue.end()) {
-        (*it++)->Join();
+    /* Wait for any threads blocked in PushMessage to exit */
+    while (numWaiters > 0) {
+        qcc::Sleep(10);
     }
-    txQueueLock.Unlock();
+
     /*
      * Note that we don't join txThread and rxThread, rather we let the thread destructors handle
      * this when the RemoteEndpoint destructor is called. The reason for this is tied up in the
@@ -395,6 +395,7 @@ QStatus RemoteEndpoint::PushMessage(Message& msg)
     if (rxThread.IsStopping() || txThread.IsStopping()) {
         return ER_BUS_ENDPOINT_CLOSING;
     }
+    IncrementAndFetch(&numWaiters);
     txQueueLock.Lock();
     size_t count = txQueue.size();
     bool wasEmpty = (count == 0);
@@ -431,17 +432,16 @@ QStatus RemoteEndpoint::PushMessage(Message& msg)
                 txWaitQueue.push_front(thread);
                 txQueueLock.Unlock();
                 status = Event::Wait(Event::neverSet, maxWait);
+                txQueueLock.Lock();
                 if (ER_ALERTED_THREAD == status) {
                     if (thread->GetAlertCode() == ENDPOINT_IS_DEAD_ALERTCODE) {
-                        /* The endpoint is gone so don't touch the object */
-                        return ER_BUS_ENDPOINT_CLOSING;
+                        status = ER_BUS_ENDPOINT_CLOSING;
                     } else {
                         thread->GetStopEvent().ResetEvent();
                     }
                 } else {
                     /* There was a timeout or some other non-expected exit from wait. Remove thread from wait queue. */
                     /* If thread isn't on queue, this means there is an alert in progress that we must clear */
-                    txQueueLock.Lock();
                     bool foundThread = false;
                     deque<Thread*>::iterator eit = txWaitQueue.begin();
                     while (eit != txWaitQueue.end()) {
@@ -452,12 +452,10 @@ QStatus RemoteEndpoint::PushMessage(Message& msg)
                         }
                         ++eit;
                     }
-                    txQueueLock.Unlock();
                     if (!foundThread) {
                         thread->GetStopEvent().ResetEvent();
                     }
                 }
-                txQueueLock.Lock();
                 if ((ER_OK != status) && (ER_ALERTED_THREAD != status) && (ER_TIMEOUT != status)) {
                     break;
                 }
@@ -483,6 +481,7 @@ QStatus RemoteEndpoint::PushMessage(Message& msg)
 #define QCC_MODULE "ALLJOYN"
 #endif
 
+    DecrementAndFetch(&numWaiters);
     return status;
 }
 
