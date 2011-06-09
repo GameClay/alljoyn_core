@@ -521,7 +521,7 @@ QStatus _Message::Deliver(RemoteEndpoint& endpoint)
         status = sink.PushBytes(buf, len, pushed);
     }
     if (status == ER_OK) {
-        QCC_DbgHLPrintf(("Deliver message %s", Description().c_str()));
+        QCC_DbgHLPrintf(("Deliver message %s to %s", Description().c_str(), endpoint.GetUniqueName().c_str()));
         QCC_DbgPrintf(("%s", ToString().c_str()));
     } else {
         QCC_LogError(status, ("Failed to deliver message %s", Description().c_str()));
