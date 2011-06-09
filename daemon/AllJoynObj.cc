@@ -304,7 +304,7 @@ void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Mes
             }
         } else {
             multimap<pair<String, SessionId>, SessionMapEntry>::const_iterator it = sessionMap.lower_bound(pair<String, SessionId>(sender, 0));
-            while ((it != sessionMap.end()) && (it->first.first == sender)) {
+            while ((it != sessionMap.end()) && (it->first.first == sender) && (it->first.second == 0)) {
                 if (it->second.sessionPort == sessionPort) {
                     replyCode = ALLJOYN_BINDSESSIONPORT_REPLY_ALREADY_EXISTS;
                     break;
