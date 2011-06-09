@@ -759,6 +759,7 @@ qcc::ThreadReturn AllJoynPeerObj::RequestThread::Run(void* args)
 {
     QStatus status;
 
+    QCC_DbgHLPrintf(("AllJoynPeerObj::RequestThread::Run"));
     while (!IsStopping()) {
         lock.Lock();
         Request& req(queue.front());
@@ -798,6 +799,7 @@ qcc::ThreadReturn AllJoynPeerObj::RequestThread::Run(void* args)
             break;
         }
     }
+    QCC_DbgHLPrintf(("AllJoynPeerObj::RequestThread - exiting"));
     return 0;
 }
 
