@@ -418,7 +418,7 @@ QStatus BusObject::Signal(const char* destination,
     Message msg(bus);
 
     /*
-     * If the interface is secure or encryption is explicitly rerquested the method call must be encrypted.
+     * If the interface is secure or encryption is explicitly requested the signal must be encrypted.
      */
     if (signalMember.iface->IsSecure()) {
         flags |= ALLJOYN_FLAG_ENCRYPTED;
