@@ -843,14 +843,7 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
         PeerStateTable* peerStateTable = bus.GetInternal().GetPeerStateTable();
         KeyBlob key;
         KeyBlob nonce;
-        /*
-         * Broadcast messages an encrypted with the group key, point-to-point messages use the session key.
-         */
-        if (destination.empty()) {
-            peerStateTable->GetGroupKeyAndNonce(key, nonce);
-        } else {
-            status = peerStateTable->GetPeerState(destination)->GetKeyAndNonce(key, nonce, PEER_SESSION_KEY);
-        }
+        status = peerStateTable->GetPeerState(destination)->GetKeyAndNonce(key, nonce, PEER_SESSION_KEY);
         if (status != ER_OK) {
             goto ExitMarshalMessage;
         }

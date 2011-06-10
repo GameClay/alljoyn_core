@@ -528,6 +528,18 @@ QStatus AllJoynPeerObj::SecurePeerConnection(const qcc::String& busName, bool fo
     if (peerAuthMechanisms.empty()) {
         return ER_BUS_NO_AUTHENTICATION_MECHANISM;
     }
+    /*
+     * Check for broadcast signals
+     */
+    if (busName.empty()) {
+        /*
+         * Getting the group key and nonce ensure they are initialized.
+         */
+        KeyBlob key;
+        KeyBlob nonce;
+        peerStateTable->GetGroupKeyAndNonce(key, nonce);
+        return ER_OK;
+    }
 
     ProxyBusObject remotePeerObj(bus, busName.c_str(), org::alljoyn::Bus::Peer::ObjectPath, 0);
     remotePeerObj.AddInterface(*ifc);

@@ -303,16 +303,6 @@ class PeerStateTable {
   private:
 
     /**
-     * The broadcast key for the local peer
-     */
-    qcc::KeyBlob groupKey;
-
-    /**
-     * The broadcast nonce for the local peer
-     */
-    qcc::KeyBlob groupNonce;
-
-    /**
      * Mapping table from bus names to peer state.
      */
     std::map<const qcc::String, PeerState> peerMap;

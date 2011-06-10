@@ -115,43 +115,28 @@ void PeerStateTable::DelPeerState(const qcc::String& busName)
     lock.Lock();
     QCC_DbgHLPrintf(("PeerStateTable::DelPeerState() %s for %s", peerMap.count(busName) ? "remove state" : "no state to remove", busName.c_str()));
     peerMap.erase(busName);
-    if (groupKey.IsValid()) {
-        /*
-         * If none of the remaining peers are secure clear the group key.
-         */
-        std::map<const qcc::String, PeerState>::iterator iter = peerMap.begin();
-        for (iter = peerMap.begin(); iter != peerMap.end(); ++iter) {
-            if (iter->second->IsSecure() && !iter->second->IsLocalPeer()) {
-                break;
-            }
-        }
-        if (iter == peerMap.end()) {
-            QCC_DbgHLPrintf(("Deleting stale group key"));
-            groupKey.Erase();
-        }
-    }
     lock.Unlock();
 }
 
 void PeerStateTable::GetGroupKeyAndNonce(qcc::KeyBlob& key, qcc::KeyBlob& nonce)
 {
     /*
-     * If we don't have a group key generate it now.
+     * The group key is carried by the null-name peer
      */
-    if (!groupKey.IsValid()) {
-        QCC_DbgHLPrintf(("Allocating fresh group key"));
-        groupKey.Rand(Crypto_AES::AES128_SIZE, KeyBlob::AES);
-        groupNonce.Rand(Crypto::NonceBytes, KeyBlob::GENERIC);
+    PeerState nullPeer = GetPeerState("");
+    if (nullPeer->IsSecure()) {
+        nullPeer->GetKeyAndNonce(key, nonce, PEER_SESSION_KEY);
+    } else {
+        QCC_DbgHLPrintf(("Allocating group key"));
+        key.Rand(Crypto_AES::AES128_SIZE, KeyBlob::AES);
+        nonce.Rand(Crypto::NonceBytes, KeyBlob::GENERIC);
+        nullPeer->SetKeyAndNonce(key, nonce, PEER_SESSION_KEY);
     }
-    key = groupKey;
-    nonce = groupNonce;
 }
 
 void PeerStateTable::Clear()
 {
     lock.Lock();
-    groupKey.Erase();
-    groupNonce.Erase();
     peerMap.clear();
     lock.Unlock();
 }
