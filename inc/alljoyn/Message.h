@@ -770,6 +770,8 @@ class _Message {
 
     /* Internal methods marshal side */
 
+    QStatus EncryptMessage();
+
     QStatus MarshalMessage(const qcc::String& signature,
                            const qcc::String& destination,
                            AllJoynMessageType msgType,

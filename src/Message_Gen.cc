@@ -655,6 +655,37 @@ size_t _Message::ComputeHeaderLen()
     return ROUNDUP8(sizeof(msgHeader) + hdrLen);
 }
 
+QStatus _Message::EncryptMessage()
+{
+    QStatus status;
+    PeerStateTable* peerStateTable = bus.GetInternal().GetPeerStateTable();
+    KeyBlob key;
+    KeyBlob nonce;
+    status = peerStateTable->GetPeerState(GetDestination())->GetKeyAndNonce(key, nonce, PEER_SESSION_KEY);
+    if (status == ER_OK) {
+        size_t argsLen = msgHeader.bodyLen - ajn::Crypto::ExpansionBytes;
+        /*
+         * Make the nonce unique for this message.
+         */
+        nonce.Xor((uint8_t*)(&msgHeader.serialNum), sizeof(msgHeader.serialNum));
+        /*
+         * If the message header is compressed a hash of the compressed header fields is xor'd with
+         * the nonce. This is to prevent a security attack where an attacker provides a bogus
+         * expansion rule.
+         */
+        if (msgHeader.flags & ALLJOYN_FLAG_COMPRESSED) {
+            KeyBlob hdrHash;
+            ajn::Crypto::HashHeaderFields(hdrFields, hdrHash);
+            nonce ^= hdrHash;
+        }
+        status = ajn::Crypto::Encrypt(key, (uint8_t*)msgBuf, msgHeader.headerLen, argsLen, nonce);
+        if (status == ER_OK) {
+            authMechanism = key.GetTag();
+            assert(msgHeader.bodyLen == argsLen);
+        }
+    }
+    return status;
+}
 
 QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
                                  const qcc::String& destination,
@@ -840,33 +871,10 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
      * Encrypt and/or authenticate the message.
      */
     if (msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED) {
-        PeerStateTable* peerStateTable = bus.GetInternal().GetPeerStateTable();
-        KeyBlob key;
-        KeyBlob nonce;
-        status = peerStateTable->GetPeerState(destination)->GetKeyAndNonce(key, nonce, PEER_SESSION_KEY);
+        status = EncryptMessage();
         if (status != ER_OK) {
             goto ExitMarshalMessage;
         }
-        /*
-         * Make the nonce unique for this message.
-         */
-        nonce.Xor((uint8_t*)(&msgHeader.serialNum), sizeof(msgHeader.serialNum));
-        /*
-         * If the message header is compressed a hash of the compressed header fields is xor'd with
-         * the nonce. This is to prevent a security attack where an attacker provides a bogus
-         * expansion rule.
-         */
-        if (msgHeader.flags & ALLJOYN_FLAG_COMPRESSED) {
-            KeyBlob hdrHash;
-            ajn::Crypto::HashHeaderFields(hdrFields, hdrHash);
-            nonce ^= hdrHash;
-        }
-        status = ajn::Crypto::Encrypt(key, (uint8_t*)msgBuf, hdrLen, argsLen, nonce);
-        if (status != ER_OK) {
-            goto ExitMarshalMessage;
-        }
-        authMechanism = key.GetTag();
-        assert(msgHeader.bodyLen == argsLen);
     }
     bufEOD = bodyPtr + msgHeader.bodyLen;
     while (numArgs--) {
