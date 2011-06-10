@@ -322,9 +322,7 @@ void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Mes
             entry.fd = -1;
             entry.streamingEp = NULL;
             entry.opts = opts;
-            do {
-                entry.id = qcc::Rand32();
-            } while (entry.id == 0);
+            entry.id = 0;
             sessionMap.insert(pair<pair<String, SessionId>, SessionMapEntry>(pair<String, SessionId>(entry.endpointName, 0), entry));
         }
         ReleaseLocks();
@@ -439,6 +437,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                         }
                         ++mit;
                     }
+                    sme = sit->second;
                 }
                 ++sit;
             }
@@ -451,11 +450,9 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                 if (!sme.opts.IsCompatible(optsIn)) {
                     replyCode = ALLJOYN_JOINSESSION_REPLY_BAD_SESSION_OPTS;
                 } else {
-                    /* Create a new sessionId if this is not a mulit-point session */
-                    if (!sme.opts.isMultipoint) {
-                        do {
-                            newSessionId = qcc::Rand32();
-                        } while (newSessionId == 0);
+                    /* Create a new sessionId if needed */
+                    while (newSessionId == 0) {
+                        newSessionId = qcc::Rand32();
                     }
                     /* Ask creator to accept session */
                     status = ajObj.SendAcceptSession(sme.sessionPort, newSessionId, sessionHost, msg->GetSender(), optsIn, isAccepted);
@@ -486,13 +483,14 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                             ajObj.AcquireLocks();
                             if (sme.opts.isMultipoint) {
                                 /* Add (local) joiner to list of session members since no AttachSession will be sent */
-                                multimap<pair<String, SessionId>, SessionMapEntry>::iterator sit = ajObj.sessionMap.find(pair<String, SessionId>(sme.endpointName, sme.id));
+                                multimap<pair<String, SessionId>, SessionMapEntry>::iterator sit = ajObj.sessionMap.find(pair<String, SessionId>(sme.endpointName, newSessionId));
                                 if (sit != ajObj.sessionMap.end()) {
                                     sit->second.memberNames.push_back(msg->GetSender());
                                     sme = sit->second;
                                 } else {
                                     sit = ajObj.sessionMap.find(pair<String, SessionId>(sme.endpointName, 0));
                                     if (sit != ajObj.sessionMap.end()) {
+                                        sme.id = newSessionId;
                                         sme = sit->second;
                                         sme.memberNames.push_back(msg->GetSender());
                                         ajObj.sessionMap.insert(pair<pair<String, SessionId>, SessionMapEntry>(pair<String, SessionId>(sme.endpointName, sme.id), sme));
@@ -965,41 +963,40 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
             replyCode = ALLJOYN_JOINSESSION_REPLY_SUCCESS;
             while ((sit != sessionMap.end()) && (sit->first.first == destUniqueName)) {
                 BusEndpoint* creatorEp = router.FindEndpoint(sit->second.sessionHost);
-                if ((sit->second.sessionPort == sessionPort) && sessionHostEp && (creatorEp == sessionHostEp)) {
-                    if (!sit->second.opts.isMultipoint && (sit->first.second != 0)) {
-                        /* Block attempt to join a non-multipoint session multiple times */
-                        break;
-                    }
-                    sme = sit->second;
-                    if (!sme.opts.isMultipoint) {
-                        /* Session is not multipoint. Create a new session entry */
-                        do {
-                            sme.id = qcc::Rand32();
-                        } while (sme.id == 0);
-                    } else {
+                sme = sit->second;
+                if ((sme.sessionPort == sessionPort) && sessionHostEp && (creatorEp == sessionHostEp)) {
+                    if (sit->second.opts.isMultipoint && (sit->first.second == 0)) {
                         /* Session is multipoint. Look for an existing (already joined) session */
-                        if (sit->first.second == 0) {
-                            sit = sessionMap.find(pair<String, SessionId>(destUniqueName, sme.id));
-                            if (sit != sessionMap.end()) {
+                        while ((sit != sessionMap.end()) && (sit->first.first == destUniqueName)) {
+                            if ((sit->first.second != 0) && (sit->second.sessionPort == sessionPort)) {
                                 sme = sit->second;
                                 foundSessionMapEntry = true;
                                 /* make sure session is not already joined by this joiner */
                                 vector<String>::const_iterator mit = sit->second.memberNames.begin();
                                 while (mit != sit->second.memberNames.end()) {
-                                    printf("Checking %s == %s\n", mit->c_str(), src);
                                     if (*mit++ == src) {
                                         replyCode = ALLJOYN_JOINSESSION_REPLY_ALREADY_JOINED;
                                         foundSessionMapEntry = false;
                                         break;
                                     }
                                 }
+                                break;
                             }
-                        } else {
-                            foundSessionMapEntry = true;
+                            ++sit;
                         }
+                    } else if (sme.opts.isMultipoint && (sit->first.second == msg->GetSessionId())) {
+                        /* joiner to joiner multipoint attach message */
+                        foundSessionMapEntry = true;
+                    } else if (!sme.opts.isMultipoint && (sit->first.second != 0)) {
+                        /* Cannot join a non-multipoint session more than once */
+                        replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
                     }
                     if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
                         if (!foundSessionMapEntry) {
+                            /* Assign a session id and insert entry */
+                            while (sme.id == 0) {
+                                sme.id = qcc::Rand32();
+                            }
                             sessionMap.insert(pair<pair<String, SessionId>, SessionMapEntry>(pair<String, SessionId>(sme.endpointName, sme.id), sme));
                         }
                         foundSessionMapEntry = true;
