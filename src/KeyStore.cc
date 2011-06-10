@@ -50,13 +50,13 @@ namespace ajn {
 static const uint16_t KeyStoreVersion = 0x0101;
 
 
-QStatus KeyStoreListener::LoadKeys(KeyStore& keyStore, const qcc::String& source, const qcc::String& password)
+QStatus KeyStoreListener::PutKeys(KeyStore& keyStore, const qcc::String& source, const qcc::String& password)
 {
     StringSource stringSource(source);
     return keyStore.Load(stringSource, password);
 }
 
-QStatus KeyStoreListener::StoreKeys(KeyStore& keyStore, qcc::String& sink)
+QStatus KeyStoreListener::GetKeys(KeyStore& keyStore, qcc::String& sink)
 {
     StringSink stringSink;
     QStatus status = keyStore.Store(stringSink);

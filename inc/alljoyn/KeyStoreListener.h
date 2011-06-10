@@ -51,7 +51,8 @@ class KeyStoreListener {
 
     /**
      * This method is called when a key store needs to be loaded.
-     * @remark The application must immediately call <tt>#LoadKeys</tt> to make the key store available.
+     * @remark The application must call <tt>#PutKeys</tt> to put the new key store data into the
+     * internal key store.
      *
      * @param keyStore   Reference to the KeyStore to be loaded.
      *
@@ -63,22 +64,22 @@ class KeyStoreListener {
     virtual QStatus LoadRequest(KeyStore& keyStore) = 0;
 
     /**
-     * Read keys into the key store from a specific source.
+     * Put keys into the key store from an encrypted byte string.
      *
-     * @param keyStore  The keyStore to load. This is the keystore indicated in the LoadRequest call.
-     * @param source    The source string to read the keys from.
-     * @param password  The password required to decrypt the key store
+     * @param keyStore  The keyStore to put to. This is the keystore indicated in the LoadRequest call.
+     * @param source    The byte string containing the encrypted key store contents.
+     * @param password  The password required to decrypt the key data
      *
      * @return
      *      - #ER_OK if successful
      *      - An error status otherwise
      *
      */
-    virtual QStatus LoadKeys(KeyStore& keyStore, const qcc::String& source, const qcc::String& password);
+    QStatus PutKeys(KeyStore& keyStore, const qcc::String& source, const qcc::String& password);
 
     /**
      * This method is called when a key store needs to be stored.
-     * @remark The application must call <tt>#StoreKeys</tt> before the key store can be used.
+     * @remark The application must call <tt>#GetKeys</tt> to obtain the key data to be stored.
      *
      * @param keyStore   Reference to the KeyStore to be stored.
      *
@@ -89,15 +90,15 @@ class KeyStoreListener {
     virtual QStatus StoreRequest(KeyStore& keyStore) = 0;
 
     /**
-     * Write the current keys from the key store to a specific sink
+     * Get the current keys from the key store as an encrypted byte string.
      *
-     * @param keyStore  The keyStore to store. This is the keystore indicated in the StoreRequest call.
-     * @param sink      The sink string to write the keys to.
+     * @param keyStore  The keyStore to get from. This is the keystore indicated in the StoreRequest call.
+     * @param sink      The byte string to write the keys to.
      * @return
      *      - #ER_OK if successful
      *      - An error status otherwise
      */
-    virtual QStatus StoreKeys(KeyStore& keyStore, qcc::String& sink);
+    QStatus GetKeys(KeyStore& keyStore, qcc::String& sink);
 
 };
 
