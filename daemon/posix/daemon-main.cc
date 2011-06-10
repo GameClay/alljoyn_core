@@ -632,11 +632,10 @@ int main(int argc, char** argv, char** env)
     loggerSettings->SetFile((opts.GetFork() || (config->GetFork() && !opts.GetNoFork())) ? NULL : stderr);
 
 #if !defined(DAEMON_LIB)
-    // Keep all capabilities before switching users
-    prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0);
-
-
     if (!opts.GetNoSwitchUser()) {
+        // Keep all capabilities before switching users
+        prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0);
+
 #if defined(QCC_OS_ANDROID)
         // Android uses hard coded UIDs.
         setuid(BLUETOOTH_UID);
@@ -662,19 +661,19 @@ int main(int argc, char** argv, char** env)
             }
         }
 #endif
-    }
 
-    // Set the capabilities we need.
-    struct __user_cap_header_struct header;
-    struct __user_cap_data_struct cap;
-    header.version = _LINUX_CAPABILITY_VERSION;
-    header.pid = 0;
-    cap.permitted = (1 << CAP_NET_RAW |
-                     1 << CAP_NET_ADMIN |
-                     1 << CAP_NET_BIND_SERVICE);
-    cap.effective = cap.permitted;
-    cap.inheritable = 0;
-    capset(&header, &cap);
+        // Set the capabilities we need.
+        struct __user_cap_header_struct header;
+        struct __user_cap_data_struct cap;
+        header.version = _LINUX_CAPABILITY_VERSION;
+        header.pid = 0;
+        cap.permitted = (1 << CAP_NET_RAW |
+                         1 << CAP_NET_ADMIN |
+                         1 << CAP_NET_BIND_SERVICE);
+        cap.effective = cap.permitted;
+        cap.inheritable = 0;
+        capset(&header, &cap);
+    }
 #endif
 
     if (opts.GetFork() || (config->GetFork() && !opts.GetNoFork())) {
