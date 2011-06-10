@@ -59,14 +59,18 @@ namespace ajn {
 
 void AllJoynObj::AcquireLocks()
 {
-    stateLock.Lock();
+    /*
+     * Locks must be acquired in the following order since tha caller of
+     * this method may already have the name table lock
+     */
     router.LockNameTable();
+    stateLock.Lock();
 }
 
 void AllJoynObj::ReleaseLocks()
 {
-    router.UnlockNameTable();
     stateLock.Unlock();
+    router.UnlockNameTable();
 }
 
 AllJoynObj::AllJoynObj(Bus& bus) :
