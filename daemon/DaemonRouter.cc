@@ -85,6 +85,20 @@ DaemonRouter::DaemonRouter() : localEndpoint(NULL), ruleTable(), nameTable(), bu
     AddBusNameListener(ConfigDB::GetConfigDB());
 }
 
+static QStatus SendThroughEndpoint(Message& msg, BusEndpoint& ep, SessionId sessionId)
+{
+    QStatus status;
+    if ((sessionId != 0) && (ep.GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
+        status = static_cast<VirtualEndpoint&>(ep).PushMessage(msg, sessionId);
+    } else {
+        status = ep.PushMessage(msg);
+    }
+    if (status != ER_OK) {
+        QCC_LogError(status, ("SendThroughEndpoint(dest=%s, ep=%s, id=%u) failed", msg->GetDestination(), ep.GetUniqueName().c_str(), sessionId));
+    }
+    return status;
+}
+
 QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
 {
     QStatus status(ER_OK);
@@ -96,8 +110,6 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
 
     const char* destination = msg->GetDestination();
     SessionId sessionId = msg->GetSessionId();
-
-    set<BusEndpoint*> recipients;
 
     if (sender != localEndpoint) {
         ALLJOYN_POLICY_DEBUG(Log(LOG_DEBUG, "Checking if OK for %s to send %s.%s to %s...\n",
@@ -122,7 +134,6 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
             return ER_BUS_POLICY_VIOLATION;
         }
     }
-
 
     bool destinationEmpty = destination[0] == '\0';
     if (!destinationEmpty) {
@@ -172,7 +183,7 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
                         msg->ErrorMsg("org.alljoyn.Bus.Blocked", "Method reply would be blocked because caller does not allow remote messages");
                         PushMessage(msg, *localEndpoint);
                     } else {
-                        recipients.insert(destEndpoint);
+                        status = SendThroughEndpoint(msg, *destEndpoint, sessionId);
                     }
                 } else {
                     QCC_DbgPrintf(("Blocking message from %s to %s (serial=%d) because receiver does not allow remote messages",
@@ -254,7 +265,8 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
                     // Broadcast status must not trump directed message
                     // status, especially for eavesdropped messages.
                     if (policydb->EavesdropEnabled() || !((sender->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS) && !dest->AllowRemoteMessages())) {
-                        recipients.insert(dest);
+                        QStatus tStatus = SendThroughEndpoint(msg, *dest, sessionId);
+                        status = (status == ER_OK) ? tStatus : status;
                     }
                 }
                 ruleTable.AdvanceToNextEndpoint(it);
@@ -271,7 +283,8 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
         vector<RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
         while (it != m_b2bEndpoints.end()) {
             if ((*it) != &origSender) {
-                recipients.insert(*it);
+                QStatus tStatus = SendThroughEndpoint(msg, **it, sessionId);
+                status = (status == ER_OK) ? tStatus : status;
             }
             ++it;
         }
@@ -286,30 +299,14 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
         set<SessionCastEntry>::iterator sit = sessionCastSet.lower_bound(sce);
         while ((sit != sessionCastSet.end()) && (sit->id == sce.id) && (sit->src == sce.src)) {
             if (!sit->b2bEp || (sit->b2bEp != lastB2b)) {
-                recipients.insert(sit->destEp);
+                QStatus tStatus = SendThroughEndpoint(msg, *sit->destEp, sessionId);
+                status = (status == ER_OK) ? tStatus : status;
                 lastB2b = sit->b2bEp;
             }
             ++sit;
         }
         sessionCastSetLock.Unlock();
     }
-
-    if (status == ER_OK) {
-        set<BusEndpoint*>::const_iterator destit;
-        for (destit = recipients.begin(); destit != recipients.end(); ++destit) {
-            BusEndpoint* dest = *destit;
-            QStatus tStatus = status;
-            if ((sessionId != 0) && (dest->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
-                tStatus = static_cast<VirtualEndpoint*>(dest)->PushMessage(msg, sessionId);
-            } else {
-                tStatus = dest->PushMessage(msg);
-                if (status == ER_OK) {
-                    status = tStatus;
-                }
-            }
-        }
-    }
-
     return status;
 }
 
@@ -460,9 +457,8 @@ void DaemonRouter::RemoveSessionRoutes(const char* src, SessionId id)
     String srcStr = src;
     set<SessionCastEntry>::iterator it = sessionCastSet.begin();
     while (it != sessionCastSet.end()) {
-        if (((it->id == id) && (it->src == src)) ||
-            (((it->id == 0) || (it->id == id)) && (it->destEp == ep))) {
-            if ((it->id != 0) && (it->destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
+        if (((it->id == id) || (id == 0)) && ((it->src == src) || (it->destEp == ep))) {
+            if ((id != 0) && (it->destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
                 static_cast<VirtualEndpoint*>(it->destEp)->RemoveSessionRef(id);
             }
             sessionCastSet.erase(it++);
