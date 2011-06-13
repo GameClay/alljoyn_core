@@ -268,18 +268,18 @@ static int NetlinkRouteSocket(uint32_t bufsize)
     int sockFd;
 
     if ((sockFd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE)) < 0) {
-        perror("socket()");
-        exit(1);
+        QCC_LogError(ER_FAIL, ("NetlinkRouteSocket: Error obtaining socket: %s", strerror(errno)));
+        return -1;
     }
 
     if (setsockopt(sockFd, SOL_SOCKET, SO_SNDBUF, &bufsize, sizeof(bufsize)) < 0) {
-        perror("setsockopt(SO_SNDBUF)");
-        exit(1);
+        QCC_LogError(ER_FAIL, ("NetlinkRouteSocket: Can't setsockopt SO_SNDBUF: %s", strerror(errno)));
+        return -1;
     }
 
     if (setsockopt(sockFd, SOL_SOCKET, SO_RCVBUF, &bufsize, sizeof(bufsize)) < 0) {
-        perror("setsockopt(SO_RCVBUF)");
-        exit(1);
+        QCC_LogError(ER_FAIL, ("NetlinkRouteSocket: Can't setsockopt SO_RCVBUF: %s", strerror(errno)));
+        return -1;
     }
 
     struct sockaddr_nl addr;
@@ -288,8 +288,8 @@ static int NetlinkRouteSocket(uint32_t bufsize)
     addr.nl_pid = getpid();
 
     if (bind(sockFd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        perror("bind()");
-        exit(1);
+        QCC_LogError(ER_FAIL, ("NetlinkRouteSocket: Can't bind to NETLINK_ROUTE socket: %s", strerror(errno)));
+        return -1;
     }
 
     return sockFd;
@@ -382,7 +382,17 @@ static std::list<IfEntry> NetlinkGetInterfaces(void)
     char* buffer = new char[BUFSIZE];
     uint32_t len;
 
+    //
+    // If we can't get a NETLINK_ROUTE socket, treat it as a transient error
+    // since we'll periodically retry looking for interfaces that come up and
+    // go down.  The worst thing that will happen is we may not send
+    // advertisements during the transient time; but this is guaranteed by
+    // construction to be less than the advertisement timeout.
+    //
     int sockFd = NetlinkRouteSocket(BUFSIZE);
+    if (sockFd < 0) {
+        return entries;
+    }
 
     NetlinkSend(sockFd, 0, RTM_GETLINK, 0);
     len = NetlinkRecv(sockFd, buffer, BUFSIZE);
