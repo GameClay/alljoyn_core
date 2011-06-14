@@ -112,6 +112,13 @@ static const char internalConfig[] =
     "</busconfig>";
 
 
+static const char versionPreamble[] =
+    "AllJoyn Message Bus Daemon version: %s\n"
+    "Copyright (c) 2009-2011 Qualcomm Innovation Center, Inc.\n"
+    "Licensed under Apache2.0: http://www.apache.org/licenses/LICENSE-2.0.html\n"
+    "Build: %s\n";
+
+
 void SignalHandler(int sig)
 {
     switch (sig) {
@@ -253,11 +260,7 @@ OptParse::ParseResultCode OptParse::ParseResult()
         qcc::String arg(argv[i]);
 
         if (arg.compare("--version") == 0) {
-            printf("AllJoyn Message Bus Daemon version: %s\n"
-                   "Copyright (c) 2009-2011 Qualcomm Innovation Center, Inc.\n"
-                   "Licensed under Apache2.0: http://www.apache.org/licenses/LICENSE-2.0.html\n"
-                   "\n"
-                   "Build: %s\n", GetVersion(), GetBuildInfo());
+            printf(versionPreamble, GetVersion(), GetBuildInfo());
             result = PR_EXIT_NO_ERROR;
             goto exit;
         } else if (arg.compare("--session") == 0) {
@@ -631,6 +634,8 @@ int main(int argc, char** argv, char** env)
     loggerSettings->SetSyslog(config->GetSyslog());
     loggerSettings->SetFile((opts.GetFork() || (config->GetFork() && !opts.GetNoFork())) ? NULL : stderr);
 
+    Log(LOG_NOTICE, versionPreamble, GetVersion(), GetBuildInfo());
+
 #if !defined(DAEMON_LIB)
     if (!opts.GetNoSwitchUser()) {
         // Keep all capabilities before switching users
@@ -675,6 +680,8 @@ int main(int argc, char** argv, char** env)
         capset(&header, &cap);
     }
 #endif
+
+    Log(LOG_INFO, "Running with effective userid %d\n", geteuid());
 
     if (opts.GetFork() || (config->GetFork() && !opts.GetNoFork())) {
         Log(LOG_DEBUG, "Forking into daemon mode...\n");
