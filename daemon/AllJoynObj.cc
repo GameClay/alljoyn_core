@@ -972,7 +972,8 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                     if (sit->second.opts.isMultipoint && (sit->first.second == 0)) {
                         /* Session is multipoint. Look for an existing (already joined) session */
                         while ((sit != sessionMap.end()) && (sit->first.first == destUniqueName)) {
-                            if ((sit->first.second != 0) && (sit->second.sessionPort == sessionPort)) {
+                            creatorEp = router.FindEndpoint(sit->second.sessionHost);
+                            if ((sit->first.second != 0) && (sit->second.sessionPort == sessionPort) && (creatorEp == sessionHostEp)) {
                                 sme = sit->second;
                                 foundSessionMapEntry = true;
                                 /* make sure session is not already joined by this joiner */
@@ -1053,7 +1054,6 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                                 smIt->second.memberNames.push_back(src);
                                 id = smIt->second.id;
                                 creatorName = creatorEp->GetUniqueName();
-                                replyCode = ALLJOYN_JOINSESSION_REPLY_SUCCESS;
 
                                 /* AttachSession response will contain list of members */
                                 vector<const char*> nameVec(smIt->second.memberNames.size());
@@ -1061,6 +1061,8 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                                     nameVec[i] = smIt->second.memberNames[i].c_str();
                                 }
                                 replyArgs[3].Set("as", nameVec.size(), &nameVec.front());
+                            } else {
+                                replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
                             }
 
                             /* Add routes for new session */
@@ -1085,6 +1087,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                     }
                 } else {
                     status = ER_FAIL;
+                    replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
                     QCC_LogError(status, ("Cannot locate srcEp(%p, src=%s) or srcB2BEp(%p, src=%s)", srcEp, src, srcB2BEp, srcB2B));
                 }
             }
