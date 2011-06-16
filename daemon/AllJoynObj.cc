@@ -494,8 +494,8 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                                 } else {
                                     sit = ajObj.sessionMap.find(pair<String, SessionId>(sme.endpointName, 0));
                                     if (sit != ajObj.sessionMap.end()) {
-                                        sme.id = newSessionId;
                                         sme = sit->second;
+                                        sme.id = newSessionId;
                                         sme.memberNames.push_back(msg->GetSender());
                                         ajObj.sessionMap.insert(pair<pair<String, SessionId>, SessionMapEntry>(pair<String, SessionId>(sme.endpointName, sme.id), sme));
                                     }
