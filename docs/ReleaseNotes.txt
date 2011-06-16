@@ -26,7 +26,7 @@ Issues Addressed in this Release
    NameOwnerChanged/SessionLost indications for other nodes on the bus.
 
 4) ALLJOYN-508: The number of active TCP connections for alljoyn-daemon was
-   incorrectly limited to the config file value for the max number of 
+   incorrectly limited to the config file value for the max number of
    simultaneous connect attempts.
 
 5) ALLJOYN-509: Message flag ALLJOYN_FLAG_ENCRYPTED not honored for
@@ -34,7 +34,7 @@ Issues Addressed in this Release
 
 6) ALLJOYN-512: BusAttachment::FindAdvertisedName does not find all names
    matched by name prefix.
-   
+
 7) ALLJOYN-513: SessionLost indication not sent when there multiple
    sessions exist between the involved devices.
 
@@ -56,12 +56,15 @@ Known issues and limitations with this release
    deleted while threads are blocked inside ProxyBusObjec::MethodCall().
 
 4) ALLJOYN-494: AllJoyn java binding calls that return QStatus can return
-   null instead of a valid QStatus in certain error situations. 
+   null instead of a valid QStatus in certain error situations.
+
+5) Java Chat sample program is not optimized for AllJoyn 2.x.
+   Please see source file AllJoynChat.java for details.
 
 
 Compatibility
 -------------
-Applications written for AllJoyn 1.X will need to be modified and rebuilt 
+Applications written for AllJoyn 1.X will need to be modified and rebuilt
 for use with AllJoyn 2.0 and later.
 
 The AllJoyn daemon-to-daemon protocol has changed. Alljoyn version 2.X daemons
