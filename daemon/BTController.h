@@ -445,7 +445,6 @@ class BTController :
             NAME_LOST,
             BT_DEVICE_AVAILABLE,
             SEND_SET_STATE,
-            HANDLE_SET_STATE,
             HANDLE_DELEGATE_FIND,
             HANDLE_DELEGATE_ADVERTISE
         } DispatchTypes;
@@ -485,18 +484,12 @@ class BTController :
     };
 
     struct SendSetStateDispatchInfo : public DispatchInfo {
+        BTBusAddress addr;
         qcc::String busName;
-        SendSetStateDispatchInfo(const qcc::String& busName) :
+        SendSetStateDispatchInfo(const BTBusAddress& addr, const qcc::String& busName) :
             DispatchInfo(SEND_SET_STATE),
+            addr(addr),
             busName(busName)
-        { }
-    };
-
-    struct HandleSetStateDispatchInfo : public DispatchInfo {
-        Message msg;
-        HandleSetStateDispatchInfo(const Message& msg) :
-            DispatchInfo(HANDLE_SET_STATE),
-            msg(msg)
         { }
     };
 
@@ -519,7 +512,7 @@ class BTController :
      *
      * @return ER_OK if successful.
      */
-    QStatus DeferredSendSetState(const qcc::String& busName);
+    QStatus DeferredSendSetState(const BTBusAddress& addr, const qcc::String& busName);
 
     /**
      * Distribute the advertised name changes to all connected nodes.
@@ -818,6 +811,7 @@ class BTController :
     BTNodeInfo self;
 
     mutable qcc::Mutex lock;
+    std::set<BTBusAddress> exchangingState;
 
     AdvertiseNameArgInfo advertise;
     FindNameArgInfo find;
