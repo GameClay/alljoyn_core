@@ -27,7 +27,7 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_FE23A9E8474043DF8FD3C3DD0D6CABD0"
+        "MsmKey" = "8:_7B4CE3362E14432CADB5EE7115EC838C"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -249,9 +249,9 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_FE23A9E8474043DF8FD3C3DD0D6CABD0"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7B4CE3362E14432CADB5EE7115EC838C"
             {
-            "SourcePath" = "8:..\\..\\..\\..\\build\\windows\\IA64\\release\\dist\\bin\\daemonlib.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\build\\windows\\IA64\\release\\dist\\bin\\daemonlib.dll"
             "TargetName" = "8:daemonlib.dll"
             "Tag" = "8:"
             "Folder" = "8:_AE2BF438B9A946B3A434F04C5C70A28A"
