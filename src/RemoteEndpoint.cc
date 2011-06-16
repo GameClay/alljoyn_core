@@ -23,6 +23,7 @@
 
 #include <qcc/Debug.h>
 #include <qcc/String.h>
+#include <qcc/StringUtil.h>
 #include <qcc/atomic.h>
 #include <qcc/Thread.h>
 #include <qcc/SocketStream.h>
@@ -49,6 +50,7 @@ namespace ajn {
 
 #define ENDPOINT_IS_DEAD_ALERTCODE  1
 
+static uint32_t threadCount = 0;
 
 /* Endpoint constructor */
 RemoteEndpoint::RemoteEndpoint(BusAttachment& bus,
@@ -65,8 +67,8 @@ RemoteEndpoint::RemoteEndpoint(BusAttachment& bus,
     txWaitQueue(),
     txQueueLock(),
     exitCount(0),
-    rxThread(bus, (qcc::String(incoming ? "rx-srv-" : "rx-cli-") + threadName).c_str(), incoming),
-    txThread(bus, (qcc::String(incoming ? "tx-srv-" : "tx-cli-") + threadName).c_str(), txQueue, txWaitQueue, txQueueLock),
+    rxThread(bus, (qcc::String(incoming ? "rx-srv-" : "rx-cli-") + threadName + "-" + U32ToString(threadCount)).c_str(), incoming),
+    txThread(bus, (qcc::String(incoming ? "tx-srv-" : "tx-cli-") + threadName + "-" + U32ToString(threadCount)).c_str(), txQueue, txWaitQueue, txQueueLock),
     connSpec(connectSpec),
     incoming(incoming),
     processId(-1),
@@ -75,6 +77,7 @@ RemoteEndpoint::RemoteEndpoint(BusAttachment& bus,
     armRxPause(false),
     numWaiters(0)
 {
+    ++threadCount;
 }
 
 RemoteEndpoint::~RemoteEndpoint()
