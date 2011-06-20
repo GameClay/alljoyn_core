@@ -664,6 +664,7 @@ QStatus _Message::EncryptMessage()
     status = peerStateTable->GetPeerState(GetDestination())->GetKeyAndNonce(key, nonce, PEER_SESSION_KEY);
     if (status == ER_OK) {
         size_t argsLen = msgHeader.bodyLen - ajn::Crypto::ExpansionBytes;
+        size_t hdrLen = ROUNDUP8(sizeof(msgHeader) + msgHeader.headerLen);
         /*
          * Make the nonce unique for this message.
          */
@@ -678,7 +679,7 @@ QStatus _Message::EncryptMessage()
             ajn::Crypto::HashHeaderFields(hdrFields, hdrHash);
             nonce ^= hdrHash;
         }
-        status = ajn::Crypto::Encrypt(key, (uint8_t*)msgBuf, msgHeader.headerLen, argsLen, nonce);
+        status = ajn::Crypto::Encrypt(key, (uint8_t*)msgBuf, hdrLen, argsLen, nonce);
         if (status == ER_OK) {
             authMechanism = key.GetTag();
             assert(msgHeader.bodyLen == argsLen);
