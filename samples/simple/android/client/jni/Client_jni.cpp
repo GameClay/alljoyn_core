@@ -55,7 +55,7 @@ class MyBusListener;
 static BusAttachment* s_bus = NULL;
 static ProxyBusObject s_remoteObj;
 static MyBusListener* s_busListener = NULL;
-static SessionId s_sessionId = 0;
+
 /* Local types */
 class MyBusListener : public BusListener, public SessionPortListener, public SessionListener {
   public:
@@ -70,26 +70,59 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
             JNIEnv* env;
             vm->AttachCurrentThread(&env, NULL);
             jclass jcls = env->GetObjectClass(jobj);
-            jmethodID mid = env->GetMethodID(jcls, "FoundNameCallback", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+            jmethodID mid = env->GetMethodID(jcls, "FoundNameCallback", "(Ljava/lang/String;)V");
             if (mid == 0) {
                 LOGE("Failed to get Java FoundNameCallback");
             } else {
-                qcc::String sessionName = "";
-                sessionName += SIMPLE_SERVICE_WELL_KNOWN_NAME_PREFIX;
-                sessionName = +name;
                 jstring jName = env->NewStringUTF(name + prefixLen);
-                jstring jBusAddr = env->NewStringUTF(sessionName.c_str());
-                LOGE("SimpleClient", "Calling FoundNameCallback");
-                env->CallVoidMethod(jobj, mid, jName, jBusAddr);
+                LOGE("Calling FoundNameCallback");
+                env->CallVoidMethod(jobj, mid, jName);
                 env->DeleteLocalRef(jName);
-                env->DeleteLocalRef(jBusAddr);
+            }
+        }
+    }
+
+    void LostAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
+    {
+        LOGD("\n\nENTERED LostAdvertisedName with name=%s ", name);
+        size_t prefixLen = strlen(SIMPLE_SERVICE_WELL_KNOWN_NAME_PREFIX);
+        if (0 == strncmp(SIMPLE_SERVICE_WELL_KNOWN_NAME_PREFIX, name, prefixLen)) {
+            /* Lost a name that matches service prefix. Inform Java GUI of this name */
+            JNIEnv* env;
+            vm->AttachCurrentThread(&env, NULL);
+            jclass jcls = env->GetObjectClass(jobj);
+            jmethodID mid = env->GetMethodID(jcls, "LostNameCallback", "(Ljava/lang/String;)V");
+            if (mid == 0) {
+                LOGE("Failed to get Java LostNameCallback");
+            } else {
+                jstring jName = env->NewStringUTF(name + prefixLen);
+                LOGE("Calling LostNameCallback");
+                env->CallVoidMethod(jobj, mid, jName);
+                env->DeleteLocalRef(jName);
             }
         }
     }
 
     void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner)
     {
-        LOGD("\n Name ownerchaged received ... busName = %s .... previousOwner = %s, newOwner = %s", busName, previousOwner, newOwner);
+        LOGD("\n NameOwnerchaged received ... busName = %s .... previousOwner = %s, newOwner = %s", busName, previousOwner, newOwner);
+    }
+
+    void SessionLost(SessionId sessionId)
+    {
+        LOGD("SessionLost(%u) received", sessionId);
+
+        /* Inform Java GUI of this disconnect */
+        JNIEnv* env;
+        vm->AttachCurrentThread(&env, NULL);
+
+        jclass jcls = env->GetObjectClass(jobj);
+        jmethodID mid = env->GetMethodID(jcls, "DisconnectCallback", "(I)V");
+        if (mid == 0) {
+            LOGE("Failed to get Java DisconnectCallback");
+        } else {
+            env->CallVoidMethod(jobj, mid, jint(sessionId));
+        }
     }
 
   private:
@@ -158,60 +191,59 @@ JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_simpleOn
     /* Find an advertised name with the Prefix */
     status = s_bus->FindAdvertisedName(SIMPLE_SERVICE_WELL_KNOWN_NAME_PREFIX);
     if (ER_OK != status) {
-        LOGE("\n Error while calling FindAdvertisedName \n");
+        LOGE("Error while calling FindAdvertisedName \n");
     }
 
-    return (int) status;
+    return jint(status);
 }
 
 /**
  * Request the local AllJoyn daemon to connect to a remote daemon.
  */
-JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_connect(JNIEnv* env,
+JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_joinSession(JNIEnv* env,
                                                                                     jobject jobj,
-                                                                                    jstring jConnectStr)
+                                                                                    jstring jBusName)
 {
+    SessionId sessionId = 0;
     jboolean iscopy;
     if (NULL == s_bus) {
         return jboolean(false);
     }
 
     /* Join the conversation */
-    const char* sessionName = env->GetStringUTFChars(jConnectStr, &iscopy);
+    const char* busName = env->GetStringUTFChars(jBusName, &iscopy);
+    qcc::String nameStr(SIMPLE_SERVICE_WELL_KNOWN_NAME_PREFIX);
+    nameStr.append(busName);
 
-    LOGD("\n Joining session with name : %s\n\n", sessionName);
+    LOGD("\n Joining session with name : %s\n\n", nameStr.c_str());
 
     SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
-    QStatus status = s_bus->JoinSession(sessionName, SESSION_PORT, NULL, s_sessionId, opts);
+    QStatus status = s_bus->JoinSession(nameStr.c_str(), SESSION_PORT, s_busListener, sessionId, opts);
     if ((ER_OK == status)) {
-        LOGD("Joined conversation : %s \n \n Session ID : %u", sessionName, s_sessionId);
+        LOGD("Joined conversation : %s \n \n Session ID : %u", nameStr.c_str(), sessionId);
     } else {
         LOGD("JoinSession failed .. status=%s\n", QCC_StatusText(status));
     }
 
-    return jboolean(ER_OK == status);
+    return jint(sessionId);
 }
 
 /**
  * Request the local daemon to disconnect from the remote daemon.
  */
-JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_disconnect(JNIEnv* env,
-                                                                                       jobject jobj,
-                                                                                       jstring jConnectStr)
+JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_leaveSession(JNIEnv* env,
+                                                                                         jobject jobj,
+                                                                                         jint jSessionId)
 {
     if (NULL == s_bus) {
         return jboolean(false);
     }
 
-    /* Send a disconnect message to the daemon */
-    jboolean iscopy;
-    Message reply(*s_bus);
-    const ProxyBusObject& alljoynObj = s_bus->GetAllJoynProxyObj();
-    const char* connectStr = env->GetStringUTFChars(jConnectStr, &iscopy);
-    MsgArg disconnectArg("s", connectStr);
-    QStatus status = alljoynObj.MethodCall(org::alljoyn::Bus::InterfaceName, "Disconnect", &disconnectArg, 1, reply, 4000);
+    /* Leave the session */
+    SessionId sessionId = (SessionId) jSessionId;
+    QStatus status = s_bus->LeaveSession(sessionId);
     if (ER_OK != status) {
-        LOGE("%s.Disonnect(%s) failed", org::alljoyn::Bus::InterfaceName, connectStr, QCC_StatusText(status));
+        LOGE("LeaveSession(%u) failed (%s)", sessionId, QCC_StatusText(status));
     }
     return jboolean(ER_OK == status);
 }
@@ -240,24 +272,25 @@ JNIEXPORT void JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_simpleOn
  */
 JNIEXPORT jstring JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_simplePing(JNIEnv* env,
                                                                                       jobject jobj,
+                                                                                      jint jSessionId,
                                                                                       jstring jNamePrefix,
                                                                                       jstring jPingStr)
 {
-
     LOGD("\n Calling ping now ..... \n");
     /* Call the remote method */
     jboolean iscopy;
     const char* pingStr = env->GetStringUTFChars(jPingStr, &iscopy);
     const char* namePrefix = env->GetStringUTFChars(jNamePrefix, &iscopy);
+    SessionId sessionId = (SessionId) jSessionId;
     Message reply(*s_bus);
     MsgArg pingStrArg("s", pingStr);
 
     qcc::String nameStr(SIMPLE_SERVICE_WELL_KNOWN_NAME_PREFIX);
     nameStr.append(namePrefix);
 
-    LOGD("\n Service Name : %s   \n Object Path : %s \n Session ID : %u ", nameStr.c_str(), SIMPLE_SERVICE_OBJECT_PATH, s_sessionId);
+    LOGD("\n Service Name : %s   \n Object Path : %s \n Session ID : %u ", nameStr.c_str(), SIMPLE_SERVICE_OBJECT_PATH, sessionId);
 
-    ProxyBusObject remoteObj = ProxyBusObject(*s_bus, nameStr.c_str(), SIMPLE_SERVICE_OBJECT_PATH, s_sessionId);
+    ProxyBusObject remoteObj = ProxyBusObject(*s_bus, nameStr.c_str(), SIMPLE_SERVICE_OBJECT_PATH, sessionId);
     QStatus status = remoteObj.AddInterface(SIMPLE_SERVICE_INTERFACE_NAME);
     if (ER_OK == status) {
         status = remoteObj.MethodCall(SIMPLE_SERVICE_INTERFACE_NAME, "Ping", &pingStrArg, 1, reply, 5000);

@@ -26,12 +26,12 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.LinearLayout;
 
-public class FoundNameAdapter extends ArrayAdapter<FoundName> {
+public class BusNameItemAdapter extends ArrayAdapter<BusNameItem> {
 
     private Client client;
     private Context context;
 
-    public FoundNameAdapter(Context context, Client client) {
+    public BusNameItemAdapter(Context context, Client client) {
         super(context, R.id.BusName);
         this.context = context;
         this.client = client;
@@ -41,46 +41,47 @@ public class FoundNameAdapter extends ArrayAdapter<FoundName> {
         LinearLayout itemLayout;
         itemLayout = (LinearLayout) LayoutInflater.from(context).inflate(R.layout.service, parent, false);
 
-        final FoundName n = getItem(position);
+        final BusNameItem n = getItem(position);
         final TextView busNameView = (TextView) itemLayout.findViewById(R.id.BusName);
         final Client c = client;
 
         final Button connectButton = (Button) itemLayout.findViewById(R.id.Connect);
         final Button pingButton = (Button) itemLayout.findViewById(R.id.Ping);
-        final FoundNameAdapter adapter = this;
+        final BusNameItemAdapter adapter = this;
 
         connectButton.setText(n.isConnected() ? "Disconnect" : "Connect");
         connectButton.setOnClickListener(new Button.OnClickListener() {
-                                             public void onClick(View v) {
-                                                 if (n.isConnected()) {
-                                                     c.disconnect(n.getBusAddr());
-                                                     n.setIsConnected(false);
-                                                     connectButton.setText("Connect");
-                                                     pingButton.setEnabled(false);
-                                                 } else {
-                                                     boolean result = c.connect(n.getBusAddr());
-                                                     if (true == result) {
-                                                         n.setIsConnected(true);
-                                                         connectButton.setText("Disconnect");
-                                                         pingButton.setEnabled(true);
-                                                     } else {
-                                                         adapter.remove(n);
-                                                     }
-                                                 }
-                                                 c.hideInputMethod();
-                                                 busNameView.invalidate();
-                                             }
-                                         });
-
+                public void onClick(View v) {
+                    int id = n.getSessionId();
+                    if (id != 0) {
+                        c.leaveSession(id);
+                        n.setSessionId(0);
+                        connectButton.setText("Connect");
+                        pingButton.setEnabled(false);
+                    } else {
+                        int sessionId = c.joinSession(n.getBusName());
+                        if (sessionId != 0) {
+                            n.setSessionId(sessionId);
+                            connectButton.setText("Disconnect");
+                            pingButton.setEnabled(true);
+                        } else {
+                            adapter.remove(n);
+                        }
+                    }
+                    c.hideInputMethod();
+                    busNameView.invalidate();
+                }
+            });
+        
         pingButton.setEnabled(n.isConnected());
         pingButton.setTag(R.id.client, client);
         pingButton.setTag(R.id.foundName, n);
         pingButton.setOnClickListener(new Button.OnClickListener() {
-                                          public void onClick(View v) {
-                                              c.ping(n.getBusName());
-                                              c.hideInputMethod();
-                                          }
-                                      });
+                public void onClick(View v) {
+                    c.ping(n.getSessionId(), n.getBusName());
+                    c.hideInputMethod();
+                }
+            });
 
         busNameView.setText(n.getBusName());
         return itemLayout;

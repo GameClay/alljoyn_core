@@ -49,7 +49,7 @@ public class Service extends Activity {
     private native boolean startService(String name);
 
     /** Called to stop service */
-    private native void stopService();
+    private native void stopService(String name);
 
     /** Handler used to post messages from C++ into UI thread */
     private Handler handler = new Handler() {
@@ -90,12 +90,12 @@ public class Service extends Activity {
         Button stopButton = (Button) findViewById(R.id.StopButton);
         stopButton.setOnClickListener(new Button.OnClickListener() {
                                           public void onClick(View v) {
-                                              stopService();
+                                        	  EditText edit = (EditText) findViewById(R.id.AdvertisedName);
+                                              stopService(edit.getText().toString());
                                               Button stopButton = (Button) v;
                                               stopButton.setEnabled(false);
                                               Button startButton = (Button) findViewById(R.id.StartButton);
                                               startButton.setEnabled(true);
-                                              EditText edit = (EditText) findViewById(R.id.AdvertisedName);
                                               edit.setEnabled(true);
                                           }
                                       });

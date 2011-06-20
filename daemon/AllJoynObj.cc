@@ -1822,7 +1822,7 @@ void AllJoynObj::FindAdvertisedName(const InterfaceDescription::Member* member, 
     /* Reply to request */
     MsgArg replyArg("u", replyCode);
     QStatus status = MethodReply(msg, &replyArg, 1);
-    QCC_DbgPrintf(("AllJoynObj::Discover(%s) returned %d (status=%s)", namePrefix.c_str(), replyCode, QCC_StatusText(status)));
+    QCC_DbgPrintf(("AllJoynObj::FindAdvertisedName(%s) returned %d (status=%s)", namePrefix.c_str(), replyCode, QCC_StatusText(status)));
 
     /* Log error if reply could not be sent */
     if (ER_OK != status) {

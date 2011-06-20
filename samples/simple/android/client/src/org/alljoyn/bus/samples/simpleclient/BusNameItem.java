@@ -16,44 +16,46 @@
  */
 package org.alljoyn.bus.samples.simpleclient;
 
-public class FoundName {
+public class BusNameItem {
 
-    public FoundName(String busName, String busAddr, String guid)
+    public BusNameItem(String busName, boolean isFound)
 	{
         this.busName = busName;
-        this.busAddr = busAddr;
-        this.guid = guid;
-        this.isConnected = false;
-        uniqueId = (long) (busName + '@' + busAddr).hashCode();
+        this.sessionId = 0;
+        this.isFound = isFound;
+        uniqueId = (long) busName.hashCode();
     }
 
     public String getBusName() {
         return busName;
     }
 
-    public String getBusAddr() {
-        return busAddr;
-    }
-
-    public String getGuid() {
-        return guid;
-    }
-
     public boolean isConnected() {
-        return isConnected;
+        return (sessionId != 0);
     }
 
-    public void setIsConnected(boolean isConnected) {
-        this.isConnected = isConnected;
+    public int getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(int sessionId) {
+        this.sessionId = sessionId;
     }
 
     public long getId() {
         return uniqueId;
     }
 
-    private boolean isConnected;
-    private String busAddr;
+    public boolean isFound() {
+    	return isFound;
+    }
+    
+    public void setIsFound(boolean isFound) {
+    	this.isFound = isFound;
+    }
+    
     private String busName;
-    private String guid;
+    private int sessionId;
+    private boolean isFound;
     private long uniqueId;
 }

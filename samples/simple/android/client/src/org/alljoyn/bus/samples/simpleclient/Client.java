@@ -22,33 +22,54 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
-import android.view.KeyEvent;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.Toast;
+
 
 public class Client extends Activity {
 
-    private EditText editText;
-    private FoundNameAdapter foundNameAdapter;
-    private ListView listView;
-    private Menu menu;
+    private static final int BUSNAMEITEM_FOUND = 1;
+    private static final int BUSNAMEITEM_LOST = 2;
+    private static final int BUSNAMEITEM_DISCONNECT = 3;
 
-    // private Menu menu;
+    private EditText editText;
+    private BusNameItemAdapter busNameItemAdapter;
+    private ListView listView;
+
+    private Menu menu;
 
     /** Handler used to post messages from C++ into UI thread */
     private Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
-            foundNameAdapter.add((FoundName)msg.obj);
+            BusNameItem item = (BusNameItem)msg.obj;
+            Log.e("SimpleClient", String.format("handleMessage(arg1=%d, busName=%s", msg.arg1, item.getBusName()));
+            switch (msg.arg1) {
+            case BUSNAMEITEM_FOUND:
+                busNameItemAdapter.add(item);
+                break;
+            case BUSNAMEITEM_LOST:
+            	if (item.isConnected()) {
+            		item.setIsFound(false);
+            	} else {
+            		busNameItemAdapter.remove(item);
+            	}
+                break;
+            case BUSNAMEITEM_DISCONNECT:
+            	if (item.isFound()) {
+            		item.setSessionId(0);
+            	} else {
+            		busNameItemAdapter.remove(item);
+            	}
+                break;
+            default:
+                break;
+            }
             listView.invalidate();
         }
     };
@@ -60,13 +81,13 @@ public class Client extends Activity {
     private native void simpleOnDestroy();
 
     /** Called when user chooses to ping a remote SimpleSerivce. Must be connected to name */
-    private native String simplePing(String serviceName, String pingStr);
+    private native String simplePing(int sessionId, String name, String pingStr);
 
     /** Called when user selects "Connect" */
-    public native boolean connect(String busAddr);
+    public native int joinSession(String busName);
 
     /** Called when user selects "Disconnect" */
-    public native boolean disconnect(String busAddr);
+    public native boolean leaveSession(int sessionId);
 
     /** Called when the activity is first created. */
     @Override
@@ -74,26 +95,12 @@ public class Client extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
-        foundNameAdapter = new FoundNameAdapter(this.getApplicationContext(), this);
+        busNameItemAdapter = new BusNameItemAdapter(this.getApplicationContext(), this);
         listView = (ListView) findViewById(R.id.ListView);
-        listView.setAdapter(foundNameAdapter);
+        listView.setAdapter(busNameItemAdapter);
 
         editText = (EditText) findViewById(R.id.EditText);
-        editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-                                               public boolean onEditorAction(TextView view, int actionId, KeyEvent event) {
-                                                   if (actionId == EditorInfo.IME_NULL && event.getAction() == KeyEvent.ACTION_UP) {
-
-                                                       int foundNameCount = foundNameAdapter.getCount();
-                                                       for (int i = 0; i < foundNameCount; i++) {
-                                                           FoundName fn = foundNameAdapter.getItem(i);
-                                                           if (fn.isConnected()) {
-                                                               simplePing(fn.getBusName(), editText.getText().toString());
-                                                           }
-                                                       }
-                                                   }
-                                                   return true;
-                                               }
-                                           });
+       
         listView.requestFocus();
 
         // Initialize the native part of the sample
@@ -143,16 +150,48 @@ public class Client extends Activity {
         editText.clearFocus();
     }
 
-    public void ping(String serviceName) {
-        simplePing(serviceName, editText.getText().toString());
+    public void ping(int sessionId, String name) {
+        simplePing(sessionId, name, editText.getText().toString());
     }
 
-    public void FoundNameCallback(String busName, String busAddr, String guid)
+    public void FoundNameCallback(String busName)
     {
-        Log.e("SimpleClient", String.format("Found name %s at %s", busName, busAddr));
+        Log.e("SimpleClient", String.format("Found name %s", busName));
         Message msg = handler.obtainMessage(0);
-        msg.obj = new FoundName(busName, busAddr, guid);
+        msg.arg1 = BUSNAMEITEM_FOUND;
+        msg.obj = new BusNameItem(busName, true);
         handler.sendMessage(msg);
+    }
+
+    public void LostNameCallback(String busName)
+    {
+        Log.e("SimpleClient", String.format("Lost name %s", busName));
+        for (int i = 0; i < busNameItemAdapter.getCount(); ++i) {
+            BusNameItem item = busNameItemAdapter.getItem(i);
+            if (busName.equals(item.getBusName())) {
+                Message msg = handler.obtainMessage(0);
+                msg.arg1 = BUSNAMEITEM_LOST;
+                msg.obj = item;
+                handler.sendMessage(msg);
+                break;
+            }
+        }
+    }
+
+    public void DisconnectCallback(int sessionId)
+    {
+        Log.e("SimpleClient", String.format("Disconnect session %d", sessionId));
+        for (int i = 0; i < busNameItemAdapter.getCount(); ++i) {
+            BusNameItem item = busNameItemAdapter.getItem(i);
+        	Log.e("SimpleClient", String.format("item.id=%d, sessionId=%d", item.getSessionId(), sessionId));
+            if (item.getSessionId() == sessionId) {
+                Message msg = handler.obtainMessage(0);
+                msg.arg1 = BUSNAMEITEM_DISCONNECT;
+                msg.obj = item;
+                handler.sendMessage(msg);
+                break;
+            }
+        }
     }
 
     public void hideInputMethod()
