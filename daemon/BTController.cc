@@ -372,6 +372,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
             // We've see this advertising node before and nothing has changed
             // so just refresh the expiration time of all the nodes.
             foundNodeDB.RefreshExpiration(adNode->GetConnectAddress(), LOST_DEVICE_TIMEOUT);
+            foundNodeDB.DumpTable((String("foundNodeDB: Refresh Expiration for nodes with connect address: ") + adNode->GetConnectAddress().ToString()).c_str());
 
         } else {
             uint32_t newUUIDRev;
@@ -639,22 +640,19 @@ void BTController::DeferredNameLostHander(const String& name)
 
         QCC_DbgPrintf(("Our master left us: %s", masterNode->GetBusAddress().ToString().c_str()));
         // We are the master now.
-        if (IsMinion()) {
-            if (find.active) {
-                QCC_DbgPrintf(("Stopping find..."));
-                bt.StopFind();
-                find.active = false;
-            }
-            if (advertise.active) {
-                QCC_DbgPrintf(("Stopping advertise..."));
-                bt.StopAdvertise();
-                advertise.active = false;
-            }
-        }
+        bool skipStopAd = IsDrone() && (advertise.minion == self);
+        bool skipStopFind = IsDrone() && (find.minion == self);
 
         delete master;
         master = NULL;
         masterNode = BTNodeInfo();
+
+        if (!skipStopAd) {
+            advertise.StopOp();
+        }
+        if (!skipStopFind) {
+            find.StopOp();
+        }
 
         foundNodeDB.RefreshExpiration(LOST_DEVICE_TIMEOUT);
 
@@ -675,6 +673,25 @@ void BTController::DeferredNameLostHander(const String& name)
         nodeDB.Unlock();
         find.resultDest.clear();
         find.ignoreAddrs = ignoreAddrs;
+
+        if (UseLocalAdvertise()) {
+            advertise.minion = self;
+        } else {
+            NextDirectMinion(advertise.minion);
+        }
+        QCC_DbgPrintf(("Selected %s as our advertise minion.",
+                       (find.minion == self) ? "ourself" :
+                       find.minion->GetBusAddress().ToString().c_str()));
+
+        if (UseLocalFind()) {
+            find.minion = self;
+        } else {
+            NextDirectMinion(find.minion);
+        }
+        QCC_DbgPrintf(("Selected %s as our find minion.",
+                       (find.minion == self) ? "ourself" :
+                       find.minion->GetBusAddress().ToString().c_str()));
+        nodeDB.DumpTable("nodeDB - why pick self for find?");
 
         updateDelegations = true;
 
@@ -1649,6 +1666,7 @@ QStatus BTController::ImportState(const BTBusAddress& addr,
     BTNodeDB addedDB;
     BTNodeDB removedDB;
     BTNodeDB staleDB;
+    BTNodeDB newFoundDB;
     BTNodeInfo connectingNode(addr);
     connectingNode->SetDirectMinion(true);
 
@@ -1747,7 +1765,8 @@ QStatus BTController::ImportState(const BTBusAddress& addr,
         }
     }
 
-    status = ExtractNodeInfo(foundNodeArgs, numFoundNodes, incomingDB);
+    status = ExtractNodeInfo(foundNodeArgs, numFoundNodes, newFoundDB);
+    incomingDB.UpdateDB(&newFoundDB, NULL);
     addedDB.UpdateDB(&incomingDB, NULL);
 
     foundNodeDB.UpdateDB(&incomingDB, &staleDB);
