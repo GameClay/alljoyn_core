@@ -1,3 +1,19 @@
+/*
+ * Copyright 2011, Qualcomm Innovation Center, Inc.
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+//----------------------------------------------------------------------------------------------
 // ChatLib32.cpp : Defines the exported functions for the DLL application.
 //
 
@@ -43,7 +59,7 @@ ALLJOYN_API void __stdcall SetupChat(char* chatName, bool asAdvertiser, int& max
         s_connection->advertisedName += chatName;
         s_connection->joinName = "";
         NotifyUser(MSG_STATUS, "%s is advertiser \n", s_connection->advertisedName.c_str());
-    } else   {
+    } else {
         s_connection->joinName = NAME_PREFIX;
         s_connection->joinName += chatName;
         s_connection->advertisedName = "";

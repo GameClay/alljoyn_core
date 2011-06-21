@@ -1,4 +1,20 @@
-﻿using System;
+﻿/*
+ * Copyright 2011, Qualcomm Innovation Center, Inc.
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+//----------------------------------------------------------------------------------------------
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -60,7 +76,7 @@ public partial class ChatDialog : Form {
                 _alljoyn.DisconnectAlljoyn();
                 _connected = false;
                 _buffer.Add("Disconnected...", null, TextType.Status);
-            } else   {
+            } else {
                 _alljoyn = _setupUI.Alljoyn;
                 if (_alljoyn == null)
                     MessageBox.Show("Unable to create AlljoynComponent");
@@ -71,14 +87,14 @@ public partial class ChatDialog : Form {
                         if (_session.Length < 1) {
                             MessageBox.Show("ERROR: Session Name is missing or invalid");
                             _connected = false;
-                        } else   {
+                        } else {
                             _connected = true;
                             if (_tag.Length < 1)
                                 _tag = "Unknown";
                             if (_setupUI.IsNameOwner) {
                                 _alljoyn.StartChat(_session);
                                 _alljoyn.ConnectAlljoyn();
-                            } else   {
+                            } else {
                                 _alljoyn.JoinChat(_session);
                                 _alljoyn.ConnectAlljoyn();
                                 Thread.Sleep(2000);
@@ -205,7 +221,7 @@ public partial class ChatDialog : Form {
         if (_connected) {
             btnSend.Enabled = true;
             lblStatus.Text = "connected to Alljoyn";
-        } else   {
+        } else {
             btnSend.Enabled = false;
             lblStatus.Text = "not connected";
         }
