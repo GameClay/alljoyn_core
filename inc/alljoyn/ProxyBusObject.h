@@ -122,6 +122,13 @@ class ProxyBusObject : public MessageReceiver {
     const qcc::String& GetServiceName(void) const { return serviceName; }
 
     /**
+     * Return the session Id for this object.
+     *
+     * @return Session Id
+     */
+    const SessionId GetSessionId(void) const { return sessionId; }
+
+    /**
      * Query the remote object on the bus to determine the interfaces and
      * children that exist. Use this information to populate this proxy's
      * interfaces and children.
