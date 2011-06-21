@@ -2019,9 +2019,22 @@ void BTController::FillFoundNodesMsgArgs(vector<MsgArg>& args, const BTNodeDB& a
     for (xmit = xformMap.begin(); xmit != xformMap.end(); ++xmit) {
         vector<MsgArg> adNamesArgs;
 
-        BTNodeInfo connNode = xmit->second.FindNode(xmit->first);
-        assert(connNode->IsValid());
         const BTNodeDB& db = xmit->second;
+        BTNodeInfo connNode = db.FindNode(xmit->first);
+
+        if (!connNode->IsValid()) {
+            connNode = foundNodeDB.FindNode(xmit->first);
+
+            if (!connNode->IsValid()) {
+                // Should never happen, since it is an internal bug (hence assert
+                // check below), but gracefully handle it in case it does in
+                // release mode.
+                QCC_LogError(ER_NONE, ("Failed to find address %s in DB that should contain it!", xmit->first.ToString().c_str()));
+                db.DumpTable("db: Corrupt DB?");
+                assert(connNode->IsValid());
+                continue;
+            }
+        }
 
         adNamesArgs.reserve(adInfo.Size());
         for (it = db.Begin(); it != db.End(); ++it) {
