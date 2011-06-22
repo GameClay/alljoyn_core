@@ -404,13 +404,21 @@ QStatus BTController::AddAdvertiseName(const qcc::String& name)
 {
     QStatus status = DoNameOp(name, *org.alljoyn.Bus.BTController.AdvertiseName, true, advertise);
 
-    if (IsMaster() && (status == ER_OK)) {
-        BTNodeDB newAdInfo;
-        BTNodeInfo node(self->GetBusAddress(), self->GetUniqueName(), self->GetGUID());  // make an actual copy of self
+    lock.Lock();
+    bool isMaster = IsMaster();
+    bool lDevAvailable = devAvailable;
+    BTBusAddress addr = self->GetBusAddress();
+    lock.Unlock();
+
+    if (isMaster && (status == ER_OK)) {
         self->AddAdvertiseName(name);  // self gets new name added to list of existing names
-        node->AddAdvertiseName(name);  // copy of self only gets the new names (not the existing names)
-        newAdInfo.AddNode(node);
-        status = DistributeAdvertisedNameChanges(&newAdInfo, NULL);
+        if (lDevAvailable) {
+            BTNodeDB newAdInfo;
+            BTNodeInfo node(addr, self->GetUniqueName(), self->GetGUID());  // make an actual copy of self
+            node->AddAdvertiseName(name);  // copy of self only gets the new names (not the existing names)
+            newAdInfo.AddNode(node);
+            status = DistributeAdvertisedNameChanges(&newAdInfo, NULL);
+        }
     }
 
     return status;
@@ -421,13 +429,21 @@ QStatus BTController::RemoveAdvertiseName(const qcc::String& name)
 {
     QStatus status = DoNameOp(name, *org.alljoyn.Bus.BTController.CancelAdvertiseName, false, advertise);
 
-    if (IsMaster() && (status == ER_OK)) {
-        BTNodeDB oldAdInfo;
-        BTNodeInfo node(self->GetBusAddress(), self->GetUniqueName(), self->GetGUID());  // make an actual copy of self
+    lock.Lock();
+    bool isMaster = IsMaster();
+    bool lDevAvailable = devAvailable;
+    BTBusAddress addr = self->GetBusAddress();
+    lock.Unlock();
+
+    if (isMaster && (status == ER_OK)) {
         self->RemoveAdvertiseName(name);
-        node->AddAdvertiseName(name);  // Yes 'Add' the name being removed (it goes in the old ad info).
-        oldAdInfo.AddNode(node);
-        status = DistributeAdvertisedNameChanges(NULL, &oldAdInfo);
+        if (lDevAvailable) {
+            BTNodeDB oldAdInfo;
+            BTNodeInfo node(addr, self->GetUniqueName(), self->GetGUID());  // make an actual copy of self
+            node->AddAdvertiseName(name);  // Yes 'Add' the name being removed (it goes in the old ad info).
+            oldAdInfo.AddNode(node);
+            status = DistributeAdvertisedNameChanges(NULL, &oldAdInfo);
+        }
     }
 
     return status;
