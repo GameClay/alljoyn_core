@@ -1031,7 +1031,7 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
         destNodesNew.reserve(nodeDB.Size());
         for (BTNodeDB::const_iterator it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
             const BTNodeInfo& node = *it;
-            if (!node->FindNamesEmpty() && (node != self)) {
+            if (node->IsDirectMinion() && !node->FindNamesEmpty() && (node != self)) {
                 QCC_DbgPrintf(("Notify %s of the name changes.", node->GetBusAddress().ToString().c_str()));
                 if (oldAdInfo && oldAdInfo->Size() > 0) {
                     destNodesOld.push_back(node);
@@ -1576,8 +1576,10 @@ void BTController::HandleFoundNamesChange(const InterfaceDescription::Member* me
 {
     QCC_DbgTrace(("BTController::HandleFoundNamesChange(member = %s, sourcePath = \"%s\", msg = <>)",
                   member->name.c_str(), sourcePath));
-    if (IsMaster() || (strcmp(sourcePath, bluetoothObjPath) != 0)) {
-        // We only accept FoundNames signals if we are not the master!
+
+    if (IsMaster() || (strcmp(sourcePath, bluetoothObjPath) != 0) ||
+        (master->GetServiceName() != msg->GetSender())) {
+        // We only accept FoundNames signals from our direct master!
         return;
     }
 
@@ -1593,17 +1595,14 @@ void BTController::HandleFoundNamesChange(const InterfaceDescription::Member* me
     }
 
     if ((status == ER_OK) && (adInfo.Size() > 0)) {
+        const BTNodeDB* newAdInfo = lost ? NULL : &adInfo;
+        const BTNodeDB* oldAdInfo = lost ? &adInfo : NULL;
         BTNodeDB::const_iterator nodeit;
 
-        foundNodeDB.UpdateDB(lost ? NULL : &adInfo, lost ? &adInfo : NULL);
+        foundNodeDB.UpdateDB(newAdInfo, oldAdInfo);
         foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices");
-        for (nodeit = adInfo.Begin(); nodeit != adInfo.End(); ++nodeit) {
-            vector<String> vectorizedNames;
-            const BTNodeInfo& node = *nodeit;
-            vectorizedNames.reserve(node->AdvertiseNamesSize());
-            vectorizedNames.assign(node->GetAdvertiseNamesBegin(), node->GetAdvertiseNamesEnd());
-            bt.FoundNamesChange(node->GetGUID(), vectorizedNames, node->GetBusAddress().addr, node->GetBusAddress().psm, lost);
-        }
+
+        DistributeAdvertisedNameChanges(newAdInfo, oldAdInfo);
     }
 }
 
@@ -1958,8 +1957,9 @@ QStatus BTController::ExtractNodeInfo(const MsgArg* entries, size_t size, BTNode
                            nodeAddr.ToString().c_str(),
                            connNodeAddr.ToString().c_str()));
 
+            // If the node is in our subnet, then we are the connect node for it from our and our minion's perspectives.
+            node->SetConnectNode(nodeDB.FindNode(nodeAddr)->IsValid() ? self : connNode);
             node->SetGUID(String(guidStr));
-            node->SetConnectNode(connNode);
             node->SetUUIDRev(uuidRev);
             node->SetExpireTime(expireTime);
             for (k = 0; k < anSize; ++k) {

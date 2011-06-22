@@ -774,9 +774,9 @@ class BTController :
         minion = nodeDB.FindDirectMinion(minion, skip);
     }
 
-    bool UseLocalFind() { return !master && (directMinions == 0); }
-    bool UseLocalAdvertise() { return !master && (directMinions <= 1); }
-    bool RotateMinions() { return !master && (directMinions > 2); }
+    bool UseLocalFind() { return IsMinion() || (IsMaster() && (directMinions == 0)); }
+    bool UseLocalAdvertise() { return IsMinion() || (IsMaster() && (directMinions <= 1)); }
+    bool RotateMinions() { return IsMaster() && (directMinions > 2); }
 
 #ifndef NDEBUG
     void DumpNodeStateTable() const;
