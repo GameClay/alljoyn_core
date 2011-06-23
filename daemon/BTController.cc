@@ -373,6 +373,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
             // so just refresh the expiration time of all the nodes.
             foundNodeDB.RefreshExpiration(adNode->GetConnectAddress(), LOST_DEVICE_TIMEOUT);
             foundNodeDB.DumpTable((String("foundNodeDB: Refresh Expiration for nodes with connect address: ") + adNode->GetConnectAddress().ToString()).c_str());
+            ResetExpireNameAlarm();
 
         } else {
             uint32_t newUUIDRev;
@@ -441,30 +442,17 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                 foundNodeDB.Unlock();
 
                 distributeChanges = true;
+
+                ResetExpireNameAlarm();
             }
         }
-        assert(self->GetExpireTime() == numeric_limits<uint64_t>::max());
 
-        // Make sure we are still master
-        if (IsMaster()) {
-            uint64_t dispatchTime = foundNodeDB.NextNodeExpiration();
-            assert(dispatchTime < (numeric_limits<uint64_t>::max() - LOST_DEVICE_TIMEOUT_EXT));
-            bool alarmArmed = dispatcher.HasAlarm(expireAlarm);
-            if (!alarmArmed || (expireAlarm.GetAlarmTime() < dispatchTime)) {
-                if (alarmArmed) {
-                    dispatcher.RemoveAlarm(expireAlarm);
-                }
-                expireAlarm = DispatchOperation(new ExpireCachedNodesDispatchInfo(), dispatchTime + LOST_DEVICE_TIMEOUT_EXT);
-            }
-            lock.Unlock();
+        lock.Unlock();
 
-            if (distributeChanges) {
-                DistributeAdvertisedNameChanges(&newAdInfo, &oldAdInfo);
-            }
+        if (distributeChanges) {
+            DistributeAdvertisedNameChanges(&newAdInfo, &oldAdInfo);
         }
-    }
-
-    if (!IsMaster()) {
+    } else {
         MsgArg args[SIG_FOUND_DEV_SIZE];
         size_t numArgs = ArraySize(args);
 
@@ -661,16 +649,6 @@ void BTController::DeferredNameLostHander(const String& name)
         // as well.  No need to distribute lost names at this time.
         foundNodeDB.RefreshExpiration(LOST_DEVICE_TIMEOUT);
 
-        assert(self->GetExpireTime() == numeric_limits<uint64_t>::max());
-
-        if (dispatcher.HasAlarm(expireAlarm)) {
-            dispatcher.RemoveAlarm(expireAlarm);
-        }
-        uint64_t dispatchTime = foundNodeDB.NextNodeExpiration();
-        if (dispatchTime < (numeric_limits<uint64_t>::max() - LOST_DEVICE_TIMEOUT_EXT)) {
-            expireAlarm = DispatchOperation(new ExpireCachedNodesDispatchInfo(), dispatchTime + LOST_DEVICE_TIMEOUT_EXT);
-        }
-
         // We need to prepare for controlling discovery.
         BDAddressSet ignoreAddrs;
         nodeDB.Lock();
@@ -798,13 +776,7 @@ void BTController::DeferredNameLostHander(const String& name)
                 minion->SetExpireTime(expireTime);
                 foundNodeDB.AddNode(minion);
 
-                if (dispatcher.HasAlarm(expireAlarm)) {
-                    dispatcher.RemoveAlarm(expireAlarm);
-                }
-                uint64_t dispatchTime = foundNodeDB.NextNodeExpiration();
-                if (dispatchTime < (numeric_limits<uint64_t>::max() - LOST_DEVICE_TIMEOUT_EXT)) {
-                    expireAlarm = DispatchOperation(new ExpireCachedNodesDispatchInfo(), dispatchTime + LOST_DEVICE_TIMEOUT_EXT);
-                }
+                ResetExpireNameAlarm();
             }
         }
     }
@@ -1003,17 +975,10 @@ QStatus BTController::DeferredSendSetState(const BTBusAddress& addr, const qcc::
                 }
             }
 
-            if (dispatcher.HasAlarm(expireAlarm)) {
-                dispatcher.RemoveAlarm(expireAlarm);
-            }
             if (IsMaster()) {
-                uint64_t dispatchTime = foundNodeDB.NextNodeExpiration();
-                if (dispatchTime < (numeric_limits<uint64_t>::max() - LOST_DEVICE_TIMEOUT_EXT)) {
-                    expireAlarm = DispatchOperation(new ExpireCachedNodesDispatchInfo(), dispatchTime + LOST_DEVICE_TIMEOUT_EXT);
-                }
-            }
-
-            if (!IsMaster()) {
+                ResetExpireNameAlarm();
+            } else {
+                RemoveExpireNameAlarm();
                 dispatcher.RemoveAlarm(stopAd);
             }
         }
@@ -1356,8 +1321,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     // Check if we're receiving a SetState method call from a device we have
     // just sent a SetState method call to.  If so ignore their state
     // information if their address is greater than ours.
-    if ((exchangingState.find(addr) == exchangingState.end()) || (addr < self->GetBusAddress()))
-    {
+    if ((exchangingState.find(addr) == exchangingState.end()) || (addr < self->GetBusAddress())) {
         if (UseLocalFind() && find.active) {
             QCC_DbgPrintf(("Stopping find..."));
             bt.StopFind();
@@ -1435,17 +1399,10 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
             updateDelegations = true;
         }
 
-        if (dispatcher.HasAlarm(expireAlarm)) {
-            dispatcher.RemoveAlarm(expireAlarm);
-        }
         if (IsMaster()) {
-            uint64_t dispatchTime = foundNodeDB.NextNodeExpiration();
-            if (dispatchTime < (numeric_limits<uint64_t>::max() - LOST_DEVICE_TIMEOUT_EXT)) {
-                expireAlarm = DispatchOperation(new ExpireCachedNodesDispatchInfo(), dispatchTime + LOST_DEVICE_TIMEOUT_EXT);
-            }
-        }
-
-        if (!IsMaster()) {
+            ResetExpireNameAlarm();
+        } else {
+            RemoveExpireNameAlarm();
             dispatcher.RemoveAlarm(stopAd);
         }
 
@@ -1837,15 +1794,10 @@ QStatus BTController::ImportState(const BTBusAddress& addr,
     foundNodeDB.UpdateDB(&newFoundDB, &staleDB);
     foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices from imported state information from new connection");
 
-    if (dispatcher.HasAlarm(expireAlarm)) {
-        dispatcher.RemoveAlarm(expireAlarm);
-    }
-
     if (IsMaster()) {
-        uint64_t dispatchTime = foundNodeDB.NextNodeExpiration();
-        if (dispatchTime < (numeric_limits<uint64_t>::max() - LOST_DEVICE_TIMEOUT_EXT)) {
-            expireAlarm = DispatchOperation(new ExpireCachedNodesDispatchInfo(), dispatchTime + LOST_DEVICE_TIMEOUT_EXT);
-        }
+        ResetExpireNameAlarm();
+    } else {
+        RemoveExpireNameAlarm();
     }
     foundNodeDB.Unlock();
     lock.Unlock();
@@ -2143,6 +2095,16 @@ void BTController::FillFoundNodesMsgArgs(vector<MsgArg>& args, const BTNodeDB& a
                               connNode->GetUUIDRev(),
                               adNamesArgs.size(), &adNamesArgs.front()));
         args.back().Stabilize();
+    }
+}
+
+
+void BTController::ResetExpireNameAlarm()
+{
+    RemoveExpireNameAlarm();
+    uint64_t dispatchTime = foundNodeDB.NextNodeExpiration();
+    if (dispatchTime < (numeric_limits<uint64_t>::max() - LOST_DEVICE_TIMEOUT_EXT)) {
+        expireAlarm = DispatchOperation(new ExpireCachedNodesDispatchInfo(), dispatchTime + LOST_DEVICE_TIMEOUT_EXT);
     }
 }
 

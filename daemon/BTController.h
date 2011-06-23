@@ -759,6 +759,8 @@ class BTController :
         return alarm;
     }
 
+    void ResetExpireNameAlarm();
+    void RemoveExpireNameAlarm() { dispatcher.RemoveAlarm(expireAlarm); }
 
     void AlarmTriggered(const qcc::Alarm& alarm, QStatus reason);
 
