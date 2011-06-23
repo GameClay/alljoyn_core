@@ -148,6 +148,7 @@ void BTNodeDB::RemoveNode(const BTNodeInfo& node)
         while ((cmit != end) && (cmit->second != lnode)) {
             ++cmit;
         }
+        assert(cmit != end);
         if (cmit != end) {
             connMap.erase(cmit);
         }

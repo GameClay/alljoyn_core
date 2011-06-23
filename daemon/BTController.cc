@@ -443,6 +443,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                 distributeChanges = true;
             }
         }
+        assert(self->GetExpireTime() == numeric_limits<uint64_t>::max());
 
         // Make sure we are still master
         if (IsMaster()) {
@@ -654,7 +655,13 @@ void BTController::DeferredNameLostHander(const String& name)
             find.StopOp();
         }
 
+        // Our master and all of our master's minions excluding ourself and
+        // our minions are in foundNodeDB so refreshing the expiration time on
+        // the entire foundNodeDB will cause their advertised names to expire
+        // as well.  No need to distribute lost names at this time.
         foundNodeDB.RefreshExpiration(LOST_DEVICE_TIMEOUT);
+
+        assert(self->GetExpireTime() == numeric_limits<uint64_t>::max());
 
         if (dispatcher.HasAlarm(expireAlarm)) {
             dispatcher.RemoveAlarm(expireAlarm);
@@ -732,8 +739,6 @@ void BTController::DeferredNameLostHander(const String& name)
             find.dirty = find.dirty || !minion->FindNamesEmpty();
 
             if (wasDirect) {
-                --directMinions;
-
                 if (!RotateMinions() && wasRotateMinions) {
                     advertise.StopAlarm();
                     find.StopAlarm();
@@ -744,8 +749,8 @@ void BTController::DeferredNameLostHander(const String& name)
                 if (wasFindMinion) {
                     find.minion = self;
                     find.active = false;
-                    if (directMinions > 0) {
-                        if (directMinions == 1) {
+                    if (directMinions > 1) {
+                        if (directMinions == 2) {
                             // We had 2 minions.  The one that was finding
                             // for us left, so now we must advertise for
                             // ourself and tell our remaining minion to
@@ -769,34 +774,55 @@ void BTController::DeferredNameLostHander(const String& name)
                 }
 
                 if (wasAdvertiseMinion) {
-                    assert(directMinions != 0);
+                    assert(directMinions > (IsDrone() ? 0 : 1));
                     advertise.minion = self;
                     advertise.active = false;
 
-                    if (directMinions > 1) {
+                    if (directMinions > 2) {
                         // We had more than 2 minions, so at least one is
                         // idle.  Select the next available minion and to
                         // do the advertising for us.
                         NextDirectMinion(advertise.minion);
                     }
-                    // ... else we had 2 minions. The one that was
-                    // advertising for us left, so now we must advertise
-                    // for ourself.
+                    // ... else we had 2 minions (or 1 if we were a
+                    // Drone). The one that was advertising for us left, so
+                    // now we must advertise for ourself.
 
                     QCC_DbgPrintf(("Selected %s as our advertise minion.",
                                    (advertise.minion == self) ? "ourself" :
                                    advertise.minion->GetBusAddress().ToString().c_str()));
                 }
+
+                --directMinions;
             }
 
             updateDelegations = true;
         }
+
+        if (IsMaster() && !minion->AdvertiseNamesEmpty()) {
+            // The minion we lost was advertising one or more names.  We need
+            // to setup to expire those advertised names.
+            Timespec now;
+            GetTimeNow(&now);
+            uint64_t expireTime = now.GetAbsoluteMillis() + LOST_DEVICE_TIMEOUT;
+            minion->SetExpireTime(expireTime);
+            foundNodeDB.AddNode(minion);
+
+            if (bus.GetInternal().GetDispatcher().HasAlarm(expireAlarm)) {
+                bus.GetInternal().GetDispatcher().RemoveAlarm(expireAlarm);
+            }
+            uint64_t dispatchTime = foundNodeDB.NextNodeExpiration();
+            if (dispatchTime < (numeric_limits<uint64_t>::max() - LOST_DEVICE_TIMEOUT_EXT)) {
+                expireAlarm = DispatchOperation(new ExpireCachedNodesDispatchInfo(), dispatchTime + LOST_DEVICE_TIMEOUT_EXT);
+            }
+        }
     }
 
     if (updateDelegations) {
-        DumpNodeStateTable();
         UpdateDelegations(advertise);
         UpdateDelegations(find);
+        QCC_DbgPrintf(("NodeDB after processing lost node"));
+        QCC_DEBUG_ONLY(DumpNodeStateTable());
     }
     lock.Unlock();
 
@@ -1363,6 +1389,11 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
         } else {
             // We are still the master
 
+            // Add information about the already connected nodes to the found
+            // node data so that our new minions will have up-to-date
+            // advertising information about our existing minions.
+            FillFoundNodesMsgArgs(foundNodeArgsStorage, nodeDB);
+
             bool noRotateMinions = !RotateMinions();
             status = ImportState(addr, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs);
             if (status != ER_OK) {
@@ -1592,11 +1623,22 @@ void BTController::HandleFoundNamesChange(const InterfaceDescription::Member* me
     }
 
     if ((status == ER_OK) && (adInfo.Size() > 0)) {
+
+        // Figure out which name changes belong to which DB (nodeDB or foundNodeDB).
+        BTNodeDB minionDB;
+        BTNodeDB externalDB;
+        nodeDB.Diff(adInfo, &externalDB, NULL);
+        externalDB.Diff(adInfo, &minionDB, NULL);
+
         const BTNodeDB* newAdInfo = lost ? NULL : &adInfo;
         const BTNodeDB* oldAdInfo = lost ? &adInfo : NULL;
-        BTNodeDB::const_iterator nodeit;
+        const BTNodeDB* newMinionDB = lost ? NULL : &minionDB;
+        const BTNodeDB* oldMinionDB = lost ? &minionDB : NULL;
+        const BTNodeDB* newExternalDB = lost ? NULL : &externalDB;
+        const BTNodeDB* oldExternalDB = lost ? &externalDB : NULL;
 
-        foundNodeDB.UpdateDB(newAdInfo, oldAdInfo);
+        nodeDB.UpdateDB(newMinionDB, oldMinionDB);
+        foundNodeDB.UpdateDB(newExternalDB, oldExternalDB);
         foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices");
 
         DistributeAdvertisedNameChanges(newAdInfo, oldAdInfo);
@@ -1737,6 +1779,9 @@ QStatus BTController::ImportState(const BTBusAddress& addr,
         nodeDB.AddNode(node);
     }
 
+    // At this point nodeDB now has all the nodes that have connected to us
+    // (if we are the master).
+
     lock.Lock();  // Must be acquired before the foundNodeDB lock.
     foundNodeDB.Lock();
     // Figure out set of devices/names that are part of the incoming
@@ -1761,15 +1806,27 @@ QStatus BTController::ImportState(const BTBusAddress& addr,
         }
     }
 
-    status = ExtractNodeInfo(foundNodeArgs, numFoundNodes, newFoundDB);
-    incomingDB.UpdateDB(&newFoundDB, NULL);
-    addedDB.UpdateDB(&incomingDB, NULL);
+    // Now we have staleDB which contains those nodes in foundNodeDB that need
+    // to be removed (or at least some of the names for nodes in staleDB need
+    // to be removed from their respective nodes in foundNodeDB).
 
-    foundNodeDB.UpdateDB(&incomingDB, &staleDB);
+    status = ExtractNodeInfo(foundNodeArgs, numFoundNodes, newFoundDB);
+
+    // Now we have newFoundDB which contains advertisement information that
+    // the newly connected node knows about.  It may contain information about
+    // nodes that we don't know about so we need to incorporate that
+    // information into foundNodeDB as well as addedDB for distribution to our
+    // minions.  First we'll trim down newFoundDB with what we already know.
+
+    newFoundDB.UpdateDB(NULL, &nodeDB);
+    newFoundDB.UpdateDB(NULL, &foundNodeDB);
+
+    addedDB.UpdateDB(&newFoundDB, NULL);
+
+    foundNodeDB.UpdateDB(&newFoundDB, &staleDB);
     foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices from imported state information from new connection");
 
-    bool alarmArmed = dispatcher.HasAlarm(expireAlarm);
-    if (alarmArmed) {
+    if (dispatcher.HasAlarm(expireAlarm)) {
         dispatcher.RemoveAlarm(expireAlarm);
     }
 
@@ -2026,7 +2083,7 @@ void BTController::FillFoundNodesMsgArgs(vector<MsgArg>& args, const BTNodeDB& a
     }
     adInfo.Unlock();
 
-    args.reserve(xformMap.size());
+    args.reserve(args.size() + xformMap.size());
     map<BTBusAddress, BTNodeDB>::const_iterator xmit;
     for (xmit = xformMap.begin(); xmit != xformMap.end(); ++xmit) {
         vector<MsgArg> adNamesArgs;
@@ -2114,6 +2171,7 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
             lock.Lock();
             UpdateDelegations(advertise);
             UpdateDelegations(find);
+            QCC_DbgPrintf(("NodeDB after updating delegations"));
             QCC_DEBUG_ONLY(DumpNodeStateTable());
             lock.Unlock();
             break;
