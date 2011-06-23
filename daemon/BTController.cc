@@ -1012,6 +1012,16 @@ QStatus BTController::DeferredSendSetState(const BTBusAddress& addr, const qcc::
                 }
             }
 
+            if (dispatcher.HasAlarm(expireAlarm)) {
+                dispatcher.RemoveAlarm(expireAlarm);
+            }
+            if (IsMaster()) {
+                uint64_t dispatchTime = foundNodeDB.NextNodeExpiration();
+                if (dispatchTime < (numeric_limits<uint64_t>::max() - LOST_DEVICE_TIMEOUT_EXT)) {
+                    expireAlarm = DispatchOperation(new ExpireCachedNodesDispatchInfo(), dispatchTime + LOST_DEVICE_TIMEOUT_EXT);
+                }
+            }
+
             if (!IsMaster()) {
                 dispatcher.RemoveAlarm(stopAd);
             }
@@ -1432,6 +1442,16 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
                 }
             }
             updateDelegations = true;
+        }
+
+        if (dispatcher.HasAlarm(expireAlarm)) {
+            dispatcher.RemoveAlarm(expireAlarm);
+        }
+        if (IsMaster()) {
+            uint64_t dispatchTime = foundNodeDB.NextNodeExpiration();
+            if (dispatchTime < (numeric_limits<uint64_t>::max() - LOST_DEVICE_TIMEOUT_EXT)) {
+                expireAlarm = DispatchOperation(new ExpireCachedNodesDispatchInfo(), dispatchTime + LOST_DEVICE_TIMEOUT_EXT);
+            }
         }
 
         if (!IsMaster()) {
