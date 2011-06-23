@@ -247,6 +247,11 @@ class PeerStateTable {
   public:
 
     /**
+     * Constructor
+     */
+    PeerStateTable();
+
+    /**
      * Get the peer state for given a bus name.
      *
      * @param busName   The bus name for a remote connection
@@ -299,6 +304,11 @@ class PeerStateTable {
      * Clear all peer state.
      */
     void Clear();
+
+    /**
+     * Destructor
+     */
+    ~PeerStateTable();
 
   private:
 

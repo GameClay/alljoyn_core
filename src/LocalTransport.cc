@@ -736,9 +736,13 @@ QStatus LocalEndpoint::HandleMethodReply(Message& message)
         bus.GetInternal().GetTimer().RemoveAlarm(rc.alarm);
         if (rc.secure && !message->IsEncrypted()) {
             /*
-             * If the reply was not encrypted but should have been return an error to the caller.
+             * If the response was an internally generated error response just keep that error.
+             * Otherwise if reply was not encrypted so return an error to the caller. Internally
+             * generated messages can be identified by their sender field.
              */
-            status = ER_BUS_MESSAGE_NOT_ENCRYPTED;
+            if ((message->GetType() == MESSAGE_METHOD_RET) || (bus.GetInternal().GetLocalEndpoint().GetUniqueName() != message->GetSender())) {
+                status = ER_BUS_MESSAGE_NOT_ENCRYPTED;
+            }
         } else {
             QCC_DbgPrintf(("Matched reply for serial #%d", message->GetReplySerial()));
             if (message->GetType() == MESSAGE_METHOD_RET) {

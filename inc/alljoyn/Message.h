@@ -739,6 +739,7 @@ class _Message {
 
     qcc::SocketFd* handles;      ///< Array of file/socket descriptors.
     size_t numHandles;           ///< Number of handles in the handles array
+    bool encrypt;                ///< True if the message is to be encrypted
 
     /**
      * The header fields for this message. Which header fields are present depends on the message

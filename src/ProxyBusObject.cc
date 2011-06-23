@@ -382,15 +382,8 @@ QStatus ProxyBusObject::MethodCallAsync(const InterfaceDescription::Member& meth
     if (method.iface->IsSecure()) {
         flags |= ALLJOYN_FLAG_ENCRYPTED;
     }
-    if (flags & ALLJOYN_FLAG_ENCRYPTED) {
-        status = localEndpoint.GetPeerObj()->SecurePeerConnection(serviceName);
-        /*
-         * Not recoverable if the connection could not be secured
-         */
-        if (status != ER_OK) {
-            return status;
-        }
-        flags |= ALLJOYN_FLAG_ENCRYPTED;
+    if ((flags & ALLJOYN_FLAG_ENCRYPTED) && !bus->IsPeerSecurityEnabled()) {
+        return ER_BUS_SECURITY_NOT_ENABLED;
     }
     status = msg->CallMsg(method.signature,
                           serviceName,
@@ -487,7 +480,11 @@ QStatus ProxyBusObject::MethodCall(const InterfaceDescription::Member& method,
         flags |= ALLJOYN_FLAG_ENCRYPTED;
     }
     if (flags & ALLJOYN_FLAG_ENCRYPTED) {
-        status = localEndpoint.GetPeerObj()->SecurePeerConnection(serviceName);
+        if (!bus->IsPeerSecurityEnabled()) {
+            status = ER_BUS_SECURITY_NOT_ENABLED;
+            goto MethodCallExit;
+        }
+        status = localEndpoint.GetPeerObj()->AuthenticatePeer(serviceName);
         /*
          * Not recoverable if the connection could not be secured
          */
@@ -613,7 +610,14 @@ void ProxyBusObject::SyncReplyHandler(Message& msg, void* context)
 
 QStatus ProxyBusObject::SecureConnection(bool forceAuth)
 {
-    return bus->GetInternal().GetLocalEndpoint().GetPeerObj()->SecurePeerConnection(serviceName, forceAuth);
+    if (!bus->IsPeerSecurityEnabled()) {
+        return ER_BUS_SECURITY_NOT_ENABLED;
+    }
+    AllJoynPeerObj* peerObj =  bus->GetInternal().GetLocalEndpoint().GetPeerObj();
+    if (forceAuth) {
+        peerObj->ForceAuthentication(serviceName);
+    }
+    return peerObj->AuthenticatePeer(serviceName);
 }
 
 QStatus ProxyBusObject::IntrospectRemoteObject()

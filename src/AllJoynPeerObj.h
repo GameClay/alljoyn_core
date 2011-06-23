@@ -90,6 +90,17 @@ class AllJoynPeerObj : public BusObject, public BusListener {
     QStatus RequestHeaderExpansion(Message& msg, RemoteEndpoint* sender);
 
     /**
+     * This function is called when an encrypted message requires authentication.
+     *
+     * @param msg     The message to be encrypted.
+     * @param sender  The remote endpoint that the encrypted message will be sent to
+     * @return
+     *      - ER_OK if successful
+     *      - An error status otherwise
+     */
+    QStatus RequestAuthentication(Message& msg, RemoteEndpoint* sender);
+
+    /**
      * Setup for peer-to-peer authentication. The authentication mechanisms listed can only be used
      * if they are already registered with bus. The authentication mechanisms names are separated by
      * space characters.
@@ -104,18 +115,27 @@ class AllJoynPeerObj : public BusObject, public BusListener {
     }
 
     /**
-     * Secure the connection to a remote peer. A secure connection is authenticated and has
-     * established a session key with a remote peer.
+     * Check if authentication has been enabled.
+     *
+     * @return  Returns true is there are authentication mechanisms registered.
+     */
+    bool AuthenticationEnabled() { return !peerAuthMechanisms.empty(); }
+
+    /**
+     * Force re-authentication for the specified peer.
+     */
+    void ForceAuthentication(const qcc::String& busName);
+
+    /**
+     * Authenticate the connection to a remote peer. Authentication establishes a session key with a remote peer.
      *
      * @param busName   The bus name of the remote peer we are securing.
-     * @param forceAuth If true, forces an re-authentication even if the peer connection is already
-     *                  authenticated.
      *
      * @return
      *      - ER_OK if successful
      *      - An error status otherwise
      */
-    QStatus SecurePeerConnection(const qcc::String& busName, bool forceAuth = false);
+    QStatus AuthenticatePeer(const qcc::String& busNam);
 
     /**
      * Reports a security failure. This would normally be due to stale or expired keys.
@@ -282,7 +302,8 @@ class AllJoynPeerObj : public BusObject, public BusListener {
      * Types of request that can be queued.
      */
     typedef enum {
-        SECURE_PEER,
+        AUTHENTICATE_PEER,
+        REVERSE_AUTH_PEER,
         AUTH_CHALLENGE,
         EXPAND_HEADER,
         ACCEPT_SESSION

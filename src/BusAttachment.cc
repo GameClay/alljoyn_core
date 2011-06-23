@@ -558,10 +558,24 @@ QStatus BusAttachment::EnablePeerSecurity(const char* authMechanisms,
         status =  busInternal->authManager.CheckNames(authMechanisms);
         if (status == ER_OK) {
             AllJoynPeerObj* peerObj = busInternal->localEndpoint.GetPeerObj();
-            peerObj->SetupPeerAuthentication(authMechanisms, listener);
+            if (peerObj) {
+                peerObj->SetupPeerAuthentication(authMechanisms, listener);
+            } else {
+                return ER_FAIL;
+            }
         }
     }
     return status;
+}
+
+bool BusAttachment::IsPeerSecurityEnabled()
+{
+    AllJoynPeerObj* peerObj = busInternal->localEndpoint.GetPeerObj();
+    if (peerObj) {
+        return peerObj->AuthenticationEnabled();
+    } else {
+        return false;
+    }
 }
 
 QStatus BusAttachment::AddLogonEntry(const char* authMechanism, const char* userName, const char* password)

@@ -260,17 +260,19 @@ QStatus _Message::GetArgs(const char* signature, ...)
     return status;
 }
 
-_Message::_Message(BusAttachment& bus) : bus(bus)
+_Message::_Message(BusAttachment& bus) :
+    bus(bus),
+    endianSwap(false),
+    msgBuf(NULL),
+    msgArgs(NULL),
+    numMsgArgs(0),
+    ttl(0),
+    handles(NULL),
+    numHandles(0),
+    encrypt(false)
 {
     msgHeader.msgType = MESSAGE_INVALID;
     msgHeader.endian = myEndian;
-    endianSwap = false;
-    msgBuf = NULL;
-    msgArgs = NULL;
-    numMsgArgs = 0;
-    ttl = 0;
-    handles = NULL;
-    numHandles = 0;
 }
 
 _Message::~_Message(void)
@@ -394,6 +396,8 @@ void _Message::ClearHeader()
         }
         delete [] handles;
         handles = NULL;
+        encrypt = false;
+        authMechanism.clear();
     }
 }
 

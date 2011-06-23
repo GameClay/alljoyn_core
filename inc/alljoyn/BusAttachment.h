@@ -361,6 +361,13 @@ class BusAttachment : public MessageReceiver {
                                const char* keyStoreFileName = NULL);
 
     /**
+     * Check is peer security has been enabled for this bus attachment.
+     *
+     * @return   Returns true if peer security has been enabled, false otherwise.
+     */
+    bool IsPeerSecurityEnabled();
+
+    /**
      * Register an object that will receive bus event notifications.
      *
      * @param listener  Object instance that will receive bus event notifications.

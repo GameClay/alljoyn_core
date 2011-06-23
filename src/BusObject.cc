@@ -423,17 +423,9 @@ QStatus BusObject::Signal(const char* destination,
     if (signalMember.iface->IsSecure()) {
         flags |= ALLJOYN_FLAG_ENCRYPTED;
     }
-    if (flags & ALLJOYN_FLAG_ENCRYPTED) {
-        status = bus.GetInternal().GetLocalEndpoint().GetPeerObj()->SecurePeerConnection(destination);
-        /*
-         * Not recoverable if the connection could not be secured
-         */
-        if (status != ER_OK) {
-            return status;
-        }
-        flags |= ALLJOYN_FLAG_ENCRYPTED;
+    if ((flags & ALLJOYN_FLAG_ENCRYPTED) && !bus.IsPeerSecurityEnabled()) {
+        return ER_BUS_SECURITY_NOT_ENABLED;
     }
-
     status = msg->SignalMsg(signalMember.signature,
                             destination,
                             sessionId,

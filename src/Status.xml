@@ -161,5 +161,6 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
   <status name="ER_ALLJOYN_BINDSESSIONPORT_REPLY_INVALID_OPTS" value="0x909a" comment="BindSessionPort reply: SessionOpts are invalid"/>
   <status name="ER_ALLJOYN_JOINSESSION_REPLY_ALREADY_JOINED" value="0x909b" comment="JoinSession reply: Caller has already joined the session"/>
   <status name="ER_BUS_SELF_CONNECT" value="0x909c" comment="Received BusHello from self"/>
+  <status name="ER_BUS_SECURITY_NOT_ENABLED" value="0x909d" comment="Security is not enabled for this bus attachment"/>
 
 </status_block>

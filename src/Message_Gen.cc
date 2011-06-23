@@ -484,6 +484,8 @@ QStatus _Message::Deliver(RemoteEndpoint& endpoint)
     size_t len = bufEOD - buf;
     size_t pushed;
 
+    QCC_DbgPrintf(("Deliver %s", this->Description().c_str()));
+
     if (len == 0) {
         status = ER_BUS_EMPTY_MESSAGE;
         QCC_LogError(status, ("Message is empty"));
@@ -505,12 +507,34 @@ QStatus _Message::Deliver(RemoteEndpoint& endpoint)
         return ER_OK;
     }
     /*
+     * Check if message needs to be encrypted
+     */
+    if (encrypt) {
+        status = EncryptMessage();
+        /*
+         * Need to authenticate if we don't have a key
+         */
+        if (status == ER_BUS_KEY_UNAVAILABLE) {
+            QCC_DbgHLPrintf(("Deliver: Key not available requesting authentication", Description().c_str()));
+            Message msg(this);
+            status = bus.GetInternal().GetLocalEndpoint().GetPeerObj()->RequestAuthentication(msg, &endpoint);
+            /*
+             * Delivery is retried when the authentication completes
+             */
+            if (status == ER_OK) {
+                return ER_OK;
+            }
+        }
+    }
+    /*
      * Push the message to the endpoint sink (only push handles in the first chunk)
      */
-    if (handles) {
-        status = sink.PushBytesAndFds(buf, len, pushed, handles, numHandles, endpoint.GetProcessId());
-    } else {
-        status = sink.PushBytes(buf, len, pushed);
+    if (status == ER_OK) {
+        if (handles) {
+            status = sink.PushBytesAndFds(buf, len, pushed, handles, numHandles, endpoint.GetProcessId());
+        } else {
+            status = sink.PushBytes(buf, len, pushed);
+        }
     }
     /*
      * Continue pushing until we are done
@@ -683,6 +707,7 @@ QStatus _Message::EncryptMessage()
         if (status == ER_OK) {
             authMechanism = key.GetTag();
             assert(msgHeader.bodyLen == argsLen);
+            encrypt = false;
         }
     }
     return status;
@@ -711,6 +736,7 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
     /*
      * We marshal new messages in native endianess
      */
+    encrypt = (flags & ALLJOYN_FLAG_ENCRYPTED) ? true : false;
     endianSwap = false;
     msgHeader.endian = this->myEndian;
     msgHeader.msgType = (uint8_t)msgType;
@@ -721,7 +747,7 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
      * Encryption will typically make the body length slightly larger because the encryption
      * algorithm adds appends a MAC block to the end of the encrypted data.
      */
-    if (flags & ALLJOYN_FLAG_ENCRYPTED) {
+    if (encrypt) {
         QCC_DbgHLPrintf(("Encrypting messge to %s", destination.empty() ? "broadcast listeners" : destination.c_str()));
         msgHeader.bodyLen = static_cast<uint32_t>(argsLen + ajn::Crypto::ExpansionBytes);
     } else {
@@ -868,15 +894,6 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
      * Assert that our two different body size computations agree
      */
     assert((bufPos - bodyPtr) == (ptrdiff_t)argsLen);
-    /*
-     * Encrypt and/or authenticate the message.
-     */
-    if (msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED) {
-        status = EncryptMessage();
-        if (status != ER_OK) {
-            goto ExitMarshalMessage;
-        }
-    }
     bufEOD = bodyPtr + msgHeader.bodyLen;
     while (numArgs--) {
         QCC_DbgPrintf(("\n%s\n", args->ToString().c_str()));
@@ -1087,7 +1104,7 @@ QStatus _Message::SignalMsg(const qcc::String& signature,
     QStatus status;
 
     /*
-     * Validate flags - ENCRYPTED and COMPRESSED are the only flag applicable to signals
+     * Validate flags - ENCRYPTED, COMPRESSED, and ALLJOYN_FLAG_GLOBAL_BROADCAST are the flags applicable to signals
      */
     if (flags & ~(ALLJOYN_FLAG_ENCRYPTED | ALLJOYN_FLAG_COMPRESSED | ALLJOYN_FLAG_GLOBAL_BROADCAST)) {
         return ER_BUS_BAD_HDR_FLAGS;

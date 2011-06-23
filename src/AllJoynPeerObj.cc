@@ -163,6 +163,11 @@ QStatus AllJoynPeerObj::RequestHeaderExpansion(Message& msg, RemoteEndpoint* sen
     return requestThread.QueueRequest(msg, EXPAND_HEADER, sender->GetRemoteName());
 }
 
+QStatus AllJoynPeerObj::RequestAuthentication(Message& msg, RemoteEndpoint* endpoint)
+{
+    return requestThread.QueueRequest(msg, AUTHENTICATE_PEER, endpoint->GetUniqueName());
+}
+
 /**
  * How long (in milliseconds) to wait for a response to an expansion request.
  */
@@ -492,13 +497,25 @@ void AllJoynPeerObj::AuthChallenge(const ajn::InterfaceDescription::Member* memb
     }
 }
 
+void AllJoynPeerObj::ForceAuthentication(const qcc::String& busName)
+{
+    PeerStateTable* peerStateTable = bus.GetInternal().GetPeerStateTable();
+    if (peerStateTable->IsKnownPeer(busName)) {
+        clientLock.Lock();
+        PeerState peerState = peerStateTable->GetPeerState(busName);
+        peerState->ClearKeys();
+        bus.ClearKeys(peerState->GetGuid().ToString());
+        clientLock.Unlock();
+    }
+}
+
 /*
  * A long timeout to allow for possible PIN entry
  */
 #define AUTH_TIMEOUT      60000
 #define DEFAULT_TIMEOUT   10000
 
-QStatus AllJoynPeerObj::SecurePeerConnection(const qcc::String& busName, bool forceAuth)
+QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
 {
     QStatus status;
     ajn::SASLEngine::AuthState authState;
@@ -509,15 +526,8 @@ QStatus AllJoynPeerObj::SecurePeerConnection(const qcc::String& busName, bool fo
     if (ifc == NULL) {
         return ER_BUS_NO_SUCH_INTERFACE;
     }
-
     /*
-     * Clear the keys if we are forcing authentication.
-     */
-    if (forceAuth) {
-        peerState->ClearKeys();
-    }
-    /*
-     * Simply return if the peer is already secured.
+     * Return if the peer is already secured.
      */
     if (peerState->IsSecure()) {
         return ER_OK;
@@ -527,18 +537,6 @@ QStatus AllJoynPeerObj::SecurePeerConnection(const qcc::String& busName, bool fo
      */
     if (peerAuthMechanisms.empty()) {
         return ER_BUS_NO_AUTHENTICATION_MECHANISM;
-    }
-    /*
-     * Check for broadcast signals
-     */
-    if (busName.empty()) {
-        /*
-         * Getting the group key and nonce ensure they are initialized.
-         */
-        KeyBlob key;
-        KeyBlob nonce;
-        peerStateTable->GetGroupKeyAndNonce(key, nonce);
-        return ER_OK;
     }
 
     ProxyBusObject remotePeerObj(bus, busName.c_str(), org::alljoyn::Bus::Peer::ObjectPath, 0);
@@ -588,12 +586,6 @@ QStatus AllJoynPeerObj::SecurePeerConnection(const qcc::String& busName, bool fo
      */
     peerState = peerStateTable->GetPeerState(sender, busName);
     peerState->SetGuid(remotePeerGuid);
-    /*
-     * Clear the keys if we are forcing authentication.
-     */
-    if (forceAuth) {
-        peerState->ClearKeys();
-    }
     /*
      * We can now return if the peer is secured.
      */
@@ -779,8 +771,27 @@ qcc::ThreadReturn AllJoynPeerObj::RequestThread::Run(void* args)
         lock.Unlock();
         if (!IsStopping()) {
             switch (req.reqType) {
-            case SECURE_PEER:
-                status = peerObj.SecurePeerConnection(req.msg->GetSender());
+            case AUTHENTICATE_PEER:
+                status = peerObj.AuthenticatePeer(req.msg->GetDestination());
+                if (status != ER_OK) {
+                    if (peerObj.peerAuthListener) {
+                        peerObj.peerAuthListener->SecurityViolation(status, req.msg);
+                    }
+                    /*
+                     * If the failed message was a method call push an error response.
+                     */
+                    if (req.msg->GetType() == MESSAGE_METHOD_CALL) {
+                        Message reply(peerObj.bus);
+                        reply->ErrorMsg(status, req.msg->GetCallSerial());
+                        peerObj.bus.GetInternal().GetLocalEndpoint().PushMessage(reply);
+                    }
+                } else {
+                    peerObj.bus.GetInternal().GetRouter().PushMessage(req.msg, peerObj.bus.GetInternal().GetLocalEndpoint());
+                }
+                break;
+
+            case REVERSE_AUTH_PEER:
+                status = peerObj.AuthenticatePeer(req.msg->GetSender());
                 if (status != ER_OK) {
                     if (peerObj.peerAuthListener) {
                         peerObj.peerAuthListener->SecurityViolation(status, req.msg);
@@ -835,7 +846,7 @@ void AllJoynPeerObj::HandleSecurityViolation(Message& msg, QStatus status)
             /*
              * Try to secure the connection back to the sender.
              */
-            if (requestThread.QueueRequest(msg, SECURE_PEER) == ER_OK) {
+            if (requestThread.QueueRequest(msg, REVERSE_AUTH_PEER) == ER_OK) {
                 status = ER_OK;
             }
         }

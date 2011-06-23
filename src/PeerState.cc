@@ -39,6 +39,7 @@ using namespace qcc;
 
 namespace ajn {
 
+
 uint32_t _PeerState::EstimateTimestamp(uint32_t remote)
 {
     uint32_t local = qcc::GetTimestamp();
@@ -79,6 +80,11 @@ bool _PeerState::IsValidSerial(uint32_t serial, bool secure, bool unreliable)
     }
     return ret;
 
+}
+
+PeerStateTable::PeerStateTable()
+{
+    Clear();
 }
 
 PeerState PeerStateTable::GetPeerState(const qcc::String& busName)
@@ -123,18 +129,26 @@ void PeerStateTable::GetGroupKeyAndNonce(qcc::KeyBlob& key, qcc::KeyBlob& nonce)
     /*
      * The group key is carried by the null-name peer
      */
-    PeerState nullPeer = GetPeerState("");
-    if (nullPeer->IsSecure()) {
-        nullPeer->GetKeyAndNonce(key, nonce, PEER_SESSION_KEY);
-    } else {
-        QCC_DbgHLPrintf(("Allocating group key"));
-        key.Rand(Crypto_AES::AES128_SIZE, KeyBlob::AES);
-        nonce.Rand(Crypto::NonceBytes, KeyBlob::GENERIC);
-        nullPeer->SetKeyAndNonce(key, nonce, PEER_SESSION_KEY);
-    }
+    GetPeerState("")->GetKeyAndNonce(key, nonce, PEER_SESSION_KEY);
+
 }
 
 void PeerStateTable::Clear()
+{
+    qcc::KeyBlob key;
+    qcc::KeyBlob nonce;
+    lock.Lock();
+    peerMap.clear();
+    PeerState nullPeer;
+    QCC_DbgHLPrintf(("Allocating group key"));
+    key.Rand(Crypto_AES::AES128_SIZE, KeyBlob::AES);
+    nonce.Rand(Crypto::NonceBytes, KeyBlob::GENERIC);
+    nullPeer->SetKeyAndNonce(key, nonce, PEER_SESSION_KEY);
+    peerMap[""] = nullPeer;
+    lock.Unlock();
+}
+
+PeerStateTable::~PeerStateTable()
 {
     lock.Lock();
     peerMap.clear();
