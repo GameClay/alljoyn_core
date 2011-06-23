@@ -718,17 +718,6 @@ void BTController::DeferredNameLostHander(const String& name)
             // Advertise minion and find minion should never be the same.
             assert(!(wasAdvertiseMinion && wasFindMinion));
 
-            foundNodeDB.RefreshExpiration(minion, LOST_DEVICE_TIMEOUT);
-
-            if (dispatcher.HasAlarm(expireAlarm)) {
-                dispatcher.RemoveAlarm(expireAlarm);
-            }
-            uint64_t dispatchTime = foundNodeDB.NextNodeExpiration();
-            if (dispatchTime < (numeric_limits<uint64_t>::max() - LOST_DEVICE_TIMEOUT_EXT)) {
-                expireAlarm = DispatchOperation(new ExpireCachedNodesDispatchInfo(), dispatchTime + LOST_DEVICE_TIMEOUT_EXT);
-            }
-
-            nodeDB.RemoveNode(minion);
             find.ignoreAddrs->erase(minion->GetBusAddress().addr);
 
             // Indicate the name lists have changed.
@@ -796,24 +785,26 @@ void BTController::DeferredNameLostHander(const String& name)
                 --directMinions;
             }
 
+            nodeDB.RemoveNode(minion);
+
             updateDelegations = true;
-        }
 
-        if (IsMaster() && !minion->AdvertiseNamesEmpty()) {
-            // The minion we lost was advertising one or more names.  We need
-            // to setup to expire those advertised names.
-            Timespec now;
-            GetTimeNow(&now);
-            uint64_t expireTime = now.GetAbsoluteMillis() + LOST_DEVICE_TIMEOUT;
-            minion->SetExpireTime(expireTime);
-            foundNodeDB.AddNode(minion);
+            if (IsMaster() && !minion->AdvertiseNamesEmpty()) {
+                // The minion we lost was advertising one or more names.  We need
+                // to setup to expire those advertised names.
+                Timespec now;
+                GetTimeNow(&now);
+                uint64_t expireTime = now.GetAbsoluteMillis() + LOST_DEVICE_TIMEOUT;
+                minion->SetExpireTime(expireTime);
+                foundNodeDB.AddNode(minion);
 
-            if (bus.GetInternal().GetDispatcher().HasAlarm(expireAlarm)) {
-                bus.GetInternal().GetDispatcher().RemoveAlarm(expireAlarm);
-            }
-            uint64_t dispatchTime = foundNodeDB.NextNodeExpiration();
-            if (dispatchTime < (numeric_limits<uint64_t>::max() - LOST_DEVICE_TIMEOUT_EXT)) {
-                expireAlarm = DispatchOperation(new ExpireCachedNodesDispatchInfo(), dispatchTime + LOST_DEVICE_TIMEOUT_EXT);
+                if (dispatcher.HasAlarm(expireAlarm)) {
+                    dispatcher.RemoveAlarm(expireAlarm);
+                }
+                uint64_t dispatchTime = foundNodeDB.NextNodeExpiration();
+                if (dispatchTime < (numeric_limits<uint64_t>::max() - LOST_DEVICE_TIMEOUT_EXT)) {
+                    expireAlarm = DispatchOperation(new ExpireCachedNodesDispatchInfo(), dispatchTime + LOST_DEVICE_TIMEOUT_EXT);
+                }
             }
         }
     }
