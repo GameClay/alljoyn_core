@@ -691,7 +691,6 @@ void BTController::DeferredNameLostHander(const String& name)
         QCC_DbgPrintf(("Selected %s as our find minion.",
                        (find.minion == self) ? "ourself" :
                        find.minion->GetBusAddress().ToString().c_str()));
-        nodeDB.DumpTable("nodeDB - why pick self for find?");
 
         updateDelegations = true;
 
@@ -726,14 +725,11 @@ void BTController::DeferredNameLostHander(const String& name)
             find.ignoreAddrs->erase(minion->GetBusAddress().addr);
 
             // Indicate the name lists have changed.
-            if (!minion->AdvertiseNamesEmpty()) {
-                advertise.count -= minion->AdvertiseNamesSize();
-                advertise.dirty = true;
-            }
-            if (!minion->FindNamesEmpty()) {
-                find.count -= minion->FindNamesSize();
-                find.dirty = true;
-            }
+            advertise.count -= minion->AdvertiseNamesSize();
+            advertise.dirty = true;
+
+            find.count -= minion->FindNamesSize();
+            find.dirty = find.dirty || !minion->FindNamesEmpty();
 
             if (wasDirect) {
                 --directMinions;
@@ -798,6 +794,7 @@ void BTController::DeferredNameLostHander(const String& name)
     }
 
     if (updateDelegations) {
+        DumpNodeStateTable();
         UpdateDelegations(advertise);
         UpdateDelegations(find);
     }
@@ -2489,8 +2486,9 @@ void BTController::DumpNodeStateTable() const
     for (nodeit = nodeDB.Begin(); nodeit != nodeDB.End(); ++nodeit) {
         const BTNodeInfo& node = *nodeit;
         NameSet::const_iterator nameit;
-        QCC_DbgPrintf(("    %s %s (%s):",
+        QCC_DbgPrintf(("    %s (conn: %s) %s (%s):",
                        node->GetBusAddress().ToString().c_str(),
+                       node->GetConnectAddress().ToString().c_str(),
                        node->GetUniqueName().c_str(),
                        (node == self) ? "local" :
                        ((node == find.minion) ? "find minion" :
