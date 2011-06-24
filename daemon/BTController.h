@@ -445,6 +445,7 @@ class BTController :
             NAME_LOST,
             BT_DEVICE_AVAILABLE,
             SEND_SET_STATE,
+            PROCESS_SET_STATE_REPLY,
             HANDLE_DELEGATE_FIND,
             HANDLE_DELEGATE_ADVERTISE
         } DispatchTypes;
@@ -493,14 +494,45 @@ class BTController :
         { }
     };
 
-    struct HandleDelegateOpDispatchInfo : public DispatchInfo {
+    struct DeferredMessageHandlerDispatchInfo : public DispatchInfo {
         Message msg;
-        HandleDelegateOpDispatchInfo(const Message& msg, bool findOp) :
-            DispatchInfo(findOp ? HANDLE_DELEGATE_FIND : HANDLE_DELEGATE_ADVERTISE),
+        DeferredMessageHandlerDispatchInfo(DispatchTypes operation, const Message& msg) :
+            DispatchInfo(operation),
             msg(msg)
         { }
     };
 
+    struct ProcessSetStateReplyDispatchInfo : public DeferredMessageHandlerDispatchInfo {
+        ProxyBusObject* newMaster;
+        BTBusAddress addr;
+        qcc::String busName;
+        ProcessSetStateReplyDispatchInfo(const Message& msg,
+                                         ProxyBusObject* newMaster,
+                                         const BTBusAddress& addr,
+                                         const qcc::String& busName) :
+            DeferredMessageHandlerDispatchInfo(PROCESS_SET_STATE_REPLY, msg),
+            newMaster(newMaster),
+            addr(addr),
+            busName(busName)
+        { }
+    };
+
+    struct HandleDelegateOpDispatchInfo : public DeferredMessageHandlerDispatchInfo {
+        HandleDelegateOpDispatchInfo(const Message& msg, bool findOp) :
+            DeferredMessageHandlerDispatchInfo(findOp ? HANDLE_DELEGATE_FIND : HANDLE_DELEGATE_ADVERTISE, msg)
+        { }
+    };
+
+    struct SetStateReplyContext {
+        ProxyBusObject* newMaster;
+        BTBusAddress addr;
+        qcc::String busName;
+        SetStateReplyContext(ProxyBusObject* newMaster, const BTBusAddress& addr, const qcc::String& busName) :
+            newMaster(newMaster),
+            addr(addr),
+            busName(busName)
+        { }
+    };
 
 
     /**
@@ -576,6 +608,20 @@ class BTController :
      */
     void HandleSetState(const InterfaceDescription::Member* member,
                         Message& msg);
+
+    /**
+     * Handle the incoming SetState method reply.
+     *
+     * @param msg       The incoming message
+     * @param context   User-defined context passed to MethodCall and returned upon reply.
+     */
+    void HandleSetStateReply(Message& msg,
+                             void* context);
+
+    void DeferredProcessSetStateReply(Message& reply,
+                                      ProxyBusObject* newMaster,
+                                      const BTBusAddress& addr,
+                                      const qcc::String& busName);
 
     /**
      * Handle the incoming SetState method call on the BTController dispatch

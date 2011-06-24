@@ -43,6 +43,7 @@ using namespace qcc;
 
 #define MethodHander(_a) static_cast<MessageReceiver::MethodHandler>(_a)
 #define SignalHander(_a) static_cast<MessageReceiver::SignalHandler>(_a)
+#define ReplyHander(_a) static_cast<MessageReceiver::ReplyHandler>(_a)
 
 static const uint32_t ABSOLUTE_MAX_CONNECTIONS = 7; /* BT can't have more than 7 direct connections */
 static const uint32_t DEFAULT_MAX_CONNECTIONS =  6; /* Gotta allow 1 connection for car-kit/headset/headphones */
@@ -371,6 +372,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
         if ((adNode->IsValid()) && (adNode->GetUUIDRev() == uuidRev)) {
             // We've see this advertising node before and nothing has changed
             // so just refresh the expiration time of all the nodes.
+            foundNodeDB.DumpTable((String("foundNodeDB: Before Refresh Expiration for nodes with connect address: ") + adNode->GetConnectAddress().ToString()).c_str());
             foundNodeDB.RefreshExpiration(adNode->GetConnectAddress(), LOST_DEVICE_TIMEOUT);
             foundNodeDB.DumpTable((String("foundNodeDB: Refresh Expiration for nodes with connect address: ") + adNode->GetConnectAddress().ToString()).c_str());
             ResetExpireNameAlarm();
@@ -437,6 +439,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                     node->SetExpireTime(expireTime);
                 }
 
+                foundNodeDB.DumpTable("foundNodeDB - Before update");
                 foundNodeDB.UpdateDB(&newAdInfo, &oldAdInfo);
                 foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices due to remote device advertisement change");
                 foundNodeDB.Unlock();
@@ -609,6 +612,10 @@ void BTController::NameOwnerChanged(const qcc::String& alias,
                                     const qcc::String* oldOwner,
                                     const qcc::String* newOwner)
 {
+    QCC_DbgTrace(("BTController::NameOwnerChanged(alias = %s, oldOwner = %s, newOwner = %s)",
+                  alias.c_str(),
+                  oldOwner ? oldOwner->c_str() : "<null>",
+                  newOwner ? newOwner->c_str() : "<null>"));
     if (oldOwner && (alias == *oldOwner)) {
         DispatchOperation(new NameLostDispatchInfo(alias));
     }
@@ -863,130 +870,18 @@ QStatus BTController::DeferredSendSetState(const BTBusAddress& addr, const qcc::
     exchangingState.insert(addr);
     lock.Unlock();
     QCC_DbgPrintf(("Sending SetState method call to %s (%s)", busName.c_str(), addr.ToString().c_str()));
-    status = newMaster->MethodCall(*org.alljoyn.Bus.BTController.SetState, args, ArraySize(args), reply);
-    lock.Lock();
-    exchangingState.erase(addr);
+    status = newMaster->MethodCallAsync(*org.alljoyn.Bus.BTController.SetState,
+                                        this, ReplyHandler(&BTController::HandleSetStateReply),
+                                        args, ArraySize(args),
+                                        new SetStateReplyContext(newMaster, addr, busName));
 
     if (status != ER_OK) {
         delete newMaster;
         QCC_LogError(status, ("Dropping %s due to internal error", busName.c_str()));
         bt.Disconnect(busName);
-        goto exit;
-    } else {
-        size_t numNodeStateArgs;
-        MsgArg* nodeStateArgs;
-        size_t numFoundNodeArgs;
-        MsgArg* foundNodeArgs;
-        uint64_t rawBDAddr;
-        uint16_t psm;
-        uint32_t otherUUIDRev;
-
-        if (nodeDB.FindNode(addr)->IsValid()) {
-            QCC_DbgHLPrintf(("Already got node state information."));
-            goto exit;
-        }
-
-        status = reply->GetArgs(SIG_SET_STATE_OUT,
-                                &otherUUIDRev,
-                                &rawBDAddr,
-                                &psm,
-                                &numNodeStateArgs, &nodeStateArgs,
-                                &numFoundNodeArgs, &foundNodeArgs);
-        if (status != ER_OK) {
-            delete newMaster;
-            QCC_LogError(status, ("Dropping %s due to error parsing the args (sig: \"%s\")",
-                                  busName.c_str(), SIG_SET_STATE_OUT));
-            bt.Disconnect(busName);
-            goto exit;
-        }
-
-        BTBusAddress addr(rawBDAddr, psm);
-
-        if (otherUUIDRev != bt::INVALID_UUIDREV) {
-            if (numNodeStateArgs == 0) {
-                // We are now a minion (or a drone if we have more than one direct connection)
-                master = newMaster;
-                masterNode = foundNodeDB.FindNode(addr);
-                masterNode->SetUUIDRev(otherUUIDRev);
-
-                if (dispatcher.HasAlarm(expireAlarm)) {
-                    dispatcher.RemoveAlarm(expireAlarm);
-                }
-
-                status = ImportState(addr, NULL, 0, foundNodeArgs, numFoundNodeArgs);
-                if (status != ER_OK) {
-                    QCC_LogError(status, ("Dropping %s due to import state error", busName.c_str()));
-                    bt.Disconnect(busName);
-                    goto exit;
-                }
-
-            } else {
-                // We are the still the master
-                bool noRotateMinions = !RotateMinions();
-                delete newMaster;
-
-                status = ImportState(addr, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs);
-                if (status != ER_OK) {
-                    QCC_LogError(status, ("Dropping %s due to import state error", busName.c_str()));
-                    bt.Disconnect(busName);
-                    goto exit;
-                }
-
-                assert(find.resultDest.empty());
-                if (noRotateMinions && RotateMinions()) {
-                    // Force changing from permanent delegations to durational delegations
-                    advertise.dirty = true;
-                    find.dirty = true;
-                }
-            }
-
-            QCC_DbgPrintf(("We are %s, %s is now our %s",
-                           IsMaster() ? "still the master" : (IsDrone() ? "now a drone" : "just a minion"),
-                           addr.ToString().c_str(), IsMaster() ? "minion" : "master"));
-
-            if (!IsMinion()) {
-                if (IsMaster()) {
-                    // Can't let the to-be-updated masterUUIDRev have a value that is
-                    // the same as the UUIDRev value used by our new minion.
-                    const uint32_t lowerBound = ((otherUUIDRev > (bt::INVALID_UUIDREV + 10)) ?
-                                                 (otherUUIDRev - 10) :
-                                                 bt::INVALID_UUIDREV);
-                    const uint32_t upperBound = ((otherUUIDRev < (numeric_limits<uint32_t>::max() - 10)) ?
-                                                 (otherUUIDRev + 10) :
-                                                 numeric_limits<uint32_t>::max());
-                    while ((masterUUIDRev == bt::INVALID_UUIDREV) &&
-                           (masterUUIDRev > lowerBound) &&
-                           (masterUUIDRev < upperBound)) {
-                        masterUUIDRev = qcc::Rand32();
-                    }
-                }
-
-                UpdateDelegations(advertise);
-                UpdateDelegations(find);
-                if (IsDrone()) {
-                    if (advertise.minion != self) {
-                        advertise.minion = self;
-                        QCC_DbgPrintf(("Set advertise minion to ourself"));
-                    }
-                    if (find.minion != self) {
-                        find.minion = self;
-                        QCC_DbgPrintf(("Set find minion to ourself"));
-                    }
-                }
-            }
-
-            if (IsMaster()) {
-                ResetExpireNameAlarm();
-            } else {
-                RemoveExpireNameAlarm();
-                dispatcher.RemoveAlarm(stopAd);
-            }
-        }
     }
 
 exit:
-    lock.Unlock();
-
     return status;
 }
 
@@ -1446,6 +1341,150 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     if (updateDelegations) {
         DispatchOperation(new UpdateDelegationsDispatchInfo());
     }
+}
+
+
+void BTController::HandleSetStateReply(Message& msg, void* context)
+{
+    QCC_DbgTrace(("BTController::HandleSetStateReply(reply = <>, context = %p)", context));
+    SetStateReplyContext* ctx = reinterpret_cast<SetStateReplyContext*>(context);
+    DispatchOperation(new ProcessSetStateReplyDispatchInfo(msg, ctx->newMaster, ctx->addr, ctx->busName));
+}
+
+
+void BTController::DeferredProcessSetStateReply(Message& reply,
+                                                ProxyBusObject* newMaster,
+                                                const BTBusAddress& addr,
+                                                const String& busName)
+{
+    QCC_DbgTrace(("BTController::DeferredProcessSetStateReply(reply = <>, newMaster = %p, addr = %s, busName = \"%s\")",
+                  newMaster, addr.ToString().c_str(), busName.c_str()));
+
+    lock.Lock();
+    exchangingState.erase(addr);
+
+    if (reply->GetType() == MESSAGE_METHOD_RET) {
+        size_t numNodeStateArgs;
+        MsgArg* nodeStateArgs;
+        size_t numFoundNodeArgs;
+        MsgArg* foundNodeArgs;
+        uint64_t rawBDAddr;
+        uint16_t psm;
+        uint32_t otherUUIDRev;
+        QStatus status;
+
+        if (nodeDB.FindNode(addr)->IsValid()) {
+            QCC_DbgHLPrintf(("Already got node state information."));
+            delete newMaster;
+            goto exit;
+        }
+
+        status = reply->GetArgs(SIG_SET_STATE_OUT,
+                                &otherUUIDRev,
+                                &rawBDAddr,
+                                &psm,
+                                &numNodeStateArgs, &nodeStateArgs,
+                                &numFoundNodeArgs, &foundNodeArgs);
+        if (status != ER_OK) {
+            delete newMaster;
+            QCC_LogError(status, ("Dropping %s due to error parsing the args (sig: \"%s\")",
+                                  busName.c_str(), SIG_SET_STATE_OUT));
+            bt.Disconnect(busName);
+            goto exit;
+        }
+
+        BTBusAddress addr(rawBDAddr, psm);
+
+        if (otherUUIDRev != bt::INVALID_UUIDREV) {
+            if (numNodeStateArgs == 0) {
+                // We are now a minion (or a drone if we have more than one direct connection)
+                master = newMaster;
+                masterNode = foundNodeDB.FindNode(addr);
+                masterNode->SetUUIDRev(otherUUIDRev);
+
+                if (dispatcher.HasAlarm(expireAlarm)) {
+                    dispatcher.RemoveAlarm(expireAlarm);
+                }
+
+                status = ImportState(addr, NULL, 0, foundNodeArgs, numFoundNodeArgs);
+                if (status != ER_OK) {
+                    QCC_LogError(status, ("Dropping %s due to import state error", busName.c_str()));
+                    bt.Disconnect(busName);
+                    goto exit;
+                }
+
+            } else {
+                // We are the still the master
+                bool noRotateMinions = !RotateMinions();
+                delete newMaster;
+
+                status = ImportState(addr, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs);
+                if (status != ER_OK) {
+                    QCC_LogError(status, ("Dropping %s due to import state error", busName.c_str()));
+                    bt.Disconnect(busName);
+                    goto exit;
+                }
+
+                assert(find.resultDest.empty());
+                if (noRotateMinions && RotateMinions()) {
+                    // Force changing from permanent delegations to durational delegations
+                    advertise.dirty = true;
+                    find.dirty = true;
+                }
+            }
+
+            QCC_DbgPrintf(("We are %s, %s is now our %s",
+                           IsMaster() ? "still the master" : (IsDrone() ? "now a drone" : "just a minion"),
+                           addr.ToString().c_str(), IsMaster() ? "minion" : "master"));
+
+            if (!IsMinion()) {
+                if (IsMaster()) {
+                    // Can't let the to-be-updated masterUUIDRev have a value that is
+                    // the same as the UUIDRev value used by our new minion.
+                    const uint32_t lowerBound = ((otherUUIDRev > (bt::INVALID_UUIDREV + 10)) ?
+                                                 (otherUUIDRev - 10) :
+                                                 bt::INVALID_UUIDREV);
+                    const uint32_t upperBound = ((otherUUIDRev < (numeric_limits<uint32_t>::max() - 10)) ?
+                                                 (otherUUIDRev + 10) :
+                                                 numeric_limits<uint32_t>::max());
+                    while ((masterUUIDRev == bt::INVALID_UUIDREV) &&
+                           (masterUUIDRev > lowerBound) &&
+                           (masterUUIDRev < upperBound)) {
+                        masterUUIDRev = qcc::Rand32();
+                    }
+                }
+
+                UpdateDelegations(advertise);
+                UpdateDelegations(find);
+                if (IsDrone()) {
+                    if (advertise.minion != self) {
+                        advertise.minion = self;
+                        QCC_DbgPrintf(("Set advertise minion to ourself"));
+                    }
+                    if (find.minion != self) {
+                        find.minion = self;
+                        QCC_DbgPrintf(("Set find minion to ourself"));
+                    }
+                }
+            }
+
+            if (IsMaster()) {
+                ResetExpireNameAlarm();
+            } else {
+                RemoveExpireNameAlarm();
+                dispatcher.RemoveAlarm(stopAd);
+            }
+        }
+    } else {
+        delete newMaster;
+        qcc::String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        QCC_LogError(ER_FAIL, ("Dropping %s due to internal error: %s - %s", busName.c_str(), errName, errMsg.c_str()));
+        bt.Disconnect(busName);
+    }
+
+exit:
+    lock.Unlock();
 }
 
 
@@ -2167,7 +2206,7 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
             break;
 
         case DispatchInfo::NAME_LOST:
-            QCC_DbgPrintf(("    Process name lost"));
+            QCC_DbgPrintf(("    Process local bus name lost"));
             DeferredNameLostHander(static_cast<NameLostDispatchInfo*>(op)->name);
             break;
 
@@ -2180,6 +2219,13 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
             QCC_DbgPrintf(("    Send set state"));
             SendSetStateDispatchInfo* di = static_cast<SendSetStateDispatchInfo*>(op);
             DeferredSendSetState(di->addr, di->busName);
+            break;
+        }
+
+        case DispatchInfo::PROCESS_SET_STATE_REPLY: {
+            QCC_DbgPrintf(("    Process set state reply"));
+            ProcessSetStateReplyDispatchInfo* di = static_cast<ProcessSetStateReplyDispatchInfo*>(op);
+            DeferredProcessSetStateReply(di->msg, di->newMaster, di->addr, di->busName);
             break;
         }
 
