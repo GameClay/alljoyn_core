@@ -2010,7 +2010,7 @@ void BTController::FillFoundNodesMsgArgs(vector<MsgArg>& args, const BTNodeDB& a
     map<BTBusAddress, BTNodeDB> xformMap;
     adInfo.Lock();
     for (it = adInfo.Begin(); it != adInfo.End(); ++it) {
-        xformMap[(*it)->GetConnectAddress()].AddNode(*it);
+        xformMap[(&adInfo == &nodeDB) ? self->GetBusAddress() : (*it)->GetConnectAddress()].AddNode(*it);
     }
     adInfo.Unlock();
 
