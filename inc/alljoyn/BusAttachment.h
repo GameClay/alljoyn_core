@@ -342,22 +342,34 @@ class BusAttachment : public MessageReceiver {
 
     /**
      * Enable peer-to-peer security. This function must be called by applications that want to use
-     * secure interfaces. This bus must have been started by calling BusAttachment::Start() before this
-     * function is called.
+     * authentication and encryption . The bus must have been started by calling
+     * BusAttachment::Start() before this function is called. If the application is providing its
+     * own key store implementation it must have already called RegisterKeyStoreListener() before
+     * calling this function.
      *
-     * @param authMechanisms  The authentication mechanism(s) to use for peer-to-peer authentication.
-     *                        If this parameter is NULL peer-to-peer authentication is disabled.
+     * @param authMechanisms   The authentication mechanism(s) to use for peer-to-peer authentication.
+     *                         If this parameter is NULL peer-to-peer authentication is disabled.
      *
-     * @param listener        Passes password and other authentication related requests to the application.
+     * @param listener         Passes password and other authentication related requests to the application.
      *
-     * @param keyStoreFileName Optional parameter to specify the filename of the default key store.  The
+     * @param isShared         optional parameter that indicates if the key store is shared between multiple
+     *                         applications. It is generally harmless to set this to true even when the
+     *                         key store is not shared but it adds some unnecessary calls to the key store
+     *                         listener to load and store the key store in this case.
+     *
+     * @param keyStoreFileName Optional parameter to specify the filename of the default key store. The
      *                         default value is the applicationName parameter of BusAttachment().
+     *                         Note that this parameter is only meaningful when using the default
+     *                         key store implementation.
+     *
      *
      * @return
      *      - #ER_OK if peer security was enabled.
      *      - #ER_BUS_BUS_NOT_STARTED BusAttachment::Start has not be called
      */
-    QStatus EnablePeerSecurity(const char* authMechanisms, AuthListener* listener,
+    QStatus EnablePeerSecurity(const char* authMechanisms,
+                               AuthListener* listener,
+                               bool isShared = false,
                                const char* keyStoreFileName = NULL);
 
     /**
@@ -386,8 +398,13 @@ class BusAttachment : public MessageReceiver {
      * This overrides the internal key store listener.
      *
      * @param listener  The key store listener to set.
+     *
+     * @return
+     *      - #ER_OK if the key store listener was set
+     *      - #ER_BUS_LISTENER_ALREADY_SET if a listener has been set by this function or because
+     *         EnablePeerSecurity has been called.
      */
-    void RegisterKeyStoreListener(KeyStoreListener& listener);
+    QStatus RegisterKeyStoreListener(KeyStoreListener& listener);
 
     /**
      * Reloads the key store for this bus attachment. This function would normally only be called in

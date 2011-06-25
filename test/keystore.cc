@@ -50,6 +50,8 @@ int main(int argc, char** argv)
 {
     qcc::GUID guid1;
     qcc::GUID guid2;
+    qcc::GUID guid3;
+    qcc::GUID guid4;
     QStatus status = ER_OK;
     KeyBlob key;
 
@@ -57,6 +59,8 @@ int main(int argc, char** argv)
     printf("AllJoyn Library build info: %s\n", ajn::GetBuildInfo());
 
     Crypto_AES::Block* encrypted = new Crypto_AES::Block[Crypto_AES::NumBlocks(sizeof(testData))];
+
+    printf("Testing basic key encryption/decryption\n");
 
     /* Encryption step */
     {
@@ -159,10 +163,12 @@ int main(int argc, char** argv)
         }
     }
 
+    printf("Testing key store STORE\n");
+
     {
         KeyStore keyStore("keystore test");
 
-        keyStore.Load(NULL);
+        keyStore.Init(NULL, true);
         keyStore.Clear();
 
         key.Rand(Crypto_AES::AES128_SIZE, KeyBlob::AES);
@@ -176,20 +182,89 @@ int main(int argc, char** argv)
             goto ErrorExit;
         }
     }
+
+    printf("Testing key store LOAD\n");
+
     {
         KeyStore keyStore("keystore test");
-        keyStore.Load(NULL);
+        keyStore.Init(NULL, true);
 
         status = keyStore.GetKey(guid1, key);
         if (status != ER_OK) {
             printf("Failed to load guid1\n");
             goto ErrorExit;
         }
-        status = keyStore.GetKey(guid1, key);
+        status = keyStore.GetKey(guid2, key);
         if (status != ER_OK) {
             printf("Failed to load guid2\n");
             goto ErrorExit;
         }
+    }
+
+    printf("Testing key store MERGE\n");
+    {
+        KeyStore keyStore("keystore test");
+        keyStore.Init(NULL, true);
+
+        key.Rand(Crypto_AES::AES128_SIZE, KeyBlob::AES);
+        keyStore.AddKey(guid4, key);
+
+        {
+            KeyStore keyStore("keystore test");
+            keyStore.Init(NULL, true);
+
+            /* Replace a key */
+            key.Rand(Crypto_AES::AES128_SIZE, KeyBlob::AES);
+            keyStore.AddKey(guid1, key);
+
+            /* Add a key */
+            key.Rand(Crypto_AES::AES128_SIZE, KeyBlob::AES);
+            keyStore.AddKey(guid3, key);
+
+            /* Delete a key */
+            keyStore.DelKey(guid2);
+
+            status = keyStore.Store();
+            if (status != ER_OK) {
+                printf("Failed to store keystore %s\n", QCC_StatusText(status));
+                goto ErrorExit;
+            }
+        }
+
+        status = keyStore.Reload();
+        if (status != ER_OK) {
+            printf("Failed to reload keystore %s\n", QCC_StatusText(status));
+            goto ErrorExit;
+        }
+
+        status = keyStore.GetKey(guid1, key);
+        if (status != ER_OK) {
+            printf("Failed to load guid1\n");
+            goto ErrorExit;
+        }
+        status = keyStore.GetKey(guid2, key);
+        if (status == ER_OK) {
+            printf("guid2 was not deleted\n");
+            goto ErrorExit;
+        }
+        status = keyStore.GetKey(guid3, key);
+        if (status != ER_OK) {
+            printf("Failed to load guid3\n");
+            goto ErrorExit;
+        }
+        status = keyStore.GetKey(guid4, key);
+        if (status != ER_OK) {
+            printf("Failed to load guid4\n");
+            goto ErrorExit;
+        }
+
+        /* Store merged key store */
+        status = keyStore.Store();
+        if (status != ER_OK) {
+            printf("Failed to store keystore\n");
+            goto ErrorExit;
+        }
+
     }
 
     printf("keystore unit test PASSED\n");

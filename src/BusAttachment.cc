@@ -475,9 +475,9 @@ const InterfaceDescription* BusAttachment::GetInterface(const char* name) const
     }
 }
 
-void BusAttachment::RegisterKeyStoreListener(KeyStoreListener& listener)
+QStatus BusAttachment::RegisterKeyStoreListener(KeyStoreListener& listener)
 {
-    busInternal->keyStore.SetListener(listener);
+    return busInternal->keyStore.SetListener(listener);
 }
 
 void BusAttachment::ClearKeyStore()
@@ -546,9 +546,10 @@ void BusAttachment::UnregisterBusObject(BusObject& object)
 
 QStatus BusAttachment::EnablePeerSecurity(const char* authMechanisms,
                                           AuthListener* listener,
+                                          bool isShared,
                                           const char* keyStoreFileName)
 {
-    QStatus status = busInternal->keyStore.Load(keyStoreFileName);
+    QStatus status = busInternal->keyStore.Init(keyStoreFileName, isShared);
     if (status == ER_OK) {
         /* Register peer-to-peer authentication mechanisms */
         busInternal->authManager.RegisterMechanism(AuthMechSRP::Factory, AuthMechSRP::AuthName());
