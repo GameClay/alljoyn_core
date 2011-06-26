@@ -1659,16 +1659,18 @@ QStatus BTTransport::BTAccessor::SetDiscoverabilityProperty()
     }
     adapterLock.Unlock();
 
-    QCC_DbgHLPrintf(("%s discoverability", discoverable ? "Enabled" : "Disabled"));
-
     for (list<AdapterObject>::const_iterator it = adapterList.begin(); it != adapterList.end(); ++it) {
         Message reply(bzBus);
+        QCC_DbgPrintf(("%s discoverability on %s", discoverable ? "Enabling" : "Disabling", (*it)->address.ToString().c_str()));
         status = (*it)->MethodCall(*org.bluez.Adapter.SetProperty, dargs, ArraySize(dargs));
         if (status != ER_OK) {
             QCC_LogError(status, ("Failed to set 'Discoverable' %s on %s",
                                   discoverable ? "true" : "false", (*it)->GetPath().c_str()));
         }
     }
+
+    QCC_DbgHLPrintf(("%s discoverability", discoverable ? "Enabled" : "Disabled"));
+
     return status;
 }
 

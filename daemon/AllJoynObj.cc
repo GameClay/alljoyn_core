@@ -2150,6 +2150,7 @@ void AllJoynObj::ExchangeNamesSignalHandler(const InterfaceDescription::Member* 
         map<qcc::StringMapKey, RemoteEndpoint*>::iterator it = b2bEndpoints.begin();
         while (it != b2bEndpoints.end()) {
             if ((bit == b2bEndpoints.end()) || (bit->second->GetRemoteGUID() != it->second->GetRemoteGUID())) {
+                QCC_DbgPrintf(("Propagating ExchangeName signal to %s", it->second->GetUniqueName().c_str()));
                 msg->ReMarshal(bus.GetInternal().GetLocalEndpoint().GetUniqueName().c_str(), true);
                 QStatus status = it->second->PushMessage(msg);
                 if (ER_OK != status) {
@@ -2227,6 +2228,7 @@ void AllJoynObj::NameChangedSignalHandler(const InterfaceDescription::Member* me
         map<qcc::StringMapKey, RemoteEndpoint*>::iterator it = b2bEndpoints.begin();
         while (it != b2bEndpoints.end()) {
             if ((bit == b2bEndpoints.end()) || (bit->second->GetRemoteGUID() != it->second->GetRemoteGUID())) {
+                QCC_DbgPrintf(("Propagating ExchangeName signal to %s", it->second->GetUniqueName().c_str()));
                 msg->ReMarshal(bus.GetInternal().GetLocalEndpoint().GetUniqueName().c_str(), true);
                 QStatus status = it->second->PushMessage(msg);
                 if (ER_OK != status) {

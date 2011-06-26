@@ -436,7 +436,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                 }
 
                 foundNodeDB.UpdateDB(&newAdInfo, &oldAdInfo);
-                foundNodeDB.DumpTable("Updated set of found devices due to remote device advertisement change");
+                foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices due to remote device advertisement change");
                 foundNodeDB.Unlock();
 
                 distributeChanges = true;
@@ -794,7 +794,8 @@ void BTController::DeferredNameLostHander(const String& name)
 
 QStatus BTController::DeferredSendSetState(const BTBusAddress& addr, const qcc::String& busName)
 {
-    QCC_DbgTrace(("BTController::DeferredSendSetState(busName = %s)", busName.c_str()));
+    QCC_DbgTrace(("BTController::DeferredSendSetState(addr = %s, busName = %s)",
+                  addr.ToString().c_str(), busName.c_str()));
     assert(!master);
 
     QStatus status;
@@ -938,7 +939,7 @@ QStatus BTController::DeferredSendSetState(const BTBusAddress& addr, const qcc::
 
             QCC_DbgPrintf(("We are %s, %s is now our %s",
                            IsMaster() ? "still the master" : (IsDrone() ? "now a drone" : "just a minion"),
-                           busName.c_str(), IsMaster() ? "minion" : "master"));
+                           addr.ToString().c_str(), IsMaster() ? "minion" : "master"));
 
             if (!IsMinion()) {
                 if (IsMaster()) {
@@ -1001,8 +1002,8 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
      * FoundAdvertisedName signal.
      */
 
-    if (oldAdInfo) oldAdInfo->DumpTable("Old ad information");
-    if (newAdInfo) newAdInfo->DumpTable("New ad information");
+    if (oldAdInfo) oldAdInfo->DumpTable("oldAdInfo - Old ad information");
+    if (newAdInfo) newAdInfo->DumpTable("newAdInfo - New ad information");
 
     // Now inform everyone of the changes in advertised names.
     if (!IsMinion()) {
@@ -1280,11 +1281,6 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
         return;
     }
 
-    /*
-     * Only get the number of direct connections first.  If the other guy has
-     * more direct connections then there is no point in extracting all of his
-     * names from the second argument.
-     */
     status = msg->GetArgs(SIG_SET_STATE_IN,
                           &numConnections,
                           &otherUUIDRev,
@@ -1316,6 +1312,9 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
         return;
     }
 
+    // Check if we're receiving a SetState method call from a device we have
+    // just sent a SetState method call to.  If so ignore their state
+    // information if their address is greater than ours.
     if ((exchangingState.find(addr) == exchangingState.end()) || (addr < self->GetBusAddress()))
     {
         if (UseLocalFind() && find.active) {
@@ -1369,7 +1368,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
 
         QCC_DbgPrintf(("We are %s, %s is now our %s",
                        IsMaster() ? "still the master" : (IsDrone() ? "now a drone" : "just a minion"),
-                       sender.c_str(), IsMaster() ? "minion" : "master"));
+                       addr.ToString().c_str(), IsMaster() ? "minion" : "master"));
 
         if (!IsMinion()) {
             if (IsMaster()) {
@@ -1580,7 +1579,7 @@ void BTController::HandleFoundNamesChange(const InterfaceDescription::Member* me
         BTNodeDB::const_iterator nodeit;
 
         foundNodeDB.UpdateDB(lost ? NULL : &adInfo, lost ? &adInfo : NULL);
-        foundNodeDB.DumpTable("Updated set of found devices");
+        foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices");
         for (nodeit = adInfo.Begin(); nodeit != adInfo.End(); ++nodeit) {
             vector<String> vectorizedNames;
             const BTNodeInfo& node = *nodeit;
@@ -1752,7 +1751,7 @@ QStatus BTController::ImportState(const BTBusAddress& addr,
     addedDB.UpdateDB(&incomingDB, NULL);
 
     foundNodeDB.UpdateDB(&incomingDB, &staleDB);
-    foundNodeDB.DumpTable("Updated set of found devices from imported state information from new connection");
+    foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices from imported state information from new connection");
 
     bool alarmArmed = dispatcher.HasAlarm(expireAlarm);
     if (alarmArmed) {
@@ -2109,8 +2108,8 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
                 BTNodeDB expiredDB;
                 foundNodeDB.PopExpiredNodes(expiredDB);
 
-                expiredDB.DumpTable("Expiring cached advertisements");
-                foundNodeDB.DumpTable("Remaining cached advertisements after expiration");
+                expiredDB.DumpTable("expiredDB - Expiring cached advertisements");
+                foundNodeDB.DumpTable("foundNodeDB - Remaining cached advertisements after expiration");
 
                 DistributeAdvertisedNameChanges(NULL, &expiredDB);
                 uint64_t dispatchTime = foundNodeDB.NextNodeExpiration();
