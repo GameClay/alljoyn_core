@@ -352,16 +352,15 @@ class BusAttachment : public MessageReceiver {
      *
      * @param listener         Passes password and other authentication related requests to the application.
      *
-     * @param isShared         optional parameter that indicates if the key store is shared between multiple
-     *                         applications. It is generally harmless to set this to true even when the
-     *                         key store is not shared but it adds some unnecessary calls to the key store
-     *                         listener to load and store the key store in this case.
-     *
      * @param keyStoreFileName Optional parameter to specify the filename of the default key store. The
      *                         default value is the applicationName parameter of BusAttachment().
      *                         Note that this parameter is only meaningful when using the default
      *                         key store implementation.
      *
+     * @param isShared         optional parameter that indicates if the key store is shared between multiple
+     *                         applications. It is generally harmless to set this to true even when the
+     *                         key store is not shared but it adds some unnecessary calls to the key store
+     *                         listener to load and store the key store in this case.
      *
      * @return
      *      - #ER_OK if peer security was enabled.
@@ -369,8 +368,8 @@ class BusAttachment : public MessageReceiver {
      */
     QStatus EnablePeerSecurity(const char* authMechanisms,
                                AuthListener* listener,
-                               bool isShared = false,
-                               const char* keyStoreFileName = NULL);
+                               const char* keyStoreFileName = NULL,
+                               bool isShared = false);
 
     /**
      * Check is peer security has been enabled for this bus attachment.

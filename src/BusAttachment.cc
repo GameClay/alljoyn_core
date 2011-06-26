@@ -546,8 +546,8 @@ void BusAttachment::UnregisterBusObject(BusObject& object)
 
 QStatus BusAttachment::EnablePeerSecurity(const char* authMechanisms,
                                           AuthListener* listener,
-                                          bool isShared,
-                                          const char* keyStoreFileName)
+                                          const char* keyStoreFileName,
+                                          bool isShared)
 {
     QStatus status = busInternal->keyStore.Init(keyStoreFileName, isShared);
     if (status == ER_OK) {
