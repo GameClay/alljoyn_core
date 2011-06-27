@@ -1344,6 +1344,7 @@ void BTController::HandleSetStateReply(Message& msg, void* context)
     QCC_DbgTrace(("BTController::HandleSetStateReply(reply = <>, context = %p)", context));
     SetStateReplyContext* ctx = reinterpret_cast<SetStateReplyContext*>(context);
     DispatchOperation(new ProcessSetStateReplyDispatchInfo(msg, ctx->newMaster, ctx->addr, ctx->busName));
+    delete ctx;
 }
 
 
