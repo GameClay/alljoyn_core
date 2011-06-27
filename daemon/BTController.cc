@@ -2268,7 +2268,9 @@ QStatus BTController::NameArgInfo::SendDelegateSignal()
                    minion->GetBusAddress().ToString().c_str()));
     assert(minion != bto.self);
 
+    bto.lock.Unlock();  // SendDelegateSignal gets called with bto.lock held.
     QStatus status = bto.Signal(minion->GetUniqueName().c_str(), 0, *delegateSignal, args->args, args->argsSize);
+    bto.lock.Lock();
 
     return status;
 }
