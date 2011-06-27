@@ -137,6 +137,7 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
 
     bool destinationEmpty = destination[0] == '\0';
     if (!destinationEmpty) {
+        nameTable.Lock();
         BusEndpoint* destEndpoint = nameTable.FindEndpoint(destination);
         if (destEndpoint) {
             if (destEndpoint != localEndpoint) {
@@ -183,7 +184,13 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
                         msg->ErrorMsg("org.alljoyn.Bus.Blocked", "Method reply would be blocked because caller does not allow remote messages");
                         PushMessage(msg, *localEndpoint);
                     } else {
-                        status = SendThroughEndpoint(msg, *destEndpoint, sessionId);
+                        if (destEndpoint == localEndpoint) {
+                            nameTable.Unlock();
+                            status = SendThroughEndpoint(msg, *destEndpoint, sessionId);
+                            nameTable.Lock();
+                        } else {
+                            status = SendThroughEndpoint(msg, *destEndpoint, sessionId);
+                        }
                     }
                 } else {
                     QCC_DbgPrintf(("Blocking message from %s to %s (serial=%d) because receiver does not allow remote messages",
@@ -202,7 +209,9 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
                     QCC_LogError(status, ("BusEndpoint::PushMessage failed"));
                 }
             }
+            nameTable.Unlock();
         } else {
+            nameTable.Unlock();
             if ((msg->GetFlags() & ALLJOYN_FLAG_AUTO_START) && (sender->GetEndpointType() != BusEndpoint::ENDPOINT_TYPE_BUS2BUS)) {
                 /* Need to auto start the service targeted by the message and postpone delivery of the message. */
                 Bus& bus(reinterpret_cast<Bus&>(msg->bus));
