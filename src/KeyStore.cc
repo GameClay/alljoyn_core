@@ -86,10 +86,12 @@ class DefaultKeyStoreListener : public KeyStoreListener {
         {
             FileSource source(fileName);
             if (source.IsValid()) {
+                source.Lock(true);
                 status = keyStore.Pull(source, fileName);
                 if (status == ER_OK) {
                     QCC_DbgHLPrintf(("Read key store from %s", fileName.c_str()));
                 }
+                source.Unlock();
                 return status;
             }
         }
@@ -105,11 +107,17 @@ class DefaultKeyStoreListener : public KeyStoreListener {
         /* Load the empty keystore */
         {
             FileSource source(fileName);
-            status = keyStore.Pull(source, fileName);
-            if (status == ER_OK) {
-                QCC_DbgHLPrintf(("Initialized key store %s", fileName.c_str()));
+            if (source.IsValid()) {
+                source.Lock(true);
+                status = keyStore.Pull(source, fileName);
+                if (status == ER_OK) {
+                    QCC_DbgHLPrintf(("Initialized key store %s", fileName.c_str()));
+                } else {
+                    QCC_LogError(status, ("Failed to initialize key store %s", fileName.c_str()));
+                }
+                source.Unlock();
             } else {
-                QCC_LogError(status, ("Failed to initialize key store %s", fileName.c_str()));
+                status = ER_BUS_READ_ERROR;
             }
             return status;
         }
@@ -119,10 +127,12 @@ class DefaultKeyStoreListener : public KeyStoreListener {
         QStatus status;
         FileSink sink(fileName, FileSink::PRIVATE);
         if (sink.IsValid()) {
+            sink.Lock(true);
             status = keyStore.Push(sink);
             if (status == ER_OK) {
                 QCC_DbgHLPrintf(("Wrote key store to %s", fileName.c_str()));
             }
+            sink.Unlock();
         } else {
             status = ER_BUS_WRITE_ERROR;
             QCC_LogError(status, ("Cannot write key store to %s", fileName.c_str()));
@@ -221,7 +231,6 @@ QStatus KeyStore::Store()
             lock.Lock();
         }
         if (status == ER_OK) {
-            ++revision;
             stored = new Event();
             lock.Unlock();
             status = listener->StoreRequest(*this);
@@ -435,6 +444,12 @@ QStatus KeyStore::Reload()
     if (storeState == UNAVAILABLE) {
         return ER_BUS_KEYSTORE_NOT_LOADED;
     }
+    /*
+     * Reload is defined to be a no-op for non-shared key stores
+     */
+    if (!shared) {
+        return ER_OK;
+    }
 
     lock.Lock();
 
@@ -506,7 +521,7 @@ QStatus KeyStore::Push(Sink& sink)
     size_t pushed;
     QStatus status = ER_OK;
 
-    QCC_DbgHLPrintf(("KeyStore::Push (revision %d)", revision));
+    QCC_DbgHLPrintf(("KeyStore::Push (revision %d)", revision + 1));
 
     lock.Lock();
 

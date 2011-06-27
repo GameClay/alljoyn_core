@@ -619,6 +619,7 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
 
     assert(!peerState->isLocalPeer);
 
+    KeyStore& keyStore = bus.GetInternal().GetKeyStore();
     bool firstPass = true;
     do {
         /*
@@ -627,9 +628,21 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
          * session key on the first pass we start an authentication conversation to establish a new
          * master secret.
          */
-        if (!bus.GetInternal().GetKeyStore().HasKey(remotePeerGuid)) {
-            status = ER_AUTH_FAIL;
-        } else {
+        if (!keyStore.HasKey(remotePeerGuid)) {
+            /*
+             * If the key store is shared try reloading in case another application has already
+             * authenticated this peer.
+             */
+            if (keyStore.IsShared()) {
+                keyStore.Reload();
+                if (!keyStore.HasKey(remotePeerGuid)) {
+                    status = ER_AUTH_FAIL;
+                }
+            } else {
+                status = ER_AUTH_FAIL;
+            }
+        }
+        if (status == ER_OK) {
             /*
              * Generate a random string - this is the local half of the seed string.
              */
@@ -676,7 +689,6 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
                 status = sasl.Advance(inStr, outStr, authState);
                 if (authState == SASLEngine::ALLJOYN_AUTH_SUCCESS) {
                     KeyBlob masterSecret;
-                    KeyStore& keyStore = bus.GetInternal().GetKeyStore();
                     mech = sasl.GetMechanism();
                     status = sasl.GetMasterSecret(masterSecret);
                     if (status == ER_OK) {

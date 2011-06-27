@@ -161,12 +161,14 @@ int main(int argc, char** argv)
             printf("Tag was incorrect\n");
             goto ErrorExit;
         }
+
+        DeleteFile("keystore_test");
     }
 
     printf("Testing key store STORE\n");
 
     {
-        KeyStore keyStore("keystore test");
+        KeyStore keyStore("keystore_test");
 
         keyStore.Init(NULL, true);
         keyStore.Clear();
@@ -186,7 +188,7 @@ int main(int argc, char** argv)
     printf("Testing key store LOAD\n");
 
     {
-        KeyStore keyStore("keystore test");
+        KeyStore keyStore("keystore_test");
         keyStore.Init(NULL, true);
 
         status = keyStore.GetKey(guid1, key);
@@ -203,14 +205,14 @@ int main(int argc, char** argv)
 
     printf("Testing key store MERGE\n");
     {
-        KeyStore keyStore("keystore test");
+        KeyStore keyStore("keystore_test");
         keyStore.Init(NULL, true);
 
         key.Rand(Crypto_AES::AES128_SIZE, KeyBlob::AES);
         keyStore.AddKey(guid4, key);
 
         {
-            KeyStore keyStore("keystore test");
+            KeyStore keyStore("keystore_test");
             keyStore.Init(NULL, true);
 
             /* Replace a key */

@@ -195,6 +195,13 @@ class KeyStore {
      */
     QStatus Push(qcc::Sink& sink);
 
+    /**
+     * Indicates if this is a shared key store.
+     *
+     * @return  Returns true if the key store is shared between multiple applications.
+     */
+    bool IsShared() { return shared; }
+
   private:
 
     /**
