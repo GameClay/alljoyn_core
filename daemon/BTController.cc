@@ -532,15 +532,8 @@ void BTController::DeferredBTDeviceAvailable(bool on)
             assert(listenAddr.IsValid());
             listening = true;
             nodeDB.Lock();
-            if (listenAddr != self->GetBusAddress()) {
-                if (self->IsValid()) {
-                    // Gotta remove it from the DB since the DB has it indexed
-                    // on the BusAddress which changed.
-                    nodeDB.RemoveNode(self);
-                }
-                self->SetBusAddress(listenAddr);
-                nodeDB.AddNode(self);
-            } // else 'self' is already in nodeDB with the correct BusAddress.
+            self->SetBusAddress(listenAddr);
+            nodeDB.AddNode(self);
             BDAddressSet ignoreAddrs;
             BTNodeDB::const_iterator it;
             for (it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
@@ -557,25 +550,25 @@ void BTController::DeferredBTDeviceAvailable(bool on)
             }
         }
     } else {
-        if (IsMaster()) {
-            if (advertise.active) {
-                if (UseLocalAdvertise()) {
-                    bt.StopAdvertise();
-                }
-                advertise.active = false;
-            }
-            if (find.active) {
-                if (UseLocalFind()) {
-                    bt.StopFind();
-                }
-                find.active = false;
-            }
-        }
         if (listening) {
-            self->SetBusAddress(BTBusAddress());
             bt.StopListen();
             listening = false;
+            self->SetBusAddress(BTBusAddress());
         }
+        if (advertise.active) {
+            if (!IsMinion() || UseLocalAdvertise()) {
+                bt.StopAdvertise();
+            }
+            advertise.active = false;
+            dispatcher.RemoveAlarm(stopAd);
+        }
+        if (find.active) {
+            if (IsMinion() || UseLocalFind()) {
+                bt.StopFind();
+            }
+            find.active = false;
+        }
+        nodeDB.Clear();
     }
     lock.Unlock();
 }
