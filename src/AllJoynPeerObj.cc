@@ -59,7 +59,7 @@ static const uint32_t PEER_AUTH_VERSION = 0x00010000;
  */
 qcc::Mutex AllJoynPeerObj::clientLock;
 
-AllJoynPeerObj::AllJoynPeerObj(BusAttachment& bus) : BusObject(bus, org::alljoyn::Bus::Peer::ObjectPath, false), requestThread(*this)
+AllJoynPeerObj::AllJoynPeerObj(BusAttachment& bus) : BusObject(bus, org::alljoyn::Bus::Peer::ObjectPath, false), peerAuthListener(0), requestThread(*this)
 {
     /* Add org.alljoyn.Bus.Peer.HeaderCompression interface */
     {
