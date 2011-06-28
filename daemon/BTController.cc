@@ -901,31 +901,43 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
 
     // Now inform everyone of the changes in advertised names.
     if (!IsMinion()) {
-        vector<BTNodeInfo> destNodesOld;
-        vector<BTNodeInfo> destNodesNew;
+        set<BTNodeInfo> destNodesOld;
+        set<BTNodeInfo> destNodesNew;
         nodeDB.Lock();
-        destNodesOld.reserve(nodeDB.Size());
-        destNodesNew.reserve(nodeDB.Size());
         for (BTNodeDB::const_iterator it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
             const BTNodeInfo& node = *it;
-            if (node->IsDirectMinion() && !node->FindNamesEmpty()) {
-                assert(node != self);  // We can't be a direct minion of ourself.
-                QCC_DbgPrintf(("Notify %s of the name changes.", node->GetBusAddress().ToString().c_str()));
-                if (oldAdInfo && oldAdInfo->Size() > 0) {
-                    destNodesOld.push_back(node);
-                }
-                if (newAdInfo && newAdInfo->Size() > 0) {
-                    destNodesNew.push_back(node);
+            if (!node->FindNamesEmpty()) {
+                if (node->IsDirectMinion()) {
+                    assert(node != self);  // We can't be a direct minion of ourself.
+                    QCC_DbgPrintf(("Notify %s of the name changes.", node->GetBusAddress().ToString().c_str()));
+                    if (oldAdInfo && oldAdInfo->Size() > 0) {
+                        destNodesOld.insert(node);
+                    }
+                    if (newAdInfo && newAdInfo->Size() > 0) {
+                        destNodesNew.insert(node);
+                    }
+                } else {
+                    BTNodeInfo drone = nodeDB.FindNode(node->GetConnectAddress());
+                    QCC_DbgPrintf(("Notify %s of the name changes via %s.",
+                                   node->GetBusAddress().ToString().c_str(),
+                                   drone->GetBusAddress().ToString().c_str()));
+                    assert(drone->IsValid());
+                    if (oldAdInfo && oldAdInfo->Size() > 0) {
+                        destNodesOld.insert(drone);
+                    }
+                    if (newAdInfo && newAdInfo->Size() > 0) {
+                        destNodesNew.insert(drone);
+                    }
                 }
             }
         }
         nodeDB.Unlock();
 
-        for (vector<BTNodeInfo>::const_iterator it = destNodesOld.begin(); it != destNodesOld.end(); ++it) {
+        for (set<BTNodeInfo>::const_iterator it = destNodesOld.begin(); it != destNodesOld.end(); ++it) {
             status = SendFoundNamesChange(*it, *oldAdInfo, true);
         }
 
-        for (vector<BTNodeInfo>::const_iterator it = destNodesNew.begin(); it != destNodesNew.end(); ++it) {
+        for (set<BTNodeInfo>::const_iterator it = destNodesNew.begin(); it != destNodesNew.end(); ++it) {
             status = SendFoundNamesChange(*it, *newAdInfo, false);
         }
     }
