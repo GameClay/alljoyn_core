@@ -290,7 +290,6 @@ QStatus BTController::AddAdvertiseName(const qcc::String& name)
     lock.Unlock();
 
     if (isMaster && (status == ER_OK)) {
-        self->AddAdvertiseName(name);  // self gets new name added to list of existing names
         if (lDevAvailable) {
             BTNodeDB newAdInfo;
             BTNodeInfo node(addr, self->GetUniqueName(), self->GetGUID());  // make an actual copy of self
