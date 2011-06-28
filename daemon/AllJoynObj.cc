@@ -1804,17 +1804,22 @@ void AllJoynObj::FindAdvertisedName(const InterfaceDescription::Member* member, 
         ++it;
     }
     if (ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS == replyCode) {
+        /* Notify transports if this is a new prefix */
+        bool notifyTransports = (discoverMap.find(namePrefix) == discoverMap.end());
+
         /* Add to discover map */
         discoverMap.insert(pair<String, String>(namePrefix, sender));
 
         /* Find name  on all remote transports */
-        TransportList& transList = bus.GetInternal().GetTransportList();
-        for (size_t i = 0; i < transList.GetNumTransports(); ++i) {
-            Transport* trans = transList.GetTransport(i);
-            if (trans) {
-                trans->EnableDiscovery(namePrefix.c_str());
-            } else {
-                QCC_LogError(ER_BUS_TRANSPORT_NOT_AVAILABLE, ("NULL transport pointer found in transportList"));
+        if (notifyTransports) {
+            TransportList& transList = bus.GetInternal().GetTransportList();
+            for (size_t i = 0; i < transList.GetNumTransports(); ++i) {
+                Transport* trans = transList.GetTransport(i);
+                if (trans) {
+                    trans->EnableDiscovery(namePrefix.c_str());
+                } else {
+                    QCC_LogError(ER_BUS_TRANSPORT_NOT_AVAILABLE, ("NULL transport pointer found in transportList"));
+                }
             }
         }
     }
@@ -1887,7 +1892,7 @@ QStatus AllJoynObj::ProcCancelFindName(const qcc::String& sender, const qcc::Str
     /* Check to see if this prefix exists and delete it */
     bool foundNamePrefix = false;
     AcquireLocks();
-    multimap<qcc::String, qcc::String>::iterator it = discoverMap.find(namePrefix);
+    multimap<qcc::String, qcc::String>::iterator it = discoverMap.lower_bound(namePrefix);
     while ((it != discoverMap.end()) && (it->first == namePrefix)) {
         if (it->second == sender) {
             discoverMap.erase(it);
@@ -1896,10 +1901,10 @@ QStatus AllJoynObj::ProcCancelFindName(const qcc::String& sender, const qcc::Str
         }
         ++it;
     }
-    ReleaseLocks();
 
-    /* Disable discovery if we found a name */
-    if (foundNamePrefix) {
+    /* Disable discovery if we removed the last discoverMap entry with a given prefix */
+    bool isLastEntry = (discoverMap.find(namePrefix) == discoverMap.end());
+    if (foundNamePrefix && isLastEntry) {
         TransportList& transList = bus.GetInternal().GetTransportList();
         for (size_t i = 0; i < transList.GetNumTransports(); ++i) {
             Transport* trans =  transList.GetTransport(i);
@@ -1912,6 +1917,7 @@ QStatus AllJoynObj::ProcCancelFindName(const qcc::String& sender, const qcc::Str
     } else if (!foundNamePrefix) {
         status = ER_FAIL;
     }
+    ReleaseLocks();
     return status;
 }
 
