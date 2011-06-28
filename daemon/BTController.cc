@@ -328,6 +328,7 @@ QStatus BTController::RemoveAdvertiseName(const qcc::String& name)
     return status;
 }
 
+
 void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                                        uint32_t uuidRev)
 {
@@ -908,7 +909,8 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
         destNodesNew.reserve(nodeDB.Size());
         for (BTNodeDB::const_iterator it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
             const BTNodeInfo& node = *it;
-            if (node->IsDirectMinion() && !node->FindNamesEmpty() && (node != self)) {
+            if (node->IsDirectMinion() && !node->FindNamesEmpty()) {
+                assert(node != self);  // We can't be a direct minion of ourself.
                 QCC_DbgPrintf(("Notify %s of the name changes.", node->GetBusAddress().ToString().c_str()));
                 if (oldAdInfo && oldAdInfo->Size() > 0) {
                     destNodesOld.push_back(node);
@@ -1637,7 +1639,7 @@ void BTController::HandleFoundNamesChange(const InterfaceDescription::Member* me
         const BTNodeDB* newExternalDB = lost ? NULL : &externalDB;
         const BTNodeDB* oldExternalDB = lost ? &externalDB : NULL;
 
-        nodeDB.UpdateDB(newMinionDB, oldMinionDB);
+        nodeDB.UpdateDB(newMinionDB, oldMinionDB, false);
         foundNodeDB.UpdateDB(newExternalDB, oldExternalDB);
         foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices");
 
