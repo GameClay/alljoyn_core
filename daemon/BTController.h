@@ -245,10 +245,7 @@ class BTController :
      *
      * @return ER_OK if successful.
      */
-    QStatus RemoveFindName(const qcc::String& name)
-    {
-        return DoNameOp(name, *org.alljoyn.Bus.BTController.CancelFindName, false, find);
-    }
+    QStatus RemoveFindName(const qcc::String& name);
 
     /**
      * Process the found or lost device or pass it up the chain to the master node if
@@ -551,11 +548,9 @@ class BTController :
      *
      * @param newAdInfo     Added advertised names
      * @param oldAdInfo     Removed advertiesd names
-     *
-     * @return ER_OK if successful.
      */
-    QStatus DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
-                                            const BTNodeDB* oldAdInfo);
+    void DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
+                                         const BTNodeDB* oldAdInfo);
 
     /**
      * Send the FoundNames signal to the node interested in one or more of the
@@ -564,12 +559,10 @@ class BTController :
      * @param destNode      The minion that should receive the message.
      * @param adInfo        Advertise information to send.
      * @param lost          Set to true if names are lost, false otherwise.
-     *
-     * @return ER_OK if successful.
      */
-    QStatus SendFoundNamesChange(const BTNodeInfo& destNode,
-                                 const BTNodeDB& adInfo,
-                                 bool lost);
+    void SendFoundNamesChange(const BTNodeInfo& destNode,
+                              const BTNodeDB& adInfo,
+                              bool lost);
 
     /**
      * Send the one of the following specified signals to the node we believe

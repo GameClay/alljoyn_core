@@ -295,7 +295,7 @@ QStatus BTController::AddAdvertiseName(const qcc::String& name)
             BTNodeInfo node(addr, self->GetUniqueName(), self->GetGUID());  // make an actual copy of self
             node->AddAdvertiseName(name);  // copy of self only gets the new names (not the existing names)
             newAdInfo.AddNode(node);
-            status = DistributeAdvertisedNameChanges(&newAdInfo, NULL);
+            DistributeAdvertisedNameChanges(&newAdInfo, NULL);
         }
     }
 
@@ -320,10 +320,27 @@ QStatus BTController::RemoveAdvertiseName(const qcc::String& name)
             BTNodeInfo node(addr, self->GetUniqueName(), self->GetGUID());  // make an actual copy of self
             node->AddAdvertiseName(name);  // Yes 'Add' the name being removed (it goes in the old ad info).
             oldAdInfo.AddNode(node);
-            status = DistributeAdvertisedNameChanges(NULL, &oldAdInfo);
+            DistributeAdvertisedNameChanges(NULL, &oldAdInfo);
         }
     }
 
+    return status;
+}
+
+
+QStatus BTController::RemoveFindName(const qcc::String& name)
+{
+    QStatus status = DoNameOp(name, *org.alljoyn.Bus.BTController.CancelFindName, false, find);
+
+    if (self->FindNamesEmpty() && !IsMaster()) {
+        // We're not looking for any names so our master will stop sending us
+        // updates and assume that our set of found names is empty if we do
+        // start finding names again so we need tell AlljoynObj that the BT
+        // names we know about are expired.  Set an expiration timer for the
+        // names we currently know about.
+        foundNodeDB.RefreshExpiration(LOST_DEVICE_TIMEOUT);
+        ResetExpireNameAlarm();
+    }
     return status;
 }
 
@@ -879,12 +896,11 @@ exit:
 }
 
 
-QStatus BTController::DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
-                                                      const BTNodeDB* oldAdInfo)
+void BTController::DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
+                                                   const BTNodeDB* oldAdInfo)
 {
     QCC_DbgTrace(("BTController::DistributeAdvertisedNameChanges(newAdInfo = <%lu nodes>, oldAdInfo = <%lu nodes>)",
                   newAdInfo ? newAdInfo->Size() : 0, oldAdInfo ? oldAdInfo->Size() : 0));
-    QStatus status = ER_OK;
 
     /*
      * Lost names in oldAdInfo must be sent out before found names in
@@ -934,11 +950,11 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
         nodeDB.Unlock();
 
         for (set<BTNodeInfo>::const_iterator it = destNodesOld.begin(); it != destNodesOld.end(); ++it) {
-            status = SendFoundNamesChange(*it, *oldAdInfo, true);
+            SendFoundNamesChange(*it, *oldAdInfo, true);
         }
 
         for (set<BTNodeInfo>::const_iterator it = destNodesNew.begin(); it != destNodesNew.end(); ++it) {
-            status = SendFoundNamesChange(*it, *newAdInfo, false);
+            SendFoundNamesChange(*it, *newAdInfo, false);
         }
     }
 
@@ -966,14 +982,12 @@ QStatus BTController::DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
             }
         }
     }
-
-    return status;
 }
 
 
-QStatus BTController::SendFoundNamesChange(const BTNodeInfo& destNode,
-                                           const BTNodeDB& adInfo,
-                                           bool lost)
+void BTController::SendFoundNamesChange(const BTNodeInfo& destNode,
+                                        const BTNodeDB& adInfo,
+                                        bool lost)
 {
     QCC_DbgTrace(("BTController::SendFoundNamesChange(destNode = \"%s\", adInfo = <>, <%s>)",
                   destNode->GetBusAddress().ToString().c_str(),
@@ -995,7 +1009,11 @@ QStatus BTController::SendFoundNamesChange(const BTNodeInfo& destNode,
                         &arg, 1);
     }
 
-    return status;
+    if (status != ER_OK) {
+        QCC_LogError(status, ("Failed to send org.alljoyn.Bus.BTController.%s signal to %s",
+                              lost ? "LostNames" : "FoundNames",
+                              destNode->GetBusAddress().ToString().c_str()));
+    }
 }
 
 
@@ -1107,10 +1125,10 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
                 if (findOp) {
                     if (addName && (node->FindNamesSize() == 1)) {
                         // Prime the name cache for our minion
-                        status = SendFoundNamesChange(node, nodeDB, false);
-                    } else if (!addName && node->FindNamesEmpty()) {
-                        // Clear out the name cache for our minion
-                        status = SendFoundNamesChange(node, nodeDB, true);
+                        SendFoundNamesChange(node, nodeDB, false);
+                        if (foundNodeDB.Size() > 0) {
+                            SendFoundNamesChange(node, foundNodeDB, false);
+                        }
                     }  // else do nothing
                 } else {
                     BTNodeDB newAdInfo;
@@ -1251,6 +1269,8 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
                 bt.Disconnect(sender);
                 return;
             }
+
+            foundNodeDB.RemoveExpiration();
 
         } else {
             // We are still the master
@@ -1641,8 +1661,8 @@ void BTController::HandleFoundNamesChange(const InterfaceDescription::Member* me
         // Figure out which name changes belong to which DB (nodeDB or foundNodeDB).
         BTNodeDB minionDB;
         BTNodeDB externalDB;
-        nodeDB.Diff(adInfo, &externalDB, NULL);
-        externalDB.Diff(adInfo, &minionDB, NULL);
+        nodeDB.NodeDiff(adInfo, &externalDB, NULL);
+        externalDB.NodeDiff(adInfo, &minionDB, NULL);
 
         const BTNodeDB* newAdInfo = lost ? NULL : &adInfo;
         const BTNodeDB* oldAdInfo = lost ? &adInfo : NULL;
@@ -1656,6 +1676,15 @@ void BTController::HandleFoundNamesChange(const InterfaceDescription::Member* me
         foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices");
 
         DistributeAdvertisedNameChanges(newAdInfo, oldAdInfo);
+
+        if (self->FindNamesEmpty()) {
+            // Shouldn't have gotten this message if we were a minion if we
+            // weren't finding any names, but we could get this if we are a
+            // drone and one of our minions is finding names.  In any case, we
+            // want to ensure that the names we just got get expired out at
+            // the appropriate time.
+            ResetExpireNameAlarm();
+        }
     }
 }
 
@@ -2195,22 +2224,21 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
             lock.Unlock();
             break;
 
-        case DispatchInfo::EXPIRE_CACHED_NODES:
+        case DispatchInfo::EXPIRE_CACHED_NODES: {
             QCC_DbgPrintf(("    Expire cached nodes"));
-            if (IsMaster()) {
-                BTNodeDB expiredDB;
-                foundNodeDB.PopExpiredNodes(expiredDB);
+            BTNodeDB expiredDB;
+            foundNodeDB.PopExpiredNodes(expiredDB);
 
-                expiredDB.DumpTable("expiredDB - Expiring cached advertisements");
-                foundNodeDB.DumpTable("foundNodeDB - Remaining cached advertisements after expiration");
+            expiredDB.DumpTable("expiredDB - Expiring cached advertisements");
+            foundNodeDB.DumpTable("foundNodeDB - Remaining cached advertisements after expiration");
 
-                DistributeAdvertisedNameChanges(NULL, &expiredDB);
-                uint64_t dispatchTime = foundNodeDB.NextNodeExpiration();
-                if (dispatchTime < (numeric_limits<uint64_t>::max() - LOST_DEVICE_TIMEOUT_EXT)) {
-                    expireAlarm = DispatchOperation(new ExpireCachedNodesDispatchInfo(), dispatchTime + LOST_DEVICE_TIMEOUT_EXT);
-                }
+            DistributeAdvertisedNameChanges(NULL, &expiredDB);
+            uint64_t dispatchTime = foundNodeDB.NextNodeExpiration();
+            if (dispatchTime < (numeric_limits<uint64_t>::max() - LOST_DEVICE_TIMEOUT_EXT)) {
+                expireAlarm = DispatchOperation(new ExpireCachedNodesDispatchInfo(), dispatchTime + LOST_DEVICE_TIMEOUT_EXT);
             }
             break;
+        }
 
         case DispatchInfo::NAME_LOST:
             QCC_DbgPrintf(("    Process local bus name lost"));

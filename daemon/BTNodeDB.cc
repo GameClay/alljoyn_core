@@ -251,6 +251,53 @@ void BTNodeDB::Diff(const BTNodeDB& other, BTNodeDB* added, BTNodeDB* removed) c
 }
 
 
+void BTNodeDB::NodeDiff(const BTNodeDB& other, BTNodeDB* added, BTNodeDB* removed) const
+{
+    Lock();
+    other.Lock();
+    if (added) {
+        added->Lock();
+    }
+    if (removed) {
+        removed->Lock();
+    }
+
+    const_iterator nodeit;
+    NodeAddrMap::const_iterator addrit;
+
+    // Find removed names/nodes
+    if (removed) {
+        for (nodeit = Begin(); nodeit != End(); ++nodeit) {
+            const BTNodeInfo& node = *nodeit;
+            addrit = other.addrMap.find(node->GetBusAddress());
+            if (addrit == other.addrMap.end()) {
+                removed->AddNode(node);
+            }
+        }
+    }
+
+    // Find added names/nodes
+    if (added) {
+        for (nodeit = other.Begin(); nodeit != other.End(); ++nodeit) {
+            const BTNodeInfo& onode = *nodeit;
+            addrit = addrMap.find(onode->GetBusAddress());
+            if (addrit == addrMap.end()) {
+                added->AddNode(onode);
+            }
+        }
+    }
+
+    if (removed) {
+        removed->Unlock();
+    }
+    if (added) {
+        added->Unlock();
+    }
+    other.Unlock();
+    Unlock();
+}
+
+
 void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool removeNodes)
 {
     // Remove names/nodes
@@ -329,6 +376,22 @@ void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool rem
         }
     }
 
+    assert(expireSet.size() == nodes.size());
+    Unlock();
+}
+
+
+void BTNodeDB::RemoveExpiration()
+{
+    Lock();
+    uint64_t expireTime = numeric_limits<uint64_t>::max();
+    iterator it = expireSet.begin();
+    while (it != expireSet.end()) {
+        BTNodeInfo node = *it;
+        expireSet.erase(it++);
+        node->SetExpireTime(expireTime);
+        expireSet.insert(node);
+    }
     assert(expireSet.size() == nodes.size());
     Unlock();
 }

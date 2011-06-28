@@ -651,10 +651,15 @@ class BTNodeDB {
     void RemoveNode(const BTNodeInfo& node);
 
     /**
-     * Determine the difference between this DB and another DB.  Nodes in
-     * 'added' and 'removed' will be independent copies of the instances in
-     * 'other' and they will only have the names that were added and/or
-     * removed respectively.
+     * Determine the difference between this DB and another DB.  Nodes that
+     * appear in only one or the other DB will be copied (i.e., share the same
+     * referenced data) to the added/removed DBs as appropriate.  Nodes that
+     * appear in both this and the other DB but have differences in their set
+     * of advertised names will result in fully independed copies of the node
+     * information with only the appropriate name changes being put in the
+     * added/removed DBs as appropriate.  It is possible for a node to appear
+     * in both the added DB and removed DB if that node had advertised names
+     * both added and removed.
      *
      * @param other         Other DB for comparision
      * @param added[out]    If non-null, the set of nodes (and names) found in
@@ -663,6 +668,19 @@ class BTNodeDB {
      *                      us but not in other
      */
     void Diff(const BTNodeDB& other, BTNodeDB* added, BTNodeDB* removed) const;
+
+    /**
+     * Determine the difference between this DB and another DB in terms of
+     * nodes only.  In other words, nodes in this DB that do not appear in the
+     * other DB will be copied into the removed DB while nodes in the other DB
+     * that do not appear in this DB will be copied to the added DB.
+     * Differences in names will be ignored.
+     *
+     * @param other         Other DB for comparision
+     * @param added[out]    If non-null, the set of nodes found in other but not in us
+     * @param removed[out]  If non-null, the set of nodes found in us but not in other
+     */
+    void NodeDiff(const BTNodeDB& other, BTNodeDB* added, BTNodeDB* removed) const;
 
     /**
      * Applies the differences found in BTNodeDB::Diff to us.
@@ -675,6 +693,11 @@ class BTNodeDB {
      *                      - false: keep empty nodes
      */
     void UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool removeNodes = true);
+
+    /**
+     * Removes the expiration time of all nodes (sets expiration to end-of-time).
+     */
+    void RemoveExpiration();
 
     /**
      * Updates the expiration time of all nodes.
