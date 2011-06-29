@@ -300,14 +300,6 @@ class BTController :
     void BTDeviceAvailable(bool on);
 
     /**
-     * Deals with the power/availability change of the Bluetooth device on the
-     * BTController dispatch thread.
-     *
-     * @param on    true if BT device is powered on and available, false otherwise.
-     */
-    void DeferredBTDeviceAvailable(bool on);
-
-    /**
      * Check if it is OK to accept the incoming connection from the specified
      * address.
      *
@@ -332,8 +324,6 @@ class BTController :
     void NameOwnerChanged(const qcc::String& alias,
                           const qcc::String* oldOwner,
                           const qcc::String* newOwner);
-
-    void DeferredNameLostHander(const qcc::String& name);
 
 
   private:
@@ -533,38 +523,6 @@ class BTController :
 
 
     /**
-     * Send the SetState method call to the Master node we are connecting to.
-     *
-     * @param busName           Unique name of the endpoint with the
-     *                          BTController object on the device just
-     *                          connected to
-     *
-     * @return ER_OK if successful.
-     */
-    QStatus DeferredSendSetState(const BTBusAddress& addr, const qcc::String& busName);
-
-    /**
-     * Distribute the advertised name changes to all connected nodes.
-     *
-     * @param newAdInfo     Added advertised names
-     * @param oldAdInfo     Removed advertiesd names
-     */
-    void DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
-                                         const BTNodeDB* oldAdInfo);
-
-    /**
-     * Send the FoundNames signal to the node interested in one or more of the
-     * names on that bus.
-     *
-     * @param destNode      The minion that should receive the message.
-     * @param adInfo        Advertise information to send.
-     * @param lost          Set to true if names are lost, false otherwise.
-     */
-    void SendFoundNamesChange(const BTNodeInfo& destNode,
-                              const BTNodeDB& adInfo,
-                              bool lost);
-
-    /**
      * Send the one of the following specified signals to the node we believe
      * is the Master node (may actually be a drone node): FindName,
      * CancelFindName, AdvertiseName, CancelAdvertiseName.
@@ -611,25 +569,6 @@ class BTController :
     void HandleSetStateReply(Message& msg,
                              void* context);
 
-    void DeferredProcessSetStateReply(Message& reply,
-                                      ProxyBusObject* newMaster,
-                                      const BTBusAddress& addr,
-                                      const qcc::String& busName);
-
-    /**
-     * Handle the incoming SetState method call on the BTController dispatch
-     * thread.
-     *
-     * @param msg       The incoming message - "y(ssasas)":
-     *                    - Number of direct minions
-     *                    - struct:
-     *                        - The node's unique bus name
-     *                        - The node's GUID
-     *                        - List of names to advertise
-     *                        - List of names to find
-     */
-    void DeferredHandleSetState(Message& msg);
-
     /**
      * Handle the incoming DelegateFind and DelegateAdvertise signals.
      *
@@ -640,29 +579,6 @@ class BTController :
     void HandleDelegateOp(const InterfaceDescription::Member* member,
                           const char* sourcePath,
                           Message& msg);
-
-    /**
-     * Handle the incoming DelegateFind signal on the BTController dispatch
-     * thread.
-     *
-     * @param msg           The incoming message - "sas":
-     *                        - Master node's bus name
-     *                        - List of names to find
-     *                        - Bluetooth UUID revision to ignore
-     */
-    void DeferredHandleDelegateFind(Message& msg);
-
-    /**
-     * Handle the incoming DelegateAdvertise signal on the BTController
-     * dispatch thread.
-     *
-     * @param msg           The incoming message - "ssqas":
-     *                        - Bluetooth UUID
-     *                        - BD Address
-     *                        - L2CAP PSM
-     *                        - List of names to advertise
-     */
-    void DeferredHandleDelegateAdvertise(Message& msg);
 
     /**
      * Handle the incoming FoundNames signal.
@@ -690,6 +606,91 @@ class BTController :
     void HandleFoundDeviceChange(const InterfaceDescription::Member* member,
                                  const char* sourcePath,
                                  Message& msg);
+
+    /**
+     * Handle the incoming ConnectAddrChanged signal.
+     *
+     * @param member        Member.
+     * @param sourcePath    Object path of signal sender.
+     * @param msg           The incoming message - "tqtq":
+     *                        - Old BD Address
+     *                        - Old PSM
+     *                        - New BD Address
+     *                        - new PSM
+     */
+    void HandleConnectAddrChanged(const InterfaceDescription::Member* member,
+                                  const char* sourcePath,
+                                  Message& msg);
+
+    /**
+     * Deals with the power/availability change of the Bluetooth device on the
+     * BTController dispatch thread.
+     *
+     * @param on    true if BT device is powered on and available, false otherwise.
+     */
+    void DeferredBTDeviceAvailable(bool on);
+
+    /**
+     * Send the SetState method call to the Master node we are connecting to.
+     *
+     * @param busName           Unique name of the endpoint with the
+     *                          BTController object on the device just
+     *                          connected to
+     *
+     * @return ER_OK if successful.
+     */
+    QStatus DeferredSendSetState(const BTBusAddress& addr, const qcc::String& busName);
+
+    void DeferredProcessSetStateReply(Message& reply,
+                                      ProxyBusObject* newMaster,
+                                      const BTBusAddress& addr,
+                                      const qcc::String& busName);
+
+    /**
+     * Handle the incoming DelegateFind signal on the BTController dispatch
+     * thread.
+     *
+     * @param msg           The incoming message - "sas":
+     *                        - Master node's bus name
+     *                        - List of names to find
+     *                        - Bluetooth UUID revision to ignore
+     */
+    void DeferredHandleDelegateFind(Message& msg);
+
+    /**
+     * Handle the incoming DelegateAdvertise signal on the BTController
+     * dispatch thread.
+     *
+     * @param msg           The incoming message - "ssqas":
+     *                        - Bluetooth UUID
+     *                        - BD Address
+     *                        - L2CAP PSM
+     *                        - List of names to advertise
+     */
+    void DeferredHandleDelegateAdvertise(Message& msg);
+
+    void DeferredNameLostHander(const qcc::String& name);
+
+    /**
+     * Distribute the advertised name changes to all connected nodes.
+     *
+     * @param newAdInfo     Added advertised names
+     * @param oldAdInfo     Removed advertiesd names
+     */
+    void DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
+                                         const BTNodeDB* oldAdInfo);
+
+    /**
+     * Send the FoundNames signal to the node interested in one or more of the
+     * names on that bus.
+     *
+     * @param destNode      The minion that should receive the message.
+     * @param adInfo        Advertise information to send.
+     * @param lost          Set to true if names are lost, false otherwise.
+     */
+    void SendFoundNamesChange(const BTNodeInfo& destNode,
+                              const BTNodeDB& adInfo,
+                              bool lost);
 
     /**
      * Update the internal state information for other nodes based on incoming
@@ -781,6 +782,7 @@ class BTController :
     void FillFoundNodesMsgArgs(std::vector<MsgArg>& args,
                                const BTNodeDB& adInfo);
 
+    void SetSelfAddress(const BTBusAddress& newAddr);
 
     qcc::Alarm DispatchOperation(DispatchInfo* op, uint32_t delay = 0)
     {
@@ -878,6 +880,7 @@ class BTController :
                     const InterfaceDescription::Member* FoundNames;
                     const InterfaceDescription::Member* LostNames;
                     const InterfaceDescription::Member* FoundDevice;
+                    const InterfaceDescription::Member* ConnectAddrChanged;
                 } BTController;
             } Bus;
         } alljoyn;

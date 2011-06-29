@@ -45,7 +45,7 @@
 
 namespace ajn {
 
-class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListener {
+class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListener, public BusListener {
   public:
     /**
      * Constructor
@@ -185,6 +185,8 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
 
     void ConnectBlueZ();
     void DisconnectBlueZ();
+
+    void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner);
 
     /* Adapter management functions */
     QStatus EnumerateAdapters();

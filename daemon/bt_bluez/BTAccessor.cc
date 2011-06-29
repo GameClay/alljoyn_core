@@ -247,6 +247,7 @@ BTTransport::BTAccessor::BTAccessor(BTTransport* transport,
     }
 
     bzManagerObj.AddInterface(*org.bluez.Manager.interface);
+    bzBus.RegisterBusListener(*this);
 }
 
 
@@ -405,6 +406,17 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
     defaultAdapterObj = AdapterObject();
     anyAdapterObj = AdapterObject();
     adapterLock.Unlock();
+}
+
+
+void BTTransport::BTAccessor::NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner)
+{
+    if ((strcmp(busName, bzBusName) == 0) && !newOwner && bluetoothAvailable) {
+        // Apparently bluetoothd crashed.  Let the upper layers know so they can reset themselves.
+        QCC_DbgHLPrintf(("BlueZ's bluetoothd D-Bus service crashed!"));
+        bluetoothAvailable = false;
+        transport->BTDeviceAvailable(false);
+    }
 }
 
 
