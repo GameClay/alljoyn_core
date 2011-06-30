@@ -886,29 +886,27 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
                 advertise.dirty = true;
                 find.dirty = true;
             }
+            updateDelegations = true;
         }
 
         QCC_DbgPrintf(("We are %s, %s is now our %s",
                        IsMaster() ? "still the master" : (IsDrone() ? "now a drone" : "just a minion"),
                        addr.ToString().c_str(), IsMaster() ? "minion" : "master"));
 
-        if (!IsMinion()) {
-            if (IsMaster()) {
-                // Can't let the to-be-updated masterUUIDRev have a value that is
-                // the same as the UUIDRev value used by our new minion.
-                const uint32_t lowerBound = ((otherUUIDRev > (bt::INVALID_UUIDREV + 10)) ?
-                                             (otherUUIDRev - 10) :
-                                             bt::INVALID_UUIDREV);
-                const uint32_t upperBound = ((otherUUIDRev < (numeric_limits<uint32_t>::max() - 10)) ?
-                                             (otherUUIDRev + 10) :
-                                             numeric_limits<uint32_t>::max());
-                while ((masterUUIDRev == bt::INVALID_UUIDREV) &&
-                       (masterUUIDRev > lowerBound) &&
-                       (masterUUIDRev < upperBound)) {
-                    masterUUIDRev = qcc::Rand32();
-                }
+        if (IsMaster()) {
+            // Can't let the to-be-updated masterUUIDRev have a value that is
+            // the same as the UUIDRev value used by our new minion.
+            const uint32_t lowerBound = ((otherUUIDRev > (bt::INVALID_UUIDREV + 10)) ?
+                                         (otherUUIDRev - 10) :
+                                         bt::INVALID_UUIDREV);
+            const uint32_t upperBound = ((otherUUIDRev < (numeric_limits<uint32_t>::max() - 10)) ?
+                                         (otherUUIDRev + 10) :
+                                         numeric_limits<uint32_t>::max());
+            while ((masterUUIDRev == bt::INVALID_UUIDREV) &&
+                   (masterUUIDRev > lowerBound) &&
+                   (masterUUIDRev < upperBound)) {
+                masterUUIDRev = qcc::Rand32();
             }
-            updateDelegations = true;
         }
 
         if (IsMaster()) {
