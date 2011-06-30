@@ -1711,18 +1711,6 @@ void BTController::DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
                     if (newAdInfo && newAdInfo->Size() > 0) {
                         destNodesNew.insert(node);
                     }
-                } else {
-                    BTNodeInfo drone = nodeDB.FindNode(node->GetConnectAddress());
-                    QCC_DbgPrintf(("Notify %s of the name changes via %s.",
-                                   node->GetBusAddress().ToString().c_str(),
-                                   drone->GetBusAddress().ToString().c_str()));
-                    assert(drone->IsValid());
-                    if (oldAdInfo && oldAdInfo->Size() > 0) {
-                        destNodesOld.insert(drone);
-                    }
-                    if (newAdInfo && newAdInfo->Size() > 0) {
-                        destNodesNew.insert(drone);
-                    }
                 }
             }
         }
@@ -1948,6 +1936,7 @@ QStatus BTController::ImportState(const BTBusAddress& addr,
     addedDB.UpdateDB(&newFoundDB, NULL);
 
     foundNodeDB.UpdateDB(&newFoundDB, &staleDB);
+    foundNodeDB.UpdateDB(NULL, &incomingDB);
     foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices from imported state information from new connection");
 
     if (IsMaster()) {
