@@ -640,7 +640,8 @@ QStatus BTTransport::BTAccessor::StartConnectable(BDAddress& addr,
             psm = bt::INVALID_PSM;
         } else {
             QCC_DbgPrintf(("Bound PSM: %#04x", psm));
-            ConfigL2cap(l2capLFd);
+            ConfigL2capMTU(l2capLFd);
+            ConfigL2capMaster(l2capLFd);
             ret = listen(l2capLFd, 1);
             if (ret == -1) {
                 status = ER_OS_ERROR;
@@ -816,7 +817,7 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
     for (int tries = 0; tries < MAX_CONNECT_ATTEMPTS; ++tries) {
         sockFd = socket(AF_BLUETOOTH, SOCK_SEQPACKET, L2CAP_PROTOCOL_ID);
         if (sockFd != -1) {
-            ConfigL2cap(sockFd);
+            ConfigL2capMTU(sockFd);
         } else {
             status = ER_OS_ERROR;
             QCC_LogError(status, ("Create socket failed - %s (errno: %d - %s)",
@@ -1293,6 +1294,26 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
     }
 
     return status;
+}
+
+
+QStatus BTTransport::BTAccessor::IsMaster(const BDAddress& addr, bool& master) const
+{
+    AdapterObject adapter = GetDefaultAdapterObject();
+    QStatus status = ER_FAIL;
+    if (adapter->IsValid()) {
+        status = bluez::IsMaster(adapter->id, addr, master);
+    }
+    return status;
+}
+
+
+void BTTransport::BTAccessor::ForceMaster(const BDAddress& addr)
+{
+    AdapterObject adapter = GetDefaultAdapterObject();
+    if (adapter->IsValid()) {
+        bluez::ForceMaster(adapter->id, addr);
+    }
 }
 
 

@@ -751,7 +751,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     uint32_t remoteProtocolVersion = ep->GetRemoteProtocolVersion();
     bt.ReturnEndpoint(ep);
 
-    uint8_t numConnections;
+    uint8_t connectionInfo;
     QStatus status;
     uint64_t rawBDAddr;
     uint16_t psm;
@@ -772,7 +772,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     }
 
     status = msg->GetArgs(SIG_SET_STATE_IN,
-                          &numConnections,
+                          &connectionInfo,
                           &otherUUIDRev,
                           &rawBDAddr,
                           &psm,
@@ -814,8 +814,25 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
 
         FillFoundNodesMsgArgs(foundNodeArgsStorage, foundNodeDB);
 
-        if ((remoteProtocolVersion > ALLJOYN_PROTOCOL_VERSION) ||
-            ((remoteProtocolVersion == ALLJOYN_PROTOCOL_VERSION) && (numConnections > directMinions))) {
+        uint8_t remoteDirectMinions = connectionInfo & 0x7;
+        bool wantMaster = ((ALLJOYN_PROTOCOL_VERSION > remoteProtocolVersion) ||
+                           ((ALLJOYN_PROTOCOL_VERSION == remoteProtocolVersion) &&
+                            (directMinions >= remoteDirectMinions)));
+        bool isMaster;
+        status = bt.IsMaster(addr.addr, isMaster);
+        if (status != ER_OK) {
+            isMaster = false; // couldn't tell, so guess
+        }
+
+        if (wantMaster && !isMaster) {
+            bt.ForceMaster(addr.addr);
+        }
+
+        uint8_t slaveFactor = ComputeSlaveFactor();
+        uint8_t remoteSlaveFactor = (connectionInfo >> 3) & 0x7;
+
+        if ((slaveFactor > remoteSlaveFactor) ||
+            ((slaveFactor == remoteSlaveFactor) && !wantMaster)) {
             // We are now a minion (or a drone if we have more than one direct connection)
             master = new ProxyBusObject(bus, sender.c_str(), bluetoothObjPath, 0);
             masterNode = BTNodeInfo(addr, sender);
@@ -1192,12 +1209,14 @@ QStatus BTController::DeferredSendSetState(const BTBusAddress& addr, const qcc::
 
     newMaster->AddInterface(*org.alljoyn.Bus.BTController.interface);
 
+    uint8_t slaveFactor = ComputeSlaveFactor();
+
     QCC_DbgPrintf(("SendSetState prep args"));
     FillNodeStateMsgArgs(nodeStateArgsStorage);
     FillFoundNodesMsgArgs(foundNodeArgsStorage, foundNodeDB);
 
     status = MsgArg::Set(args, numArgs, SIG_SET_STATE_IN,
-                         directMinions,
+                         (directMinions & 0x7) | ((slaveFactor & 0x7) << 3),
                          masterUUIDRev,
                          self->GetBusAddress().addr.GetRaw(),
                          self->GetBusAddress().psm,
@@ -2226,6 +2245,31 @@ void BTController::FillFoundNodesMsgArgs(vector<MsgArg>& args, const BTNodeDB& a
                               adNamesArgs.size(), &adNamesArgs.front()));
         args.back().Stabilize();
     }
+}
+
+
+uint8_t BTController::ComputeSlaveFactor() const
+{
+    BTNodeDB::const_iterator nit;
+    uint8_t cnt = 0;
+
+    nodeDB.Lock();
+    for (nit = nodeDB.Begin(); nit != nodeDB.End(); ++nit) {
+        const BTNodeInfo& minion = *nit;
+        if (minion->IsDirectMinion()) {
+            bool master = false;
+            QStatus status = bt.IsMaster(minion->GetBusAddress().addr, master);
+            if ((status == ER_OK) && !master) {
+                ++cnt;
+            } else if (status != ER_OK) {
+                // failures count against us
+                ++cnt;
+            }
+        }
+    }
+    nodeDB.Unlock();
+
+    return cnt;
 }
 
 

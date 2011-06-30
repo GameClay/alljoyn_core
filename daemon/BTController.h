@@ -161,6 +161,10 @@ class BluetoothDeviceInterface {
     virtual QStatus Disconnect(const qcc::String& busName) = 0;
     virtual void ReturnEndpoint(RemoteEndpoint* ep) = 0;
     virtual RemoteEndpoint* LookupEndpoint(const qcc::String& busName) = 0;
+
+    virtual QStatus IsMaster(const BDAddress& addr, bool& master) const = 0;
+    virtual void ForceMaster(const BDAddress& addr) = 0;
+
 };
 
 
@@ -783,6 +787,8 @@ class BTController :
                                const BTNodeDB& adInfo);
 
     void SetSelfAddress(const BTBusAddress& newAddr);
+
+    uint8_t ComputeSlaveFactor() const;
 
     qcc::Alarm DispatchOperation(DispatchInfo* op, uint32_t delay = 0)
     {

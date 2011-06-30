@@ -603,4 +603,15 @@ QStatus BTTransport::Disconnect(const qcc::String& busName)
 }
 
 
+QStatus BTTransport::IsMaster(const BDAddress& addr, bool& master) const
+{
+    return btAccessor->IsMaster(addr, master);
+}
+
+
+void BTTransport::ForceMaster(const BDAddress& addr)
+{
+    btAccessor->ForceMaster(addr);
+}
+
 }

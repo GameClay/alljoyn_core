@@ -469,6 +469,9 @@ class BTTransport :
     void ReturnEndpoint(RemoteEndpoint* ep);
     QStatus Disconnect(const qcc::String& busName);
 
+    QStatus IsMaster(const BDAddress& addr, bool& master) const;
+    void ForceMaster(const BDAddress& addr);
+
 
     BusAttachment& bus;                            /**< The message bus for this transport */
     BTAccessor* btAccessor;                        /**< Object for accessing the Bluetooth device */

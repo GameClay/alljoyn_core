@@ -26,6 +26,8 @@
 
 #include <qcc/Socket.h>
 
+#include "BDAddress.h"
+
 #include <Status.h>
 
 namespace ajn {
@@ -34,7 +36,13 @@ namespace bluez {
 /**
  * Set the L2CAP mtu to something better than the BT 1.0 default value.
  */
-void ConfigL2cap(qcc::SocketFd sockFd);
+void ConfigL2capMTU(qcc::SocketFd sockFd);
+
+void ConfigL2capMaster(qcc::SocketFd sockFd);
+
+QStatus IsMaster(uint16_t deviceId, const BDAddress& addr, bool& master);
+
+QStatus ForceMaster(uint16_t deviceId, const BDAddress& addr);
 
 
 /**

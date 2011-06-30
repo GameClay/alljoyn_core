@@ -179,6 +179,28 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      */
     qcc::Event* GetL2CAPConnectEvent() { return l2capEvent; }
 
+    /**
+     * This looks up the low level Bluetooth connection information for the
+     * connection with the specified device and indicates if our role for that
+     * connection is master or slave.
+     *
+     * @param addr          Bluetooth device address for the connection of interest.
+     * @param master[out]   - 'true' if we are master of the connection with addr
+     *                      - 'false' if we are slave of the connection with addr
+     *
+     * @return  ER_OK if successful; an error will be returned if there is no
+     *          connection with the specified device
+     */
+    QStatus IsMaster(const BDAddress& addr, bool& master) const;
+
+    /**
+     * This function forces a role switch in the HCI device so that we become
+     * master of the connection with the specified device.
+     *
+     * @param addr          Bluetooth device address for the connection of interest.
+     */
+    void ForceMaster(const BDAddress& addr);
+
   private:
 
     struct DispatchInfo;
