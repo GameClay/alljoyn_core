@@ -834,6 +834,15 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
         if ((slaveFactor > remoteSlaveFactor) ||
             ((slaveFactor == remoteSlaveFactor) && !wantMaster)) {
             // We are now a minion (or a drone if we have more than one direct connection)
+            if (advertise.active) {
+                advertise.StopOp();
+                advertise.minion = self;
+            }
+            if (find.active) {
+                find.StopOp();
+                find.minion = self;
+            }
+
             master = new ProxyBusObject(bus, sender.c_str(), bluetoothObjPath, 0);
             masterNode = BTNodeInfo(addr, sender);
             masterNode->SetUUIDRev(otherUUIDRev);
