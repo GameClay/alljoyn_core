@@ -1328,6 +1328,16 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
                 bool noRotateMinions = !RotateMinions();
                 delete newMaster;
 
+                bool isMaster;
+                status = bt.IsMaster(addr.addr, isMaster);
+                if (status != ER_OK) {
+                    isMaster = false; // couldn't tell, so guess
+                }
+
+                if (!isMaster) {
+                    bt.ForceMaster(addr.addr);
+                }
+
                 status = ImportState(addr, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs);
                 if (status != ER_OK) {
                     QCC_LogError(status, ("Dropping %s due to import state error", busName.c_str()));
