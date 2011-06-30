@@ -28,6 +28,7 @@
 #include <qcc/String.h>
 #include <qcc/XmlElement.h>
 
+#include <alljoyn/AllJoynStd.h>
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/DBusStd.h>
 #include <alljoyn/Message.h>
@@ -60,15 +61,25 @@ QStatus XmlHelper::ParseInterface(const XmlElement* elem, ProxyBusObject* obj)
         return status;
     }
 
-    // TODO @@ get "secure" annotation
+    /* Get "secure" annotation */
+    // TODO Think problem is here
+    bool secure = false;
+    vector<XmlElement*>::const_iterator ifIt = elem->GetChildren().begin();
+    while (ifIt != elem->GetChildren().end()) {
+        const XmlElement* ifChildElem = *ifIt++;
+        qcc::String ifChildName = ifChildElem->GetName();
+        if ((ifChildName == "annotation") && (ifChildElem->GetAttribute("name") == org::alljoyn::Bus::Secure)) {
+            secure = (ifChildElem->GetAttribute("value") == "true");
+            break;
+        }
+    }
 
-    /* Create a new inteface */
-    InterfaceDescription intf(ifName.c_str(), false);
+    /* Create a new interface */
+    InterfaceDescription intf(ifName.c_str(), secure);
 
     /* Iterate over <method>, <signal> and <property> elements */
-    const vector<XmlElement*>& ifChildren = elem->GetChildren();
-    vector<XmlElement*>::const_iterator ifIt = ifChildren.begin();
-    while ((ER_OK == status) && (ifIt != ifChildren.end())) {
+    ifIt = elem->GetChildren().begin();
+    while ((ER_OK == status) && (ifIt != elem->GetChildren().end())) {
         const XmlElement* ifChildElem = *ifIt++;
         qcc::String ifChildName = ifChildElem->GetName();
         qcc::String memberName = ifChildElem->GetAttribute("name");

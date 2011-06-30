@@ -24,6 +24,7 @@
 #include <qcc/String.h>
 #include <qcc/StringMapKey.h>
 #include <map>
+#include <alljoyn/AllJoynStd.h>
 #include <alljoyn/DBusStd.h>
 #include <Status.h>
 
@@ -163,6 +164,9 @@ qcc::String InterfaceDescription::Introspect(size_t indent) const
             xml += " access=\"readwrite\"/>\n";
         }
         ++pit;
+    }
+    if (IsSecure()) {
+        xml += in + "  <annotation name=\"" + org::alljoyn::Bus::Secure + "\" value=\"true\"/>\n";
     }
     xml += in + "</interface>\n";
     return xml;

@@ -38,6 +38,7 @@ const char* org::alljoyn::Bus::ErrorName = "org.alljoyn.Bus.ErStatus";
 const char* org::alljoyn::Bus::ObjectPath = "/org/alljoyn/Bus";
 const char* org::alljoyn::Bus::InterfaceName = "org.alljoyn.Bus";
 const char* org::alljoyn::Bus::WellKnownName = "org.alljoyn.Bus";
+const char* org::alljoyn::Bus::Secure = "org.alljoyn.Bus.Secure";
 const char* org::alljoyn::Bus::Peer::ObjectPath = "/org/alljoyn/Bus/Peer";
 
 /** org.alljoyn.Daemon interface definitions */

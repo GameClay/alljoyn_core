@@ -46,6 +46,7 @@ extern const char* ErrorName;                     /**< Standard AllJoyn error na
 extern const char* ObjectPath;                    /**< Object path */
 extern const char* InterfaceName;                 /**< Interface name */
 extern const char* WellKnownName;                 /**< Well known bus name */
+extern const char* Secure;                        /**< Secure interface annotation */
 
 /** Interface definitions for org.alljoyn.Bus.Peer.* */
 namespace Peer {
