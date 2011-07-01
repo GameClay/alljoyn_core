@@ -1518,8 +1518,8 @@ void BTController::DeferredNameLostHander(const String& name)
 
         QCC_DbgPrintf(("Our master left us: %s", masterNode->GetBusAddress().ToString().c_str()));
         // We are the master now.
-        bool skipStopAd = IsDrone() && (advertise.minion == self);
-        bool skipStopFind = IsDrone() && (find.minion == self);
+        bool skipStopAd = !advertise.active || (IsDrone() && (advertise.minion == self));
+        bool skipStopFind = !find.active || (IsDrone() && (find.minion == self));
 
         delete master;
         master = NULL;
