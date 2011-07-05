@@ -713,14 +713,16 @@ class _Message {
     static const char myEndian = ALLJOYN_BIG_ENDIAN;    ///< Native endianness of host system we are running on: big endian.
 #endif
 
+    BusAttachment& bus;          ///< The bus this message was received or will be sent on.
+
     bool endianSwap;             ///< true if endianness will be swapped.
 
     MessageHeader msgHeader;     ///< Current message header.
 
-    uint8_t numMsgArgs;          ///< Number of message args (signature cannot be longer than 255 chars).
-    MsgArg* msgArgs;             ///< Pointer to the unmarshaled arguments.
-
     uint64_t* msgBuf;            ///< Pointer to the current msg buffer (uint64_t to ensure 8 byte alignment).
+    MsgArg* msgArgs;             ///< Pointer to the unmarshaled arguments.
+    uint8_t numMsgArgs;          ///< Number of message args (signature cannot be longer than 255 chars).
+
     size_t bufSize;              ///< The current allocated size of the msg buffer.
     uint8_t* bufEOD;             ///< End of data currently in buffer.
     uint8_t* bufPos;             ///< Pointer to the position in buffer.
@@ -728,8 +730,6 @@ class _Message {
 
     uint16_t ttl;                ///< Time to live
     uint32_t timestamp;          ///< Timestamp (local time) for messages with a ttl.
-
-    BusAttachment& bus;          ///< The bus this message was received or will be sent on.
 
     qcc::String replySignature;  ///< Expected reply signature for a method call
 
