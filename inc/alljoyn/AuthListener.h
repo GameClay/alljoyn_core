@@ -110,7 +110,7 @@ class AuthListener {
         void SetPrivateKey(const qcc::String& pk) { this->pk = pk; mask |= CRED_PRIVATE_KEY; }
 
         /**
-         * Sets a logon entry. For example for the Secure Remote Password protocol in RFC 5045, a
+         * Sets a logon entry. For example for the Secure Remote Password protocol in RFC 5054, a
          * logon entry encodes the N,g, s and v parameters. An SRP logon entry string has the form
          * N:g:s:v where N,g,s, and v are ASCII encoded hexadecimal strings and are separated by
          * colons.
