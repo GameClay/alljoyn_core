@@ -1124,6 +1124,7 @@ void BTController::DeferredBTDeviceAvailable(bool on)
     lock.Lock();
     if (on && !devAvailable) {
         BTBusAddress listenAddr;
+        devAvailable = true;
         QStatus status = bt.StartListen(listenAddr.addr, listenAddr.psm);
         if (status == ER_OK) {
             assert(listenAddr.IsValid());
@@ -1170,8 +1171,13 @@ void BTController::DeferredBTDeviceAvailable(bool on)
             }
             find.active = false;
         }
+
+        foundNodeDB.RefreshExpiration(LOST_DEVICE_TIMEOUT);
+        ResetExpireNameAlarm();
+
+        devAvailable = false;
     }
-    devAvailable = on;
+
     lock.Unlock();
 }
 
@@ -1705,7 +1711,7 @@ void BTController::DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
     if (newAdInfo) newAdInfo->DumpTable("newAdInfo - New ad information");
 
     // Now inform everyone of the changes in advertised names.
-    if (!IsMinion()) {
+    if (!IsMinion() && devAvailable) {
         set<BTNodeInfo> destNodesOld;
         set<BTNodeInfo> destNodesNew;
         nodeDB.Lock();
