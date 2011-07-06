@@ -1601,6 +1601,9 @@ void BTController::DeferredNameLostHander(const String& name)
             find.count -= minion->FindNamesSize();
             find.dirty = find.dirty || !minion->FindNamesEmpty();
 
+            nodeDB.RemoveNode(minion);
+            assert(!devAvailable || (nodeDB.Size() > 0));
+
             if (wasDirect) {
                 if (!RotateMinions() && wasRotateMinions) {
                     advertise.StopAlarm();
@@ -1612,6 +1615,7 @@ void BTController::DeferredNameLostHander(const String& name)
                 if (wasFindMinion) {
                     find.minion = self;
                     find.active = false;
+
                     if (directMinions > 1) {
                         if (directMinions == 2) {
                             // We had 2 minions.  The one that was finding
@@ -1658,9 +1662,6 @@ void BTController::DeferredNameLostHander(const String& name)
 
                 --directMinions;
             }
-
-            nodeDB.RemoveNode(minion);
-            assert(!devAvailable || (nodeDB.Size() > 0));
 
             updateDelegations = true;
 
