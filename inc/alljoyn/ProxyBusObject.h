@@ -32,6 +32,11 @@
 
 #include <Status.h>
 
+namespace qcc {
+/** @internal Forward references */
+class Mutex;
+}
+
 namespace ajn {
 
 /** @internal Forward references */
@@ -627,6 +632,12 @@ class ProxyBusObject : public MessageReceiver {
 
     /**
      * @internal
+     * Helper used to destruct and cleanu-up  ProxyBusObject::components member.
+     */
+    void DestructComponents();
+
+    /**
+     * @internal
      * Internal introspection xml parse tree type.
      */
     struct IntrospectionXml;
@@ -668,6 +679,8 @@ class ProxyBusObject : public MessageReceiver {
     SessionId sessionId;        /**< Session to use for communicating with remote object */
     bool hasProperties;         /**< True if proxy object implements properties */
     RemoteEndpoint* b2bEp;      /**< B2B endpoint to use or NULL to indicates normal sessionId based routing */
+    mutable qcc::Mutex* lock;   /**< Lock that protects access to components member */
+    bool isExiting;             /**< true iff ProxyBusObject is in the process of begin destroyed */
 };
 
 }

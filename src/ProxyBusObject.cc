@@ -32,6 +32,7 @@
 #include <qcc/XmlElement.h>
 #include <qcc/Util.h>
 #include <qcc/Event.h>
+#include <qcc/Mutex.h>
 
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/DBusStd.h>
@@ -67,7 +68,6 @@ struct ProxyBusObject::Components {
 
     /** List of threads that are waiting in sync method calls */
     vector<Thread*> waitingThreads;
-
 };
 
 QStatus ProxyBusObject::GetAllProperties(const char* iface, MsgArg& value) const
@@ -166,6 +166,7 @@ QStatus ProxyBusObject::SetProperty(const char* iface, const char* property, Msg
 
 size_t ProxyBusObject::GetInterfaces(const InterfaceDescription** ifaces, size_t numIfaces) const
 {
+    lock->Lock();
     size_t count = components->ifaces.size();
     if (ifaces) {
         count = min(count, numIfaces);
@@ -174,22 +175,28 @@ size_t ProxyBusObject::GetInterfaces(const InterfaceDescription** ifaces, size_t
             ifaces[i] = it->second;
         }
     }
+    lock->Unlock();
     return count;
 }
 
 const InterfaceDescription* ProxyBusObject::GetInterface(const char* ifaceName) const
 {
     StringMapKey key = ifaceName;
+    lock->Lock();
     map<StringMapKey, const InterfaceDescription*>::const_iterator it = components->ifaces.find(key);
-    return (it == components->ifaces.end()) ? NULL : it->second;
+    const InterfaceDescription* ret = (it == components->ifaces.end()) ? NULL : it->second;
+    lock->Unlock();
+    return ret;
 }
 
 
 QStatus ProxyBusObject::AddInterface(const InterfaceDescription& iface) {
     StringMapKey key = iface.GetName();
     pair<StringMapKey, const InterfaceDescription*> item(key, &iface);
+    lock->Lock();
     pair<map<StringMapKey, const InterfaceDescription*>::const_iterator, bool> ret = components->ifaces.insert(item);
     QStatus status = ret.second ? ER_OK : ER_BUS_IFACE_ALREADY_EXISTS;
+    lock->Unlock();
 
     /* Add org.freedesktop.DBus.Properties interface implicitly if iface specified properties */
     if ((status == ER_OK) && !hasProperties && (iface.GetProperties() > 0)) {
@@ -217,6 +224,7 @@ QStatus ProxyBusObject::AddInterface(const char* ifaceName)
 
 size_t ProxyBusObject::GetChildren(ProxyBusObject** children, size_t numChildren)
 {
+    lock->Lock();
     size_t count = components->children.size();
     if (children) {
         count = min(count, numChildren);
@@ -224,6 +232,7 @@ size_t ProxyBusObject::GetChildren(ProxyBusObject** children, size_t numChildren
             children[i] = &components->children[i];
         }
     }
+    lock->Unlock();
     return count;
 }
 
@@ -243,6 +252,7 @@ ProxyBusObject* ProxyBusObject::GetChild(const char* inPath)
     /* Find each path element as a child within the parent's vector of children */
     size_t idx = path.size() + 1;
     ProxyBusObject* cur = this;
+    lock->Lock();
     while (idx != qcc::String::npos) {
         size_t end = inPathStr.find_first_of('/', idx);
         qcc::String item = inPathStr.substr(0, (qcc::String::npos == end) ? end : end - 1);
@@ -256,10 +266,12 @@ ProxyBusObject* ProxyBusObject::GetChild(const char* inPath)
             ++it;
         }
         if (it == ch.end()) {
+            lock->Unlock();
             return NULL;
         }
         idx = ((qcc::String::npos == end) || ((end + 1) == inPathStr.size())) ? qcc::String::npos : end + 1;
     }
+    lock->Unlock();
     return cur;
 }
 
@@ -278,6 +290,7 @@ QStatus ProxyBusObject::AddChild(const ProxyBusObject& child)
     /* Add new children as necessary */
     size_t idx = path.size() + 1;
     ProxyBusObject* cur = this;
+    lock->Lock();
     while (idx != qcc::String::npos) {
         size_t end = childPath.find_first_of('/', idx);
         qcc::String item = childPath.substr(0, (qcc::String::npos == end) ? end : end - 1);
@@ -293,6 +306,7 @@ QStatus ProxyBusObject::AddChild(const ProxyBusObject& child)
         if (it == ch.end()) {
             if (childPath == item) {
                 ch.push_back(child);
+                lock->Unlock();
                 return ER_OK;
             } else {
                 ProxyBusObject ro(*bus, serviceName.c_str(), item.c_str(), sessionId);
@@ -302,6 +316,7 @@ QStatus ProxyBusObject::AddChild(const ProxyBusObject& child)
         }
         idx = ((qcc::String::npos == end) || ((end + 1) == childPath.size())) ? qcc::String::npos : end + 1;
     }
+    lock->Unlock();
     return ER_BUS_OBJ_ALREADY_EXISTS;
 }
 
@@ -323,6 +338,7 @@ QStatus ProxyBusObject::RemoveChild(const char* inPath)
     /* Navigate to child and remove it */
     size_t idx = path.size() + 1;
     ProxyBusObject* cur = this;
+    lock->Lock();
     while (idx != qcc::String::npos) {
         size_t end = childPath.find_first_of('/', idx);
         qcc::String item = childPath.substr(0, (qcc::String::npos == end) ? end : end - 1);
@@ -332,6 +348,7 @@ QStatus ProxyBusObject::RemoveChild(const char* inPath)
             if (it->GetPath() == item) {
                 if (end == qcc::String::npos) {
                     ch.erase(it);
+                    lock->Unlock();
                     return ER_OK;
                 } else {
                     cur = &(*it);
@@ -342,12 +359,14 @@ QStatus ProxyBusObject::RemoveChild(const char* inPath)
         }
         if (it == ch.end()) {
             status = ER_BUS_OBJ_NOT_FOUND;
+            lock->Unlock();
             QCC_LogError(status, ("Cannot find object path %s", item.c_str()));
             return status;
         }
         idx = ((qcc::String::npos == end) || ((end + 1) == childPath.size())) ? qcc::String::npos : end + 1;
     }
     /* Shouldn't get here */
+    lock->Unlock();
     return ER_FAIL;
 }
 
@@ -426,11 +445,14 @@ QStatus ProxyBusObject::MethodCallAsync(const char* ifaceName,
                                         uint32_t timeout,
                                         uint8_t flags) const
 {
+    lock->Lock();
     map<StringMapKey, const InterfaceDescription*>::const_iterator it = components->ifaces.find(StringMapKey(ifaceName));
     if (it == components->ifaces.end()) {
+        lock->Unlock();
         return ER_BUS_NO_SUCH_INTERFACE;
     }
     const InterfaceDescription::Member* member = it->second->GetMember(methodName);
+    lock->Unlock();
     if (NULL == member) {
         return ER_BUS_INTERFACE_NO_SUCH_MEMBER;
     }
@@ -534,9 +556,12 @@ QStatus ProxyBusObject::MethodCall(const InterfaceDescription::Member& method,
                 status = bus->GetInternal().GetRouter().PushMessage(msg, localEndpoint);
             }
             Thread* thisThread = Thread::GetThread();
-            if (ER_OK == status) {
+            lock->Lock();
+            if ((ER_OK == status) && !isExiting) {
                 components->waitingThreads.push_back(thisThread);
+                lock->Unlock();
                 status = Event::Wait(ctxt.event);
+                lock->Lock();
                 vector<Thread*>::iterator it = components->waitingThreads.begin();
                 while (it != components->waitingThreads.end()) {
                     if (*it == thisThread) {
@@ -545,18 +570,19 @@ QStatus ProxyBusObject::MethodCall(const InterfaceDescription::Member& method,
                     }
                     ++it;
                 }
-            }
-            if ((ER_OK == status) && (SYNC_METHOD_ALERTCODE_OK == thisThread->GetAlertCode())) {
-                replyMsg = ctxt.replyMsg;
-            } else if (SYNC_METHOD_ALERTCODE_ABORT == thisThread->GetAlertCode()) {
-                /*
-                 * We can't touch anything in this case since the external thread that was waiting
-                 * can't know whether this object still exists.
-                 */
-                status = ER_BUS_METHOD_CALL_ABORTED;
-                goto MethodCallExit;
-            } else {
-                localEndpoint.UnregisterReplyHandler(serial);
+                lock->Unlock();
+                if ((ER_OK == status) && (SYNC_METHOD_ALERTCODE_OK == thisThread->GetAlertCode())) {
+                    replyMsg = ctxt.replyMsg;
+                } else if (SYNC_METHOD_ALERTCODE_ABORT == thisThread->GetAlertCode()) {
+                    /*
+                     * We can't touch anything in this case since the external thread that was waiting
+                     * can't know whether this object still exists.
+                     */
+                    status = ER_BUS_METHOD_CALL_ABORTED;
+                    goto MethodCallExit;
+                } else {
+                    localEndpoint.UnregisterReplyHandler(serial);
+                }
             }
         }
     }
@@ -583,11 +609,14 @@ QStatus ProxyBusObject::MethodCall(const char* ifaceName,
                                    uint32_t timeout,
                                    uint8_t flags) const
 {
+    lock->Lock();
     map<StringMapKey, const InterfaceDescription*>::const_iterator it = components->ifaces.find(StringMapKey(ifaceName));
     if (it == components->ifaces.end()) {
+        lock->Unlock();
         return ER_BUS_NO_SUCH_INTERFACE;
     }
     const InterfaceDescription::Member* member = it->second->GetMember(methodName);
+    lock->Unlock();
     if (NULL == member) {
         return ER_BUS_INTERFACE_NO_SUCH_MEMBER;
     }
@@ -722,15 +751,36 @@ QStatus ProxyBusObject::ParseXml(const char* xml, const char* ident)
 
 ProxyBusObject::~ProxyBusObject()
 {
-    if (components) {
+    DestructComponents();
+    if (lock) {
+        delete lock;
+        lock = NULL;
+    }
+}
+
+void ProxyBusObject::DestructComponents()
+{
+    if (lock && components) {
+        lock->Lock();
+        isExiting = true;
         vector<Thread*>::iterator it = components->waitingThreads.begin();
         while (it != components->waitingThreads.end()) {
             (*it++)->Alert(SYNC_METHOD_ALERTCODE_ABORT);
         }
+
         if (bus) {
             bus->UnregisterAllHandlers(this);
         }
+
+        /* Wait for any waiting threads to exit this object's members */
+        while (components->waitingThreads.size() > 0) {
+            lock->Unlock();
+            qcc::Sleep(5);
+            lock->Lock();
+        }
         delete components;
+        components = NULL;
+        lock->Unlock();
     }
 }
 
@@ -741,42 +791,63 @@ ProxyBusObject::ProxyBusObject(BusAttachment& bus, const char* service, const ch
     serviceName(service),
     sessionId(sessionId),
     hasProperties(false),
-    b2bEp(NULL)
+    b2bEp(NULL),
+    lock(new Mutex),
+    isExiting(false)
 {
     /* The Peer interface is implicitly defined for all objects */
     AddInterface(org::freedesktop::DBus::Peer::InterfaceName);
 }
 
-ProxyBusObject::ProxyBusObject() : bus(NULL), components(NULL), sessionId(0), hasProperties(false), b2bEp(NULL)
+ProxyBusObject::ProxyBusObject() :
+    bus(NULL),
+    components(NULL),
+    sessionId(0),
+    hasProperties(false),
+    b2bEp(NULL),
+    lock(NULL),
+    isExiting(false)
 {
 }
 
-ProxyBusObject::ProxyBusObject(const ProxyBusObject& other)
+ProxyBusObject::ProxyBusObject(const ProxyBusObject& other) :
+    bus(other.bus),
+    components(new Components),
+    path(other.path),
+    serviceName(other.serviceName),
+    sessionId(other.sessionId),
+    hasProperties(other.hasProperties),
+    b2bEp(other.b2bEp),
+    lock(new Mutex),
+    isExiting(false)
 {
-    components = new Components;
-    bus = other.bus;
-    path = other.path;
-    serviceName = other.serviceName;
-    sessionId = other.sessionId;
-    hasProperties = other.hasProperties;
-    b2bEp = other.b2bEp;
-    if (other.components) {
-        *components = *other.components;
-    }
+    *components = *other.components;
 }
 
 ProxyBusObject& ProxyBusObject::operator=(const ProxyBusObject& other)
 {
     if (this != &other) {
-        components = new Components;
+        DestructComponents();
+        if (other.components) {
+            components = new Components();
+            *components = *other.components;
+            if (!lock) {
+                lock = new Mutex();
+            }
+        } else {
+            components = NULL;
+            if (lock) {
+                delete lock;
+                lock = NULL;
+            }
+        }
         bus = other.bus;
         path = other.path;
         serviceName = other.serviceName;
         sessionId = other.sessionId;
+        hasProperties = other.hasProperties;
         b2bEp = other.b2bEp;
-        if (other.components) {
-            *components = *other.components;
-        }
+        isExiting = false;
     }
     return *this;
 }
