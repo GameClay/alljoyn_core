@@ -1543,6 +1543,7 @@ void BTController::DeferredNameLostHander(const String& name)
         // the entire foundNodeDB will cause their advertised names to expire
         // as well.  No need to distribute lost names at this time.
         foundNodeDB.RefreshExpiration(LOST_DEVICE_TIMEOUT);
+        ResetExpireNameAlarm();
 
         // We need to prepare for controlling discovery.
         BDAddressSet ignoreAddrs;
