@@ -2230,10 +2230,14 @@ void BTController::FillFoundNodesMsgArgs(vector<MsgArg>& args, const BTNodeDB& a
         vector<MsgArg> adNamesArgs;
 
         const BTNodeDB& db = xmit->second;
-        BTNodeInfo connNode = nodeDB.FindNode(xmit->first);
+        BTNodeInfo connNode = xmit->second.FindNode(xmit->first);
 
         if (!connNode->IsValid()) {
             connNode = foundNodeDB.FindNode(xmit->first);
+        }
+
+        if (!connNode->IsValid()) {
+            connNode = nodeDB.FindNode(xmit->first);
         }
 
         if (!connNode->IsValid()) {
