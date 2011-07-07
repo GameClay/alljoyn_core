@@ -872,6 +872,9 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
             FillFoundNodesMsgArgs(foundNodeArgsStorage, nodeDB);
 
             bool noRotateMinions = !RotateMinions();
+            bool wasUseLocalFind = UseLocalFind();
+            bool wasUseLocalAdvertise = UseLocalAdvertise();
+
             status = ImportState(addr, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs);
             if (status != ER_OK) {
                 lock.Unlock();
@@ -881,6 +884,17 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
             }
 
             assert(find.resultDest.empty());
+
+            if (wasUseLocalFind && !UseLocalFind()) {
+                // Force updating the find delegation
+                find.dirty = true;
+            }
+
+            if (wasUseLocalAdvertise && !UseLocalAdvertise()) {
+                // Force updating the advertise delegation
+                advertise.dirty = true;
+            }
+
             if (noRotateMinions && RotateMinions()) {
                 // Force changing from permanent delegations to durational delegations
                 advertise.dirty = true;
@@ -907,6 +921,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
                    (masterUUIDRev < upperBound)) {
                 masterUUIDRev = qcc::Rand32();
             }
+            advertise.dirty = true;
         }
 
         if (IsMaster()) {
