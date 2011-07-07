@@ -141,7 +141,7 @@ void PeerStateTable::Clear()
     PeerState nullPeer;
     QCC_DbgHLPrintf(("Allocating group key"));
     key.Rand(Crypto_AES::AES128_SIZE, KeyBlob::AES);
-    key.SetTag("GroupKey", KeyBlob::INITIATOR);
+    key.SetTag("GroupKey", KeyBlob::NO_ROLE);
     nullPeer->SetKey(key, PEER_SESSION_KEY);
     peerMap[""] = nullPeer;
     lock.Unlock();

@@ -595,7 +595,7 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
     if (remoteGuidStr == localGuidStr) {
         QCC_DbgHLPrintf(("Securing local peer to itself"));
         KeyBlob key;
-        /* Use the local peer's GROUP key - no role because we are both INITIATOR and RESPONDER */
+        /* Use the local peer's GROUP key */
         peerStateTable->GetGroupKey(key);
         key.SetTag("SELF", KeyBlob::NO_ROLE);
         peerState->SetKey(key, PEER_GROUP_KEY);
@@ -713,9 +713,11 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
             status = key.Load(src);
             if (status == ER_OK) {
                 /*
-                 * Tag the group key with the auth mechanism used by ExchangeGroupKeys
+                 * Tag the group key with the auth mechanism used by ExchangeGroupKeys. Group keys
+                 * are inherently directional - only initiator encrypts with the group key. We set
+                 * the role to NO_ROLE otherwise senders can't decrypt their own broadcast messages.
                  */
-                key.SetTag(replyMsg->GetAuthMechanism(), KeyBlob::RESPONDER);
+                key.SetTag(replyMsg->GetAuthMechanism(), KeyBlob::NO_ROLE);
                 peerState->SetKey(key, PEER_GROUP_KEY);
             }
         }
