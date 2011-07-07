@@ -381,6 +381,10 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
         RemoveRecord();
     }
 
+    if (discoverable) {
+        StopDiscoverability();
+    }
+
     /*
      * Shut down all endpoints
      */
