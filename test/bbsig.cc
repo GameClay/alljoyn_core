@@ -75,6 +75,7 @@ static bool stopNow = false;
 
 static bool compress = false;
 static bool encryption = false;
+static bool broacast = false;
 static unsigned long timeToLive = 0;
 
 /** AllJoynListener receives discovery events from AllJoyn */
@@ -186,7 +187,11 @@ class LocalTestObject : public BusObject {
         if (encryption) {
             flags |= ALLJOYN_FLAG_ENCRYPTED;
         }
-        return Signal(NULL, g_busListener.GetSessionId(), *my_signal_member, &arg, 1, timeToLive, flags);
+        if (broacast) {
+            return Signal(NULL, 0, *my_signal_member, &arg, 1, timeToLive, flags);
+        } else {
+            return Signal(NULL, g_busListener.GetSessionId(), *my_signal_member, &arg, 1, timeToLive, flags);
+        }
     }
 
     void SignalHandler(const InterfaceDescription::Member* member,
@@ -203,20 +208,9 @@ class LocalTestObject : public BusObject {
 
     void RegisterSignalHandler()
     {
-        QStatus status;
-        MsgArg arg("s", "type='signal',interface='org.alljoyn.alljoyn_test',member='my_signal'");
-        Message reply(bus);
-        const ProxyBusObject& dbusObj = bus.GetDBusProxyObj();
-
-        status = dbusObj.MethodCall(ajn::org::freedesktop::DBus::InterfaceName,
-                                    "AddMatch",
-                                    &arg,
-                                    1,
-                                    reply);
+        QStatus status = bus.AddMatch("type='signal',interface='org.alljoyn.alljoyn_test',member='my_signal'");
         if (status != ER_OK) {
-            QCC_SyncPrintf("Failed to register Match rule for 'org.alljoyn.alljoyn_test.my_signal': %s\n",
-                           QCC_StatusText(status));
-            QCC_SyncPrintf("reply msg: %s\n", reply->ToString().c_str());
+            QCC_LogError(status, ("Failed to register Match rule for 'org.alljoyn.alljoyn_test.my_signal'"));
         }
     }
 
@@ -417,6 +411,7 @@ static void usage(void)
     printf("   -x              = Compress headers\n");
     printf("   -e[k] [RSA|SRP] = Encrypt the test interface using specified auth mechanism, -ek means clear keys\n");
     printf("   -d              = discover remote bus with test service\n");
+    printf("   -b              = Signal is broadcast rather than multicast\n");
     printf("   -w              = Wait for a CTRL-C to stop the bus\n");
 }
 
@@ -543,6 +538,8 @@ int main(int argc, char** argv)
             compress = true;
         } else if (0 == strcmp("-w", argv[i])) {
             waitStop = true;
+        } else if (0 == strcmp("-b", argv[i])) {
+            broacast = true;
         } else if ((0 == strcmp("-e", argv[i])) || (0 == strcmp("-ek", argv[i]))) {
             if (!authMechs.empty()) {
                 authMechs += " ";
