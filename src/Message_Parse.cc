@@ -555,8 +555,7 @@ QStatus _Message::UnmarshalArgs(const qcc::String& expectedSignature, const char
         size_t hdrLen = bodyPtr - (uint8_t*)msgBuf;
         PeerState peerState = bus.GetInternal().GetPeerStateTable()->GetPeerState(GetSender());
         KeyBlob key;
-        KeyBlob nonce;
-        status = peerState->GetKeyAndNonce(key, nonce, broadcast ? PEER_GROUP_KEY : PEER_SESSION_KEY);
+        status = peerState->GetKey(key, broadcast ? PEER_GROUP_KEY : PEER_SESSION_KEY);
         if (status != ER_OK) {
             QCC_LogError(status, ("Unable to decrypt message"));
             /*
@@ -567,25 +566,12 @@ QStatus _Message::UnmarshalArgs(const qcc::String& expectedSignature, const char
         }
         QCC_DbgHLPrintf(("Decrypting messge from %s", GetSender()));
         /*
-         * Make the nonce unique for this message.
-         */
-        nonce.Xor((uint8_t*)(&msgHeader.serialNum), sizeof(msgHeader.serialNum));
-        /*
-         * If the message header is compressed a hash of the compressed header fields is xor'd with
-         * the nonce. This is to prevent a security attack where an attacker provides a bogus
-         * expansion rule.
-         */
-        if (msgHeader.flags & ALLJOYN_FLAG_COMPRESSED) {
-            KeyBlob hdrHash;
-            ajn::Crypto::HashHeaderFields(hdrFields, hdrHash);
-            nonce ^= hdrHash;
-        }
-        /*
          * Decryption will typically make the body length slightly smaller because the encryption
          * algorithm adds appends a MAC block to the end of the encrypted data.
          */
+        Message thisMsg(this);
         size_t bodyLen = msgHeader.bodyLen;
-        status = ajn::Crypto::Decrypt(key, (uint8_t*)msgBuf, hdrLen, bodyLen, nonce);
+        status = ajn::Crypto::Decrypt(thisMsg, key, (uint8_t*)msgBuf, hdrLen, bodyLen);
         if (status != ER_OK) {
             goto ExitUnmarshalArgs;
         }

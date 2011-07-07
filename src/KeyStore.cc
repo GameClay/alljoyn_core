@@ -49,7 +49,6 @@ namespace ajn {
 
 
 static const uint16_t KeyStoreVersion = 0x0102;
-static const uint16_t BackVersion = 0x0101;
 
 
 QStatus KeyStoreListener::PutKeys(KeyStore& keyStore, const qcc::String& source, const qcc::String& password)
@@ -302,19 +301,12 @@ QStatus KeyStore::Pull(Source& source, const qcc::String& password)
     /* Pull and check the key store version */
     QStatus status = source.PullBytes(&version, sizeof(version), pulled);
     if ((status == ER_OK) && (version != KeyStoreVersion)) {
-        /* We can still read the back version */
-        if (version != BackVersion) {
-            status = ER_BUS_KEYSTORE_VERSION_MISMATCH;
-        }
+        status = ER_BUS_KEYSTORE_VERSION_MISMATCH;
         QCC_LogError(status, ("Keystore has wrong version expected %d got %d", KeyStoreVersion, version));
     }
-    if (version == BackVersion) {
-        revision = 0;
-    } else {
-        /* Pull the revision number */
-        if (status == ER_OK) {
-            status = source.PullBytes(&revision, sizeof(revision), pulled);
-        }
+    /* Pull the revision number */
+    if (status == ER_OK) {
+        status = source.PullBytes(&revision, sizeof(revision), pulled);
     }
     /* Pull the application GUID */
     if (status == ER_OK) {
@@ -337,11 +329,6 @@ QStatus KeyStore::Pull(Source& source, const qcc::String& password)
         goto ExitPull;
     }
     QCC_DbgPrintf(("KeyStore::Pull (revision %d)", revision));
-    /* Pull the nonce */
-    status = nonce.Load(source);
-    if (status != ER_OK) {
-        goto ExitPull;
-    }
     /* Get length of the encrypted keys */
     status = source.PullBytes(&len, sizeof(len), pulled);
     if (status != ER_OK) {
@@ -363,6 +350,10 @@ QStatus KeyStore::Pull(Source& source, const qcc::String& password)
             status = ER_BUS_CORRUPT_KEYSTORE;
         }
         if (status == ER_OK) {
+            uint8_t nData[Crypto_AES::CCM_NONCE_SIZE];
+            memcpy(nData, &revision, sizeof(revision));
+            memset(nData + sizeof(revision), 0, sizeof(nData) - sizeof(revision));
+            KeyBlob nonce(nData, sizeof(nData), KeyBlob::GENERIC);
             /*
              * Decrypt the key store.
              */
@@ -374,11 +365,7 @@ QStatus KeyStore::Pull(Source& source, const qcc::String& password)
             StringSource strSource(data, len);
             while (status == ER_OK) {
                 uint32_t rev;
-                if (version == BackVersion) {
-                    rev = 0;
-                } else {
-                    status = strSource.PullBytes(&rev, sizeof(rev), pulled);
-                }
+                status = strSource.PullBytes(&rev, sizeof(rev), pulled);
                 if (status == ER_OK) {
                     status = strSource.PullBytes(guidBuf, qcc::GUID::SIZE, pulled);
                 }
@@ -537,8 +524,6 @@ QStatus KeyStore::Push(Sink& sink)
         QCC_DbgPrintf(("KeyStore::Push rev:%d GUID %s", it->second.revision, it->first.ToString().c_str()));
     }
     size_t keysLen = strSink.GetString().size();
-    KeyBlob nonce;
-    nonce.Rand(16, KeyBlob::GENERIC);
     /*
      * First two bytes are the version number.
      */
@@ -556,18 +541,19 @@ QStatus KeyStore::Push(Sink& sink)
         goto ExitPush;
     }
     /*
-     * Store the GUID and a random nonce.
+     * Store the GUID
      */
     if (status == ER_OK) {
         status = sink.PushBytes(thisGuid.GetBytes(), qcc::GUID::SIZE, pushed);
-        if (status == ER_OK) {
-            status = nonce.Store(sink);
-        }
     }
     if (status != ER_OK) {
         goto ExitPush;
     }
     if (keysLen > 0) {
+        uint8_t nData[Crypto_AES::CCM_NONCE_SIZE];
+        memcpy(nData, &revision, sizeof(revision));
+        memset(nData + sizeof(revision), 0, sizeof(nData) - sizeof(revision));
+        KeyBlob nonce(nData, sizeof(nData), KeyBlob::GENERIC);
         /*
          * Encrypt keys.
          */

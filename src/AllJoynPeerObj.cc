@@ -261,7 +261,6 @@ void AllJoynPeerObj::ExchangeGroupKeys(const InterfaceDescription::Member* membe
     QStatus status;
     PeerStateTable* peerStateTable = bus.GetInternal().GetPeerStateTable();
     KeyBlob key;
-    KeyBlob nonce;
 
     /*
      * We expect to know the peer that is making this method call
@@ -270,21 +269,17 @@ void AllJoynPeerObj::ExchangeGroupKeys(const InterfaceDescription::Member* membe
         StringSource src(msg->GetArg(0)->v_scalarArray.v_byte, msg->GetArg(0)->v_scalarArray.numElements);
         status = key.Load(src);
         if (status == ER_OK) {
-            status = nonce.Load(src);
-        }
-        if (status == ER_OK) {
             /*
              * Tag the group key with the auth mechanism used by ExchangeGroupKeys then store it.
              */
-            key.SetTag(msg->GetAuthMechanism());
-            peerStateTable->GetPeerState(msg->GetSender())->SetKeyAndNonce(key, nonce, PEER_GROUP_KEY);
+            key.SetTag(msg->GetAuthMechanism(), KeyBlob::RESPONDER);
+            peerStateTable->GetPeerState(msg->GetSender())->SetKey(key, PEER_GROUP_KEY);
             /*
              * Return the local group key.
              */
-            peerStateTable->GetGroupKeyAndNonce(key, nonce);
+            peerStateTable->GetGroupKey(key);
             StringSink snk;
             key.Store(snk);
-            nonce.Store(snk);
             MsgArg replyArg("ay", snk.GetString().size(), snk.GetString().data());
             MethodReply(msg, &replyArg, 1);
         }
@@ -322,7 +317,7 @@ void AllJoynPeerObj::ExchangeGuids(const InterfaceDescription::Member* member, M
 #define VERIFIER_LEN  12
 #define NONCE_LEN     28
 
-QStatus AllJoynPeerObj::KeyGen(PeerState& peerState, String seed, qcc::String& verifier)
+QStatus AllJoynPeerObj::KeyGen(PeerState& peerState, String seed, qcc::String& verifier, KeyBlob::Role role)
 {
     QStatus status;
     KeyStore& keyStore = bus.GetInternal().GetKeyStore();
@@ -331,26 +326,25 @@ QStatus AllJoynPeerObj::KeyGen(PeerState& peerState, String seed, qcc::String& v
 
     status = keyStore.GetKey(peerState->GetGuid(), masterSecret);
     if (status == ER_OK) {
-        size_t keylen = Crypto_AES::AES128_SIZE + ajn::Crypto::NonceBytes + VERIFIER_LEN;
+        size_t keylen = Crypto_AES::AES128_SIZE + VERIFIER_LEN;
         uint8_t* keymatter = new uint8_t[keylen];
         /*
-         * Session key and other key matter is generated using the procedure described in RFC 5246
+         * Session key is generated using the procedure described in RFC 5246
          */
         Crypto_PseudorandomFunction(masterSecret, label, seed, keymatter, keylen);
         KeyBlob sessionKey(keymatter, Crypto_AES::AES128_SIZE, KeyBlob::AES);
-        KeyBlob nonce(keymatter + Crypto_AES::AES128_SIZE, ajn::Crypto::NonceBytes, KeyBlob::GENERIC);
         /*
          * Tag the session key with auth mechanism tag from the master secret
          */
-        sessionKey.SetTag(masterSecret.GetTag());
+        sessionKey.SetTag(masterSecret.GetTag(), role);
         /*
-         * Store session key and nonce in the peer state.
+         * Store session key in the peer state.
          */
-        peerState->SetKeyAndNonce(sessionKey, nonce, PEER_SESSION_KEY);
+        peerState->SetKey(sessionKey, PEER_SESSION_KEY);
         /*
          * Return verifier string
          */
-        verifier = BytesToHexString(keymatter + Crypto_AES::AES128_SIZE + ajn::Crypto::NonceBytes, VERIFIER_LEN);
+        verifier = BytesToHexString(keymatter + Crypto_AES::AES128_SIZE, VERIFIER_LEN);
         delete [] keymatter;
         QCC_DbgHLPrintf(("KeyGen verifier %s", verifier.c_str()));
     }
@@ -375,7 +369,7 @@ void AllJoynPeerObj::GenSessionKey(const InterfaceDescription::Member* member, M
     } else {
         qcc::String nonce = RandHexString(NONCE_LEN);
         qcc::String verifier;
-        status = KeyGen(peerState, msg->GetArg(2)->v_string.str + nonce, verifier);
+        status = KeyGen(peerState, msg->GetArg(2)->v_string.str + nonce, verifier, KeyBlob::RESPONDER);
         if (status == ER_OK) {
             MsgArg replyArgs[2];
             replyArgs[0].Set("s", nonce.c_str());
@@ -433,7 +427,7 @@ void AllJoynPeerObj::AuthAdvance(Message& msg)
         if (status == ER_OK) {
             qcc::GUID remotePeerGuid(sasl->GetRemoteId());
             /* Tag the master secret with the auth mechanism used to generate it */
-            masterSecret.SetTag(mech);
+            masterSecret.SetTag(mech, KeyBlob::RESPONDER);
             status = keyStore.AddKey(remotePeerGuid, masterSecret);
         }
         /*
@@ -601,16 +595,14 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
     if (remoteGuidStr == localGuidStr) {
         QCC_DbgHLPrintf(("Securing local peer to itself"));
         KeyBlob key;
-        KeyBlob nonce;
-        /* Use the local peer's GROUP key */
-        peerStateTable->GetGroupKeyAndNonce(key, nonce);
-        key.SetTag("SELF");
-        peerState->SetKeyAndNonce(key, nonce, PEER_GROUP_KEY);
-        /* Allocate a random session key and related nonce */
+        /* Use the local peer's GROUP key - no role because we are both INITIATOR and RESPONDER */
+        peerStateTable->GetGroupKey(key);
+        key.SetTag("SELF", KeyBlob::NO_ROLE);
+        peerState->SetKey(key, PEER_GROUP_KEY);
+        /* Allocate a random session key - no role because we are both INITIATOR and RESPONDER */
         key.Rand(Crypto_AES::AES128_SIZE, KeyBlob::AES);
-        nonce.Rand(32, KeyBlob::GENERIC);
-        key.SetTag("SELF");
-        peerState->SetKeyAndNonce(key, nonce, PEER_SESSION_KEY);
+        key.SetTag("SELF", KeyBlob::NO_ROLE);
+        peerState->SetKey(key, PEER_SESSION_KEY);
         /* Record in the peer state that this peer is the local peer */
         peerState->isLocalPeer = true;
         clientLock.Unlock();
@@ -660,7 +652,7 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
                 /*
                  * The response completes the seed string so we can generate the session key.
                  */
-                status = KeyGen(peerState, nonce + replyMsg->GetArg(0)->v_string.str, verifier);
+                status = KeyGen(peerState, nonce + replyMsg->GetArg(0)->v_string.str, verifier, KeyBlob::INITIATOR);
                 if ((status == ER_OK) && (verifier != replyMsg->GetArg(1)->v_string.str)) {
                     status = ER_AUTH_FAIL;
                 }
@@ -670,7 +662,8 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
             break;
         }
         /*
-         * Initiaize the SASL engine as responder (i.e. client)
+         * Initiaize the SASL engine as responder (i.e. client) this terminology seems backwards but
+         * is the terminology used by the DBus specification.
          */
         SASLEngine sasl(bus, ajn::AuthMechanism::RESPONDER, peerAuthMechanisms, busName.c_str(), peerAuthListener);
         sasl.SetLocalId(localGuidStr);
@@ -693,7 +686,7 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
                     status = sasl.GetMasterSecret(masterSecret);
                     if (status == ER_OK) {
                         /* Tag the master secret with the auth mechanism used to generate it */
-                        masterSecret.SetTag(mech);
+                        masterSecret.SetTag(mech, KeyBlob::INITIATOR);
                         status = keyStore.AddKey(remotePeerGuid, masterSecret);
                     }
                 }
@@ -710,25 +703,20 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
     if (status == ER_OK) {
         Message replyMsg(bus);
         KeyBlob key;
-        KeyBlob nonce;
         StringSink snk;
-        peerStateTable->GetGroupKeyAndNonce(key, nonce);
+        peerStateTable->GetGroupKey(key);
         key.Store(snk);
-        nonce.Store(snk);
         MsgArg arg("ay", snk.GetString().size(), snk.GetString().data());
         status = remotePeerObj.MethodCall(*(ifc->GetMember("ExchangeGroupKeys")), &arg, 1, replyMsg, DEFAULT_TIMEOUT, ALLJOYN_FLAG_ENCRYPTED);
         if (status == ER_OK) {
             StringSource src(replyMsg->GetArg(0)->v_scalarArray.v_byte, replyMsg->GetArg(0)->v_scalarArray.numElements);
             status = key.Load(src);
             if (status == ER_OK) {
-                status = nonce.Load(src);
-            }
-            if (status == ER_OK) {
                 /*
                  * Tag the group key with the auth mechanism used by ExchangeGroupKeys
                  */
-                key.SetTag(replyMsg->GetAuthMechanism());
-                peerState->SetKeyAndNonce(key, nonce, PEER_GROUP_KEY);
+                key.SetTag(replyMsg->GetAuthMechanism(), KeyBlob::RESPONDER);
+                peerState->SetKey(key, PEER_GROUP_KEY);
             }
         }
     }

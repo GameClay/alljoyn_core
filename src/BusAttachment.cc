@@ -74,7 +74,7 @@ BusAttachment::Internal::Internal(const char* appName, BusAttachment& bus, Trans
     keyStore(application),
     authManager(keyStore),
     globalGuid(qcc::GUID()),
-    msgSerial(qcc::Rand32()),
+    msgSerial(1),
     router(router ? router : new ClientRouter),
     localEndpoint(transportList.GetLocalTransport()->GetLocalEndpoint()),
     timer("BusTimer", true),

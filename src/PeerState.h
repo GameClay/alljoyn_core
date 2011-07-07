@@ -121,31 +121,27 @@ class _PeerState {
     void SetGuid(const qcc::GUID& guid) { this->guid = guid; }
 
     /**
-     * Sets the session key and nonce for this peer
+     * Sets the session key for this peer
      *
      * @param key        The session key to set.
-     * @param nonce      The nonce to set.
      * @param keyType    Indicate if this is the unicast or broadcast key.
      */
-    void SetKeyAndNonce(const qcc::KeyBlob& key, const qcc::KeyBlob& nonce, PeerKeyType keyType) {
+    void SetKey(const qcc::KeyBlob& key, PeerKeyType keyType) {
         keys[keyType] = key;
-        nonces[keyType] = nonce;
-        isSecure = nonce.IsValid() && key.IsValid();
+        isSecure = key.IsValid();
     }
 
     /**
-     * Gets the session key and nonce for this peer.
+     * Gets the session key for this peer.
      *
      * @param key    [out]Returns the session key.
-     * @param nonce  [out]Returns the nonce.
      *
      * @return  - ER_OK if there is a session key set for this peer.
      *          - ER_BUS_KEY_UNAVAILABLE if no session key has been set for this peer.
      */
-    QStatus GetKeyAndNonce(qcc::KeyBlob& key, qcc::KeyBlob& nonce, PeerKeyType keyType) {
+    QStatus GetKey(qcc::KeyBlob& key, PeerKeyType keyType) {
         if (isSecure) {
             key = keys[keyType];
-            nonce = nonces[keyType];
             return ER_OK;
         } else {
             return ER_BUS_KEY_UNAVAILABLE;
@@ -221,11 +217,6 @@ class _PeerState {
     qcc::GUID guid;
 
     /**
-     * The security nonces (unicast and broadcast) for this peer
-     */
-    qcc::KeyBlob nonces[2];
-
-    /**
      * The session keys (unicast and broadcast) for this peer.
      */
     qcc::KeyBlob keys[2];
@@ -292,13 +283,12 @@ class PeerStateTable {
     void DelPeerState(const qcc::String& busName);
 
     /**
-     * Gets the group (broadcast) key and nonce for the local peer. This is used to encrypt
+     * Gets the group (broadcast) key for the local peer. This is used to encrypt
      * broadcast messages sent by this peer.
      *
      * @param key   [out]Returns the broadcast key.
-     * @param nonce [out]Returns the nonce.
      */
-    void GetGroupKeyAndNonce(qcc::KeyBlob& key, qcc::KeyBlob& nonce);
+    void GetGroupKey(qcc::KeyBlob& key);
 
     /**
      * Clear all peer state.

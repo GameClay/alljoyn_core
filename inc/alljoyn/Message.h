@@ -268,11 +268,19 @@ class _Message {
     QStatus GetArgs(const char* signature, ...);
 
     /**
-     * Accessor function to get serial number for the message. Only meaningful for
-     * #MESSAGE_METHOD_CALL
+     * Accessor function to get serial number for the message. Usually only important for
+     * #MESSAGE_METHOD_CALL for matching up the reply to the call.
+     *
      * @return the serial number of the %Message
      */
-    uint32_t GetCallSerial() { return msgHeader.serialNum; }
+    uint32_t GetCallSerial() const { return msgHeader.serialNum; }
+
+    /**
+     * Get a reference to all of the header fields for this message.
+     *
+     * @return A const reference to the header fields for this message.
+     */
+    const HeaderFields& GetHeaderFields() const { return hdrFields; }
 
     /**
      * Accessor function to get the signature for this message
@@ -642,7 +650,7 @@ class _Message {
     /**
      * Assignment operator.
      *
-     * @param otehr   RHS of assignment.
+     * @param other   RHS of assignment.
      */
     _Message operator=(const _Message& other);
 

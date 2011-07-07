@@ -124,26 +124,25 @@ void PeerStateTable::DelPeerState(const qcc::String& busName)
     lock.Unlock();
 }
 
-void PeerStateTable::GetGroupKeyAndNonce(qcc::KeyBlob& key, qcc::KeyBlob& nonce)
+void PeerStateTable::GetGroupKey(qcc::KeyBlob& key)
 {
     /*
      * The group key is carried by the null-name peer
      */
-    GetPeerState("")->GetKeyAndNonce(key, nonce, PEER_SESSION_KEY);
+    GetPeerState("")->GetKey(key, PEER_SESSION_KEY);
 
 }
 
 void PeerStateTable::Clear()
 {
     qcc::KeyBlob key;
-    qcc::KeyBlob nonce;
     lock.Lock();
     peerMap.clear();
     PeerState nullPeer;
     QCC_DbgHLPrintf(("Allocating group key"));
     key.Rand(Crypto_AES::AES128_SIZE, KeyBlob::AES);
-    nonce.Rand(Crypto::NonceBytes, KeyBlob::GENERIC);
-    nullPeer->SetKeyAndNonce(key, nonce, PEER_SESSION_KEY);
+    key.SetTag("GroupKey", KeyBlob::INITIATOR);
+    nullPeer->SetKey(key, PEER_SESSION_KEY);
     peerMap[""] = nullPeer;
     lock.Unlock();
 }

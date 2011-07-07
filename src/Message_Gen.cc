@@ -684,26 +684,12 @@ QStatus _Message::EncryptMessage()
     QStatus status;
     PeerStateTable* peerStateTable = bus.GetInternal().GetPeerStateTable();
     KeyBlob key;
-    KeyBlob nonce;
-    status = peerStateTable->GetPeerState(GetDestination())->GetKeyAndNonce(key, nonce, PEER_SESSION_KEY);
+    status = peerStateTable->GetPeerState(GetDestination())->GetKey(key, PEER_SESSION_KEY);
     if (status == ER_OK) {
+        Message thisMsg(this);
         size_t argsLen = msgHeader.bodyLen - ajn::Crypto::ExpansionBytes;
         size_t hdrLen = ROUNDUP8(sizeof(msgHeader) + msgHeader.headerLen);
-        /*
-         * Make the nonce unique for this message.
-         */
-        nonce.Xor((uint8_t*)(&msgHeader.serialNum), sizeof(msgHeader.serialNum));
-        /*
-         * If the message header is compressed a hash of the compressed header fields is xor'd with
-         * the nonce. This is to prevent a security attack where an attacker provides a bogus
-         * expansion rule.
-         */
-        if (msgHeader.flags & ALLJOYN_FLAG_COMPRESSED) {
-            KeyBlob hdrHash;
-            ajn::Crypto::HashHeaderFields(hdrFields, hdrHash);
-            nonce ^= hdrHash;
-        }
-        status = ajn::Crypto::Encrypt(key, (uint8_t*)msgBuf, hdrLen, argsLen, nonce);
+        status = ajn::Crypto::Encrypt(thisMsg, key, (uint8_t*)msgBuf, hdrLen, argsLen);
         if (status == ER_OK) {
             authMechanism = key.GetTag();
             assert(msgHeader.bodyLen == argsLen);

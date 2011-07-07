@@ -30,6 +30,7 @@
 #include <qcc/GUID.h>
 #include <qcc/String.h>
 #include <qcc/Thread.h>
+#include <qcc/KeyBlob.h>
 
 #include <alljoyn/BusObject.h>
 #include <alljoyn/Message.h>
@@ -243,7 +244,7 @@ class AllJoynPeerObj : public BusObject, public BusListener {
      * @param seed       A seed string negotiated by the peers.
      * @param verifier   A verifier string that used to verify the session key.
      */
-    QStatus KeyGen(PeerState& peerState, qcc::String seed, qcc::String& verifier);
+    QStatus KeyGen(PeerState& peerState, qcc::String seed, qcc::String& verifier, qcc::KeyBlob::Role role);
 
     /**
      * Get a property from this object
