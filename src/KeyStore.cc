@@ -296,7 +296,6 @@ QStatus KeyStore::Pull(Source& source, const qcc::String& password)
     size_t pulled;
     size_t len = 0;
     uint16_t version;
-    KeyBlob nonce;
 
     /* Pull and check the key store version */
     QStatus status = source.PullBytes(&version, sizeof(version), pulled);
@@ -350,13 +349,10 @@ QStatus KeyStore::Pull(Source& source, const qcc::String& password)
             status = ER_BUS_CORRUPT_KEYSTORE;
         }
         if (status == ER_OK) {
-            uint8_t nData[Crypto_AES::CCM_NONCE_SIZE];
-            memcpy(nData, &revision, sizeof(revision));
-            memset(nData + sizeof(revision), 0, sizeof(nData) - sizeof(revision));
-            KeyBlob nonce(nData, sizeof(nData), KeyBlob::GENERIC);
             /*
              * Decrypt the key store.
              */
+            KeyBlob nonce((uint8_t*)&revision, sizeof(revision), KeyBlob::GENERIC);
             Crypto_AES aes(*keyStoreKey, Crypto_AES::ENCRYPT);
             status = aes.Decrypt_CCM(data, data, len, nonce, NULL, 0, 16);
             /*
@@ -550,13 +546,10 @@ QStatus KeyStore::Push(Sink& sink)
         goto ExitPush;
     }
     if (keysLen > 0) {
-        uint8_t nData[Crypto_AES::CCM_NONCE_SIZE];
-        memcpy(nData, &revision, sizeof(revision));
-        memset(nData + sizeof(revision), 0, sizeof(nData) - sizeof(revision));
-        KeyBlob nonce(nData, sizeof(nData), KeyBlob::GENERIC);
         /*
          * Encrypt keys.
          */
+        KeyBlob nonce((uint8_t*)&revision, sizeof(revision), KeyBlob::GENERIC);
         uint8_t* keysData = new uint8_t[keysLen + 16];
         Crypto_AES aes(*keyStoreKey, Crypto_AES::ENCRYPT);
         status = aes.Encrypt_CCM(strSink.GetString().data(), keysData, keysLen, nonce, NULL, 0, 16);
