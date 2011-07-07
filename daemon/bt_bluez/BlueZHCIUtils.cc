@@ -364,6 +364,7 @@ QStatus IsMaster(uint16_t deviceId, const BDAddress& bdAddr, bool& master)
     }
 
     bdAddr.CopyTo(connInfoReq.bdaddr.b, true);
+    connInfoReq.type = HCI_ACL_LINK;
 
     ret = ioctl(hciFd, HCIGETCONNINFO, &connInfoReq);
     if (ret < 0) {

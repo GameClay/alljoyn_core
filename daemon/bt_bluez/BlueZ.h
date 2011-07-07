@@ -43,6 +43,13 @@
 
 #define L2CAP_LM_MASTER 0x1
 
+#define HCI_LM_MASTER 0x1
+
+#define HCI_SCO_LINK  0x00
+#define HCI_ACL_LINK  0x01
+#define HCI_ESCO_LINK 0x02
+
+
 namespace ajn {
 namespace bluez {
 typedef struct _BDADDR {
@@ -98,11 +105,6 @@ struct hci_conn_info_req {
 };
 
 #define HCIGETCONNINFO _IOR('H', 213, int)
-
-#define HCI_LM_MASTER 0x1
-
-
-
 
 
 } // namespace bluez
