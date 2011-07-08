@@ -227,6 +227,7 @@ BTController::~BTController()
     dispatcher.Join();
 
     if (advertise.active) {
+        QCC_DbgPrintf(("Stopping local advertise..."));
         bt.StopAdvertise();
     }
 
@@ -806,11 +807,6 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     // just sent a SetState method call to.  If so ignore their state
     // information if their address is greater than ours.
     if ((exchangingState.find(addr) == exchangingState.end()) || (addr < self->GetBusAddress())) {
-        if (UseLocalFind() && find.active) {
-            QCC_DbgPrintf(("Stopping find..."));
-            bt.StopFind();
-            find.active = false;
-        }
 
         FillFoundNodesMsgArgs(foundNodeArgsStorage, foundNodeDB);
 
@@ -834,6 +830,10 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
         if ((slaveFactor > remoteSlaveFactor) ||
             ((slaveFactor == remoteSlaveFactor) && !wantMaster)) {
             // We are now a minion (or a drone if we have more than one direct connection)
+            master = new ProxyBusObject(bus, sender.c_str(), bluetoothObjPath, 0);
+            masterNode = BTNodeInfo(addr, sender);
+            masterNode->SetUUIDRev(otherUUIDRev);
+
             if (advertise.active) {
                 advertise.StopOp();
                 advertise.minion = self;
@@ -842,10 +842,6 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
                 find.StopOp();
                 find.minion = self;
             }
-
-            master = new ProxyBusObject(bus, sender.c_str(), bluetoothObjPath, 0);
-            masterNode = BTNodeInfo(addr, sender);
-            masterNode->SetUUIDRev(otherUUIDRev);
 
             if (dispatcher.HasAlarm(expireAlarm)) {
                 dispatcher.RemoveAlarm(expireAlarm);
@@ -887,11 +883,21 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
 
             if (wasUseLocalFind && !UseLocalFind()) {
                 // Force updating the find delegation
+                if (find.active) {
+                    QCC_DbgPrintf(("Stopping local find..."));
+                    bt.StopFind();
+                    find.active = false;
+                }
                 find.dirty = true;
             }
 
             if (wasUseLocalAdvertise && !UseLocalAdvertise()) {
                 // Force updating the advertise delegation
+                if (advertise.active) {
+                    QCC_DbgPrintf(("Stopping local advertise..."));
+                    bt.StopAdvertise();
+                    advertise.active = false;
+                }
                 advertise.dirty = true;
             }
 
@@ -1149,22 +1155,15 @@ void BTController::DeferredBTDeviceAvailable(bool on)
                 SetSelfAddress(listenAddr);
             }
 
-            nodeDB.Lock();
             nodeDB.AddNode(self);
-            BDAddressSet ignoreAddrs;
-            BTNodeDB::const_iterator it;
-            for (it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
-                ignoreAddrs->insert((*it)->GetBusAddress().addr);
-            }
-            nodeDB.Unlock();
-
-            find.ignoreAddrs = ignoreAddrs;
-            find.dirty = true;
+            find.dirty = true;  // Update ignore addrs
 
             if (IsMaster()) {
                 UpdateDelegations(advertise);
                 UpdateDelegations(find);
             }
+        } else {
+            QCC_LogError(status, ("Failed to start listening for incoming connections"));
         }
     } else if (!on && devAvailable) {
         if (listening) {
@@ -1175,6 +1174,7 @@ void BTController::DeferredBTDeviceAvailable(bool on)
         }
         if (advertise.active) {
             if (!IsMinion() || UseLocalAdvertise()) {
+                QCC_DbgPrintf(("Stopping local advertise..."));
                 bt.StopAdvertise();
             }
             advertise.active = false;
@@ -1182,6 +1182,7 @@ void BTController::DeferredBTDeviceAvailable(bool on)
         }
         if (find.active) {
             if (IsMinion() || UseLocalFind()) {
+                QCC_DbgPrintf(("Stopping local find..."));
                 bt.StopFind();
             }
             find.active = false;
@@ -1219,7 +1220,7 @@ QStatus BTController::DeferredSendSetState(const BTBusAddress& addr, const qcc::
          * in one side or the other taking control of who performs the
          * find operation.
          */
-        QCC_DbgPrintf(("Stopping find..."));
+        QCC_DbgPrintf(("Stopping local find..."));
         bt.StopFind();
         find.active = false;
     }
@@ -1230,7 +1231,7 @@ QStatus BTController::DeferredSendSetState(const BTBusAddress& addr, const qcc::
          * will result in one side or the other taking control of who
          * performs the advertise operation.
          */
-        QCC_DbgPrintf(("Stopping advertise..."));
+        QCC_DbgPrintf(("Stopping local advertise..."));
         bt.StopAdvertise();
         advertise.active = false;
     }
@@ -1455,7 +1456,7 @@ void BTController::DeferredHandleDelegateFind(Message& msg)
                 status = bt.StartFind(ignoreAddrs, duration);
                 find.active = (status == ER_OK);
             } else {
-                QCC_DbgPrintf(("Stopping find..."));
+                QCC_DbgPrintf(("Stopping local find..."));
                 bt.StopFind();
                 find.active = false;
             }
@@ -1504,7 +1505,7 @@ void BTController::DeferredHandleDelegateAdvertise(Message& msg)
                 status = bt.StartAdvertise(uuidRev, bdAddr, psm, adInfo, duration);
                 advertise.active = (status == ER_OK);
             } else {
-                QCC_DbgPrintf(("Stopping advertise..."));
+                QCC_DbgPrintf(("Stopping local advertise..."));
                 bt.StopAdvertise();
                 advertise.active = false;
             }
@@ -1561,14 +1562,8 @@ void BTController::DeferredNameLostHander(const String& name)
         ResetExpireNameAlarm();
 
         // We need to prepare for controlling discovery.
-        BDAddressSet ignoreAddrs;
-        nodeDB.Lock();
-        for (BTNodeDB::const_iterator it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
-            ignoreAddrs->insert((*it)->GetBusAddress().addr);
-        }
-        nodeDB.Unlock();
         find.resultDest.clear();
-        find.ignoreAddrs = ignoreAddrs;
+        find.dirty = true;  // Update ignore addrs
 
         if (UseLocalAdvertise()) {
             advertise.minion = self;
@@ -1607,7 +1602,7 @@ void BTController::DeferredNameLostHander(const String& name)
             // Advertise minion and find minion should never be the same.
             assert(!(wasAdvertiseMinion && wasFindMinion));
 
-            find.ignoreAddrs->erase(minion->GetBusAddress().addr);
+            find.dirty = true;  // Update ignore addrs
 
             // Indicate the name lists have changed.
             advertise.count -= minion->AdvertiseNamesSize();
@@ -2016,11 +2011,12 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo)
     const bool stop = active && (empty || !allowConn);
     const bool restart = active && changed && !empty && allowConn;
 
-    QCC_DbgPrintf(("%s %s operation because device is %s, conn is %s, name list %s%s, and op is %s.",
+    QCC_DbgPrintf(("%s %s operation because device is %s, conn is %s, %s %s%s, and op is %s.",
                    start ? "Starting" : (restart ? "Updating" : (stop ? "Stopping" : "Skipping")),
                    advertiseOp ? "advertise" : "find",
                    devAvailable ? "available" : "not available",
                    allowConn ? "allowed" : "not allowed",
+                   advertiseOp ? "name list" : "ignore addrs",
                    changed ? "changed" : "didn't change",
                    empty ? " to empty" : "",
                    active ? "active" : "not active"));
@@ -2037,7 +2033,6 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo)
         if (masterUUIDRev == bt::INVALID_UUIDREV) {
             ++masterUUIDRev;
         }
-        find.dirty = true; // Force updating the ignore UUID
     }
 
     if (start) {
@@ -2376,7 +2371,7 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
             lock.Unlock();
             if (empty) {
                 if (useLocalAdvertise) {
-                    QCC_DbgPrintf(("Stopping advertise..."));
+                    QCC_DbgPrintf(("Stopping local advertise..."));
                     bt.StopAdvertise();
                 } else {
                     // Tell the minion to stop advertising (presumably the empty list).
@@ -2683,11 +2678,16 @@ QStatus BTController::AdvertiseNameArgInfo::StartLocal()
 
 QStatus BTController::AdvertiseNameArgInfo::StopLocal()
 {
-    // Should still advertise our node even though there are no names to
-    // advertise so that other nodes can clean up their cache's appropriately.
-    return bto.bt.StartAdvertise(bto.masterUUIDRev,
-                                 bto.self->GetBusAddress().addr, bto.self->GetBusAddress().psm,
-                                 bto.nodeDB);
+    if (bto.IsMaster()) {
+        // Should still advertise our node even though there are no names to
+        // advertise so that other nodes can clean up their cache's appropriately.
+        return bto.bt.StartAdvertise(bto.masterUUIDRev,
+                                     bto.self->GetBusAddress().addr, bto.self->GetBusAddress().psm,
+                                     bto.nodeDB);
+    } else {
+        QCC_DbgPrintf(("Stopping local advertise..."));
+        return bto.bt.StopAdvertise();
+    }
 }
 
 
@@ -2701,7 +2701,6 @@ void BTController::FindNameArgInfo::AddName(const qcc::String& name, BTNodeInfo&
 {
     node->AddFindName(name);
     ++count;
-    dirty = true;
 }
 
 
@@ -2711,7 +2710,6 @@ void BTController::FindNameArgInfo::RemoveName(const qcc::String& name, BTNodeIn
     if (nit != node->GetFindNamesEnd()) {
         node->RemoveFindName(nit);
         --count;
-        dirty = true;
     }
 }
 
@@ -2761,6 +2759,27 @@ void BTController::FindNameArgInfo::ClearArgs()
     bto.lock.Lock();
     args = newArgs;
     bto.lock.Unlock();
+}
+
+
+QStatus BTController::FindNameArgInfo::StartLocal()
+{
+    bto.nodeDB.Lock();
+    BDAddressSet ignoreAddrs;
+    BTNodeDB::const_iterator it;
+    for (it = bto.nodeDB.Begin(); it != bto.nodeDB.End(); ++it) {
+        ignoreAddrs->insert((*it)->GetBusAddress().addr);
+    }
+    bto.nodeDB.Unlock();
+
+    return bto.bt.StartFind(ignoreAddrs);
+}
+
+
+QStatus BTController::FindNameArgInfo::StopLocal()
+{
+    QCC_DbgPrintf(("Stopping local find..."));
+    return bto.bt.StopFind();
 }
 
 

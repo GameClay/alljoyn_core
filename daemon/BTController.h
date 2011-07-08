@@ -423,8 +423,8 @@ class BTController :
         void SetArgs();
         void ClearArgs();
         bool UseLocal() { return bto.UseLocalFind(); }
-        QStatus StartLocal() { return bto.bt.StartFind(ignoreAddrs); }
-        QStatus StopLocal() { return bto.bt.StopFind(); }
+        QStatus StartLocal();
+        QStatus StopLocal();
     };
 
 
