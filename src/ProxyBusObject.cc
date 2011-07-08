@@ -583,6 +583,8 @@ QStatus ProxyBusObject::MethodCall(const InterfaceDescription::Member& method,
                 } else {
                     localEndpoint.UnregisterReplyHandler(serial);
                 }
+            } else {
+                lock->Unlock();
             }
         }
     }
