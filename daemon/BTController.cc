@@ -2454,16 +2454,19 @@ void BTController::NameArgInfo::AlarmTriggered(const Alarm& alarm, QStatus reaso
 
     if (reason == ER_OK) {
         bto.lock.Lock();
-        bto.NextDirectMinion(minion);
+        // Defensive programming in case alarm triggers while processing a lost direct minion
+        if (bto.RotateMinions()) {
+            bto.NextDirectMinion(minion);
 
-        QCC_DbgPrintf(("Selected %s as our %s minion.",
-                       minion->GetBusAddress().ToString().c_str(),
-                       (minion == bto.find.minion) ? "find" : "advertise"));
+            QCC_DbgPrintf(("Selected %s as our %s minion.",
+                           minion->GetBusAddress().ToString().c_str(),
+                           (minion == bto.find.minion) ? "find" : "advertise"));
 
-        // Manually re-arm alarm since automatically recurring alarms cannot be stopped.
-        StartAlarm();
+            // Manually re-arm alarm since automatically recurring alarms cannot be stopped.
+            StartAlarm();
 
-        SendDelegateSignal();
+            SendDelegateSignal();
+        }
         bto.lock.Unlock();
     }
 }
