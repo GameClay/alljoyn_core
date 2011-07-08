@@ -1155,7 +1155,6 @@ void BTController::DeferredBTDeviceAvailable(bool on)
                 SetSelfAddress(listenAddr);
             }
 
-            nodeDB.AddNode(self);
             find.dirty = true;  // Update ignore addrs
 
             if (IsMaster()) {
@@ -1168,7 +1167,6 @@ void BTController::DeferredBTDeviceAvailable(bool on)
     } else if (!on && devAvailable) {
         if (listening) {
             bt.StopListen();
-            nodeDB.RemoveNode(self);
             BTBusAddress nullAddr;
             listening = false;
         }
@@ -1468,6 +1466,7 @@ void BTController::DeferredHandleDelegateFind(Message& msg)
         msg->GetArgs(numArgs, args);
 
         // Pick a minion to do the work for us.
+        assert(nodeDB.FindNode(find.minion->GetBusAddress())->IsValid());
         NextDirectMinion(find.minion);
         QCC_DbgPrintf(("Selected %s as our find minion.", find.minion->GetBusAddress().ToString().c_str()));
 
@@ -1517,6 +1516,7 @@ void BTController::DeferredHandleDelegateAdvertise(Message& msg)
         msg->GetArgs(numArgs, args);
 
         // Pick a minion to do the work for us.
+        assert(nodeDB.FindNode(advertise.minion->GetBusAddress())->IsValid());
         NextDirectMinion(advertise.minion);
         QCC_DbgPrintf(("Selected %s as our advertise minion.", advertise.minion->GetBusAddress().ToString().c_str()));
 
@@ -1568,6 +1568,7 @@ void BTController::DeferredNameLostHander(const String& name)
         if (UseLocalAdvertise()) {
             advertise.minion = self;
         } else {
+            assert(nodeDB.FindNode(advertise.minion->GetBusAddress())->IsValid());
             NextDirectMinion(advertise.minion);
         }
         QCC_DbgPrintf(("Selected %s as our advertise minion.",
@@ -1577,6 +1578,7 @@ void BTController::DeferredNameLostHander(const String& name)
         if (UseLocalFind()) {
             find.minion = self;
         } else {
+            assert(nodeDB.FindNode(find.minion->GetBusAddress())->IsValid());
             NextDirectMinion(find.minion);
         }
         QCC_DbgPrintf(("Selected %s as our find minion.",
@@ -1640,6 +1642,7 @@ void BTController::DeferredNameLostHander(const String& name)
                             QCC_DbgPrintf(("Set advertise minion to ourself"));
                         }
 
+                        assert(nodeDB.FindNode(find.minion->GetBusAddress())->IsValid());
                         NextDirectMinion(find.minion);
                     }
                     // ... else our only minion was finding for us.  We'll
@@ -1659,6 +1662,7 @@ void BTController::DeferredNameLostHander(const String& name)
                         // We had more than 2 minions, so at least one is
                         // idle.  Select the next available minion and to
                         // do the advertising for us.
+                        assert(nodeDB.FindNode(advertise.minion->GetBusAddress())->IsValid());
                         NextDirectMinion(advertise.minion);
                     }
                     // ... else we had 2 minions (or 1 if we were a
@@ -1981,11 +1985,13 @@ QStatus BTController::ImportState(const BTBusAddress& addr,
         ++directMinions;
 
         if (find.minion == self) {
+            assert(nodeDB.FindNode(find.minion->GetBusAddress())->IsValid());
             NextDirectMinion(find.minion);
             QCC_DbgPrintf(("Selected %s as our find minion.", find.minion->GetBusAddress().ToString().c_str()));
         }
 
         if ((advertise.minion == self) && (!UseLocalAdvertise())) {
+            assert(nodeDB.FindNode(advertise.minion->GetBusAddress())->IsValid());
             NextDirectMinion(advertise.minion);
             QCC_DbgPrintf(("Selected %s as our advertise minion.", advertise.minion->GetBusAddress().ToString().c_str()));
         }
@@ -2320,6 +2326,9 @@ void BTController::SetSelfAddress(const BTBusAddress& newAddr)
     dests.reserve(directMinions + (!IsMaster() ? 1 : 0));
 
     nodeDB.Lock();
+    nodeDB.RemoveNode(self);
+    self->SetBusAddress(newAddr);
+    nodeDB.AddNode(self);
     for (nit = nodeDB.Begin(); nit != nodeDB.End(); ++nit) {
         const BTNodeInfo& minion = *nit;
         if (minion->IsDirectMinion()) {
@@ -2332,7 +2341,6 @@ void BTController::SetSelfAddress(const BTBusAddress& newAddr)
         dests.push_back(master->GetServiceName());
     }
 
-    self->SetBusAddress(newAddr);
     lock.Unlock();
 
     for (dit = dests.begin(); dit != dests.end(); ++dit) {
@@ -2456,6 +2464,7 @@ void BTController::NameArgInfo::AlarmTriggered(const Alarm& alarm, QStatus reaso
         bto.lock.Lock();
         // Defensive programming in case alarm triggers while processing a lost direct minion
         if (bto.RotateMinions()) {
+            assert(bto.nodeDB.FindNode(minion->GetBusAddress())->IsValid());
             bto.NextDirectMinion(minion);
 
             QCC_DbgPrintf(("Selected %s as our %s minion.",
