@@ -133,11 +133,12 @@ QStatus org::alljoyn::CreateInterfaces(BusAttachment& bus)
             QCC_LogError(status, ("Failed to create %s interface", org::alljoyn::Bus::Peer::Authentication::InterfaceName));
             return status;
         }
-        ifc->AddMethod("ExchangeGuids",     "s",   "s",  "localGuid,remoteGuid");
+        ifc->AddMethod("ExchangeGuids",     "su",  "su", "localGuid,localVersion,remoteGuid,remoteVersion");
         ifc->AddMethod("GenSessionKey",     "sss", "ss", "localGuid,remoteGuid,localNonce,remoteNonce,verifier");
         ifc->AddMethod("ExchangeGroupKeys", "ay",  "ay", "localKeyMatter,remoteKeyMatter");
         ifc->AddMethod("AuthChallenge",     "s",   "s",  "challenge,response");
         ifc->AddProperty("Mechanisms",  "s", PROP_ACCESS_READ);
+        ifc->AddProperty("Version",     "u", PROP_ACCESS_READ);
         ifc->Activate();
     }
     {

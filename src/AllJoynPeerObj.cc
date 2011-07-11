@@ -52,6 +52,8 @@ using namespace qcc;
 
 namespace ajn {
 
+static const uint32_t PEER_AUTH_VERSION = 0x00010000;
+
 /*
  * Mutex to serialize all authentications.
  */
@@ -294,6 +296,7 @@ void AllJoynPeerObj::ExchangeGroupKeys(const InterfaceDescription::Member* membe
 void AllJoynPeerObj::ExchangeGuids(const InterfaceDescription::Member* member, Message& msg)
 {
     qcc::GUID remotePeerGuid(msg->GetArg(0)->v_string.str);
+    uint32_t version = msg->GetArg(1)->v_uint32;
     qcc::String localGuidStr = bus.GetInternal().GetKeyStore().GetGuid();
     if (!localGuidStr.empty()) {
         PeerState peerState = bus.GetInternal().GetPeerStateTable()->GetPeerState(msg->GetSender());
@@ -304,8 +307,14 @@ void AllJoynPeerObj::ExchangeGuids(const InterfaceDescription::Member* member, M
          * Associate the remote peer GUID with the sender peer state.
          */
         peerState->SetGuid(remotePeerGuid);
-        MsgArg replyArg("s", localGuidStr.c_str());
-        MethodReply(msg, &replyArg, 1);
+        if (version == PEER_AUTH_VERSION) {
+            MsgArg replyArgs[2];
+            replyArgs[0].Set("s", localGuidStr.c_str());
+            replyArgs[1].Set("u", PEER_AUTH_VERSION);
+            MethodReply(msg, replyArgs, ArraySize(replyArgs));
+        } else {
+            MethodReply(msg, ER_BUS_PEER_AUTH_VERSION_MISMATCH);
+        }
     } else {
         MethodReply(msg, ER_BUS_NO_PEER_GUID);
     }
@@ -542,9 +551,11 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
      * master secret or if we have to start an authentication conversation.
      */
     qcc::String localGuidStr = bus.GetInternal().GetKeyStore().GetGuid();
-    MsgArg arg("s", localGuidStr.c_str());
+    MsgArg args[2];
+    args[0].Set("s", localGuidStr.c_str());
+    args[1].Set("u", PEER_AUTH_VERSION);
     Message replyMsg(bus);
-    status = remotePeerObj.MethodCall(*(ifc->GetMember("ExchangeGuids")), &arg, 1, replyMsg, DEFAULT_TIMEOUT);
+    status = remotePeerObj.MethodCall(*(ifc->GetMember("ExchangeGuids")), args, ArraySize(args), replyMsg, DEFAULT_TIMEOUT);
     if (status != ER_OK) {
         /*
          * ER_BUS_REPLY_IS_ERROR_MESSAGE has a specific meaning in the public API an should not be
@@ -565,7 +576,14 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
      * Extract the remote guid from the message
      */
     qcc::GUID remotePeerGuid(replyMsg->GetArg(0)->v_string.str);
+    uint32_t version = replyMsg->GetArg(1)->v_uint32;
     qcc::String remoteGuidStr = remotePeerGuid.ToString();
+
+    if (version != PEER_AUTH_VERSION) {
+        status = ER_BUS_PEER_AUTH_VERSION_MISMATCH;
+        QCC_LogError(status, ("ExchangeGuids expected %u got %u", PEER_AUTH_VERSION, version));
+        return status;
+    }
 
     QCC_DbgHLPrintf(("ExchangeGuids Local %s", localGuidStr.c_str()));
     QCC_DbgHLPrintf(("ExchangeGuids Remote %s", remoteGuidStr.c_str()));
