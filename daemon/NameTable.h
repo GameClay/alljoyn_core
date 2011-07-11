@@ -209,7 +209,7 @@ class NameTable {
 
   private:
     typedef struct {
-        BusEndpoint* endpoint;
+        qcc::String endpointName;
         uint32_t flags;
     } NameQueueEntry;
 
