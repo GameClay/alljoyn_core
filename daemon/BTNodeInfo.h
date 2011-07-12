@@ -1,0 +1,472 @@
+/**
+ * @file
+ * Bluetooth device information class definition.
+ */
+
+/******************************************************************************
+ * Copyright 2009-2011, Qualcomm Innovation Center, Inc.
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ ******************************************************************************/
+#ifndef _ALLJOYN_BTNODEINFO_H
+#define _ALLJOYN_BTNODEINFO_H
+
+#include <qcc/platform.h>
+
+#include <limits>
+#include <set>
+
+#include <qcc/ManagedObj.h>
+#include <qcc/String.h>
+
+
+#include "BTBusAddress.h"
+
+
+namespace ajn {
+
+/** Convenience typedef for a set of name strings. */
+typedef std::set<qcc::String> NameSet;
+
+/** Forward declaration of _BTNodeInfo. */
+class _BTNodeInfo;
+
+/** Typedef for BTNodeInfo ManagedObj. */
+typedef qcc::ManagedObj<_BTNodeInfo> BTNodeInfo;
+
+/** Class containing information about Bluetooth nodes. */
+class _BTNodeInfo {
+
+  public:
+    /**
+     * Default constructor.
+     */
+    _BTNodeInfo() :
+        guid(),
+        uniqueName(),
+        nodeAddr(),
+        directMinion(false),
+        connectProxyNode(NULL),
+        uuidRev(bt::INVALID_UUIDREV),
+        expireTime(std::numeric_limits<uint64_t>::max())
+    { }
+
+    /**
+     * Construct that initializes certain information.
+     *
+     * @param nodeAddr      Bus address of the node
+     */
+    _BTNodeInfo(const BTBusAddress& nodeAddr) :
+        guid(),
+        uniqueName(),
+        nodeAddr(nodeAddr),
+        directMinion(false),
+        connectProxyNode(NULL),
+        uuidRev(bt::INVALID_UUIDREV),
+        expireTime(std::numeric_limits<uint64_t>::max())
+    { }
+
+    /**
+     * Construct that initializes certain information.
+     *
+     * @param nodeAddr      Bus address of the node
+     * @param uniqueName    Unique bus name of the daemon on the node
+     */
+    _BTNodeInfo(const BTBusAddress& nodeAddr, const qcc::String& uniqueName) :
+        guid(),
+        uniqueName(uniqueName),
+        nodeAddr(nodeAddr),
+        directMinion(false),
+        connectProxyNode(NULL),
+        uuidRev(bt::INVALID_UUIDREV),
+        expireTime(std::numeric_limits<uint64_t>::max())
+    { }
+
+    /**
+     * Construct that initializes certain information.
+     *
+     * @param nodeAddr      Bus address of the node
+     * @param uniqueName    Unique bus name of the daemon on the node
+     * @param guid          Bus GUID of the node
+     */
+    _BTNodeInfo(const BTBusAddress& nodeAddr, const qcc::String& uniqueName, const qcc::String& guid) :
+        guid(guid),
+        uniqueName(uniqueName),
+        nodeAddr(nodeAddr),
+        directMinion(false),
+        connectProxyNode(NULL),
+        uuidRev(bt::INVALID_UUIDREV),
+        expireTime(std::numeric_limits<uint64_t>::max())
+    { }
+
+    /**
+     * Destructor.
+     */
+    ~_BTNodeInfo() { if (connectProxyNode) { delete connectProxyNode; } }
+
+    /**
+     * Check is the node information is valid.
+     *
+     * @return  true if the node information valid, false otherwise
+     */
+    bool IsValid() const { return nodeAddr.IsValid(); }
+
+    /**
+     * Get the begin iterator for the advertise name set.
+     *
+     * @return  const_iterator pointing to the begining of the advertise name set
+     */
+    NameSet::const_iterator GetAdvertiseNamesBegin() const { return adNames.begin(); }
+
+    /**
+     * Get the end iterator for the advertise name set.
+     *
+     * @return  const_iterator pointing to the end of the advertise name set
+     */
+    NameSet::const_iterator GetAdvertiseNamesEnd() const { return adNames.end(); }
+
+    /**
+     * Get the iterator pointing to the specified name for the advertise name set.
+     *
+     * @param name  Name of the advertise name to find
+     *
+     * @return  const_iterator pointing to the specified name or the end of the advertise name set
+     */
+    NameSet::const_iterator FindAdvertiseName(const qcc::String& name) const { return adNames.find(name); }
+
+    /**
+     * Get the begin iterator for the advertise name set.
+     *
+     * @return  const_iterator pointing to the begining of the advertise name set
+     */
+    NameSet::iterator GetAdvertiseNamesBegin() { return adNames.begin(); }
+
+    /**
+     * Get the end iterator for the advertise name set.
+     *
+     * @return  const_iterator pointing to the end of the advertise name set
+     */
+    NameSet::iterator GetAdvertiseNamesEnd() { return adNames.end(); }
+
+    /**
+     * Get the iterator pointing to the specified name for the advertise name set.
+     *
+     * @param name  Name of the advertise name to find
+     *
+     * @return  const_iterator pointing to the specified name or the end of the advertise name set
+     */
+    NameSet::iterator FindAdvertiseName(const qcc::String& name) { return adNames.find(name); }
+
+    /**
+     * Get the number of entries in the advertise name set.
+     *
+     * @return  the number of entries in the advertise name set
+     */
+    size_t AdvertiseNamesSize() const { return adNames.size(); }
+
+    /**
+     * Check if the advertise name set is empty
+     *
+     * @return  true if the advertise name set is empty, false otherwise
+     */
+    bool AdvertiseNamesEmpty() const { return adNames.empty(); }
+
+    /**
+     * Add a name to the advertise name set.
+     *
+     * @param name  Name to add to the advertise name set
+     */
+    void AddAdvertiseName(const qcc::String& name) { adNames.insert(name); }
+
+    /**
+     * Remove a name from the advertise name set.
+     *
+     * @param name  Name to remove from the advertise name set
+     */
+    void RemoveAdvertiseName(const qcc::String& name) { adNames.erase(name); }
+
+    /**
+     * Remove a name from the advertise name set referenced by an iterator.
+     *
+     * @param it    Reference to the name to remove from the advertise name set
+     */
+    void RemoveAdvertiseName(NameSet::iterator& it) { adNames.erase(it); }
+
+
+    /**
+     * Get the begin iterator for the find name set.
+     *
+     * @return  const_iterator pointing to the begining of the find name set
+     */
+    NameSet::const_iterator GetFindNamesBegin() const { return findNames.begin(); }
+
+    /**
+     * Get the end iterator for the find name set.
+     *
+     * @return  const_iterator pointing to the end of the find name set
+     */
+    NameSet::const_iterator GetFindNamesEnd() const { return findNames.end(); }
+
+    /**
+     * Get the iterator pointing to the specified name for the find name set.
+     *
+     * @param name  Name of the find name to find
+     *
+     * @return  const_iterator pointing to the specified name or the end of the find name set
+     */
+    NameSet::const_iterator FindFindName(const qcc::String& name) const { return findNames.find(name); }
+
+    /**
+     * Get the begin iterator for the find name set.
+     *
+     * @return  const_iterator pointing to the begining of the find name set
+     */
+    NameSet::iterator GetFindNamesBegin() { return findNames.begin(); }
+
+    /**
+     * Get the end iterator for the find name set.
+     *
+     * @return  const_iterator pointing to the end of the find name set
+     */
+    NameSet::iterator GetFindNamesEnd() { return findNames.end(); }
+
+    /**
+     * Get the iterator pointing to the specified name for the find name set.
+     *
+     * @param name  Name of the find name to find
+     *
+     * @return  const_iterator pointing to the specified name or the end of the find name set
+     */
+    NameSet::iterator FindFindName(const qcc::String& name) { return findNames.find(name); }
+
+    /**
+     * Get the number of entries in the findadvertise name set.
+     *
+     * @return  the number of entries in the find name set
+     */
+    size_t FindNamesSize() const { return findNames.size(); }
+
+    /**
+     * Check if the find name set is empty
+     *
+     * @return  true if the find name set is empty, false otherwise
+     */
+    bool FindNamesEmpty() const { return findNames.empty(); }
+
+    /**
+     * Add a name to the find name set.
+     *
+     * @param name  Name to add to the find name set
+     */
+    void AddFindName(const qcc::String& name) { findNames.insert(name); }
+
+    /**
+     * Remove a name from the find name set.
+     *
+     * @param name  Name to remove from the find name set
+     */
+    void RemoveFindName(const qcc::String& name) { findNames.erase(name); }
+
+    /**
+     * Remove a name from the find name set referenced by an iterator.
+     *
+     * @param it    Reference to the name to remove from the find name set
+     */
+    void RemoveFindName(NameSet::iterator& it) { findNames.erase(it); }
+
+    /**
+     * Get the bus GUID.
+     *
+     * @return  String representation of the bus GUID.
+     */
+    const qcc::String& GetGUID() const { return guid; }
+
+    /**
+     * Set the bus GUID.
+     *
+     * @param guid  String representation of the bus GUID.
+     */
+    void SetGUID(const qcc::String& guid) { this->guid = guid; }
+
+    /**
+     * Get the unique name of the AllJoyn controller object.
+     *
+     * @return  The unique name of the AllJoyn controller object.
+     */
+    const qcc::String& GetUniqueName() const { return uniqueName; }
+
+    /**
+     * Set the unique name of the AllJoyn controller object.  Care must be
+     * taken when setting this.  It is used as a lookup key in BTNodeDB and
+     * setting this for a node contained by BTNodeDB will _NOT_ update that
+     * index.
+     *
+     * @param name  The unique name of the AllJoyn controller object.
+     */
+    void SetUniqueName(const qcc::String& name) { uniqueName = name; }
+
+    /**
+     * Get the Bluetooth bus address.
+     *
+     * @return  The Bluetooth bus address.
+     */
+    const BTBusAddress& GetBusAddress() const { return nodeAddr; }
+
+    /**
+     * Set the Bluetooth bus address.  Care must be taken when setting this.
+     * It is used as a lookup key in BTNodeDB and setting this for a node
+     * contained by BTNodeDB will _NOT_ update that index.
+     *
+     * @param addr  The Bluetooth bus address.
+     */
+    void SetBusAddress(const BTBusAddress& addr) { nodeAddr = addr; }
+
+    /**
+     * Get whether this node is a direct minion or not.
+     *
+     * @return  'true' if the node is a direct minion, 'false' otherwise.
+     */
+    bool IsDirectMinion() const { return directMinion; }
+
+    /**
+     * Set whether this node is a direct minion or not.
+     *
+     * @param val   'true' if the node is a direct minion, 'false' otherwise.
+     */
+    void SetDirectMinion(bool val) { directMinion = val; }
+
+    /**
+     * Get the bus address that is accepting connections for us.
+     *
+     * @return  Bus address accepting connections for us
+     */
+    const BTBusAddress& GetConnectAddress() const
+    {
+        const _BTNodeInfo* next = this;
+        while (next->connectProxyNode) {
+            next = &(*(*(next->connectProxyNode)));
+        }
+        return next->GetBusAddress();
+    }
+
+    /**
+     * Set the node that accepts connections for us.  It may actually have
+     * node that accepts connections for it, thus producing a chain.  Care
+     * must be taken when setting this.  It is used as a lookup key in
+     * BTNodeDB and setting this for a node contained by BTNodeDB will _NOT_
+     * update that index.
+     *
+     * @param node  Node that will accept connections for us.
+     */
+    void SetConnectNode(const BTNodeInfo& node)
+    {
+        if (*node == *this) {
+            if (connectProxyNode) {
+                delete connectProxyNode;
+                connectProxyNode = NULL;
+            } // connectProxyNode == NULL -- nothing to do
+        } else {
+            if (connectProxyNode) {
+                *connectProxyNode = node;
+            } else {
+                connectProxyNode = new BTNodeInfo(node);
+            }
+        }
+    }
+
+    /**
+     * Get the UUID revision of the advertisement this node was discovered in.
+     *
+     * @return  The UUID revision.
+     */
+    uint32_t GetUUIDRev() const { return uuidRev; }
+
+    /**
+     * Set the UUID revision of the advertisement this node was discovered in.
+     *
+     * @param uuidRev   The UUID revision.
+     */
+    void SetUUIDRev(uint32_t uuidRev) { this->uuidRev = uuidRev; }
+
+    /**
+     * Get the absolute expire time in milliseconds.  If value is
+     * numeric_limits<uint64_t>::max() then no expiration timeout set.
+     *
+     * @return  Absolute expiration time in milliseconds
+     */
+    uint64_t GetExpireTime() const { return expireTime; }
+
+    /**
+     * Set the expiration time.  Care must be taken when setting this.  It is
+     * used as a lookup key in BTNodeDB and setting this for a node contained
+     * by BTNodeDB will _NOT_ update that index.
+     *
+     * @param expireTime    Absolute expiration time in milliseconds
+     */
+    void SetExpireTime(uint64_t expireTime)
+    {
+        this->expireTime = expireTime;
+    }
+
+    /**
+     * Equivalence operator.
+     *
+     * @param other     reference to the rhs of "==" for comparison
+     *
+     * @return  true if this is == other, false otherwise
+     */
+    bool operator==(const _BTNodeInfo& other) const { return (nodeAddr == other.nodeAddr); }
+
+    /**
+     * Inequality operator.
+     *
+     * @param other     reference to the rhs of "==" for comparison
+     *
+     * @return  true if this is != other, false otherwise
+     */
+    bool operator!=(const _BTNodeInfo& other) const { return !(*this == other); }
+
+    /**
+     * Less than operator.
+     *
+     * @param other     reference to the rhs of "<" for comparison
+     *
+     * @return  true if this is < other, false otherwise
+     */
+    bool operator<(const _BTNodeInfo& other) const { return (nodeAddr < other.nodeAddr); }
+
+  private:
+    /**
+     * Private copy constructor to catch potential coding errors.
+     */
+    _BTNodeInfo(const _BTNodeInfo& other) { }
+
+    /**
+     * Private assignment operator to catch potential coding errors.
+     */
+    _BTNodeInfo& operator=(const _BTNodeInfo& other) { return *this; }
+
+    qcc::String guid;             /**< Bus GUID of the node. */
+    qcc::String uniqueName;       /**< Unique bus name of the daemon on the node. */
+    BTBusAddress nodeAddr;        /**< Bus address of the node. */
+    bool directMinion;            /**< Flag indicating if the node is a directly connected minion or not. */
+    BTNodeInfo* connectProxyNode; /**< Node that will accept connections for us. */
+    NameSet adNames;              /**< Set of advertise names. */
+    NameSet findNames;            /**< Set of find names. */
+    uint32_t uuidRev;             /**< UUID revision of the advertisement this node was found in. */
+    uint64_t expireTime;          /**< Time when advertised information is considered stale. */
+};
+
+}
+
+#endif
