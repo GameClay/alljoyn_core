@@ -161,7 +161,7 @@ void* BTTransport::Run(void* arg)
                 conn->GetFeatures().handlePassing = false;
 
                 threadListLock.Lock();
-                threadList.push_back(conn);
+                threadList.insert(conn);
                 threadListLock.Unlock();
                 QCC_DbgPrintf(("BTTransport::Run: Calling conn->Establish() [for accepted connection]"));
                 status = conn->Establish("ANONYMOUS", authName);
@@ -206,7 +206,7 @@ QStatus BTTransport::Stop(void)
 
     transportIsStopping = true;
 
-    vector<RemoteEndpoint*>::iterator eit;
+    set<RemoteEndpoint*>::iterator eit;
 
     bool isStopping = IsStopping();
 
@@ -374,7 +374,7 @@ void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
 
     /* Remove thread from thread list */
     threadListLock.Lock();
-    vector<RemoteEndpoint*>::iterator eit = find(threadList.begin(), threadList.end(), endpoint);
+    set<RemoteEndpoint*>::iterator eit = threadList.find(endpoint);
     if (eit != threadList.end()) {
         threadList.erase(eit);
     }
@@ -513,7 +513,7 @@ QStatus BTTransport::Connect(const BTBusAddress& addr,
     conn->GetFeatures().handlePassing = false;
 
     threadListLock.Lock();
-    threadList.push_back(conn);
+    threadList.insert(conn);
     threadListLock.Unlock();
     QCC_DbgPrintf(("BTTransport::Connect: Calling conn->Establish() [addr = %s via %s]",
                    addr.ToString().c_str(), connAddr.ToString().c_str()));
@@ -568,7 +568,7 @@ QStatus BTTransport::Disconnect(const BTBusAddress& addr)
 RemoteEndpoint* BTTransport::LookupEndpoint(const qcc::String& busName)
 {
     RemoteEndpoint* ep = NULL;
-    vector<RemoteEndpoint*>::iterator eit;
+    set<RemoteEndpoint*>::iterator eit;
     threadListLock.Lock();
     for (eit = threadList.begin(); eit != threadList.end(); ++eit) {
         if ((*eit)->GetRemoteName() == busName) {
@@ -584,7 +584,7 @@ RemoteEndpoint* BTTransport::LookupEndpoint(const qcc::String& busName)
 
 
 void BTTransport::ReturnEndpoint(RemoteEndpoint* ep) {
-    if (find(threadList.begin(), threadList.end(), ep) != threadList.end()) {
+    if (threadList.find(ep) != threadList.end()) {
         threadListLock.Unlock();
     }
 }

@@ -389,7 +389,7 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
     /*
      * Shut down all endpoints
      */
-    vector<RemoteEndpoint*>::iterator eit;
+    set<RemoteEndpoint*>::iterator eit;
     transport->threadListLock.Lock();
     for (eit = transport->threadList.begin(); eit != transport->threadList.end(); ++eit) {
         (*eit)->Stop();
@@ -921,7 +921,7 @@ QStatus BTTransport::BTAccessor::Disconnect(const BTBusAddress& addr)
     QStatus status(ER_BUS_BAD_TRANSPORT_ARGS);
 
     RemoteEndpoint* ep(NULL);
-    vector<RemoteEndpoint*>::iterator eit;
+    set<RemoteEndpoint*>::iterator eit;
 
     transport->threadListLock.Lock();
     for (eit = transport->threadList.begin(); eit != transport->threadList.end(); ++eit) {

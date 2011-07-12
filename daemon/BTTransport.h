@@ -26,6 +26,8 @@
 #endif
 
 #include <qcc/platform.h>
+
+#include <set>
 #include <vector>
 
 #include <qcc/GUID.h>
@@ -477,7 +479,7 @@ class BTTransport :
     BTAccessor* btAccessor;                        /**< Object for accessing the Bluetooth device */
     BTController* btController;                    /**< Bus Object that manages the BT topology */
     std::map<qcc::String, qcc::String> serverArgs; /**< Map of server configuration args */
-    std::vector<RemoteEndpoint*> threadList;       /**< List of active BT endpoints */
+    std::set<RemoteEndpoint*> threadList;          /**< List of active BT endpoints */
     qcc::Mutex threadListLock;                     /**< Mutex that protects threadList */
     TransportListener* listener;
     bool transportIsStopping;                      /**< The transport has recevied a stop request */
