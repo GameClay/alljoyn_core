@@ -750,6 +750,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     }
 
     uint32_t remoteProtocolVersion = ep->GetRemoteProtocolVersion();
+    BTBusAddress remoteAddr = ep->GetBTBusAddress();
     bt.ReturnEndpoint(ep);
 
     uint8_t connectionInfo;
@@ -783,7 +784,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     if (status != ER_OK) {
         lock.Unlock();
         MethodReply(msg, "org.alljoyn.Bus.BTController.InternalError", QCC_StatusText(status));
-        bt.Disconnect(sender);
+        bt.Disconnect(remoteAddr);
         return;
     }
 
@@ -799,7 +800,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
         QCC_LogError(ER_FAIL, ("SetState method call received with remote bus address the same as ours (%s)",
                                addr.ToString().c_str()));
         lock.Unlock();
-        bt.Disconnect(sender);
+        bt.Disconnect(remoteAddr);
         return;
     }
 
@@ -853,7 +854,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
             if (status != ER_OK) {
                 lock.Unlock();
                 MethodReply(msg, "org.alljoyn.Bus.BTController.InternalError", QCC_StatusText(status));
-                bt.Disconnect(sender);
+                bt.Disconnect(remoteAddr);
                 return;
             }
 
@@ -875,7 +876,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
             if (status != ER_OK) {
                 lock.Unlock();
                 QCC_LogError(status, ("Dropping %s due to import state error", sender.c_str()));
-                bt.Disconnect(sender);
+                bt.Disconnect(remoteAddr);
                 return;
             }
 
@@ -963,14 +964,14 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
 
     if (status != ER_OK) {
         QCC_LogError(status, ("MsgArg::Set(%s)", SIG_SET_STATE_OUT));
-        bt.Disconnect(sender);
+        bt.Disconnect(remoteAddr);
         return;
     }
 
     status = MethodReply(msg, args, numArgs);
     if (status != ER_OK) {
         QCC_LogError(status, ("MethodReply"));
-        bt.Disconnect(sender);
+        bt.Disconnect(remoteAddr);
         return;
     }
 
@@ -1252,7 +1253,7 @@ QStatus BTController::DeferredSendSetState(const BTBusAddress& addr, const qcc::
     if (status != ER_OK) {
         delete newMaster;
         QCC_LogError(status, ("Dropping %s due to internal error", busName.c_str()));
-        bt.Disconnect(busName);
+        bt.Disconnect(addr);
         goto exit;
     }
 
@@ -1274,7 +1275,7 @@ QStatus BTController::DeferredSendSetState(const BTBusAddress& addr, const qcc::
     if (status != ER_OK) {
         delete newMaster;
         QCC_LogError(status, ("Dropping %s due to internal error", busName.c_str()));
-        bt.Disconnect(busName);
+        bt.Disconnect(addr);
     }
 
 exit:
@@ -1319,7 +1320,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
             delete newMaster;
             QCC_LogError(status, ("Dropping %s due to error parsing the args (sig: \"%s\")",
                                   busName.c_str(), SIG_SET_STATE_OUT));
-            bt.Disconnect(busName);
+            bt.Disconnect(addr);
             goto exit;
         }
 
@@ -1339,7 +1340,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
                 status = ImportState(addr, NULL, 0, foundNodeArgs, numFoundNodeArgs);
                 if (status != ER_OK) {
                     QCC_LogError(status, ("Dropping %s due to import state error", busName.c_str()));
-                    bt.Disconnect(busName);
+                    bt.Disconnect(addr);
                     goto exit;
                 }
 
@@ -1351,7 +1352,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
                 status = ImportState(addr, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs);
                 if (status != ER_OK) {
                     QCC_LogError(status, ("Dropping %s due to import state error", busName.c_str()));
-                    bt.Disconnect(busName);
+                    bt.Disconnect(addr);
                     goto exit;
                 }
 
@@ -1410,7 +1411,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
         qcc::String errMsg;
         const char* errName = reply->GetErrorName(&errMsg);
         QCC_LogError(ER_FAIL, ("Dropping %s due to internal error: %s - %s", busName.c_str(), errName, errMsg.c_str()));
-        bt.Disconnect(busName);
+        bt.Disconnect(addr);
     }
 
 exit:

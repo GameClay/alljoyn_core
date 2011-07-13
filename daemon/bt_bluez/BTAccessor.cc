@@ -915,29 +915,6 @@ exit:
 }
 
 
-QStatus BTTransport::BTAccessor::Disconnect(const BTBusAddress& addr)
-{
-    QCC_DbgTrace(("BTTransport::BTAccessor::Disconnect(addr = %s)", addr.ToString().c_str()));
-    QStatus status(ER_BUS_BAD_TRANSPORT_ARGS);
-
-    RemoteEndpoint* ep(NULL);
-    set<RemoteEndpoint*>::iterator eit;
-
-    transport->threadListLock.Lock();
-    for (eit = transport->threadList.begin(); eit != transport->threadList.end(); ++eit) {
-        if (addr == static_cast<BlueZBTEndpoint*>(*eit)->GetBTBusAddress()) {
-            ep = *eit;
-        }
-        if (ep) {
-            status = ep->Stop();
-            break;
-        }
-    }
-    transport->threadListLock.Unlock();
-    return status;
-}
-
-
 QStatus BTTransport::BTAccessor::EnumerateAdapters()
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::EnumerateAdapters()"));

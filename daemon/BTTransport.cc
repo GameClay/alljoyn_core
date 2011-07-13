@@ -34,6 +34,7 @@
 
 #include "BDAddress.h"
 #include "BTController.h"
+#include "BTEndpoint.h"
 #include "BTTransport.h"
 
 #if defined QCC_OS_GROUP_POSIX
@@ -561,7 +562,19 @@ exit:
 
 QStatus BTTransport::Disconnect(const BTBusAddress& addr)
 {
-    return btAccessor->Disconnect(addr);
+    QCC_DbgTrace(("BTTransport::Disconnect(addr = %s)", addr.ToString().c_str()));
+    QStatus status(ER_BUS_BAD_TRANSPORT_ARGS);
+
+    set<RemoteEndpoint*>::iterator eit;
+
+    threadListLock.Lock();
+    for (eit = threadList.begin(); eit != threadList.end(); ++eit) {
+        if (addr.addr == static_cast<BTEndpoint*>(*eit)->GetBTBusAddress().addr) {
+            status = (*eit)->Stop();
+        }
+    }
+    threadListLock.Unlock();
+    return status;
 }
 
 
@@ -587,19 +600,6 @@ void BTTransport::ReturnEndpoint(RemoteEndpoint* ep) {
     if (threadList.find(ep) != threadList.end()) {
         threadListLock.Unlock();
     }
-}
-
-
-QStatus BTTransport::Disconnect(const qcc::String& busName)
-{
-    QStatus status = ER_OK;
-    RemoteEndpoint* ep = LookupEndpoint(busName);
-    if (ep) {
-        ReturnEndpoint(ep);
-        status = ep->Stop();
-    }
-
-    return status;
 }
 
 

@@ -151,15 +151,6 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
                             const BTBusAddress& devAddr);
 
     /**
-     * Disconnect from the specified remote Bluetooth device.
-     *
-     * @param bdAddr    Bluetooth device address to disconnect from
-     *
-     * @return  ER_OK if successful
-     */
-    QStatus Disconnect(const BTBusAddress& addr);
-
-    /**
      * Perform an SDP queary on the specified device to get the bus information.
      *
      * @param addr          Bluetooth device address to retrieve the SDP record from

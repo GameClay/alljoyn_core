@@ -469,7 +469,6 @@ class BTTransport :
 
     RemoteEndpoint* LookupEndpoint(const qcc::String& busName);
     void ReturnEndpoint(RemoteEndpoint* ep);
-    QStatus Disconnect(const qcc::String& busName);
 
     QStatus IsMaster(const BDAddress& addr, bool& master) const;
     void RequestBTRole(const BDAddress& addr, bt::BluetoothRole role);
