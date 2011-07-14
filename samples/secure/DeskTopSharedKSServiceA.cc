@@ -2,7 +2,7 @@
  * @file
  * @brief Sample implementation of an AllJoyn service.
  *
- * This sample has an implementation of a sercure sample that is setup to use a 
+ * This sample has an implementation of a sercure sample that is setup to use a
  * shared keystore.
  */
 
@@ -74,11 +74,11 @@ static void SigIntHandler(int sig)
 
 /*
  *  Implementation of a BusObject
- *  This class contains the implementation of the secure interface.  
- *  The Ping method is the code that will be called when the a remode process 
+ *  This class contains the implementation of the secure interface.
+ *  The Ping method is the code that will be called when the a remode process
  *  makes a remote method call to Ping.
- *  
- *   
+ *
+ *
  */
 class BasicSampleObject : public BusObject {
   public:
@@ -123,7 +123,7 @@ class BasicSampleObject : public BusObject {
 /*
  * The MyBusListener class implements the public methods for two classes
  * BusListener and SessionPortListener
- * The BusListener class is responsible for providing the NameOwnerChanged call 
+ * The BusListener class is responsible for providing the NameOwnerChanged call
  * back method
  * The SessionPortListener is responsible for providing the AcceptSessionJoiner
  * call back method
@@ -151,13 +151,13 @@ class MyBusListener : public BusListener, public SessionPortListener {
 };
 
 /*
- * This a the local implementation of the an AuthListener.  SrpKeyXListener is 
+ * This is the local implementation of the an AuthListener.  SrpKeyXListener is
  * designed to only handle SRP Key Exchange Authentication requests.
- * 
- * When a Password request (CRED_PASSWORD) comes in using ALLJOYN_SRP_KEYX the 
- * code will generate a 6 digit random pin code.  The client must enter the same 
+ *
+ * When a Password request (CRED_PASSWORD) comes in using ALLJOYN_SRP_KEYX the
+ * code will generate a 6 digit random pin code.  The client must enter the same
  * pin code into his AuthListener for the Authentication to be successful.
- * 
+ *
  * If any other authMechanism is used other than SRP Key Exchange authentication
  * will fail.
  */
@@ -167,13 +167,13 @@ class SrpKeyXListener : public AuthListener {
         if (strcmp(authMechanism, "ALLJOYN_SRP_KEYX") == 0) {
             if (credMask & AuthListener::CRED_PASSWORD) {
                 if (authCount <= 3) {
-                	/* seed the random number */
-                	srand(time(NULL));
-                	int pin = rand() % 1000000;
-                	char pinStr[7];
-                	sprintf(pinStr, "%06d", pin);
-                	printf("One Time Password : %s\n", pinStr);
-                	fflush(stdout);
+                    /* seed the random number */
+                    srand(time(NULL));
+                    int pin = rand() % 1000000;
+                    char pinStr[7];
+                    sprintf(pinStr, "%06d", pin);
+                    printf("One Time Password : %s\n", pinStr);
+                    fflush(stdout);
                     creds.SetPassword(pinStr);
                     return true;
                 } else {
@@ -196,7 +196,7 @@ int main(int argc, char** argv, char** envArg)
 
     printf("AllJoyn Library version: %s\n", ajn::GetVersion());
     printf("AllJoyn Library build info: %s\n", ajn::GetBuildInfo());
-    
+
     /* Install SIGINT handler */
     signal(SIGINT, SigIntHandler);
 
@@ -238,19 +238,19 @@ int main(int argc, char** argv, char** envArg)
         /* Register  local objects and connect to the daemon */
         g_msgBus->RegisterBusObject(testObj);
 
-        /* 
-         * enable security 
-         * note the location of the keystore file has been specified and the 
+        /*
+         * enable security
+         * note the location of the keystore file has been specified and the
          * isShared parameter is being set to true. So this keystore file can
-         * be used by multiple applications  
+         * be used by multiple applications
          */
         status = g_msgBus->EnablePeerSecurity("ALLJOYN_SRP_KEYX", new SrpKeyXListener(), "/.alljoyn_keystore/s_central.ks", true);
-        if(ER_OK != status) {
-        	printf("BusAttachment::EnablePeerSecurity failed (%s)\n", QCC_StatusText(status));
+        if (ER_OK != status) {
+            printf("BusAttachment::EnablePeerSecurity failed (%s)\n", QCC_StatusText(status));
         } else {
-        	printf("BusAttachment::EnablePeerSecurity succesful\n");
+            printf("BusAttachment::EnablePeerSecurity succesful\n");
         }
-            
+
         /* Create the client-side endpoint */
         status = g_msgBus->Connect(connectArgs);
         if (ER_OK != status) {
