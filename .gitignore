@@ -10,3 +10,7 @@ build
 *.suo
 *.user
 installer/windows/VS_Projects/AlljoynService/bin/
+bin
+obj
+gen
+libs
