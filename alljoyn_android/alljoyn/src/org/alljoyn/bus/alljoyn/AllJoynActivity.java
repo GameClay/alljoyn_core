@@ -45,7 +45,7 @@ public class AllJoynActivity extends Activity {
         mApp = (AllJoynApp)getApplication();
         
         if (mApp.running() == false) {
-            boolean waitForDebuggerToSettle = true;
+            boolean waitForDebuggerToSettle = false;
             if (waitForDebuggerToSettle) {
             	showDialog(DIALOG_DEBUG_ID);
             } else {
