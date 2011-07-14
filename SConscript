@@ -32,6 +32,7 @@ env.VariantDir('$OBJDIR', 'src', duplicate = 0)
 env.VariantDir('$OBJDIR/test', 'test', duplicate = 0)
 env.VariantDir('$OBJDIR/daemon', 'daemon', duplicate=0)
 env.VariantDir('$OBJDIR/samples', 'samples', duplicate = 0)
+env.VariantDir('$OBJDIR/alljoyn_android', 'alljoyn_android', duplicate = 0)
 
 # AllJoyn Install
 env.Install('$OBJDIR', env.File('src/Status.xml'))
@@ -64,6 +65,10 @@ env.Install('$DISTDIR/bin', progs)
 # Sample programs
 progs = env.SConscript('$OBJDIR/samples/SConscript')
 env.Install('$DISTDIR/bin/samples', progs)
+
+# Android daemon runner
+progs = env.SConscript('$OBJDIR/alljoyn_android/SConscript')
+env.Install('$DISTDIR/bin/alljoyn_android', progs)
 
 # Release notes and misc. legals
 env.Install('$DISTDIR', 'docs/ReleaseNotes.txt')
