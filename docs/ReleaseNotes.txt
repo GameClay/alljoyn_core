@@ -11,6 +11,7 @@ Platform Support
 Features added in this release
 ------------------------------
 None
+?? alljoyn-android a feature ??
 
 
 Issues Addressed in this Release
@@ -18,6 +19,9 @@ Issues Addressed in this Release
 
 1) ALLJOYN-494: AllJoyn java binding calls that return QStatus can return
    null instead of a valid QStatus in certain error situations.
+
+2) ALLJOYN-519: A ProxyBusObject may trigger a segmentation fault if it is
+   deleted while threads are blocked inside ProxyBusObjec::MethodCall().
 
 
 Known issues and limitations with this release
@@ -32,9 +36,7 @@ Known issues and limitations with this release
 
 2) ALLJOYN-394: ProxyBusObject::GetChild() does not work from the root "/"
    object.
-
-3) ALLJOYN-519: A ProxyBusObject may trigger a segmentation fault if it is
-   deleted while threads are blocked inside ProxyBusObjec::MethodCall().
+   ?? moved to release 3.x ??
 
 
 Compatibility
