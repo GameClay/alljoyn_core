@@ -21,6 +21,9 @@ env.SConscript('basic/SConscript')
 # Simple Sample programs
 env.SConscript('simple/SConscript')
 
+# Security Sample programs
+env.SConscript('secure/SConscript')
+
 # Chat Sample program
 env.SConscript('chat/SConscript')
 
@@ -29,6 +32,7 @@ env.SConscript('bus-daemon-service/SConscript')
 
 # Daemon User Sample program
 env.SConscript('bus-daemon-user/SConscript')
+
 
 # Install readme
 if env['OS'] == 'android':
