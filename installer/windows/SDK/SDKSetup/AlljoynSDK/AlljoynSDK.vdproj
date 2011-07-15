@@ -75,12 +75,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_063EFA1DD8B344568CD268657EFDD4FB"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_06B142495DC54A16A0DF65C650DF0601"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -136,12 +130,6 @@
         "Entry"
         {
         "MsmKey" = "8:_0C82134B7968433B81EB41B099381D27"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_0D837D4C22204D25B6A2B0B94565F8B7"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1065,12 +1053,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_A3A6EFB43B1048F3B60CA7D468BDA324"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_A3A89720EE784AB29E439F4B11C81FC3"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1251,6 +1233,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_BE815ABB95D142F1AFA756FCF3492D8B"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_BE88F7CCC0EB4AD3BC9468F3CA631C27"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1276,12 +1264,6 @@
         "Entry"
         {
         "MsmKey" = "8:_C17162ECB41D478C87DDCC95759DC88F"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_C27DA9DC18444D0285D9BF2CF3B58117"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1894,26 +1876,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_063EFA1DD8B344568CD268657EFDD4FB"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\windows\\x86\\release\\dist\\java\\docs\\org\\alljoyn\\bus\\class-use\\FindAdvertisedNameListener.html"
-            "TargetName" = "8:FindAdvertisedNameListener.html"
-            "Tag" = "8:"
-            "Folder" = "8:_521EB0D5BB074A9A9A63EA4FA3B66105"
-            "Condition" = "8:CHECKBOXA3=1"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_06B142495DC54A16A0DF65C650DF0601"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\windows\\x86\\release\\dist\\java\\docs\\org\\alljoyn\\bus\\annotation\\class-use\\BusMethod.html"
@@ -2111,26 +2073,6 @@
             "PackageAs" = "3:1"
             "Register" = "3:1"
             "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0D837D4C22204D25B6A2B0B94565F8B7"
-            {
-            "SourcePath" = "8:C:\\Users\\C_dgebha\\Pictures\\logo.jpg"
-            "TargetName" = "8:logo.jpg"
-            "Tag" = "8:"
-            "Folder" = "8:_10467045E6804950995D46A9E3A03A72"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:TRUE"
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
@@ -5194,26 +5136,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A3A6EFB43B1048F3B60CA7D468BDA324"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\windows\\x86\\release\\dist\\inc\\alljoyn\\QosInfo.h"
-            "TargetName" = "8:QosInfo.h"
-            "Tag" = "8:"
-            "Folder" = "8:_9D3302B42F8D459D8C01AB589D446706"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A3A89720EE784AB29E439F4B11C81FC3"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\windows\\x86\\release\\dist\\inc\\alljoyn\\SimpleBusListener.h"
@@ -5814,6 +5736,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BE815ABB95D142F1AFA756FCF3492D8B"
+            {
+            "SourcePath" = "8:logo.jpg"
+            "TargetName" = "8:logo.jpg"
+            "Tag" = "8:"
+            "Folder" = "8:_10467045E6804950995D46A9E3A03A72"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BE88F7CCC0EB4AD3BC9468F3CA631C27"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\windows\\x86\\release\\dist\\java\\docs\\help-doc.html"
@@ -5901,26 +5843,6 @@
             "Tag" = "8:"
             "Folder" = "8:_9D3302B42F8D459D8C01AB589D446706"
             "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C27DA9DC18444D0285D9BF2CF3B58117"
-            {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\windows\\x86\\release\\dist\\java\\docs\\org\\alljoyn\\bus\\FindAdvertisedNameListener.html"
-            "TargetName" = "8:FindAdvertisedNameListener.html"
-            "Tag" = "8:"
-            "Folder" = "8:_84396D021C4A470B948150A6EA696FAB"
-            "Condition" = "8:CHECKBOXA3=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -7416,7 +7338,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:AlljoynSDK"
         "ProductCode" = "8:{44E6EE21-26E7-49FB-8A02-F1AC312E5837}"
-        "PackageCode" = "8:{87398744-CD46-4959-AF3B-753CF7D46700}"
+        "PackageCode" = "8:{0579FE2F-6E8C-424E-ACE2-3FFC34A4B7FE}"
         "UpgradeCode" = "8:{E61A6F7A-75F0-4028-816E-702C1FBCB92E}"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:FALSE"
@@ -7563,7 +7485,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_0D837D4C22204D25B6A2B0B94565F8B7"
+                            "Value" = "8:_BE815ABB95D142F1AFA756FCF3492D8B"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "ShowProgress"
@@ -7715,7 +7637,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_0D837D4C22204D25B6A2B0B94565F8B7"
+                            "Value" = "8:_BE815ABB95D142F1AFA756FCF3492D8B"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "UpdateText"
@@ -7841,7 +7763,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_0D837D4C22204D25B6A2B0B94565F8B7"
+                            "Value" = "8:_BE815ABB95D142F1AFA756FCF3492D8B"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "BannerText"
@@ -8098,7 +8020,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_0D837D4C22204D25B6A2B0B94565F8B7"
+                            "Value" = "8:_BE815ABB95D142F1AFA756FCF3492D8B"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "CopyrightWarning"
@@ -8147,7 +8069,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_0D837D4C22204D25B6A2B0B94565F8B7"
+                            "Value" = "8:_BE815ABB95D142F1AFA756FCF3492D8B"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "InstallAllUsersVisible"
@@ -8183,7 +8105,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_0D837D4C22204D25B6A2B0B94565F8B7"
+                            "Value" = "8:_BE815ABB95D142F1AFA756FCF3492D8B"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "BannerText"
@@ -8440,7 +8362,7 @@
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
                             "Setting" = "3:2"
-                            "Value" = "8:_0D837D4C22204D25B6A2B0B94565F8B7"
+                            "Value" = "8:_BE815ABB95D142F1AFA756FCF3492D8B"
                             "UsePlugInResources" = "11:TRUE"
                             }
                         }
