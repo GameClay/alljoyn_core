@@ -100,7 +100,8 @@ namespace ajn {
 #define MAX_CONNECT_ATTEMPTS  3
 #define MAX_CONNECT_WAITS    30
 
-#define FOUND_DEVICE_INFO_TIMEOUT 30000
+#define EXPIRE_DEVICE_TIME 15000
+#define EXPIRE_DEVICE_TIME_EXT 5000
 
 static const char alljoynUUIDBase[] = ALLJOYN_BT_UUID_BASE;
 #define ALLJOYN_BT_UUID_REV_SIZE (sizeof("12345678") - 1)
@@ -433,7 +434,6 @@ QStatus BTTransport::BTAccessor::StartDiscovery(const BDAddressSet& ignoreAddrs,
     for (it = ignoreAddrs->begin(); it != ignoreAddrs->end(); ++it) {
         FoundInfoMap::iterator devit = foundDevices.find(*it);
         if (devit != foundDevices.end()) {
-            bzBus.GetInternal().GetDispatcher().RemoveAlarm(devit->second.alarm);
             foundDevices.erase(devit);
         }
     }
@@ -1116,6 +1116,10 @@ void BTTransport::BTAccessor::AlarmTriggered(const Alarm& alarm, QStatus reason)
             transport->DeviceChange(static_cast<DeviceDispatchInfo*>(op)->addr,
                                     static_cast<DeviceDispatchInfo*>(op)->uuidRev);
             break;
+
+        case DispatchInfo::EXPIRE_DEVICE_FOUND:
+            ExpireFoundDevices();
+            break;
         }
     }
 
@@ -1198,6 +1202,16 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
 
             QCC_DbgHLPrintf(("Found AllJoyn device: %s  uuidRev = %08x  foundInfo.uuidRev = %08x", addrStr, uuidRev, foundInfo.uuidRev));
 
+            if (foundInfo.timeout == 0) {
+                Timespec now;
+                GetTimeNow(&now);
+                foundInfo.timeout = now.GetAbsoluteMillis() + EXPIRE_DEVICE_TIME;
+                foundExpirations.insert(pair<uint64_t, BDAddress>(foundInfo.timeout, addr));
+                if (!bzBus.GetInternal().GetDispatcher().HasAlarm(expireAlarm)) {
+                    expireAlarm = DispatchOperation(new DispatchInfo(DispatchInfo::EXPIRE_DEVICE_FOUND), foundExpirations.begin()->first + EXPIRE_DEVICE_TIME_EXT);
+                }
+            }
+
             if ((foundInfo.uuidRev == bt::INVALID_UUIDREV) ||
                 (foundInfo.uuidRev != uuidRev)) {
                 // Newly found device or changed advertisments, so inform the topology manager.
@@ -1229,6 +1243,26 @@ bool BTTransport::BTAccessor::FindAllJoynUUID(const MsgArg* uuids,
         }
     }
     return false;
+}
+
+
+void BTTransport::BTAccessor::ExpireFoundDevices()
+{
+    deviceLock.Lock();
+    Timespec nowts;
+    GetTimeNow(&nowts);
+    uint64_t now = nowts.GetAbsoluteMillis();
+    FoundInfoExpireMap::iterator it = foundExpirations.begin();
+    while ((it != foundExpirations.end()) &&
+           (it->first < now)) {
+        foundDevices.erase(it->second);
+        foundExpirations.erase(it);
+        it = foundExpirations.begin();
+    }
+    if (it != foundExpirations.end()) {
+        expireAlarm = DispatchOperation(new DispatchInfo(DispatchInfo::EXPIRE_DEVICE_FOUND), it->first + EXPIRE_DEVICE_TIME_EXT);
+    }
+    deviceLock.Unlock();
 }
 
 
@@ -1740,18 +1774,6 @@ void BTTransport::BTAccessor::AdapterPropertyChangedSignalHandler(const Interfac
                 dargs[1].Set("v", &discVal);
 
                 adapter->MethodCall(*org.bluez.Adapter.SetProperty, dargs, ArraySize(dargs));
-            }
-        } else if (strcmp(property, "Discovering") == 0) {
-            value->Get("b", &(adapter->bluezDiscovering));
-            if ((adapter == GetDefaultAdapterObject()) && !adapter->bluezDiscovering) {
-                // The default adapter has stopped discovering.  Flush the
-                // found devices cache so that any devices found will be
-                // passed on to the topology manager the next time the default
-                // adapter starts up.  When discovery is started using
-                // org.bluez D-Bus serivce, BlueZ automatically cycles between
-                // discovering and idle.  The typical cycle time is ~5 seconds
-                // discovering and ~10 seconds idle.
-                foundDevices.clear();
             }
         }
     }

@@ -245,6 +245,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     static bool FindAllJoynUUID(const MsgArg* uuids,
                                 size_t listSize,
                                 uint32_t& uuidRev);
+    void ExpireFoundDevices();
     static QStatus ProcessSDPXML(qcc::XmlParseContext& xmlctx,
                                  uint32_t* uuidRev,
                                  BDAddress* connAddr,
@@ -294,6 +295,14 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
         return alarm;
     }
 
+    qcc::Alarm DispatchOperation(DispatchInfo* op, uint64_t triggerTime)
+    {
+        qcc::Timespec ts(triggerTime);
+        qcc::Alarm alarm(ts, this, 0, (void*)op);
+        bzBus.GetInternal().GetDispatcher().AddAlarm(alarm);
+        return alarm;
+    }
+
 
 
 /******************************************************************************/
@@ -305,14 +314,13 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
       public:
         FoundInfo() :
             uuidRev(bt::INVALID_UUIDREV),
-            timestamp(0)
+            timeout(0)
         { }
         uint32_t uuidRev;
-        uint32_t timestamp;
-        qcc::Alarm alarm;
+        uint64_t timeout;
     };
     typedef std::map<BDAddress, FoundInfo> FoundInfoMap;
-
+    typedef std::multimap<uint64_t, BDAddress> FoundInfoExpireMap;
 
     struct DispatchInfo {
         typedef enum {
@@ -321,7 +329,8 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
             ADAPTER_ADDED,
             ADAPTER_REMOVED,
             DEFAULT_ADAPTER_CHANGED,
-            DEVICE_FOUND
+            DEVICE_FOUND,
+            EXPIRE_DEVICE_FOUND
         } DispatchTypes;
         DispatchTypes operation;
 
@@ -368,6 +377,8 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
 
     mutable qcc::Mutex deviceLock; // Generic lock for device related objects, maps, etc.
     FoundInfoMap foundDevices;  // Map of found AllJoyn devices w/ UUID-Rev and expire time.
+    FoundInfoExpireMap foundExpirations;
+    qcc::Alarm expireAlarm;
     BDAddressSet ignoreAddrs;
 
     bool bluetoothAvailable;
