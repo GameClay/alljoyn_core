@@ -37,6 +37,7 @@
 #include "BlueZUtils.h"
 #include "BTController.h"
 #include "BTNodeDB.h"
+#include "BTNodeInfo.h"
 #include "BTTransport.h"
 #include "RemoteEndpoint.h"
 
@@ -141,14 +142,11 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      * that information.
      *
      * @param alljoyn   BusAttachment that will be connected to the resulting endpoint
-     * @param connAddr  Bluetooth device address where the real connection will go
-     * @param devAddr   Bluetooth device address of the device desired to be reached
      *
      * @return  A newly instatiated remote endpoint for the Bluetooth connection (NULL indicates a failure)
      */
     RemoteEndpoint* Connect(BusAttachment& alljoyn,
-                            const BTBusAddress& connAddr,
-                            const BTBusAddress& devAddr);
+                            const BTNodeInfo& node);
 
     /**
      * Perform an SDP queary on the specified device to get the bus information.
@@ -192,6 +190,9 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      * @param role  Requested Bluetooth connection role
      */
     void RequestBTRole(const BDAddress& addr, bt::BluetoothRole role);
+
+    bool IsEIRCapable() const { return true; }
+
 
   private:
 
@@ -340,9 +341,10 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     struct DeviceDispatchInfo : public DispatchInfo {
         BDAddress addr;
         uint32_t uuidRev;
+        bool eirCapable;
 
-        DeviceDispatchInfo(DispatchTypes operation, const BDAddress& addr, uint32_t uuidRev) :
-            DispatchInfo(operation), addr(addr), uuidRev(uuidRev) { }
+        DeviceDispatchInfo(DispatchTypes operation, const BDAddress& addr, uint32_t uuidRev, bool eirCapable) :
+            DispatchInfo(operation), addr(addr), uuidRev(uuidRev), eirCapable(eirCapable) { }
     };
 
     struct MsgDispatchInfo : public DispatchInfo {

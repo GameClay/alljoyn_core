@@ -158,13 +158,14 @@ class BluetoothDeviceInterface {
 
     virtual QStatus Connect(const BTBusAddress& addr) = 0;
 
-    virtual QStatus Disconnect(const BTBusAddress& addr) = 0;
+    virtual QStatus Disconnect(const qcc::String& busName) = 0;
     virtual void ReturnEndpoint(RemoteEndpoint* ep) = 0;
     virtual RemoteEndpoint* LookupEndpoint(const qcc::String& busName) = 0;
 
     virtual QStatus IsMaster(const BDAddress& addr, bool& master) const = 0;
     virtual void RequestBTRole(const BDAddress& addr, bt::BluetoothRole role) = 0;
 
+    virtual bool IsEIRCapable() const = 0;
 };
 
 
@@ -179,6 +180,9 @@ class BTController :
 #endif
     public BusObject,
     public NameListener,
+    public BusAttachment::JoinSessionAsyncCB,
+    public SessionPortListener,
+    public SessionListener,
     public qcc::AlarmListener {
   public:
     /**
@@ -255,13 +259,16 @@ class BTController :
      * Process the found or lost device or pass it up the chain to the master node if
      * we are not the master.
      *
-     * @param bdAddr   BD Address from the SDP record.
-     * @param uuidRev  UUID revsision of the found bus.
+     * @param bdAddr        BD Address from the SDP record.
+     * @param uuidRev       UUID revsision of the found bus.
+     * @param eirCapable    - true if found device was confirmed AllJoyn capable via EIR
+     *                      - false if found device is potential AllJoyn capable
      *
      * @return ER_OK if successful.
      */
     void ProcessDeviceChange(const BDAddress& adBdAddr,
-                             uint32_t uuidRev);
+                             uint32_t uuidRev,
+                             bool eirCapable);
 
     /**
      * Test whether it is ok to make outgoing connections or accept incoming
@@ -281,7 +288,7 @@ class BTController :
      *
      * @return  The actual address to use to create the connection.
      */
-    const BTBusAddress& PrepConnect(const BTBusAddress& addr);
+    BTNodeInfo PrepConnect(const BTBusAddress& addr);
 
     /**
      * Perform operations necessary based on the result of connect operation.
@@ -293,7 +300,9 @@ class BTController :
      * @param addr          Bus address of device connected to.
      * @param remoteName    Unique bus name of the AllJoyn daemon on the other side (only if status == ER_OK)
      */
-    void PostConnect(QStatus status, const BTBusAddress& addr, const qcc::String& remoteName);
+    void PostConnect(QStatus status, BTNodeInfo& node, const qcc::String& remoteName);
+
+    void EndpointLost(BTNodeInfo& node);
 
     /**
      * Function for the BT Transport to inform a change in the
@@ -313,7 +322,6 @@ class BTController :
      */
     bool CheckIncomingAddress(const BDAddress& addr) const;
 
-
     /**
      * Get the "best" listen spec for a given set of session options.
      *
@@ -328,6 +336,50 @@ class BTController :
     void NameOwnerChanged(const qcc::String& alias,
                           const qcc::String* oldOwner,
                           const qcc::String* newOwner);
+
+
+    /**
+     * Accept or reject an incoming JoinSession request. The session does not exist until this
+     * after this function returns.
+     *
+     * This callback is only used by session creators. Therefore it is only called on listeners
+     * passed to BusAttachment::BindSessionPort.
+     *
+     * @param sessionPort    Session port that was joined.
+     * @param joiner         Unique name of potential joiner.
+     * @param opts           Session options requested by the joiner.
+     * @return   Return true if JoinSession request is accepted. false if rejected.
+     */
+    bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts);
+
+    /**
+     * Called by the bus when a session has been successfully joined. The session is now fully up.
+     *
+     * This callback is only used by session creators. Therefore it is only called on listeners
+     * passed to BusAttachment::BindSessionPort.
+     *
+     * @param sessionPort    Session port that was joined.
+     * @param id             Id of session.
+     * @param joiner         Unique name of the joiner.
+     */
+    void SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner);
+
+    /**
+     * Called by the bus when an existing session becomes disconnected.
+     *
+     * @param sessionId     Id of session that was lost.
+     */
+    void SessionLost(SessionId id);
+
+    /**
+     * Called when JoinSessionAsync() completes.
+     *
+     * @param status       ER_OK if successful
+     * @param sessionId    Unique identifier for session.
+     * @param opts         Session options.
+     * @param context      User defined context which will be passed as-is to callback.
+     */
+    void JoinSessionCB(QStatus status, SessionId sessionId, SessionOpts opts, void* context);
 
 
   private:
@@ -388,11 +440,11 @@ class BTController :
         }
         void StopAlarm() { bto.dispatcher.RemoveAlarm(alarm); }
         virtual bool UseLocal() = 0;
-        virtual void StartOp(bool restart = false);
-        void RestartOp() { assert(active); StartOp(true); }
-        virtual void StopOp();
+        void StartOp();
+        void RestartOp() { assert(active); StopOp(true); StartOp(); }
+        void StopOp(bool immediate);
         virtual QStatus StartLocal() = 0;
-        virtual QStatus StopLocal() = 0;
+        virtual QStatus StopLocal(bool immediate) = 0;
         QStatus SendDelegateSignal();
 
       private:
@@ -407,10 +459,8 @@ class BTController :
         void SetArgs();
         void ClearArgs();
         bool UseLocal() { return bto.UseLocalAdvertise(); }
-        void StartOp(bool restart = false);
-        void StopOp();
         QStatus StartLocal();
-        QStatus StopLocal();
+        QStatus StopLocal(bool immediate = true);
     };
 
     struct FindNameArgInfo : public NameArgInfo {
@@ -424,13 +474,12 @@ class BTController :
         void ClearArgs();
         bool UseLocal() { return bto.UseLocalFind(); }
         QStatus StartLocal();
-        QStatus StopLocal();
+        QStatus StopLocal(bool immediate = true);
     };
 
 
     struct DispatchInfo {
         typedef enum {
-            STOP_ADVERTISEMENTS,
             UPDATE_DELEGATIONS,
             EXPIRE_CACHED_NODES,
             NAME_LOST,
@@ -438,16 +487,13 @@ class BTController :
             SEND_SET_STATE,
             PROCESS_SET_STATE_REPLY,
             HANDLE_DELEGATE_FIND,
-            HANDLE_DELEGATE_ADVERTISE
+            HANDLE_DELEGATE_ADVERTISE,
+            EXPIRE_BLACKLISTED_DEVICE
         } DispatchTypes;
         DispatchTypes operation;
 
         DispatchInfo(DispatchTypes operation) : operation(operation) { }
         virtual ~DispatchInfo() { }
-    };
-
-    struct StopAdDispatchInfo : public DispatchInfo {
-        StopAdDispatchInfo() : DispatchInfo(STOP_ADVERTISEMENTS) { }
     };
 
     struct UpdateDelegationsDispatchInfo : public DispatchInfo {
@@ -476,12 +522,10 @@ class BTController :
     };
 
     struct SendSetStateDispatchInfo : public DispatchInfo {
-        BTBusAddress addr;
-        qcc::String busName;
-        SendSetStateDispatchInfo(const BTBusAddress& addr, const qcc::String& busName) :
+        BTNodeInfo node;
+        SendSetStateDispatchInfo(const BTNodeInfo& node) :
             DispatchInfo(SEND_SET_STATE),
-            addr(addr),
-            busName(busName)
+            node(node)
         { }
     };
 
@@ -495,16 +539,13 @@ class BTController :
 
     struct ProcessSetStateReplyDispatchInfo : public DeferredMessageHandlerDispatchInfo {
         ProxyBusObject* newMaster;
-        BTBusAddress addr;
-        qcc::String busName;
+        BTNodeInfo node;
         ProcessSetStateReplyDispatchInfo(const Message& msg,
                                          ProxyBusObject* newMaster,
-                                         const BTBusAddress& addr,
-                                         const qcc::String& busName) :
+                                         BTNodeInfo node) :
             DeferredMessageHandlerDispatchInfo(PROCESS_SET_STATE_REPLY, msg),
             newMaster(newMaster),
-            addr(addr),
-            busName(busName)
+            node(node)
         { }
     };
 
@@ -514,14 +555,17 @@ class BTController :
         { }
     };
 
+    struct ExpireBlacklistedDevDispatchInfo : public DispatchInfo {
+        BDAddress addr;
+        ExpireBlacklistedDevDispatchInfo(BDAddress addr) : DispatchInfo(EXPIRE_BLACKLISTED_DEVICE), addr(addr) { }
+    };
+
     struct SetStateReplyContext {
         ProxyBusObject* newMaster;
-        BTBusAddress addr;
-        qcc::String busName;
-        SetStateReplyContext(ProxyBusObject* newMaster, const BTBusAddress& addr, const qcc::String& busName) :
+        BTNodeInfo node;
+        SetStateReplyContext(ProxyBusObject* newMaster, const BTNodeInfo& node) :
             newMaster(newMaster),
-            addr(addr),
-            busName(busName)
+            node(node)
         { }
     };
 
@@ -643,12 +687,11 @@ class BTController :
      *
      * @return ER_OK if successful.
      */
-    QStatus DeferredSendSetState(const BTBusAddress& addr, const qcc::String& busName);
+    QStatus DeferredSendSetState(const BTNodeInfo& node);
 
     void DeferredProcessSetStateReply(Message& reply,
                                       ProxyBusObject* newMaster,
-                                      const BTBusAddress& addr,
-                                      const qcc::String& busName);
+                                      BTNodeInfo& node);
 
     /**
      * Handle the incoming DelegateFind signal on the BTController dispatch
@@ -714,7 +757,7 @@ class BTController :
      *         - #ER_OK success
      *         - #ER_FAIL failed to import state information
      */
-    QStatus ImportState(const BTBusAddress& addr,
+    QStatus ImportState(BTNodeInfo& connectingNode,
                         MsgArg* nodeStateEntries,
                         size_t numNodeStates,
                         MsgArg* foundNodeArgs,
@@ -816,16 +859,28 @@ class BTController :
     bool IsMinion() const { return (master && (NumMinions() == 0)); }
 
     size_t NumMinions() const { return nodeDB.Size() - 1; }
+    size_t NumEIRMinions() const { return eirMinions; }
 
-    void NextDirectMinion(BTNodeInfo& minion)
+    void PickNextDelegate(NameArgInfo& nameOp);
+
+    bool UseLocalFind()
     {
-        BTNodeInfo& skip = (minion == find.minion) ? advertise.minion : find.minion;
-        minion = nodeDB.FindDirectMinion(minion, skip);
+        return (IsMinion() ||
+                (!bt.IsEIRCapable() && (NumMinions() == 0)) ||
+                (bt.IsEIRCapable() && (NumEIRMinions() == 0)));
     }
-
-    bool UseLocalFind() { return IsMinion() || (IsMaster() && (directMinions == 0)); }
-    bool UseLocalAdvertise() { return IsMinion() || (IsMaster() && (directMinions <= 1)); }
-    bool RotateMinions() { return IsMaster() && (directMinions > 2); }
+    bool UseLocalAdvertise()
+    {
+        return (IsMinion() ||
+                (!bt.IsEIRCapable() && (NumEIRMinions() == 0) && (NumMinions() <= 1)) ||
+                (bt.IsEIRCapable() && (NumEIRMinions() <= 1)));
+    }
+    bool RotateMinions()
+    {
+        return (IsMaster() &&
+                ((NumEIRMinions() > 2) ||
+                 ((NumEIRMinions() == 0) && (NumMinions() > 2))));
+    }
 
 #ifndef NDEBUG
     void DumpNodeStateTable() const;
@@ -851,6 +906,7 @@ class BTController :
     uint8_t maxConnects;           // Maximum number of direct connections
     uint32_t masterUUIDRev;        // Revision number for AllJoyn Bluetooth UUID
     uint8_t directMinions;         // Number of directly connected minions
+    size_t eirMinions;             // Numver of EIR capable minions
     const uint8_t maxConnections;
     bool listening;
     bool devAvailable;
@@ -860,14 +916,15 @@ class BTController :
     BTNodeInfo self;
 
     mutable qcc::Mutex lock;
-    std::set<BTBusAddress> exchangingState;
 
     AdvertiseNameArgInfo advertise;
     FindNameArgInfo find;
 
     qcc::Timer dispatcher;
-    qcc::Alarm stopAd;
     qcc::Alarm expireAlarm;
+
+    BDAddressSet blacklist;
+    BTNodeDB joinSessionNodeDB;
 
     struct {
         struct {

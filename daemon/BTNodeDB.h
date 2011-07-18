@@ -90,15 +90,19 @@ class BTNodeDB {
     const BTNodeInfo FindNode(const BDAddress& addr) const;
 
     /**
-     * Find a direct minion starting with the specified start node in the set
-     * of nodes, and skipping over the skip node.
+     * Find a minion starting with the specified start node in the set of
+     * nodes, and skipping over the skip node.  If any nodes (beside start and
+     * skip) are EIR capable, those nodes will be selected.  Non-EIR capable
+     * nodes will only be considered if eirCapable is false and there are no
+     * EIR capable nodes beyond start and skip.
      *
-     * @param start     Node in the DB to use as a starting point for the search
-     * @param skip      Node in the DB to skip over if next in line
+     * @param start         Node in the DB to use as a starting point for the search
+     * @param skip          Node in the DB to skip over if next in line
+     * @param eirCapable    Flag to indicate if only EIR capable nodes should be considered
      *
-     * @return  BTNodeInfo of the next direct minion.  Will be the same as start if none found.
+     * @return  BTNodeInfo of the next delegate minion.  Will be the same as start if none found.
      */
-    BTNodeInfo FindDirectMinion(const BTNodeInfo& start, const BTNodeInfo& skip) const;
+    BTNodeInfo FindDelegateMinion(const BTNodeInfo& start, const BTNodeInfo& skip, bool eirCapable) const;
 
     /**
      * Add a node to the DB with no expiration time.
@@ -175,34 +179,24 @@ class BTNodeDB {
      * Updates the expiration time of all nodes that may be connected to via
      * connAddr.
      *
-     * @param connAddr      BusAddress of the device accepting connections on
-     *                      behalf of other nodes.
+     * @param connNode      Node accepting connections on behalf of other nodes.
      * @param expireDelta   Number of milliseconds from now to set the
      *                      expiration time.
      */
-    void RefreshExpiration(const BTBusAddress& connAddr, uint32_t expireDelta);
-
-    /**
-     * Updates the expiration time of the specified node.
-     *
-     * @param node          Node to refresh the expiration for.
-     * @param expireDelta   Number of milliseconds from now to set the
-     *                      expiration time.
-     */
-    void RefreshExpiration(const BTNodeInfo& node, uint32_t expireDelta);
+    void RefreshExpiration(const BTNodeInfo& connNode, uint32_t expireDelta);
 
     /**
      * Fills a BTNodeDB with the set of nodes that are connectable via
-     * connAddr.
+     * connNode.
      *
-     * @param connAddr  BusAddress of the device accepting connections on
+     * @param connNode  BTNodeInfo of the device accepting connections on
      *                  behalf of other nodes.
      * @param subDB     Sub-set BTNodeDB to store the found nodes in.
      */
-    void GetNodesFromConnectAddr(const BTBusAddress& connAddr, BTNodeDB& subDB) const
+    void GetNodesFromConnectNode(const BTNodeInfo& connNode, BTNodeDB& subDB) const
     {
-        ConnAddrMap::const_iterator cmit = connMap.lower_bound(connAddr);
-        ConnAddrMap::const_iterator end = connMap.upper_bound(connAddr);
+        ConnAddrMap::const_iterator cmit = connMap.lower_bound(connNode);
+        ConnAddrMap::const_iterator end = connMap.upper_bound(connNode);
 
         while (cmit != end) {
             subDB.AddNode(cmit->second);
@@ -230,6 +224,10 @@ class BTNodeDB {
         }
         return std::numeric_limits<uint64_t>::max();
     }
+
+
+    void NodeSessionLost(SessionId sessionID);
+    void UpdateNodeSessionID(SessionId sessionID, const BTNodeInfo& node);
 
     /**
      * Lock the mutex that protects the database from unsafe access.
@@ -295,7 +293,7 @@ class BTNodeDB {
     typedef std::map<BTBusAddress, BTNodeInfo> NodeAddrMap;
 
     /** Convenience typedef for the lookup table keyed off the bus address. */
-    typedef std::multimap<BTBusAddress, BTNodeInfo> ConnAddrMap;
+    typedef std::multimap<BTNodeInfo, BTNodeInfo> ConnAddrMap;
 
     /** Convenience typedef for the lookup table keyed off the unique bus name. */
     typedef std::map<qcc::String, BTNodeInfo> NodeNameMap;
@@ -303,13 +301,15 @@ class BTNodeDB {
     /** Convenience typedef for the lookup table sorted by expiration time. */
     typedef std::set<BTNodeInfo, ExpireNodeComp> NodeExpireSet;
 
-    /** Convenience typedef for the lookup table sorted by connect address. */
+    /** Convenience typedef for the lookup table sorted by Session IDs. */
+    typedef std::map<SessionId, BTNodeInfo> SessionIDMap;
 
     std::set<BTNodeInfo> nodes;     /**< The node DB storage. */
     NodeAddrMap addrMap;            /**< Lookup table keyed off the bus address. */
     NodeNameMap nameMap;            /**< Lookup table keyed off the unique bus name. */
     NodeExpireSet expireSet;        /**< Lookup table sorted by the expiration time. */
-    ConnAddrMap connMap;         /**< Lookup table keyed off the connect node. */
+    ConnAddrMap connMap;            /**< Lookup table keyed off the connect node. */
+    SessionIDMap sessionIDMap;
 
     mutable qcc::Mutex lock;        /**< Mutext to protect the DB. */
 

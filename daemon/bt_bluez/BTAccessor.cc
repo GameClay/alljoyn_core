@@ -505,7 +505,7 @@ QStatus BTTransport::BTAccessor::SetSDPInfo(uint32_t uuidRev,
             QCC_DbgPrintf(("    %s:", node->GetBusAddress().ToString().c_str()));
             nameList +=
                 "<sequence>"
-                "  <text value=\"" + node->GetGUID() + "\"/>"
+                "  <text value=\"" + node->GetGUID().ToString() + "\"/>"
                 "  <uint64 value=\"" + U64ToString(node->GetBusAddress().addr.GetRaw()) + "\"/>"
                 "  <uint16 value=\"" + U32ToString(node->GetBusAddress().psm) + "\"/>"
                 "  <sequence>";
@@ -779,8 +779,8 @@ exit:
             sockFd = -1;
         }
     } else {
-        BTBusAddress dummyAddr;
-        conn = new BlueZBTEndpoint(alljoyn, true, sockFd, dummyAddr);
+        BTNodeInfo dummyNode;
+        conn = new BlueZBTEndpoint(alljoyn, true, sockFd, dummyNode);
     }
 
     return conn;
@@ -788,11 +788,12 @@ exit:
 
 
 RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
-                                                 const BTBusAddress& connAddr,
-                                                 const BTBusAddress& devAddr)
+                                                 const BTNodeInfo& node)
 {
-    QCC_DbgTrace(("BTTransport::BTAccessor::Connect(connAddr = %s, devAddr = %s)",
-                  connAddr.ToString().c_str(), devAddr.ToString().c_str()));
+    const BTBusAddress& connAddr = node->GetBusAddress();
+
+    QCC_DbgTrace(("BTTransport::BTAccessor::Connect(node = %s)",
+                  connAddr.ToString().c_str()));
 
     if (!connAddr.IsValid()) {
         return NULL;
@@ -829,8 +830,8 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
             qcc::Sleep(200);
             continue;
         }
-        QCC_DbgPrintf(("BTTransport::BTAccessor::Connect(%s, %s): sockFd = %d",
-                       connAddr.ToString().c_str(), devAddr.ToString().c_str(), sockFd));
+        QCC_DbgPrintf(("BTTransport::BTAccessor::Connect(%s): sockFd = %d",
+                       connAddr.ToString().c_str(), sockFd));
 
         /* Attempt to connect */
         ret = connect(sockFd, (struct sockaddr*)&skaddr, sizeof(skaddr));
@@ -896,7 +897,7 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
 exit:
 
     if (status == ER_OK) {
-        conn = new BlueZBTEndpoint(alljoyn, false, sockFd, devAddr);
+        conn = new BlueZBTEndpoint(alljoyn, false, sockFd, node);
     } else {
         if (sockFd > 0) {
             QCC_DbgPrintf(("Closing sockFd: %d", sockFd));
@@ -1091,7 +1092,8 @@ void BTTransport::BTAccessor::AlarmTriggered(const Alarm& alarm, QStatus reason)
 
         case DispatchInfo::DEVICE_FOUND:
             transport->DeviceChange(static_cast<DeviceDispatchInfo*>(op)->addr,
-                                    static_cast<DeviceDispatchInfo*>(op)->uuidRev);
+                                    static_cast<DeviceDispatchInfo*>(op)->uuidRev,
+                                    static_cast<DeviceDispatchInfo*>(op)->eirCapable);
             break;
 
         case DispatchInfo::EXPIRE_DEVICE_FOUND:
@@ -1161,40 +1163,59 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
 
     const MsgArg* uuids;
     size_t listSize;
+    bool eirCapable = true;
 
     // We can safely assume that dictonary is an array of dictionary elements
     // because the core AllJoyn code validated the args before calling us.
     status = dictionary->GetElement("{sas}", "UUIDs", &listSize, &uuids);
+    if (status == ER_BUS_ELEMENT_NOT_FOUND) {
+        eirCapable = false;
+        listSize = 0;
+        status = ER_OK;
+    }
     if (status == ER_OK) {
-        //QCC_DbgPrintf(("BTTransport::BTAccessor::DeviceFoundSignalHandler(): checking %s (%d UUIDs)",
-        //               addrStr, listSize));
+        //QCC_DbgPrintf(("BTTransport::BTAccessor::DeviceFoundSignalHandler(): checking %s (%d UUIDs, %sEIR capable)",
+        //               addrStr, listSize, eirCapable ? "" : "not "));
 
         qcc::String uuid;
         uint32_t uuidRev = bt::INVALID_UUIDREV;
-        bool found = FindAllJoynUUID(uuids, listSize, uuidRev);
+        bool found = !eirCapable || FindAllJoynUUID(uuids, listSize, uuidRev);
 
         if (found) {
             deviceLock.Lock();
-            FoundInfo& foundInfo = foundDevices[addr];
+            FoundInfoMap::iterator it = foundDevices.find(addr);
+            bool newDevice = (it == foundDevices.end());
+            FoundInfo& foundInfo = newDevice ? foundDevices[addr] : it->second;
 
-            QCC_DbgHLPrintf(("Found AllJoyn device: %s  uuidRev = %08x  foundInfo.uuidRev = %08x", addrStr, uuidRev, foundInfo.uuidRev));
-
-            if (foundInfo.timeout == 0) {
+            if (newDevice) {
                 Timespec now;
                 GetTimeNow(&now);
                 foundInfo.timeout = now.GetAbsoluteMillis() + EXPIRE_DEVICE_TIME;
                 foundExpirations.insert(pair<uint64_t, BDAddress>(foundInfo.timeout, addr));
                 if (!bzBus.GetInternal().GetDispatcher().HasAlarm(expireAlarm)) {
-                    expireAlarm = DispatchOperation(new DispatchInfo(DispatchInfo::EXPIRE_DEVICE_FOUND), foundExpirations.begin()->first + EXPIRE_DEVICE_TIME_EXT);
+                    expireAlarm = DispatchOperation(new DispatchInfo(DispatchInfo::EXPIRE_DEVICE_FOUND),
+                                                    foundExpirations.begin()->first + EXPIRE_DEVICE_TIME_EXT);
                 }
             }
 
-            if ((foundInfo.uuidRev == bt::INVALID_UUIDREV) ||
-                (foundInfo.uuidRev != uuidRev)) {
-                // Newly found device or changed advertisments, so inform the topology manager.
+            /*
+             * Sometimes BlueZ reports a found device without the UUIDs
+             * dictionary even if that device does support inclusion of UUIDs
+             * in the EIR.  We hold off reporting devices without the UUIDs
+             * dictionary in case we get a found device event from BlueZ with
+             * the UUIDs dictionary.  Any found device that never have the
+             * UUIDs dictionary will be passed on to the topology manager when
+             * its foundExpiration triggers.
+             */
+            if (eirCapable) {
+                QCC_DbgHLPrintf(("Found AllJoyn device: %s  uuidRev = %08x  foundInfo.uuidRev = %08x",
+                                 addrStr, uuidRev, foundInfo.uuidRev));
 
-                foundInfo.uuidRev = uuidRev;
-                DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_FOUND, addr, uuidRev));
+                if (newDevice || ((foundInfo.uuidRev != uuidRev) && (uuidRev != bt::INVALID_UUIDREV))) {
+                    // Newly found device or changed advertisments, so inform the topology manager.
+                    foundInfo.uuidRev = uuidRev;
+                    DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_FOUND, addr, uuidRev, eirCapable));
+                }
             }
 
             deviceLock.Unlock();
@@ -1232,7 +1253,16 @@ void BTTransport::BTAccessor::ExpireFoundDevices()
     FoundInfoExpireMap::iterator it = foundExpirations.begin();
     while ((it != foundExpirations.end()) &&
            (it->first < now)) {
-        foundDevices.erase(it->second);
+
+        FoundInfoMap::iterator fimit = foundDevices.find(it->second);
+
+        if (fimit != foundDevices.end()) {
+            if (fimit->second.uuidRev == bt::INVALID_UUIDREV) {
+                QCC_DbgHLPrintf(("Found possible AllJoyn device: %s", it->second.ToString().c_str()));
+                DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_FOUND, it->second, bt::INVALID_UUIDREV, false));
+            }
+            foundDevices.erase(fimit);
+        }
         foundExpirations.erase(it);
         it = foundExpirations.begin();
     }
@@ -1474,7 +1504,7 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                         BTNodeDB::const_iterator nodeit;
                         for (nodeit = adInfo->Begin(); nodeit != adInfo->End(); ++nodeit) {
                             const BTNodeInfo& node = *nodeit;
-                            QCC_DbgPrintf(("       %s (GUID: %s)", node->GetBusAddress().ToString().c_str(), node->GetGUID().c_str()));
+                            QCC_DbgPrintf(("       %s (GUID: %s)", node->GetBusAddress().ToString().c_str(), node->GetGUID().ToString().c_str()));
                             NameSet::const_iterator name;
                             for (name = node->GetAdvertiseNamesBegin(); name != node->GetAdvertiseNamesEnd(); ++name) {
                                 QCC_DbgPrintf(("           \"%s\"", name->c_str()));

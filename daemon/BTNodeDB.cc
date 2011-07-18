@@ -83,10 +83,11 @@ const BTNodeInfo BTNodeDB::FindNode(const String& uniqueName) const
 }
 
 
-BTNodeInfo BTNodeDB::FindDirectMinion(const BTNodeInfo& start, const BTNodeInfo& skip) const
+BTNodeInfo BTNodeDB::FindDelegateMinion(const BTNodeInfo& start, const BTNodeInfo& skip, bool eirCapable) const
 {
     Lock();
     const_iterator next = nodes.find(start);
+    const_iterator traditional = nodes.end();
 #ifndef NDEBUG
     if (next == End()) {
         String s("Failed to find: " + start->GetBusAddress().addr.ToString());
@@ -99,10 +100,21 @@ BTNodeInfo BTNodeDB::FindDirectMinion(const BTNodeInfo& start, const BTNodeInfo&
         if (next == End()) {
             next = Begin();
         }
-    } while ((!(*next)->IsDirectMinion() || (*next == skip)) && ((*next) != start));
-    BTNodeInfo node = *next;
+
+        if (!(*next)->IsEIRCapable() && (traditional == nodes.end()) && (*next != skip)) {
+            traditional = next;
+        }
+
+
+
+    } while ((*next != start) && (!(*next)->IsMinion() || (*next == skip) || !(*next)->IsEIRCapable()));
     Unlock();
-    return node;
+
+    if (!eirCapable) {
+        next = (*next == start) ? traditional : next;
+    }
+
+    return *next;
 }
 
 
@@ -125,9 +137,14 @@ void BTNodeDB::AddNode(const BTNodeInfo& node)
     expireSet.insert(node);
 
     // Add to the connect address multimap
-    connMap.insert(std::pair<BTBusAddress, BTNodeInfo>(node->GetConnectAddress(), node));
+    connMap.insert(std::pair<BTNodeInfo, BTNodeInfo>(node->GetConnectNode(), node));
     assert(connMap.size() == expireSet.size());
     assert(expireSet.size() == nodes.size());
+
+    // Add to the session ID map
+    if (node->GetSessionID() != 0) {
+        sessionIDMap[node->GetSessionID()] = node;
+    }
     Unlock();
 }
 
@@ -142,9 +159,14 @@ void BTNodeDB::RemoveNode(const BTNodeInfo& node)
         // Remove from the address map
         addrMap.erase(it);
 
+        // Remove from the session ID map
+        if (lnode->GetSessionID() != 0) {
+            sessionIDMap.erase(lnode->GetSessionID());
+        }
+
         // Remove from the connect address multimap
-        ConnAddrMap::iterator cmit = connMap.lower_bound(lnode->GetConnectAddress());
-        ConnAddrMap::iterator end = connMap.upper_bound(lnode->GetConnectAddress());
+        ConnAddrMap::iterator cmit = connMap.lower_bound(lnode->GetConnectNode());
+        ConnAddrMap::iterator end = connMap.upper_bound(lnode->GetConnectNode());
         while ((cmit != end) && (cmit->second != lnode)) {
             ++cmit;
         }
@@ -351,20 +373,20 @@ void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool rem
                     node->AddAdvertiseName(aname);
                 }
                 // Update the connect node map
-                ConnAddrMap::iterator cmit = connMap.lower_bound(node->GetConnectAddress());
-                ConnAddrMap::iterator end = connMap.upper_bound(node->GetConnectAddress());
+                ConnAddrMap::iterator cmit = connMap.lower_bound(node->GetConnectNode());
+                ConnAddrMap::iterator end = connMap.upper_bound(node->GetConnectNode());
                 while ((cmit != end) && (cmit->second != node)) {
                     ++cmit;
                 }
                 if (cmit != end) {
                     connMap.erase(cmit);
                 }
-                BTNodeInfo connNode = FindNode(anode->GetConnectAddress());
+                BTNodeInfo connNode = FindNode(anode->GetConnectNode()->GetBusAddress());
                 if (!connNode->IsValid()) {
-                    connNode = added->FindNode(anode->GetConnectAddress());
+                    connNode = added->FindNode(anode->GetConnectNode()->GetBusAddress());
                 }
                 node->SetConnectNode(connNode);
-                connMap.insert(pair<BTBusAddress, BTNodeInfo>(node->GetConnectAddress(), node));
+                connMap.insert(pair<BTNodeInfo, BTNodeInfo>(node->GetConnectNode(), node));
                 // Update the UUIDRev
                 node->SetUUIDRev(anode->GetUUIDRev());
                 // Update the expire time
@@ -372,6 +394,13 @@ void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool rem
                 node->SetExpireTime(anode->GetExpireTime());
                 expireSet.insert(node);
                 assert(connMap.size() == expireSet.size());
+                if ((node->GetUniqueName() != anode->GetUniqueName()) && !anode->GetUniqueName().empty()) {
+                    if (!node->GetUniqueName().empty()) {
+                        nameMap.erase(node->GetUniqueName());
+                    }
+                    node->SetUniqueName(anode->GetUniqueName());
+                    nameMap[node->GetUniqueName()] = node;
+                }
             }
         }
     }
@@ -415,48 +444,61 @@ void BTNodeDB::RefreshExpiration(uint32_t expireDelta)
 }
 
 
-void BTNodeDB::RefreshExpiration(const BTBusAddress& connAddr, uint32_t expireDelta)
+void BTNodeDB::RefreshExpiration(const BTNodeInfo& connNode, uint32_t expireDelta)
 {
     Lock();
-    ConnAddrMap::iterator cmit = connMap.lower_bound(connAddr);
-    ConnAddrMap::iterator end = connMap.upper_bound(connAddr);
+    ConnAddrMap::iterator cmit = connMap.lower_bound(connNode);
+    ConnAddrMap::iterator end = connMap.upper_bound(connNode);
 
     Timespec now;
     GetTimeNow(&now);
     uint64_t expireTime = now.GetAbsoluteMillis() + expireDelta;
 
     while (cmit != end) {
-        assert(cmit->first == cmit->second->GetConnectAddress());
+        assert(cmit->first == cmit->second->GetConnectNode());
         expireSet.erase(cmit->second);
         cmit->second->SetExpireTime(expireTime);
         expireSet.insert(cmit->second);
         ++cmit;
     }
 
-    assert((end == connMap.end()) || (connAddr < (end->second->GetConnectAddress())));
+    assert((end == connMap.end()) || (connNode < (end->second->GetConnectNode())));
     assert(connMap.size() == expireSet.size());
     assert(expireSet.size() == nodes.size());
     Unlock();
 }
 
 
-void BTNodeDB::RefreshExpiration(const BTNodeInfo& node, uint32_t expireDelta)
+void BTNodeDB::NodeSessionLost(SessionId sessionID)
+{
+    Lock();
+    SessionIDMap::iterator it = sessionIDMap.find(sessionID);
+    if (it != sessionIDMap.end()) {
+        BTNodeInfo lnode = it->second;
+
+        sessionIDMap.erase(sessionID);
+        lnode->SetSessionID(0);
+    }
+    Unlock();
+}
+
+
+void BTNodeDB::UpdateNodeSessionID(SessionId sessionID, const BTNodeInfo& node)
 {
     Lock();
     NodeAddrMap::iterator it = addrMap.find(node->GetBusAddress());
     if (it != addrMap.end()) {
         BTNodeInfo lnode = it->second;
 
-        Timespec now;
-        GetTimeNow(&now);
-        uint64_t expireTime = now.GetAbsoluteMillis() + expireDelta;
+        SessionIDMap::iterator sit = sessionIDMap.find(lnode->GetSessionID());
+        if (sit != sessionIDMap.end()) {
+            sessionIDMap.erase(sit);
+        }
 
-        expireSet.erase(lnode);
-        lnode->SetExpireTime(expireTime);
-        expireSet.insert(lnode);
+        lnode->SetSessionID(sessionID);
+
+        sessionIDMap[sessionID] = lnode;
     }
-    assert(connMap.size() == expireSet.size());
-    assert(expireSet.size() == nodes.size());
     Unlock();
 }
 
@@ -482,7 +524,7 @@ void BTNodeDB::DumpTable(const char* info) const
         }
         QCC_DbgPrintf(("    %s (connect addr: %s  unique name: \"%s\"  uuidRev: %08x  direct: %s  expire time: %s):",
                        node->GetBusAddress().ToString().c_str(),
-                       node->GetConnectAddress().ToString().c_str(),
+                       node->GetConnectNode()->GetBusAddress().ToString().c_str(),
                        node->GetUniqueName().c_str(),
                        node->GetUUIDRev(),
                        node->IsDirectMinion() ? "true" : "false",

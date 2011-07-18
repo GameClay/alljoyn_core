@@ -261,6 +261,13 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
  *
  *  Returns the socket descriptor request or an error response
  */
+
+/**
+ * Collection of Session Port numbers defined for org.alljoyn endpoint.
+ */
+// @{
+#define ALLJOYN_BTCONTROLLER_SESSION_PORT 0x0001  /**< Session port used by BT topology manager (daemon-to-daemon use only) */
+// @}
 }
 
 #undef QCC_MODULE

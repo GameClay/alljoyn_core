@@ -359,16 +359,19 @@ class BTTransport :
      *
      * @return  ER_OK if successful.
      */
-    QStatus Disconnect(const BTBusAddress& addr);
+    QStatus Disconnect(const qcc::String& busName);
 
     /**
      * Called by BTAccessor to inform transport of an AllJoyn capable device.
      *
-     * @param adBdAddr  BD Address of the device advertising names.
-     * @param uuidRev   UUID revision number of the device that was found.
+     * @param adBdAddr      BD Address of the device advertising names.
+     * @param uuidRev       UUID revision number of the device that was found.
+     * @param eirCapable    - true if found device was confirmed AllJoyn capable via EIR
+     *                      - false if found device is potential AllJoyn capable
      */
     void DeviceChange(const BDAddress& bdAddr,
-                      uint32_t uuidRev);
+                      uint32_t uuidRev,
+                      bool eirCapable);
 
     /**
      * Start the find operation for AllJoyn capable devices.  A duration may
@@ -473,11 +476,11 @@ class BTTransport :
     QStatus IsMaster(const BDAddress& addr, bool& master) const;
     void RequestBTRole(const BDAddress& addr, bt::BluetoothRole role);
 
+    bool IsEIRCapable() const;
 
     BusAttachment& bus;                            /**< The message bus for this transport */
     BTAccessor* btAccessor;                        /**< Object for accessing the Bluetooth device */
     BTController* btController;                    /**< Bus Object that manages the BT topology */
-    std::map<qcc::String, qcc::String> serverArgs; /**< Map of server configuration args */
     std::set<RemoteEndpoint*> threadList;          /**< List of active BT endpoints */
     qcc::Mutex threadListLock;                     /**< Mutex that protects threadList */
     TransportListener* listener;

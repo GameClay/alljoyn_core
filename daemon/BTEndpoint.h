@@ -27,7 +27,7 @@
 
 #include <alljoyn/BusAttachment.h>
 
-#include "BTNodeDB.h"
+#include "BTNodeInfo.h"
 #include "RemoteEndpoint.h"
 
 
@@ -42,17 +42,17 @@ class BTEndpoint : public RemoteEndpoint {
     BTEndpoint(BusAttachment& bus,
                bool incoming,
                qcc::Stream& stream,
-               const BTBusAddress& addr) :
-        RemoteEndpoint(bus, incoming, addr.ToSpec(), stream, "bluetooth"),
-        addr(addr)
+               const BTNodeInfo& node) :
+        RemoteEndpoint(bus, incoming, node->GetBusAddress().ToSpec(), stream, "bluetooth"),
+        node(node)
     { }
 
     virtual ~BTEndpoint() { }
 
-    const BTBusAddress& GetBTBusAddress() const { return addr; }
+    const BTNodeInfo& GetNode() const { return node; }
 
   private:
-    BTBusAddress addr;
+    BTNodeInfo node;
 };
 
 } // namespace ajn

@@ -26,9 +26,11 @@
 #include <limits>
 #include <set>
 
+#include <qcc/GUID.h>
 #include <qcc/ManagedObj.h>
 #include <qcc/String.h>
 
+#include <alljoyn/Session.h>
 
 #include "BTBusAddress.h"
 
@@ -48,6 +50,14 @@ typedef qcc::ManagedObj<_BTNodeInfo> BTNodeInfo;
 class _BTNodeInfo {
 
   public:
+    enum NodeRelationships {
+        UNAFFILIATED,
+        SELF,
+        DIRECT_MINION,
+        INDIRECT_MINION,
+        MASTER
+    };
+
     /**
      * Default constructor.
      */
@@ -55,10 +65,13 @@ class _BTNodeInfo {
         guid(),
         uniqueName(),
         nodeAddr(),
-        directMinion(false),
+        relationship(UNAFFILIATED),
         connectProxyNode(NULL),
         uuidRev(bt::INVALID_UUIDREV),
-        expireTime(std::numeric_limits<uint64_t>::max())
+        expireTime(std::numeric_limits<uint64_t>::max()),
+        eirCapable(false),
+        connectionCount(0),
+        sessionID(0)
     { }
 
     /**
@@ -70,10 +83,13 @@ class _BTNodeInfo {
         guid(),
         uniqueName(),
         nodeAddr(nodeAddr),
-        directMinion(false),
+        relationship(UNAFFILIATED),
         connectProxyNode(NULL),
         uuidRev(bt::INVALID_UUIDREV),
-        expireTime(std::numeric_limits<uint64_t>::max())
+        expireTime(std::numeric_limits<uint64_t>::max()),
+        eirCapable(false),
+        connectionCount(0),
+        sessionID(0)
     { }
 
     /**
@@ -86,10 +102,13 @@ class _BTNodeInfo {
         guid(),
         uniqueName(uniqueName),
         nodeAddr(nodeAddr),
-        directMinion(false),
+        relationship(UNAFFILIATED),
         connectProxyNode(NULL),
         uuidRev(bt::INVALID_UUIDREV),
-        expireTime(std::numeric_limits<uint64_t>::max())
+        expireTime(std::numeric_limits<uint64_t>::max()),
+        eirCapable(false),
+        connectionCount(0),
+        sessionID(0)
     { }
 
     /**
@@ -99,14 +118,17 @@ class _BTNodeInfo {
      * @param uniqueName    Unique bus name of the daemon on the node
      * @param guid          Bus GUID of the node
      */
-    _BTNodeInfo(const BTBusAddress& nodeAddr, const qcc::String& uniqueName, const qcc::String& guid) :
+    _BTNodeInfo(const BTBusAddress& nodeAddr, const qcc::String& uniqueName, const qcc::GUID& guid) :
         guid(guid),
         uniqueName(uniqueName),
         nodeAddr(nodeAddr),
-        directMinion(false),
+        relationship(UNAFFILIATED),
         connectProxyNode(NULL),
         uuidRev(bt::INVALID_UUIDREV),
-        expireTime(std::numeric_limits<uint64_t>::max())
+        expireTime(std::numeric_limits<uint64_t>::max()),
+        eirCapable(false),
+        connectionCount(0),
+        sessionID(0)
     { }
 
     /**
@@ -289,14 +311,15 @@ class _BTNodeInfo {
      *
      * @return  String representation of the bus GUID.
      */
-    const qcc::String& GetGUID() const { return guid; }
+    const qcc::GUID& GetGUID() const { return guid; }
 
     /**
      * Set the bus GUID.
      *
      * @param guid  String representation of the bus GUID.
      */
-    void SetGUID(const qcc::String& guid) { this->guid = guid; }
+    void SetGUID(const qcc::String& guid) { this->guid = qcc::GUID(guid); }
+    void SetGUID(const qcc::GUID& guid) { this->guid = guid; }
 
     /**
      * Get the unique name of the AllJoyn controller object.
@@ -336,27 +359,34 @@ class _BTNodeInfo {
      *
      * @return  'true' if the node is a direct minion, 'false' otherwise.
      */
-    bool IsDirectMinion() const { return directMinion; }
+    bool IsDirectMinion() const { return relationship == DIRECT_MINION; }
+
+    /**
+     * Get whether this node is a minion (direct or indirect) or not.
+     *
+     * @return  'true' if the node is a minion, 'false' otherwise.
+     */
+    bool IsMinion() const { return (relationship == DIRECT_MINION) || (relationship == INDIRECT_MINION); }
 
     /**
      * Set whether this node is a direct minion or not.
      *
      * @param val   'true' if the node is a direct minion, 'false' otherwise.
      */
-    void SetDirectMinion(bool val) { directMinion = val; }
+    void SetRelationship(NodeRelationships relationship) { this->relationship = relationship; }
 
     /**
      * Get the bus address that is accepting connections for us.
      *
      * @return  Bus address accepting connections for us
      */
-    const BTBusAddress& GetConnectAddress() const
+    BTNodeInfo GetConnectNode() const
     {
-        const _BTNodeInfo* next = this;
+        BTNodeInfo next = BTNodeInfo(const_cast<_BTNodeInfo*>(this));
         while (next->connectProxyNode) {
-            next = &(*(*(next->connectProxyNode)));
+            next = *(next->connectProxyNode);
         }
-        return next->GetBusAddress();
+        return next;
     }
 
     /**
@@ -419,13 +449,73 @@ class _BTNodeInfo {
     }
 
     /**
+     * Indicate if the node is EIR capable or not.
+     *
+     * @return  - true if node is EIR capable
+     *          - false if node is not EIR capable
+     */
+    bool IsEIRCapable() const { return eirCapable; }
+
+    /**
+     * Set EIR capability flag.
+     *
+     * @param eirCapable    Set to true if node is EIR capable
+     */
+    void SetEIRCapable(bool eirCapable) { this->eirCapable = eirCapable; }
+
+    /**
+     * Gets the number of connections to the node.
+     *
+     * @return  Number of connections
+     */
+    uint16_t GetConnectionCount() const { return connectionCount; }
+
+    /**
+     * Set the number of connections to the node.
+     *
+     * @param connectionCount   Number of connections
+     */
+    void SetConnectionCount(uint16_t connectionCount) { this->connectionCount = connectionCount; }
+
+    /**
+     * Increment the connection count and return the number of connections.
+     *
+     * @return  Number of connections after incrementing the count
+     */
+    uint16_t IncConnCount() { return ++connectionCount; }
+
+    /**
+     * Decrement the connection count and return the number of remaining connections.
+     *
+     * @return  Number of remaining connections after decrementing the count
+     */
+    uint16_t DecConnCount() { return --connectionCount; }
+
+    /**
+     * Get the session ID of the connection to this node.
+     *
+     * @return  BT topology manager session ID
+     */
+    SessionId GetSessionID() const { return sessionID; }
+
+    /**
+     * Set the session ID of the connection to this node.
+     *
+     * @param sessionID  BT topology manager session ID
+     */
+    void SetSessionID(SessionId sessionID) { this->sessionID = sessionID; }
+
+    /**
      * Equivalence operator.
      *
      * @param other     reference to the rhs of "==" for comparison
      *
      * @return  true if this is == other, false otherwise
      */
-    bool operator==(const _BTNodeInfo& other) const { return (nodeAddr == other.nodeAddr); }
+    bool operator==(const _BTNodeInfo& other) const
+    {
+        return (nodeAddr == other.nodeAddr);
+    }
 
     /**
      * Inequality operator.
@@ -443,7 +533,10 @@ class _BTNodeInfo {
      *
      * @return  true if this is < other, false otherwise
      */
-    bool operator<(const _BTNodeInfo& other) const { return (nodeAddr < other.nodeAddr); }
+    bool operator<(const _BTNodeInfo& other) const
+    {
+        return (nodeAddr < other.nodeAddr);
+    }
 
   private:
     /**
@@ -456,15 +549,19 @@ class _BTNodeInfo {
      */
     _BTNodeInfo& operator=(const _BTNodeInfo& other) { return *this; }
 
-    qcc::String guid;             /**< Bus GUID of the node. */
-    qcc::String uniqueName;       /**< Unique bus name of the daemon on the node. */
-    BTBusAddress nodeAddr;        /**< Bus address of the node. */
-    bool directMinion;            /**< Flag indicating if the node is a directly connected minion or not. */
-    BTNodeInfo* connectProxyNode; /**< Node that will accept connections for us. */
-    NameSet adNames;              /**< Set of advertise names. */
-    NameSet findNames;            /**< Set of find names. */
-    uint32_t uuidRev;             /**< UUID revision of the advertisement this node was found in. */
-    uint64_t expireTime;          /**< Time when advertised information is considered stale. */
+    qcc::GUID guid;                 /**< Bus GUID of the node. */
+    qcc::String uniqueName;         /**< Unique bus name of the daemon on the node. */
+    BTBusAddress nodeAddr;          /**< Bus address of the node. */
+    NodeRelationships relationship; /**< Relationship of node with respect to self. */
+    bool directMinion;              /**< Flag indicating if the node is a directly connected minion or not. */
+    BTNodeInfo* connectProxyNode;   /**< Node that will accept connections for us. */
+    NameSet adNames;                /**< Set of advertise names. */
+    NameSet findNames;              /**< Set of find names. */
+    uint32_t uuidRev;               /**< UUID revision of the advertisement this node was found in. */
+    uint64_t expireTime;            /**< Time when advertised information is considered stale. */
+    bool eirCapable;                /**< Indicates if device is EIR capable or not. */
+    uint16_t connectionCount;       /**< Number of connections with this node. */
+    SessionId sessionID;            /**< BT controller session ID. */
 };
 
 }

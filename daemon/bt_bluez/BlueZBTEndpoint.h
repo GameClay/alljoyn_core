@@ -27,7 +27,7 @@
 
 #include "BlueZUtils.h"
 #include "BTEndpoint.h"
-#include "BTNodeDB.h"
+#include "BTNodeInfo.h"
 
 namespace ajn {
 
@@ -40,8 +40,8 @@ class BlueZBTEndpoint : public BTEndpoint {
     BlueZBTEndpoint(BusAttachment& bus,
                     bool incoming,
                     qcc::SocketFd sockFd,
-                    const BTBusAddress& addr) :
-        BTEndpoint(bus, incoming, sockStream, addr),
+                    const BTNodeInfo& node) :
+        BTEndpoint(bus, incoming, sockStream, node),
         sockStream(sockFd)
     { }
 
