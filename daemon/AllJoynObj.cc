@@ -35,6 +35,8 @@
 #include <qcc/String.h>
 #include <qcc/Thread.h>
 #include <qcc/Util.h>
+#include <qcc/SocketStream.h>
+#include <qcc/StreamPump.h>
 
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/DBusStd.h>
@@ -934,6 +936,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     const char* busAddr;
     SessionOpts optsIn;
     RemoteEndpoint* srcB2BEp = NULL;
+    String b2bEpName;
 
     size_t na;
     const MsgArg* args;
@@ -1094,9 +1097,8 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
         } else {
             /* This daemon will attempt to route indirectly to dest */
             RemoteEndpoint* b2bEp = NULL;
-            String b2bEpName;
             if ((busAddr[0] == '\0') && (msg->GetSessionId() != 0) && destEp && (destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
-                /* This is a multipoint (secondary) attach.
+                /* This is a secondary (multipoint) attach.
                  * Forward the attach to the dest over the existing session id's B2BEp */
                 VirtualEndpoint*vep = static_cast<VirtualEndpoint*>(destEp);
                 b2bEp = vep->GetBusToBusEndpoint(msg->GetSessionId());
@@ -1215,32 +1217,67 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     } else {
         status = MethodReply(msg, replyArgs, ArraySize(replyArgs));
     }
-    ReleaseLocks();
-
-    QCC_DbgPrintf(("AllJoynObj::AttachSession(%d) returned (%d,%u) (status=%s)", sessionPort, replyCode, id, QCC_StatusText(status)));
 
     /* Log error if reply could not be sent */
     if (ER_OK != status) {
         QCC_LogError(status, ("Failed to respond to org.alljoyn.Daemon.AttachSession."));
     }
 
-    /* If the session is raw, then close the new ep and preserve the fd */
-    if (srcB2BEp && !creatorName.empty() && (optsOut.traffic != SessionOpts::TRAFFIC_MESSAGES)) {
-        AcquireLocks();
-        multimap<pair<String, SessionId>, SessionMapEntry>::iterator it = sessionMap.find(pair<String, SessionId>(creatorName, id));
-        if (it != sessionMap.end()) {
-            if (it->second.streamingEp) {
-                status = ShutdownEndpoint(*it->second.streamingEp, it->second.fd);
-                if (status != ER_OK) {
-                    QCC_LogError(status, ("Failed to shutdown raw endpoint\n"));
+    /* Special handling for successful raw session creation. (Must occur after reply is sent) */
+    QCC_LogError(ER_FAIL, ("srcB2bEp=%p, traffic=%x\n", srcB2BEp, optsOut.traffic));
+    if (srcB2BEp && (optsOut.traffic != SessionOpts::TRAFFIC_MESSAGES)) {
+        QCC_LogError(ER_FAIL, ("AttachSession thinks session is raw\n"));
+        if (b2bEpName.empty()) {
+            if (!creatorName.empty()) {
+                QCC_LogError(ER_FAIL, ("AttachSession thinks dest is local (BAD)\n"));
+                /* Destination for raw session. Shutdown endpoint and preserve the fd for future call to GetSessionFd */
+                multimap<pair<String, SessionId>, SessionMapEntry>::iterator it = sessionMap.find(pair<String, SessionId>(creatorName, id));
+                if (it != sessionMap.end()) {
+                    if (it->second.streamingEp) {
+                        status = ShutdownEndpoint(*it->second.streamingEp, it->second.fd);
+                        if (status != ER_OK) {
+                            QCC_LogError(status, ("Failed to shutdown raw endpoint\n"));
+                        }
+                        it->second.streamingEp = NULL;
+                    }
+                } else {
+                    QCC_LogError(ER_FAIL, ("Failed to find SessionMapEntry \"%s\",%d", creatorName.c_str(), id));
                 }
-                it->second.streamingEp = NULL;
             }
         } else {
-            QCC_LogError(ER_FAIL, ("Failed to find SessionMapEntry \"%s\",%d", creatorName.c_str(), id));
+            QCC_LogError(ER_FAIL, ("AttachSession thinks dest is non-local (%s) (GOOD)\n", b2bEpName.c_str()));
+            /* Indirect raw route (middle-man). Create a pump to copy raw data between endpoints */
+            BusEndpoint* ep = router.FindEndpoint(b2bEpName.c_str());
+            RemoteEndpoint* b2bEp = ep ? static_cast<RemoteEndpoint*>(ep) : NULL;
+            if (b2bEp) {
+                QStatus tStatus;
+                SocketFd srcB2bFd, b2bFd;
+                status = ShutdownEndpoint(*srcB2BEp, srcB2bFd);
+                QCC_LogError(ER_FAIL, ("ShutdownEndpoint(1) returned %s\n", QCC_StatusText(status)));
+                tStatus = ShutdownEndpoint(*b2bEp, b2bFd);
+                QCC_LogError(ER_FAIL, ("ShutdownEndpoint(2) returned %s\n", QCC_StatusText(tStatus)));
+                status = (status == ER_OK) ? tStatus : status;
+                if (status == ER_OK) {
+                    SocketStream ss1(srcB2bFd);
+                    SocketStream ss2(b2bFd);
+                    size_t chunkSize = 4096;
+                    String threadNameStr = id;
+                    threadNameStr.append("-pump");
+                    const char* threadName = threadNameStr.c_str();
+                    bool isManaged = true;
+                    ManagedObj<StreamPump> pump(ss1, ss2, chunkSize, threadName, isManaged);
+                    status = pump->Start();
+                    QCC_LogError(ER_FAIL, ("StreamPump %s Started (%s)\n", threadName, QCC_StatusText(status)));
+                }
+                if (status != ER_OK) {
+                    QCC_LogError(status, ("Raw relay creation failed"));
+                }
+            }
         }
-        ReleaseLocks();
     }
+    ReleaseLocks();
+    QCC_DbgPrintf(("AllJoynObj::AttachSession(%d) returned (%d,%u) (status=%s)", sessionPort, replyCode, id, QCC_StatusText(status)));
+
 }
 
 void AllJoynObj::RemoveSessionRefs(BusEndpoint& endpoint, SessionId id)
