@@ -757,6 +757,12 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
     return status;
 }
 
+QStatus AllJoynPeerObj::AuthenticatePeerAsync(const qcc::String& busName)
+{
+    Message invalidMsg(bus);
+    return requestThread.QueueRequest(invalidMsg, SECURE_CONNECTION, busName);
+}
+
 QStatus AllJoynPeerObj::RequestThread::QueueRequest(Message& msg, RequestType reqType, const qcc::String data)
 {
     QCC_DbgHLPrintf(("QueueRequest %s", msg->Description().c_str()));
@@ -824,6 +830,13 @@ qcc::ThreadReturn AllJoynPeerObj::RequestThread::Run(void* args)
 
             case EXPAND_HEADER:
                 peerObj.ExpandHeader(req.msg, req.data);
+                break;
+
+            case SECURE_CONNECTION:
+                status = peerObj.AuthenticatePeer(req.data);
+                if (status != ER_OK) {
+                    peerObj.peerAuthListener.SecurityViolation(status, req.msg);
+                }
                 break;
             }
         }

@@ -652,6 +652,18 @@ QStatus ProxyBusObject::SecureConnection(bool forceAuth)
     return peerObj->AuthenticatePeer(serviceName);
 }
 
+QStatus ProxyBusObject::SecureConnectionAsync(bool forceAuth)
+{
+    if (!bus->IsPeerSecurityEnabled()) {
+        return ER_BUS_SECURITY_NOT_ENABLED;
+    }
+    AllJoynPeerObj* peerObj =  bus->GetInternal().GetLocalEndpoint().GetPeerObj();
+    if (forceAuth) {
+        peerObj->ForceAuthentication(serviceName);
+    }
+    return peerObj->AuthenticatePeerAsync(serviceName);
+}
+
 QStatus ProxyBusObject::IntrospectRemoteObject()
 {
     /* Need to have introspectable interface in order to call Introspect */
