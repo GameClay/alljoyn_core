@@ -48,23 +48,25 @@ partial class ProjectInstaller {
     {
         this.serviceProcessInstaller1 = new System.ServiceProcess.ServiceProcessInstaller();
         this.serviceInstaller1 = new System.ServiceProcess.ServiceInstaller();
-        //
+        // 
         // serviceProcessInstaller1
-        //
+        // 
         this.serviceProcessInstaller1.Account = System.ServiceProcess.ServiceAccount.LocalService;
         this.serviceProcessInstaller1.Password = null;
         this.serviceProcessInstaller1.Username = null;
-        //
+        // 
         // serviceInstaller1
-        //
+        // 
+        this.serviceInstaller1.Description = "Daemon service that implements the  AllJoyn peer to peer technology.";
+        this.serviceInstaller1.DisplayName = "AllJoyn";
         this.serviceInstaller1.ServiceName = "AllJoynDaemon";
-        //
+        this.serviceInstaller1.StartType = System.ServiceProcess.ServiceStartMode.Automatic;
+        // 
         // ProjectInstaller
-        //
+        // 
         this.Installers.AddRange(new System.Configuration.Install.Installer[] {
-                                     this.serviceProcessInstaller1,
-                                     this.serviceInstaller1
-                                 });
+            this.serviceProcessInstaller1,
+            this.serviceInstaller1});
 
     }
 
