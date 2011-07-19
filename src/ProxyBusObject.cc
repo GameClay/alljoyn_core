@@ -549,15 +549,18 @@ QStatus ProxyBusObject::MethodCall(const InterfaceDescription::Member& method,
                                                     (flags & ALLJOYN_FLAG_ENCRYPTED) != 0,
                                                     &ctxt,
                                                     timeout);
-        if (ER_OK == status) {
+        if (status == ER_OK) {
             if (b2bEp) {
                 status = b2bEp->PushMessage(msg);
             } else {
                 status = bus->GetInternal().GetRouter().PushMessage(msg, localEndpoint);
             }
-            Thread* thisThread = Thread::GetThread();
+        }
+
+        Thread* thisThread = Thread::GetThread();
+        if (status == ER_OK) {
             lock->Lock();
-            if ((ER_OK == status) && !isExiting) {
+            if (!isExiting) {
                 components->waitingThreads.push_back(thisThread);
                 lock->Unlock();
                 status = Event::Wait(ctxt.event);
@@ -570,22 +573,20 @@ QStatus ProxyBusObject::MethodCall(const InterfaceDescription::Member& method,
                     }
                     ++it;
                 }
-                lock->Unlock();
-                if ((ER_OK == status) && (SYNC_METHOD_ALERTCODE_OK == thisThread->GetAlertCode())) {
-                    replyMsg = ctxt.replyMsg;
-                } else if (SYNC_METHOD_ALERTCODE_ABORT == thisThread->GetAlertCode()) {
-                    /*
-                     * We can't touch anything in this case since the external thread that was waiting
-                     * can't know whether this object still exists.
-                     */
-                    status = ER_BUS_METHOD_CALL_ABORTED;
-                    goto MethodCallExit;
-                } else {
-                    localEndpoint.UnregisterReplyHandler(serial);
-                }
-            } else {
-                lock->Unlock();
             }
+            lock->Unlock();
+        }
+        if ((status == ER_OK) && (SYNC_METHOD_ALERTCODE_OK == thisThread->GetAlertCode())) {
+            replyMsg = ctxt.replyMsg;
+        } else if (SYNC_METHOD_ALERTCODE_ABORT == thisThread->GetAlertCode()) {
+            /*
+             * We can't touch anything in this case since the external thread that was waiting
+             * can't know whether this object still exists.
+             */
+            status = ER_BUS_METHOD_CALL_ABORTED;
+            goto MethodCallExit;
+        } else {
+            localEndpoint.UnregisterReplyHandler(serial);
         }
     }
 
