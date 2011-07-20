@@ -933,7 +933,7 @@ QStatus MarshalTests()
             /* Force quiet so we don't print 128MBytes of output data */
             bool wasQuiet = quiet;
             quiet = true;
-            const size_t max_array_size = 1024 * 1024 * 64;
+            const size_t max_array_size = 1024 * 64;
             uint8_t* big = new uint8_t[max_array_size];
             MsgArg arg;
             status = arg.Set("ay", max_array_size, big);
