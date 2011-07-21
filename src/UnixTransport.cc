@@ -145,19 +145,7 @@ QStatus UnixTransport::Stop(void)
      * Ask any running endpoints to shut down and exit their threads.
      */
     m_endpointListLock.Lock();
-
-    /*
-     * Stop() and Join() may be called any number of times, but at least one
-     * call to Stop() must preceed any call to Join() if there are active
-     * endpoints.  The member variable m_stopping indicates we are in the
-     * transitional state where Stop() has been called but active endpoints
-     * still exist (have not exited yet).
-     */
-    if (m_endpointList.size()) {
-        m_stopping = true;
-    } else {
-        m_stopping = false;
-    }
+    m_stopping = true;
 
     for (vector<UnixEndpoint*>::iterator i = m_endpointList.begin(); i != m_endpointList.end(); ++i) {
         (*i)->Stop();
@@ -170,24 +158,7 @@ QStatus UnixTransport::Stop(void)
 
 QStatus UnixTransport::Join(void)
 {
-    /*
-     * Must have called Stop() to arrange for endpoints to exist or have never
-     * started any endpoints before doing this.
-     */
-    assert(m_running == false);
-
     m_endpointListLock.Lock();
-
-    /*
-     * Stop() or Join() can be called multiple times, but at least one call to
-     * Stop() must preceed any call to Join().  If there are endpoints that we
-     * expect to exit as a result of a previous Stop(), then m_stopping will
-     * be set to true.  If there are endpoints, and m_stopping is not true
-     * we have a programming error (calling Join() before calling Stop()).
-     */
-    if (m_endpointList.size()) {
-        assert(m_stopping == true);
-    }
 
     /*
      * A call to Stop() above will ask all of the endpoints to stop.  We still
@@ -204,8 +175,6 @@ QStatus UnixTransport::Join(void)
     }
 
     m_endpointListLock.Unlock();
-
-    m_stopping = false;
 
     return ER_OK;
 }
@@ -233,8 +202,6 @@ void UnixTransport::EndpointExit(RemoteEndpoint* ep)
 
     delete uep;
 }
-
-
 
 QStatus UnixTransport::NormalizeTransportSpec(const char* inSpec, qcc::String& outSpec, map<qcc::String, qcc::String>& argMap) const
 {
@@ -364,40 +331,45 @@ QStatus UnixTransport::Connect(const char* connectArgs, RemoteEndpoint** newep)
     UnixEndpoint* conn = NULL;
     ret = sendmsg(sockFd, &msg, 0);
     if (ret == 1) {
-        conn = new UnixEndpoint(m_bus, false, normSpec, sockFd);
         m_endpointListLock.Lock();
-        m_endpointList.push_back(conn);
-        m_endpointListLock.Unlock();
-
-        /* Initialized the features for this endpoint */
-        conn->GetFeatures().isBusToBus = false;
-        conn->GetFeatures().allowRemote = m_bus.GetInternal().AllowRemoteMessages();
-        conn->GetFeatures().handlePassing = true;
-
-        qcc::String authName;
-        status = conn->Establish("EXTERNAL", authName);
-        if (status == ER_OK) {
-            conn->SetListener(this);
-            status = conn->Start();
-        }
-
-        /*
-         * We put the endpoint into our list of active endpoints to make life
-         * easier reporting problems up the chain of command behind the scenes
-         * if we got an error during the authentincation process and the endpoint
-         * startup.  If we did get an error, we need to remove the endpoint if it
-         * is still there and the endpoint exit callback didn't kill it.
-         */
-        if (status != ER_OK) {
-            QCC_LogError(status, ("UnixTransport::Connect(): Start UnixEndpoint failed"));
-            m_endpointListLock.Lock();
-            vector<UnixEndpoint*>::iterator i = find(m_endpointList.begin(), m_endpointList.end(), conn);
-            if (i != m_endpointList.end()) {
-                m_endpointList.erase(i);
-            }
+        if (m_stopping) {
             m_endpointListLock.Unlock();
-            delete conn;
-            conn = NULL;
+            status = ER_BUS_TRANSPORT_NOT_STARTED;
+        } else {
+            conn = new UnixEndpoint(m_bus, false, normSpec, sockFd);
+            m_endpointList.push_back(conn);
+            m_endpointListLock.Unlock();
+
+            /* Initialized the features for this endpoint */
+            conn->GetFeatures().isBusToBus = false;
+            conn->GetFeatures().allowRemote = m_bus.GetInternal().AllowRemoteMessages();
+            conn->GetFeatures().handlePassing = true;
+
+            qcc::String authName;
+            status = conn->Establish("EXTERNAL", authName);
+            if (status == ER_OK) {
+                conn->SetListener(this);
+                status = conn->Start();
+            }
+
+            /*
+             * We put the endpoint into our list of active endpoints to make life
+             * easier reporting problems up the chain of command behind the scenes
+             * if we got an error during the authentincation process and the endpoint
+             * startup.  If we did get an error, we need to remove the endpoint if it
+             * is still there and the endpoint exit callback didn't kill it.
+             */
+            if (status != ER_OK) {
+                QCC_LogError(status, ("UnixTransport::Connect(): Start UnixEndpoint failed"));
+                m_endpointListLock.Lock();
+                vector<UnixEndpoint*>::iterator i = find(m_endpointList.begin(), m_endpointList.end(), conn);
+                if (i != m_endpointList.end()) {
+                    m_endpointList.erase(i);
+                }
+                m_endpointListLock.Unlock();
+                delete conn;
+                conn = NULL;
+            }
         }
     }
 
