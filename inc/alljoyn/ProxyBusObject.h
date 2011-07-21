@@ -126,7 +126,7 @@ class ProxyBusObject : public MessageReceiver {
      *
      * @return Session Id
      */
-    const SessionId GetSessionId(void) const { return sessionId; }
+    SessionId GetSessionId(void) const { return sessionId; }
 
     /**
      * Query the remote object on the bus to determine the interfaces and
