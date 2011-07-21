@@ -27,6 +27,7 @@
 
 
 #define SOL_BLUETOOTH  274
+#define SOL_HCI          0
 #define SOL_L2CAP        6
 #define SOL_RFCOMM      18
 #define BT_SECURITY      4
@@ -42,6 +43,8 @@
 #define L2CAP_LM         3
 
 #define L2CAP_LM_MASTER 0x1
+
+#define HCI_FILTER 2
 
 #define HCI_LM_MASTER 0x1
 
@@ -103,6 +106,13 @@ struct hci_conn_info_req {
     uint8_t type;
     struct hci_conn_info conn_info;
 };
+
+struct hci_filter {
+    uint32_t type_mask;
+    uint32_t event_mask[2];
+    uint16_t opcode;
+};
+
 
 #define HCIGETCONNINFO _IOR('H', 213, int)
 

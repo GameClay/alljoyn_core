@@ -163,7 +163,7 @@ class BluetoothDeviceInterface {
     virtual RemoteEndpoint* LookupEndpoint(const qcc::String& busName) = 0;
 
     virtual QStatus IsMaster(const BDAddress& addr, bool& master) const = 0;
-    virtual void ForceMaster(const BDAddress& addr) = 0;
+    virtual void RequestBTRole(const BDAddress& addr, bt::BluetoothRole role) = 0;
 
 };
 

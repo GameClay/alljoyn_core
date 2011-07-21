@@ -820,8 +820,8 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
             isMaster = false; // couldn't tell, so guess
         }
 
-        if (wantMaster && !isMaster) {
-            bt.ForceMaster(addr.addr);
+        if (wantMaster != isMaster) {
+            bt.RequestBTRole(addr.addr, wantMaster ? bt::MASTER : bt::SLAVE);
         }
 
         uint8_t slaveFactor = ComputeSlaveFactor();
@@ -1348,16 +1348,6 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
                 bool noRotateMinions = !RotateMinions();
                 delete newMaster;
 
-                bool isMaster;
-                status = bt.IsMaster(addr.addr, isMaster);
-                if (status != ER_OK) {
-                    isMaster = false; // couldn't tell, so guess
-                }
-
-                if (!isMaster) {
-                    bt.ForceMaster(addr.addr);
-                }
-
                 status = ImportState(addr, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs);
                 if (status != ER_OK) {
                     QCC_LogError(status, ("Dropping %s due to import state error", busName.c_str()));
@@ -1600,9 +1590,6 @@ void BTController::DeferredNameLostHander(const String& name)
             bool wasFindMinion = minion == find.minion;
             bool wasDirect = minion->IsDirectMinion();
             bool wasRotateMinions = RotateMinions();
-
-            // Advertise minion and find minion should never be the same.
-            assert(!(wasAdvertiseMinion && wasFindMinion));
 
             find.dirty = true;  // Update ignore addrs
 

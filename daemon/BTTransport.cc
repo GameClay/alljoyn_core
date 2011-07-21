@@ -609,9 +609,9 @@ QStatus BTTransport::IsMaster(const BDAddress& addr, bool& master) const
 }
 
 
-void BTTransport::ForceMaster(const BDAddress& addr)
+void BTTransport::RequestBTRole(const BDAddress& addr, bt::BluetoothRole role)
 {
-    btAccessor->ForceMaster(addr);
+    btAccessor->RequestBTRole(addr, role);
 }
 
 }

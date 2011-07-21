@@ -472,7 +472,7 @@ class BTTransport :
     QStatus Disconnect(const qcc::String& busName);
 
     QStatus IsMaster(const BDAddress& addr, bool& master) const;
-    void ForceMaster(const BDAddress& addr);
+    void RequestBTRole(const BDAddress& addr, bt::BluetoothRole role);
 
 
     BusAttachment& bus;                            /**< The message bus for this transport */

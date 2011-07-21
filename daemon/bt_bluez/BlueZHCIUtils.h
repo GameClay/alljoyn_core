@@ -27,6 +27,7 @@
 #include <qcc/Socket.h>
 
 #include "BDAddress.h"
+#include "BTTransportConsts.h"
 
 #include <Status.h>
 
@@ -42,7 +43,7 @@ void ConfigL2capMaster(qcc::SocketFd sockFd);
 
 QStatus IsMaster(uint16_t deviceId, const BDAddress& addr, bool& master);
 
-QStatus ForceMaster(uint16_t deviceId, const BDAddress& addr);
+QStatus RequestBTRole(uint16_t deviceId, const BDAddress& addr, bt::BluetoothRole role);
 
 
 /**

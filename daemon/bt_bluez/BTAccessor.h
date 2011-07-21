@@ -197,9 +197,10 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      * This function forces a role switch in the HCI device so that we become
      * master of the connection with the specified device.
      *
-     * @param addr          Bluetooth device address for the connection of interest.
+     * @param addr  Bluetooth device address for the connection of interest
+     * @param role  Requested Bluetooth connection role
      */
-    void ForceMaster(const BDAddress& addr);
+    void RequestBTRole(const BDAddress& addr, bt::BluetoothRole role);
 
   private:
 

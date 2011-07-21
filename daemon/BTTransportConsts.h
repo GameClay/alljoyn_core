@@ -30,6 +30,12 @@ namespace bt {
 const uint16_t INVALID_PSM = 0;          /**< Invalid L2CAP PSM value */
 const uint32_t INVALID_UUIDREV = 0;      /**< Invalide UUID revision value */
 
+/** Bluetooth connection roles */
+enum BluetoothRole {
+    MASTER,
+    SLAVE
+};
+
 } // namespace bt
 } // namespace ajn
 

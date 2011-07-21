@@ -22,12 +22,14 @@
 #include <qcc/platform.h>
 
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
 
 #include <qcc/Socket.h>
 
 #include "BlueZ.h"
 #include "BlueZHCIUtils.h"
+#include "BTTransportConsts.h"
 
 #include <Status.h>
 
@@ -380,17 +382,25 @@ exit:
     return status;
 }
 
-QStatus ForceMaster(uint16_t deviceId, const BDAddress& bdAddr)
+QStatus RequestBTRole(uint16_t deviceId, const BDAddress& bdAddr, bt::BluetoothRole role)
 {
+    // Template for the role switch command.
     static const uint8_t hciRoleSwitch[] = {
-        0x01, 0x0B, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        0x01, 0x0B, 0x08, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
     };
     QStatus status = ER_OK;
     uint8_t cmd[sizeof(hciRoleSwitch)];
     sockaddr_hci addr;
     SocketFd hciFd;
     size_t sent;
+    uint8_t rxBuf[260];
+    size_t recvd;
+    bool gotCmdStatus = false;
+    bool gotRoleSwitchEvent = false;
+    int ret;
+    struct hci_filter evtFilter;
 
+    // HCI command sent via raw sockets (must have privileges for this)
     hciFd = (SocketFd)socket(AF_BLUETOOTH, QCC_SOCK_RAW, 1);
     if (hciFd < 0) {
         status = ER_OS_ERROR;
@@ -398,6 +408,9 @@ QStatus ForceMaster(uint16_t deviceId, const BDAddress& bdAddr)
         return status;
     }
 
+    Event hciRxEvent(hciFd);
+
+    // Need to select the adapter we are sending the HCI command to.
     addr.family = AF_BLUETOOTH;
     addr.dev = deviceId;
     if (bind(hciFd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
@@ -406,15 +419,78 @@ QStatus ForceMaster(uint16_t deviceId, const BDAddress& bdAddr)
         goto exit;
     }
 
+    // Initialize the command with the template.
     memcpy(cmd, hciRoleSwitch, sizeof(hciRoleSwitch));
 
-    bdAddr.CopyTo(cmd + 3, true);
-    cmd[9] = 0x00; // Select master
+    // Embed the BD address into the command.
+    bdAddr.CopyTo(cmd + 4, true);
 
+    // Set which role we want.
+    cmd[10] = (role == bt::MASTER) ? 0x00 : 0x01;   // Select the role: master or slave
+
+    // Send the command.
     status = Send(hciFd, cmd, sizeof(hciRoleSwitch), sent);
     if (status != ER_OK) {
         QCC_LogError(status, ("Failed to send HciRoleSwitch HCI command (errno %d)", errno));
+        goto exit;
     }
+
+    // Setup HCI event types to receive.
+    evtFilter.type_mask = 1 << 0x04;
+    evtFilter.event_mask[0] = (1 << 0x0f) | (1 << 0x12);
+    evtFilter.event_mask[1] = 0;
+    evtFilter.opcode = htole16(0x0b | (0x2 << 10));
+
+    ret = setsockopt(hciFd, SOL_HCI, HCI_FILTER, &evtFilter, sizeof(evtFilter));
+    if (ret == -1) {
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("Failed to send HciRoleSwitch HCI command (errno %d)", errno));
+        goto exit;
+    }
+
+    do {
+        status = Event::Wait(hciRxEvent, 5000);  // 5 second timeout
+        if (status != ER_OK) {
+            QCC_LogError(status, ("Waiting for HCI event"));
+            goto exit;
+        }
+
+        status = Recv(hciFd, rxBuf, sizeof(rxBuf), recvd);
+        if (status != ER_OK) {
+            QCC_LogError(status, ("Failed to receive HCI event (errno %d)", errno));
+            goto exit;
+        }
+
+        if (!gotCmdStatus) {
+            if ((rxBuf[0] == 0x04) &&
+                (rxBuf[1] == 0x0f) &&
+                (rxBuf[2] == 0x04) &&
+                memcmp(rxBuf + 4, hciRoleSwitch, 3) == 0) {
+                if (rxBuf[3] != 0x00) {
+                    status = ER_FAIL;
+                    QCC_LogError(status, ("HCI role switch command failed with HCI status 0x%02x", rxBuf[3]));
+                    goto exit;
+                }
+                gotCmdStatus = true;
+            }
+
+        } else if (!gotRoleSwitchEvent) {
+            if ((rxBuf[0] == 0x04) &&
+                (rxBuf[1] == 0x12) &&
+                (rxBuf[2] == 0x08) &&
+                memcmp(rxBuf + 4, cmd + 4, sizeof(hciRoleSwitch) - 5) == 0) {
+                if (rxBuf[3] != 0x00) {
+                    status = ER_FAIL;
+                    QCC_LogError(status, ("HCI role switch event received with HCI fail code 0x%02x", rxBuf[3]));
+                    goto exit;
+                }
+                gotRoleSwitchEvent = true;
+                QCC_DbgPrintf(("BT role switched to %s for connection to %s",
+                               (rxBuf[9] == 0x00) ? "MASTER" : "SLAVE",
+                               bdAddr.ToString().c_str()));
+            }
+        }
+    } while (!gotRoleSwitchEvent);
 
 exit:
     close(hciFd);

@@ -1346,11 +1346,11 @@ QStatus BTTransport::BTAccessor::IsMaster(const BDAddress& addr, bool& master) c
 }
 
 
-void BTTransport::BTAccessor::ForceMaster(const BDAddress& addr)
+void BTTransport::BTAccessor::RequestBTRole(const BDAddress& addr, bt::BluetoothRole role)
 {
     AdapterObject adapter = GetDefaultAdapterObject();
     if (adapter->IsValid()) {
-        bluez::ForceMaster(adapter->id, addr);
+        bluez::RequestBTRole(adapter->id, addr, role);
     }
 }
 
