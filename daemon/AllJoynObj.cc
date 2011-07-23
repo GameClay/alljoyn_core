@@ -1224,12 +1224,9 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
     }
 
     /* Special handling for successful raw session creation. (Must occur after reply is sent) */
-    QCC_LogError(ER_FAIL, ("srcB2bEp=%p, traffic=%x\n", srcB2BEp, optsOut.traffic));
     if (srcB2BEp && (optsOut.traffic != SessionOpts::TRAFFIC_MESSAGES)) {
-        QCC_LogError(ER_FAIL, ("AttachSession thinks session is raw\n"));
         if (b2bEpName.empty()) {
             if (!creatorName.empty()) {
-                QCC_LogError(ER_FAIL, ("AttachSession thinks dest is local (BAD)\n"));
                 /* Destination for raw session. Shutdown endpoint and preserve the fd for future call to GetSessionFd */
                 multimap<pair<String, SessionId>, SessionMapEntry>::iterator it = sessionMap.find(pair<String, SessionId>(creatorName, id));
                 if (it != sessionMap.end()) {
@@ -1245,7 +1242,6 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                 }
             }
         } else {
-            QCC_LogError(ER_FAIL, ("AttachSession thinks dest is non-local (%s) (GOOD)\n", b2bEpName.c_str()));
             /* Indirect raw route (middle-man). Create a pump to copy raw data between endpoints */
             BusEndpoint* ep = router.FindEndpoint(b2bEpName.c_str());
             RemoteEndpoint* b2bEp = ep ? static_cast<RemoteEndpoint*>(ep) : NULL;
@@ -1253,9 +1249,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                 QStatus tStatus;
                 SocketFd srcB2bFd, b2bFd;
                 status = ShutdownEndpoint(*srcB2BEp, srcB2bFd);
-                QCC_LogError(ER_FAIL, ("ShutdownEndpoint(1) returned %s\n", QCC_StatusText(status)));
                 tStatus = ShutdownEndpoint(*b2bEp, b2bFd);
-                QCC_LogError(ER_FAIL, ("ShutdownEndpoint(2) returned %s\n", QCC_StatusText(tStatus)));
                 status = (status == ER_OK) ? tStatus : status;
                 if (status == ER_OK) {
                     SocketStream ss1(srcB2bFd);
@@ -1267,7 +1261,6 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                     bool isManaged = true;
                     ManagedObj<StreamPump> pump(ss1, ss2, chunkSize, threadName, isManaged);
                     status = pump->Start();
-                    QCC_LogError(ER_FAIL, ("StreamPump %s Started (%s)\n", threadName, QCC_StatusText(status)));
                 }
                 if (status != ER_OK) {
                     QCC_LogError(status, ("Raw relay creation failed"));
