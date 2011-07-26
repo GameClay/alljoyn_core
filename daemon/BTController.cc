@@ -2485,22 +2485,27 @@ QStatus BTController::NameArgInfo::SendDelegateSignal()
 void BTController::NameArgInfo::StartOp(bool restart)
 {
     QStatus status;
+    size_t retry = (bto.directMinions > 0) ? bto.directMinions : 1;
 
     SetArgs();
 
-    if (UseLocal()) {
-        status = StartLocal();
-    } else {
-        status = SendDelegateSignal();
-        if (bto.RotateMinions()) {
-            assert(minion->IsValid());
-            assert(minion != bto.self);
-            if (restart) {
-                StopAlarm();
+    do {
+        if (UseLocal()) {
+            status = StartLocal();
+        } else {
+            status = SendDelegateSignal();
+            if (bto.RotateMinions()) {
+                assert(minion->IsValid());
+                assert(minion != bto.self);
+                if (status == ER_OK) {
+                    if (restart) {
+                        StopAlarm();
+                    }
+                    StartAlarm();
+                }
             }
-            StartAlarm();
         }
-    }
+    } while ((status == ER_BUS_NO_ROUTE) && (--retry));
 
     if (status != ER_OK) {
         QCC_LogError(status, ("StartOp(restart = %d) failed", restart));
