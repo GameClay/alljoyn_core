@@ -707,7 +707,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                         replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
                     }
                 } else {
-                    QCC_LogError(ER_FAIL, ("Failed to find session id=%u for %s, %d", id, key.first.c_str(), key.second));
+                    QCC_LogError(ER_FAIL, ("Failed to find session id=%08x for %s, %d", id, key.first.c_str(), key.second));
                     replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
                 }
             }
@@ -774,17 +774,17 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                     memberEp = ajObj.router.FindEndpoint(member);
                     memberB2BEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
                     if (status != ER_OK) {
-                        QCC_LogError(status, ("Failed to attach session %u to %s", id, member));
+                        QCC_LogError(status, ("Failed to attach session %08x to %s", id, member));
                     } else if (tReplyCode != ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
                         status = ER_FAIL;
-                        QCC_LogError(status, ("Failed to attach session %u to %s (reply=%d)", id, member, tReplyCode));
+                        QCC_LogError(status, ("Failed to attach session %08x to %s (reply=%d)", id, member, tReplyCode));
                     } else if (id != tId) {
                         status = ER_FAIL;
-                        QCC_LogError(status, ("Session id mismatch (expected=%u, actual=%u)", id, tId));
+                        QCC_LogError(status, ("Session id mismatch (expected=%08x, actual=%08x)", id, tId));
                     }
                 } else {
                     status = ER_BUS_BAD_SESSION_OPTS;
-                    QCC_LogError(status, ("Unable to add existing member %s to session %u", vMemberEp->GetUniqueName().c_str(), id));
+                    QCC_LogError(status, ("Unable to add existing member %s to session %08x", vMemberEp->GetUniqueName().c_str(), id));
                 }
             }
             /* Add session routing */
@@ -811,7 +811,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
     replyArgs[1].Set("u", id);
     SetSessionOpts(optsOut, replyArgs[2]);
     status = ajObj.MethodReply(msg, replyArgs, ArraySize(replyArgs));
-    QCC_DbgPrintf(("AllJoynObj::JoinSession(%d) returned (%d,%u) (status=%s)", sessionPort, replyCode, id, QCC_StatusText(status)));
+    QCC_DbgPrintf(("AllJoynObj::JoinSession(%d) returned (%d,%08x) (status=%s)", sessionPort, replyCode, id, QCC_StatusText(status)));
 
     /* Log error if reply could not be sent */
     if (ER_OK != status) {
@@ -867,7 +867,7 @@ void AllJoynObj::LeaveSession(const InterfaceDescription::Member* member, Messag
     assert(numArgs == 1);
     SessionId id = static_cast<SessionId>(args[0].v_uint32);
 
-    QCC_DbgTrace(("AllJoynObj::LeaveSession(%d)", id));
+    QCC_DbgTrace(("AllJoynObj::LeaveSession(%08x)", id));
 
     /* Find the session with that id */
     AcquireLocks();
@@ -906,7 +906,7 @@ void AllJoynObj::LeaveSession(const InterfaceDescription::Member* member, Messag
     MsgArg replyArgs[1];
     replyArgs[0].Set("u", replyCode);
     QStatus status = MethodReply(msg, replyArgs, ArraySize(replyArgs));
-    QCC_DbgPrintf(("AllJoynObj::LeaveSession(%d) returned (%u) (status=%s)", id, replyCode, QCC_StatusText(status)));
+    QCC_DbgPrintf(("AllJoynObj::LeaveSession(%08x) returned (%08x) (status=%s)", id, replyCode, QCC_StatusText(status)));
 
     /* Log error if reply could not be sent */
     if (ER_OK != status) {
@@ -1180,10 +1180,10 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                             status = router.AddSessionRoute(src, id, *vDestEp, b2bEp);
                             if (status != ER_OK) {
                                 router.RemoveSessionRoute(dest, id, *srcEp);
-                                QCC_LogError(status, ("AddSessionRoute(%s, %u) failed", src, id));
+                                QCC_LogError(status, ("AddSessionRoute(%s, %08x) failed", src, id));
                             }
                         } else {
-                            QCC_LogError(status, ("AddSessionRoute(%s, %u) failed", dest, id));
+                            QCC_LogError(status, ("AddSessionRoute(%s, %08x) failed", dest, id));
                         }
                     } else {
                         // TODO: Need to cleanup partially setup session
@@ -1238,7 +1238,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                         it->second.streamingEp = NULL;
                     }
                 } else {
-                    QCC_LogError(ER_FAIL, ("Failed to find SessionMapEntry \"%s\",%d", creatorName.c_str(), id));
+                    QCC_LogError(ER_FAIL, ("Failed to find SessionMapEntry \"%s\",%08x", creatorName.c_str(), id));
                 }
             }
         } else {
@@ -1269,7 +1269,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
         }
     }
     ReleaseLocks();
-    QCC_DbgPrintf(("AllJoynObj::AttachSession(%d) returned (%d,%u) (status=%s)", sessionPort, replyCode, id, QCC_StatusText(status)));
+    QCC_DbgPrintf(("AllJoynObj::AttachSession(%d) returned (%d,%08x) (status=%s)", sessionPort, replyCode, id, QCC_StatusText(status)));
 
 }
 
@@ -1427,7 +1427,7 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
         status = GetSessionOpts(replyArgs[2], optsOut);
         if (status == ER_OK) {
             members = *reply->GetArg(3);
-            QCC_DbgPrintf(("Received AttachSession response: replyCode=%d, sessionId=0x%x, opts=<%x, %x, %x>",
+            QCC_DbgPrintf(("Received AttachSession response: replyCode=%d, sessionId=0x%08x, opts=<%x, %x, %x>",
                            replyCode, id, optsOut.proximity, optsOut.traffic, optsOut.transports));
         } else {
             QCC_DbgPrintf(("Received AttachSession response: <bad_args>"));
@@ -1484,7 +1484,7 @@ void AllJoynObj::SendSessionLost(const SessionMapEntry& sme)
     Message sigMsg(bus);
     MsgArg args[1];
     args[0].Set("u", sme.id);
-    QCC_DbgPrintf(("Sending SessionLost(%d) to %s", sme.id, sme.endpointName.c_str()));
+    QCC_DbgPrintf(("Sending SessionLost(%08x) to %s", sme.id, sme.endpointName.c_str()));
     QStatus status = Signal(sme.endpointName.c_str(), sme.id, *sessionLostSignal, args, ArraySize(args));
 
     if (ER_OK != status) {

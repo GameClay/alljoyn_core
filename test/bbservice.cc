@@ -256,7 +256,7 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
 
     void SessionJoined(SessionPort sessionPort, SessionId sessionId, const char* joiner)
     {
-        QCC_SyncPrintf("Session Established: joiner=%s, sessionId=%d\n", joiner, sessionId);
+        QCC_SyncPrintf("Session Established: joiner=%s, sessionId=%08x\n", joiner, sessionId);
         QStatus status = bus.SetSessionListener(sessionId, this);
         if (status != ER_OK) {
             QCC_LogError(status, ("SetSessionListener failed"));
@@ -264,7 +264,7 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
     }
 
     void SessionLost(SessionId sessionId) {
-        QCC_SyncPrintf("SessionLost(%u) was called\n", sessionId);
+        QCC_SyncPrintf("SessionLost(%08x) was called\n", sessionId);
     }
 
   private:
