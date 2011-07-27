@@ -169,6 +169,10 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
                newOwner ? newOwner : "<none>");
     }
 
+    void LostAdvertisedName(const char* name, TransportMask transport, const char* namePrefix) {
+        printf("LostAdvertisedName name=%s, namePrefix=%s\n", name, namePrefix);
+    }
+
     bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
     {
         bool ret = false;
