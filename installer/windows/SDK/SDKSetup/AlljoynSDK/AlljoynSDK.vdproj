@@ -417,6 +417,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_3C8B602831C14CBA8AB5A3914BCA269A"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_3CEB8D124EDD4C15B16C2DFCA3143084"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -891,6 +897,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_8241C5C6AA4F414899DA8FC18180B7EC"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_824E42DEA83F483B87F344A732D78862"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1114,6 +1126,12 @@
         "Entry"
         {
         "MsmKey" = "8:_B1EEC75AF04C472C93752114F1FC0E63"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_B2F8D565EEA94065B3B0DB7110EF4C20"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -3016,6 +3034,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3C8B602831C14CBA8AB5A3914BCA269A"
+            {
+            "SourcePath" = "8:..\\..\\..\\..\\..\\..\\alljoyn_java\\build\\windows\\IA64\\release\\obj\\jni\\alljoyn_java.lib"
+            "TargetName" = "8:alljoyn_java.lib"
+            "Tag" = "8:"
+            "Folder" = "8:_0AAF14DF569E4609AF11DF2F1FE1EB90"
+            "Condition" = "8:CHECKBOXA4=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3CEB8D124EDD4C15B16C2DFCA3143084"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\windows\\IA64\\release\\dist\\bin\\hci.exe"
@@ -4596,6 +4634,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8241C5C6AA4F414899DA8FC18180B7EC"
+            {
+            "SourcePath" = "8:..\\..\\..\\..\\..\\..\\alljoyn_java\\build\\windows\\IA64\\release\\obj\\jni\\alljoyn_java.dll"
+            "TargetName" = "8:alljoyn_java.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_0AAF14DF569E4609AF11DF2F1FE1EB90"
+            "Condition" = "8:CHECKBOXA4=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_824E42DEA83F483B87F344A732D78862"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\windows\\IA64\\release\\dist\\bin\\samples\\basic_service.exe"
@@ -5343,6 +5401,26 @@
             "Tag" = "8:"
             "Folder" = "8:_84396D021C4A470B948150A6EA696FAB"
             "Condition" = "8:CHECKBOXA3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B2F8D565EEA94065B3B0DB7110EF4C20"
+            {
+            "SourcePath" = "8:..\\..\\..\\..\\..\\..\\alljoyn_java\\build\\windows\\IA64\\release\\obj\\jni\\alljoyn_java.exp"
+            "TargetName" = "8:alljoyn_java.exp"
+            "Tag" = "8:"
+            "Folder" = "8:_0AAF14DF569E4609AF11DF2F1FE1EB90"
+            "Condition" = "8:CHECKBOXA4=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -7042,6 +7120,17 @@
                     "Property" = "8:_0A24718E452849158F8819790BA129D9"
                         "Folders"
                         {
+                            "{9EF0B969-E518-4E46-987F-47570745A589}:_0AAF14DF569E4609AF11DF2F1FE1EB90"
+                            {
+                            "Name" = "8:lib64"
+                            "AlwaysCreate" = "11:FALSE"
+                            "Condition" = "8:CHECKBOXA4=1"
+                            "Transitive" = "11:FALSE"
+                            "Property" = "8:_AF65F78D43ED4ED099590D9F46980AE3"
+                                "Folders"
+                                {
+                                }
+                            }
                             "{9EF0B969-E518-4E46-987F-47570745A589}:_50F397DF6B3E4025816EBC43B3A48428"
                             {
                             "Name" = "8:jar"
@@ -7338,7 +7427,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:AlljoynSDK"
         "ProductCode" = "8:{44E6EE21-26E7-49FB-8A02-F1AC312E5837}"
-        "PackageCode" = "8:{0579FE2F-6E8C-424E-ACE2-3FFC34A4B7FE}"
+        "PackageCode" = "8:{8E996CD8-5AE1-4188-BA8B-12CA9D210812}"
         "UpgradeCode" = "8:{E61A6F7A-75F0-4028-816E-702C1FBCB92E}"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:FALSE"
@@ -8299,7 +8388,7 @@
                             "ContextData" = "8:"
                             "Attributes" = "3:0"
                             "Setting" = "3:2"
-                            "Value" = "8:"
+                            "Value" = "8:64 bit Java library"
                             "DefaultValue" = "8:#1237"
                             "UsePlugInResources" = "11:TRUE"
                             }
@@ -8338,7 +8427,7 @@
                             "ContextData" = "8:1;True=1;False=0"
                             "Attributes" = "3:0"
                             "Setting" = "3:0"
-                            "Value" = "3:0"
+                            "Value" = "3:1"
                             "DefaultValue" = "3:1"
                             "UsePlugInResources" = "11:TRUE"
                             }
