@@ -17,6 +17,7 @@ Import('env')
 
 # Test Programs
 progs = [
+    env.Program('bignum',        ['bignum.cc']),
     env.Program('socktest',      ['socktest.cc']),
     env.Program('autochat',      ['autochat.cc']),
     env.Program('remarshal',     ['remarshal.cc']),
