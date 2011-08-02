@@ -211,9 +211,12 @@ QStatus AdvTunnel::Listen(uint16_t port)
         return status;
     }
     /* Allow reuse of the same port */
+#ifndef SO_REUSEPORT
+#define SO_REUSEPORT SO_REUSEADDR
+#endif
     uint32_t yes = 1;
-    if (setsockopt(listenSock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&yes), sizeof(yes)) < 0) {
-        QCC_LogError(status, ("AdvTunnel::Listen(): setsockopt(SO_REUSEADDR) failed: %d - %s", errno, strerror(errno)));
+    if (setsockopt(listenSock, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast<const char*>(&yes), sizeof(yes)) < 0) {
+        QCC_LogError(status, ("AdvTunnel::Listen(): setsockopt(SO_REUSEPORT) failed: %d - %s", errno, strerror(errno)));
         qcc::Close(listenSock);
         return status;
     }

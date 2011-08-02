@@ -1509,9 +1509,12 @@ void NameService::LazyUpdateInterfaces(void)
         // support SO_REUSEPORT) so other AllJoyn daemon instances on this host can
         // listen in if desired.
         //
+#ifndef SO_REUSEPORT
+#define SO_REUSEPORT SO_REUSEADDR
+#endif
         uint32_t yes = 1;
-        if (setsockopt(sockFd, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&yes), sizeof(yes)) < 0) {
-            QCC_LogError(status, ("NameService::LazyUpdateInterfaces(): setsockopt(SO_REUSEADDR) failed: %d - %s",
+        if (setsockopt(sockFd, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast<const char*>(&yes), sizeof(yes)) < 0) {
+            QCC_LogError(status, ("NameService::LazyUpdateInterfaces(): setsockopt(SO_REUSEPORT) failed: %d - %s",
                                   errno, strerror(errno)));
             qcc::Close(sockFd);
             continue;

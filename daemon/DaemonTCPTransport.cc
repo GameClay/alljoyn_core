@@ -1308,7 +1308,7 @@ QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
     }
 
     /*
-     * Create the TCP listener socket and set SO_REUSEADDR so we don't have
+     * Create the TCP listener socket and set SO_REUSEADDR/SO_REUSEPORT so we don't have
      * to wait for four minutes to relaunch the daemon if it crashes.
      *
      * XXX We should enable IPv6 listerners.
@@ -1321,11 +1321,15 @@ QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
         return status;
     }
 
+#ifndef SO_REUSEPORT
+#define SO_REUSEPORT SO_REUSEADDR
+#endif
+
     uint32_t yes = 1;
-    if (setsockopt(listenFd, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&yes), sizeof(yes)) < 0) {
+    if (setsockopt(listenFd, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast<const char*>(&yes), sizeof(yes)) < 0) {
         status = ER_OS_ERROR;
         m_listenFdsLock.Unlock();
-        QCC_LogError(status, ("DaemonTCPTransport::StartListen(): setsockopt(SO_REUSEADDR) failed"));
+        QCC_LogError(status, ("DaemonTCPTransport::StartListen(): setsockopt(SO_REUSEPORT) failed"));
         return status;
     }
 
