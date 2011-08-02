@@ -39,7 +39,11 @@
 #include "DaemonTCPTransport.h"
 #if !defined(QCC_OS_WINDOWS)
 #include "DaemonUnixTransport.h"
+#if defined(QCC_OS_DARWIN)
+#warning BT needs to be implemented on Darwin
+#else
 #include "BTTransport.h"
+#endif
 #endif
 #include "Bus.h"
 #include "BusController.h"
@@ -445,7 +449,9 @@ int main(int argc, char** argv)
 
 #if !defined(QCC_OS_WINDOWS)
     cntr.Add(new TransportFactory<DaemonUnixTransport>("unix", false));
+#if !defined(QCC_OS_DARWIN)
     cntr.Add(new TransportFactory<BTTransport>("bluetooth", false));
+#endif
 #endif
 
     /* Create message bus with support for alternate transports */

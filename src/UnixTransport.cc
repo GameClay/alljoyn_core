@@ -30,6 +30,11 @@
 #include <qcc/StringUtil.h>
 #include <qcc/Util.h>
 
+#include <sys/un.h>
+#if defined(QCC_OS_DARWIN)
+#include <sys/ucred.h>
+#endif
+
 #include <alljoyn/BusAttachment.h>
 
 #include "BusInternal.h"
@@ -236,6 +241,69 @@ QStatus UnixTransport::NormalizeTransportSpec(const char* inSpec, qcc::String& o
     return status;
 }
 
+static QStatus SendSocketCreds(SocketFd sockFd, uid_t uid, gid_t gid, pid_t pid)
+{
+#if defined(QCC_OS_DARWIN)
+    // Socket credentials on Darwin are exchanged using getpeereid
+    return ER_OK;
+#else
+    int enableCred = 1;
+    int rc = setsockopt(sockFd, SOL_SOCKET, SO_PASSCRED, &enableCred, sizeof(enableCred));
+    if (rc == -1) {
+        QCC_LogError(status, ("UnixTransport(): setsockopt(SO_PASSCRED) failed"));
+        qcc::Close(sockFd);
+        return ER_OS_ERROR;
+    }
+
+    /*
+     * Compose a header that includes the local user credentials and a single NUL byte.
+     */
+    ssize_t ret;
+    char nulbuf = 0;
+    struct cmsghdr* cmsg;
+    struct ucred* cred;
+    struct iovec iov[] = { { &nulbuf, sizeof(nulbuf) } };
+    char cbuf[CMSG_SPACE(sizeof(struct ucred))];
+    ::memset(cbuf, 0, sizeof(cbuf));
+    struct msghdr msg;
+    msg.msg_name = NULL;
+    msg.msg_namelen = 0;
+    msg.msg_iov = iov;
+    msg.msg_iovlen = ArraySize(iov);
+    msg.msg_control = cbuf;
+    msg.msg_controllen = ArraySize(cbuf);
+    msg.msg_flags = 0;
+
+    cmsg = CMSG_FIRSTHDR(&msg);
+    cmsg->cmsg_level = SOL_SOCKET;
+    cmsg->cmsg_type = SCM_CREDENTIALS;
+    cmsg->cmsg_len = CMSG_LEN(sizeof(struct ucred));
+    cred = reinterpret_cast<struct ucred*>(CMSG_DATA(cmsg));
+    cred->uid = uid;
+    cred->gid = gid;
+    cred->pid = pid;
+
+    QCC_DbgHLPrintf(("Sending UID: %u  GID: %u  PID %u", cred->uid, cred->gid, cred->pid));
+
+    ret = sendmsg(sockFd, &msg, 0);
+    if (ret != 1) {
+        return ERR_OS_ERROR;
+    }
+
+    /*
+     * If we don't disable this every read will have credentials which adds overhead if have
+     * enabled unix file descriptor passing.
+     */
+    enableCred = 0;
+    rc = setsockopt(sockFd, SOL_SOCKET, SO_PASSCRED, &enableCred, sizeof(enableCred));
+    if (rc == -1) {
+        QCC_LogError(status, ("UnixTransport(): setsockopt(SO_PASSCRED) failed"));
+    }
+
+    return ERR_OK;
+#endif
+}
+
 QStatus UnixTransport::Connect(const char* connectArgs, RemoteEndpoint** newep)
 {
     /*
@@ -290,47 +358,11 @@ QStatus UnixTransport::Connect(const char* connectArgs, RemoteEndpoint** newep)
 
     isConnected = true;
 
-    int enableCred = 1;
-    int rc = setsockopt(sockFd, SOL_SOCKET, SO_PASSCRED, &enableCred, sizeof(enableCred));
-    if (rc == -1) {
-        QCC_LogError(status, ("UnixTransport(): setsockopt(SO_PASSCRED) failed"));
-        qcc::Close(sockFd);
-        return ER_OS_ERROR;
-    }
-
-    /*
-     * Compose a header that includes the local user credentials and a single NUL byte.
-     */
-    ssize_t ret;
-    char nulbuf = 0;
-    struct cmsghdr* cmsg;
-    struct ucred* cred;
-    struct iovec iov[] = { { &nulbuf, sizeof(nulbuf) } };
-    char cbuf[CMSG_SPACE(sizeof(struct ucred))];
-    ::memset(cbuf, 0, sizeof(cbuf));
-    struct msghdr msg;
-    msg.msg_name = NULL;
-    msg.msg_namelen = 0;
-    msg.msg_iov = iov;
-    msg.msg_iovlen = ArraySize(iov);
-    msg.msg_control = cbuf;
-    msg.msg_controllen = ArraySize(cbuf);
-    msg.msg_flags = 0;
-
-    cmsg = CMSG_FIRSTHDR(&msg);
-    cmsg->cmsg_level = SOL_SOCKET;
-    cmsg->cmsg_type = SCM_CREDENTIALS;
-    cmsg->cmsg_len = CMSG_LEN(sizeof(struct ucred));
-    cred = reinterpret_cast<struct ucred*>(CMSG_DATA(cmsg));
-    cred->uid = GetUid();
-    cred->gid = GetGid();
-    cred->pid = GetPid();
-
-    QCC_DbgHLPrintf(("Sending UID: %u  GID: %u  PID %u", cred->uid, cred->gid, cred->pid));
-
     UnixEndpoint* conn = NULL;
-    ret = sendmsg(sockFd, &msg, 0);
-    if (ret == 1) {
+
+    status = SendSocketCreds(sockFd, GetUid(), GetGid(), GetPid());
+    if (status == ER_OK) {
+        conn = new UnixEndpoint(m_bus, false, normSpec, sockFd);
         m_endpointListLock.Lock();
         if (m_stopping) {
             m_endpointListLock.Unlock();
@@ -389,15 +421,6 @@ QStatus UnixTransport::Connect(const char* connectArgs, RemoteEndpoint** newep)
             *newep = NULL;
         }
     } else {
-        /*
-         * If we don't disable this every read will have credentials which adds overhead if have
-         * enabled unix file descriptor passing.
-         */
-        int disableCred = 0;
-        rc = setsockopt(sockFd, SOL_SOCKET, SO_PASSCRED, &disableCred, sizeof(disableCred));
-        if (rc == -1) {
-            QCC_LogError(status, ("UnixTransport(): setsockopt(SO_PASSCRED) failed"));
-        }
         if (newep) {
             *newep = conn;
         }

@@ -38,7 +38,11 @@
 #include "BTTransport.h"
 
 #if defined QCC_OS_GROUP_POSIX
+#if defined(QCC_OS_DARWIN)
+#warning Darwin support for bluetooth to be implemented
+#else
 #include "bt_bluez/BTAccessor.h"
+#endif
 #elif defined QCC_OS_GROUP_WINDOWS
 #error Windows support to be implemented
 #endif

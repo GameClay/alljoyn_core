@@ -222,6 +222,81 @@ void DaemonUnixTransport::EndpointExit(RemoteEndpoint* ep)
     delete uep;
 }
 
+static QStatus GetSocketCreds(SocketFd sockFd, uid_t*uid, gid_t*gid, pid_t*pid)
+{
+    QStatus status = ER_OK;
+#if defined(QCC_OS_DARWIN)
+    *pid = 0;
+    int ret = getpeereid(sockFd, uid, gid);
+    if (ret == -1) {
+        status = ER_OS_ERROR;
+        qcc::Close(sockFd);
+    }
+#else
+    int enableCred = 1;
+    int ret = setsockopt(sockFd, SOL_SOCKET, SO_PASSCRED, &enableCred, sizeof(enableCred));
+    if (ret == -1) {
+        status = ER_OS_ERROR;
+        qcc::Close(sockFd);
+    }
+
+    if (status == ER_OK) {
+        qcc::String authName;
+        DaemonUnixEndpoint* conn;
+        ssize_t ret;
+        char nulbuf = 255;
+        struct cmsghdr* cmsg;
+        struct iovec iov[] = { { &nulbuf, sizeof(nulbuf) } };
+        struct msghdr msg;
+        char cbuf[CMSG_SPACE(sizeof(struct ucred))];
+        msg.msg_name = NULL;
+        msg.msg_namelen = 0;
+        msg.msg_iov = iov;
+        msg.msg_iovlen = ArraySize(iov);
+        msg.msg_flags = 0;
+        msg.msg_control = cbuf;
+        msg.msg_controllen = CMSG_LEN(sizeof(struct ucred));
+
+        while (true) {
+            ret = recvmsg(newSock, &msg, 0);
+            if (ret == -1) {
+                if (errno == EWOULDBLOCK) {
+                    qcc::Event event(newSock, qcc::Event::IO_READ, false);
+                    status = Event::Wait(event, CRED_TIMEOUT);
+                    if (status != ER_OK) {
+                        QCC_LogError(status, ("Credentials exhange timeout"));
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
+        if ((ret != 1) && (nulbuf != 0)) {
+            qcc::Close(sockFd);
+            status = ER_READ_ERROR;
+        }
+
+        if (status == ER_OK) {
+            for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+                if ((cmsg->cmsg_level == SOL_SOCKET) && (cmsg->cmsg_type == SCM_CREDENTIALS)) {
+                    struct ucred* cred = reinterpret_cast<struct ucred*>(CMSG_DATA(cmsg));
+                    *uid = cred->uid;
+                    *gid = cred->gid;
+                    *pid = cred->pid;
+                    QCC_DbgHLPrintf(("Received UID: %u  GID: %u  PID %u", cred->uid, cred->gid, cred->pid));
+                }
+            }
+        }
+    }
+#endif
+
+    return status;
+}
+
 void* DaemonUnixTransport::Run(void* arg)
 {
     QStatus status = ER_OK;
@@ -278,66 +353,22 @@ void* DaemonUnixTransport::Run(void* arg)
 
             status = Accept((*i)->GetFD(), newSock);
 
+            uid_t uid;
+            gid_t gid;
+            pid_t pid;
+
             if (status == ER_OK) {
-                int enableCred = 1;
-                int ret = setsockopt(newSock, SOL_SOCKET, SO_PASSCRED, &enableCred, sizeof(enableCred));
-                if (ret == -1) {
-                    status = ER_OS_ERROR;
-                    qcc::Close(newSock);
-                }
+                status = GetSocketCreds(newSock, &uid, &gid, &pid);
             }
 
             if (status == ER_OK) {
                 qcc::String authName;
                 DaemonUnixEndpoint* conn;
-                ssize_t ret;
-                char nulbuf = 255;
-                struct cmsghdr* cmsg;
-                struct iovec iov[] = { { &nulbuf, sizeof(nulbuf) } };
-                struct msghdr msg;
-                char cbuf[CMSG_SPACE(sizeof(struct ucred))];
-                msg.msg_name = NULL;
-                msg.msg_namelen = 0;
-                msg.msg_iov = iov;
-                msg.msg_iovlen = ArraySize(iov);
-                msg.msg_flags = 0;
-                msg.msg_control = cbuf;
-                msg.msg_controllen = CMSG_LEN(sizeof(struct ucred));
-
-                while (true) {
-                    ret = recvmsg(newSock, &msg, 0);
-                    if (ret == -1) {
-                        if (errno == EWOULDBLOCK) {
-                            qcc::Event event(newSock, qcc::Event::IO_READ, false);
-                            status = Event::Wait(event, CRED_TIMEOUT);
-                            if (status != ER_OK) {
-                                QCC_LogError(status, ("Credentials exhange timeout"));
-                                break;
-                            }
-                        } else {
-                            break;
-                        }
-                    } else {
-                        break;
-                    }
-                }
-
-                if ((ret != 1) && (nulbuf != 0)) {
-                    qcc::Close(newSock);
-                    continue;
-                }
 
                 conn = new DaemonUnixEndpoint(m_bus, true, "", newSock);
-
-                for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
-                    if ((cmsg->cmsg_level == SOL_SOCKET) && (cmsg->cmsg_type == SCM_CREDENTIALS)) {
-                        struct ucred* cred = reinterpret_cast<struct ucred*>(CMSG_DATA(cmsg));
-                        conn->SetUserId(cred->uid);
-                        conn->SetGroupId(cred->gid);
-                        conn->SetProcessId(cred->pid);
-                        QCC_DbgHLPrintf(("Received UID: %u  GID: %u  PID %u", cred->uid, cred->gid, cred->pid));
-                    }
-                }
+                conn->SetUserId(uid);
+                conn->SetGroupId(gid);
+                conn->SetProcessId(pid);
 
                 /* Initialized the features for this endpoint */
                 conn->GetFeatures().isBusToBus = false;
@@ -363,7 +394,7 @@ void* DaemonUnixTransport::Run(void* arg)
                     delete conn;
                     conn = NULL;
                 }
-            } else if (ER_WOULDBLOCK == status) {
+            } else if (ER_WOULDBLOCK == status || ER_READ_ERROR == status) {
                 status = ER_OK;
             }
 

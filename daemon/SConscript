@@ -14,11 +14,16 @@
 # 
 
 Import('env')
+from os.path import basename
 
-srcs = [ f for f in env.Glob('*.cc') + env.Glob('*.c')
-         if not (env['OS_GROUP'] == 'windows' and (str(f).endswith('DaemonUnixTransport.cc') or
-                                                   str(f).endswith('BTController.cc') or
-                                                   str(f).endswith('BTTransport.cc'))) ]
+srcs = [ f for f in env.Glob('*.cc') + env.Glob('*.c') ]
+bt_srcs = [ 'BTController.cc', 'BTTransport.cc', 'BTNodeDB.cc' ]
+
+if env['OS'] == "windows":
+    srcs = [ f for f in srcs if basename(str(f)) not in ['DaemonUnixTransport.cc'] + bt_srcs ]
+elif env['OS'] == "darwin":
+    srcs = [ f for f in srcs if basename(str(f)) not in bt_srcs ]
+
 daemon_objs = env.Object(srcs)
 config_objs = env.Object(['ConfigDB.cc',
                           'ServiceDB.cc',
@@ -26,7 +31,7 @@ config_objs = env.Object(['ConfigDB.cc',
                           'PolicyDB.cc'])
 
 # Select BlueZ or BM3 for bluetooth support
-if env['OS'] == 'windows' or env['OS'] == 'android_donut':
+if env['OS'] == 'windows' or env['OS'] == 'android_donut' or env['OS'] =="darwin":
     # Skip bluetooth
     #env.Append(CPPPATH=['bt_bm3'])
     #bm3_srcs, bm3_objs = env.SConscript('bt_bm3/SConscript')

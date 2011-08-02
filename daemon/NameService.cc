@@ -32,7 +32,7 @@
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 
-#else // defined (QCC_OS_ANDROID) or defined (QCC_OS_LINUX)
+#elif defined(QCC_OS_GROUP_POSIX)
 
 #include <errno.h>
 #include <netdb.h>
@@ -41,10 +41,19 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+
+#if defined(QCC_OS_ANDROID) || defined(QCC_OS_LINUX)
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#endif
 
-#endif // defined(QCC_OS_WINDOWS)
+#if defined(QCC_OS_DARWIN)
+#include <ifaddrs.h>
+#define IPV6_DROP_MEMBERSHIP IPV6_LEAVE_GROUP
+#define IPV6_ADD_MEMBERSHIP IPV6_JOIN_GROUP
+#endif
+
+#endif // defined(QCC_OS_GROUP_POSIX)
 
 #include <qcc/platform.h>
 #include <qcc/Debug.h>
@@ -260,6 +269,42 @@ NameService::NameService()
 // become available, we organize the output that way instead of the more OS-like
 // way of an interface with an associated list of addresses.
 //
+
+#if defined (QCC_OS_GROUP_POSIX)
+
+static uint32_t TranslateFlags(uint32_t flags)
+{
+    uint32_t ourFlags = 0;
+    if (flags & IFF_UP) ourFlags |= NameService::IfConfigEntry::UP;
+    if (flags & IFF_BROADCAST) ourFlags |= NameService::IfConfigEntry::BROADCAST;
+    if (flags & IFF_DEBUG) ourFlags |= NameService::IfConfigEntry::DEBUG;
+    if (flags & IFF_LOOPBACK) ourFlags |= NameService::IfConfigEntry::LOOPBACK;
+    if (flags & IFF_POINTOPOINT) ourFlags |= NameService::IfConfigEntry::POINTOPOINT;
+    if (flags & IFF_RUNNING) ourFlags |= NameService::IfConfigEntry::RUNNING;
+    if (flags & IFF_NOARP) ourFlags |= NameService::IfConfigEntry::NOARP;
+    if (flags & IFF_PROMISC) ourFlags |= NameService::IfConfigEntry::PROMISC;
+    if (flags & IFF_NOTRAILERS) ourFlags |= NameService::IfConfigEntry::NOTRAILERS;
+    if (flags & IFF_ALLMULTI) ourFlags |= NameService::IfConfigEntry::ALLMULTI;
+#if defined(IFF_MASTER)
+    if (flags & IFF_MASTER) ourFlags |= NameService::IfConfigEntry::MASTER;
+#endif
+#if defined(IFF_SLAVE)
+    if (flags & IFF_SLAVE) ourFlags |= NameService::IfConfigEntry::SLAVE;
+#endif
+    if (flags & IFF_MULTICAST) ourFlags |= NameService::IfConfigEntry::MULTICAST;
+#if defined(IFF_PORTSEL)
+    if (flags & IFF_PORTSEL) ourFlags |= NameService::IfConfigEntry::PORTSEL;
+#endif
+#if defined(IFF_AUTOMEDIA)
+    if (flags & IFF_AUTOMEDIA) ourFlags |= NameService::IfConfigEntry::AUTOMEDIA;
+#endif
+#if defined(IFF_DYNAMIC)
+    if (flags & IFF_DYNAMIC) ourFlags |= NameService::IfConfigEntry::DYNAMIC;
+#endif
+    return ourFlags;
+}
+
+#endif
 
 #if defined(QCC_OS_LINUX) || defined(QCC_OS_ANDROID)
 
@@ -536,29 +581,6 @@ static std::list<AddrEntry> NetlinkGetAddresses(uint32_t family)
     return entries;
 }
 
-static uint32_t TranslateFlags(uint32_t flags)
-{
-    uint32_t ourFlags = 0;
-    if (flags & IFF_UP) ourFlags |= NameService::IfConfigEntry::UP;
-    if (flags & IFF_BROADCAST) ourFlags |= NameService::IfConfigEntry::BROADCAST;
-    if (flags & IFF_DEBUG) ourFlags |= NameService::IfConfigEntry::DEBUG;
-    if (flags & IFF_LOOPBACK) ourFlags |= NameService::IfConfigEntry::LOOPBACK;
-    if (flags & IFF_POINTOPOINT) ourFlags |= NameService::IfConfigEntry::POINTOPOINT;
-    if (flags & IFF_RUNNING) ourFlags |= NameService::IfConfigEntry::RUNNING;
-    if (flags & IFF_NOARP) ourFlags |= NameService::IfConfigEntry::NOARP;
-    if (flags & IFF_PROMISC) ourFlags |= NameService::IfConfigEntry::PROMISC;
-    if (flags & IFF_NOTRAILERS) ourFlags |= NameService::IfConfigEntry::NOTRAILERS;
-    if (flags & IFF_ALLMULTI) ourFlags |= NameService::IfConfigEntry::ALLMULTI;
-    if (flags & IFF_MASTER) ourFlags |= NameService::IfConfigEntry::MASTER;
-    if (flags & IFF_SLAVE) ourFlags |= NameService::IfConfigEntry::SLAVE;
-    if (flags & IFF_MULTICAST) ourFlags |= NameService::IfConfigEntry::MULTICAST;
-    if (flags & IFF_PORTSEL) ourFlags |= NameService::IfConfigEntry::PORTSEL;
-    if (flags & IFF_AUTOMEDIA) ourFlags |= NameService::IfConfigEntry::AUTOMEDIA;
-    if (flags & IFF_DYNAMIC) ourFlags |= NameService::IfConfigEntry::DYNAMIC;
-    return ourFlags;
-}
-
-
 QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
 {
     QCC_DbgPrintf(("NameService::IfConfig(): The Linux way\n"));
@@ -729,6 +751,73 @@ QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
     delete [] parray;
 
     return ER_OK;
+}
+
+#elif defined(QCC_OS_DARWIN)
+
+QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
+{
+    QCC_DbgPrintf(("NameService::IfConfig(): The Darwin way\n"));
+
+    int sck;
+    struct ifaddrs* iflist = NULL;
+    QStatus status = ER_OK;
+
+    sck = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sck < 0) {
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("Opening socket: %s", strerror(errno)));
+        goto exit;
+    }
+
+    if (getifaddrs(&iflist) < 0) {
+        status = ER_OS_ERROR;
+        goto exit;
+    }
+
+    for (struct ifaddrs* if_addr = iflist; if_addr != NULL; if_addr = if_addr->ifa_next) {
+        IfConfigEntry entry;
+        struct ifreq if_item;
+        char buf[INET6_ADDRSTRLEN];
+
+        *buf = 0;
+        if (if_addr->ifa_addr->sa_family == AF_INET) {
+            struct in_addr*p =  &((struct sockaddr_in*)if_addr->ifa_addr)->sin_addr;
+            inet_ntop(AF_INET, p, buf, sizeof(buf));
+        } else if (if_addr->ifa_addr->sa_family == AF_INET6) {
+            struct in6_addr*p =  &((struct sockaddr_in6*)if_addr->ifa_addr)->sin6_addr;
+            inet_ntop(AF_INET6, p, buf, sizeof(buf));
+            entry.m_addr = qcc::String(buf);
+        }
+
+        strncpy(if_item.ifr_name, if_addr->ifa_name, IFNAMSIZ);
+        if (ioctl(sck, SIOCGIFMTU, &if_item) < 0) {
+            status = ER_OS_ERROR;
+            QCC_LogError(status, ("Calling IOCtl: %s", strerror(errno)));
+            goto exit;
+        }
+
+        entry.m_name = qcc::String(if_addr->ifa_name);
+        entry.m_family = if_addr->ifa_addr->sa_family;
+        entry.m_flags = TranslateFlags(if_addr->ifa_flags);
+        entry.m_index = if_nametoindex(if_addr->ifa_name);
+        entry.m_mtu = if_item.ifr_mtu;
+        if (*buf != 0) {
+            entry.m_addr = qcc::String(buf);
+        }
+
+        entries.push_back(entry);
+    }
+exit:
+    if (sck >= 0) {
+        close(sck);
+    }
+    if (iflist) {
+        freeifaddrs(iflist);
+    }
+    return status;
+
+
 }
 
 #else
@@ -1525,6 +1614,7 @@ void NameService::LazyUpdateInterfaces(void)
             struct ip_mreq mreq;
             mreq.imr_multiaddr.s_addr = inet_addr(IPV4_MULTICAST_GROUP);
             mreq.imr_interface.s_addr = address.GetIPv4AddressNetOrder();
+
             if (setsockopt(sockFd, IPPROTO_IP, IP_ADD_MEMBERSHIP, reinterpret_cast<const char*>(&mreq), sizeof(mreq)) < 0) {
                 QCC_LogError(status, (
                                  "NameService::LazyUpdateInterfaces(): setsockopt(IP_ADD_MEMBERSHIP) failed: %d - %s",
@@ -1553,6 +1643,7 @@ void NameService::LazyUpdateInterfaces(void)
                 qcc::Close(sockFd);
                 continue;
             }
+
         }
 
         //

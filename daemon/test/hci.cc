@@ -84,6 +84,8 @@ int main(int argc, char** argv)
 {
 #ifdef WIN32
     printf("Not implemented on windows\n");
+#elif defined(QCC_OS_DARWIN)
+    printf("Not implemented on darwin\n");
 #else
     QStatus status;
     SocketFd hciFd;

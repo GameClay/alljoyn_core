@@ -48,7 +48,7 @@
 #include "SignalTable.h"
 #include "Transport.h"
 
-#ifdef __GNUCC__
+#if defined(__GNUCC__) || defined (QCC_OS_DARWIN)
 #include <ext/hash_map>
 namespace std {
 using namespace __gnu_cxx;

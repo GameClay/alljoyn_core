@@ -50,17 +50,27 @@
 #include "Transport.h"
 #include "DaemonTCPTransport.h"
 #include "DaemonUnixTransport.h"
+
+#if defined(QCC_OS_DARWIN)
+#warning BT Support on Darwin needs to be implemented
+#else
 #include "BTTransport.h"
+#endif
+
 #include "Bus.h"
 #include "BusController.h"
 #include "ConfigDB.h"
 
 #if !defined(DAEMON_LIB)
+
+#if defined(QCC_OS_LINUX)
 #include <sys/prctl.h>
 #include <linux/capability.h>
 extern "C" {
 extern int capset(cap_user_header_t hdrp, const cap_user_data_t datap);
 }
+#endif
+
 #if defined(QCC_OS_ANDROID)
 #define BLUETOOTH_UID 1002
 #endif
@@ -465,7 +475,11 @@ int daemon(OptParse& opts)
     TransportFactoryContainer cntr;
     cntr.Add(new TransportFactory<DaemonTCPTransport>("tcp", false));
     cntr.Add(new TransportFactory<DaemonUnixTransport>("unix", false));
+#if defined(QCC_OS_DARWIN)
+#warning BT transport factory needs to be implemented for Darwin
+#else
     cntr.Add(new TransportFactory<BTTransport>("bluetooth", false));
+#endif
 
     Bus ajBus("alljoyn-daemon", cntr, listenSpecs.c_str());
     BusController ajBusController(ajBus, status);
@@ -638,8 +652,10 @@ int main(int argc, char** argv, char** env)
 
 #if !defined(DAEMON_LIB)
     if (!opts.GetNoSwitchUser()) {
+#if defined(QCC_OS_LINUX)
         // Keep all capabilities before switching users
         prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0);
+#endif
 
 #if defined(QCC_OS_ANDROID)
         // Android uses hard coded UIDs.
@@ -667,6 +683,7 @@ int main(int argc, char** argv, char** env)
         }
 #endif
 
+#if defined(QCC_OS_LINUX)
         // Set the capabilities we need.
         struct __user_cap_header_struct header;
         struct __user_cap_data_struct cap;
@@ -678,6 +695,7 @@ int main(int argc, char** argv, char** env)
         cap.effective = cap.permitted;
         cap.inheritable = 0;
         capset(&header, &cap);
+#endif
     }
 #endif
 

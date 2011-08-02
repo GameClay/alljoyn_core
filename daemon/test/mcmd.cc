@@ -43,7 +43,10 @@
 #include <alljoyn/ProxyBusObject.h>
 #include <alljoyn/version.h>
 
+#if !defined(QCC_OS_DARWIN)
 #include "BTTransport.h"
+#endif
+
 #include "Bus.h"
 #include "SignatureUtils.h"
 
@@ -101,7 +104,10 @@ static qcc::String method;
 static qcc::String signature;
 static int callArgc;
 static char** callArgv;
+
+#if !defined(QCC_OS_GROUP_WINDOWS) && !defined(QCC_OS_DARWIN)
 static BTTransport* btTrans;
+#endif
 
 class AutoConnect : public TransportListener {
 
@@ -793,7 +799,7 @@ static QStatus FindBuses(BusAttachment& bus)
     }
 #endif
 
-#ifndef QCC_OS_GROUP_WINDOWS
+#if !defined(QCC_OS_GROUP_WINDOWS) && !defined(QCC_OS_DARWIN)
     btTrans->EnableDiscovery(NULL);
     qcc::Sleep(30000);
     btTrans->DisableDiscovery(NULL);
@@ -1103,7 +1109,7 @@ int main(int argc, char** argv)
     // Bus bus("mcmd", &BTTransportFactory);
     BusAttachment bus("mcmd");
 
-#ifndef QCC_OS_GROUP_WINDOWS
+#if !defined(QCC_OS_GROUP_WINDOWS) && !defined(QCC_OS_DARWIN)
     btTrans = new BTTransport(bus);
 #endif
 
