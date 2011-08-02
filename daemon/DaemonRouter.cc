@@ -467,8 +467,8 @@ void DaemonRouter::RemoveSessionRoutes(const char* src, SessionId id)
     set<SessionCastEntry>::iterator it = sessionCastSet.begin();
     while (it != sessionCastSet.end()) {
         if (((it->id == id) || (id == 0)) && ((it->src == src) || (it->destEp == ep))) {
-            if ((id != 0) && (it->destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
-                static_cast<VirtualEndpoint*>(it->destEp)->RemoveSessionRef(id);
+            if ((it->id != 0) && (it->destEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
+                static_cast<VirtualEndpoint*>(it->destEp)->RemoveSessionRef(it->id);
             }
             sessionCastSet.erase(it++);
         } else {
