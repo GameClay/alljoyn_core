@@ -552,21 +552,26 @@ QStatus BusAttachment::EnablePeerSecurity(const char* authMechanisms,
                                           const char* keyStoreFileName,
                                           bool isShared)
 {
-    QStatus status = busInternal->keyStore.Init(keyStoreFileName, isShared);
-    if (status == ER_OK) {
-        /* Register peer-to-peer authentication mechanisms */
-        busInternal->authManager.RegisterMechanism(AuthMechSRP::Factory, AuthMechSRP::AuthName());
-        busInternal->authManager.RegisterMechanism(AuthMechRSA::Factory, AuthMechRSA::AuthName());
-        busInternal->authManager.RegisterMechanism(AuthMechLogon::Factory, AuthMechLogon::AuthName());
-        /* Validate the list of auth mechanisms */
-        status =  busInternal->authManager.CheckNames(authMechanisms);
+    QStatus status = ER_OK;
+
+    /* If there are no auth mechanisms peer security is being disabled. */
+    if (authMechanisms) {
+        status = busInternal->keyStore.Init(keyStoreFileName, isShared);
         if (status == ER_OK) {
-            AllJoynPeerObj* peerObj = busInternal->localEndpoint.GetPeerObj();
-            if (peerObj) {
-                peerObj->SetupPeerAuthentication(authMechanisms, listener);
-            } else {
-                return ER_FAIL;
-            }
+            /* Register peer-to-peer authentication mechanisms */
+            busInternal->authManager.RegisterMechanism(AuthMechSRP::Factory, AuthMechSRP::AuthName());
+            busInternal->authManager.RegisterMechanism(AuthMechRSA::Factory, AuthMechRSA::AuthName());
+            busInternal->authManager.RegisterMechanism(AuthMechLogon::Factory, AuthMechLogon::AuthName());
+            /* Validate the list of auth mechanisms */
+            status =  busInternal->authManager.CheckNames(authMechanisms);
+        }
+    }
+    if (status == ER_OK) {
+        AllJoynPeerObj* peerObj = busInternal->localEndpoint.GetPeerObj();
+        if (peerObj) {
+            peerObj->SetupPeerAuthentication(authMechanisms, authMechanisms ? listener : NULL);
+        } else {
+            return ER_FAIL;
         }
     }
     return status;
