@@ -201,6 +201,7 @@ QStatus BTTransport::Start()
 
 QStatus BTTransport::Stop(void)
 {
+    QCC_DbgTrace(("BTTransport::Stop()"));
     if (!btmActive) {
         return ER_BUS_TRANSPORT_NOT_AVAILABLE;
     }
@@ -357,6 +358,10 @@ QStatus BTTransport::StopListen(const char* listenSpec)
 
 void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
 {
+    fprintf(stderr, "SJK         ---------------------      BTTransport::EndpointExit(endpoint => \"%s\" - \"%s\")\n",
+            endpoint->GetRemoteGUID().ToShortString().c_str(),
+            endpoint->GetConnectSpec().c_str());
+
     if (!btmActive) {
         return;
     }

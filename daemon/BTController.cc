@@ -628,8 +628,8 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
                    node->GetConnectNode()->GetBusAddress().ToString().c_str(),
                    addr.ToString().c_str(),
                    (foundNodeDB.FindNode(addr) == node) ? "in foundNodeDB" :
-                    ((nodeDB.FindNode(addr) == node) ? "in nodeDB" :
-                     ((node == masterNode) ? "masterNode" : "<unknown>"))));
+                   ((nodeDB.FindNode(addr) == node) ? "in nodeDB" :
+                    ((node == masterNode) ? "masterNode" : "<unknown>"))));
 
     return node->GetConnectNode();
 }
