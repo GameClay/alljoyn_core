@@ -332,80 +332,6 @@ int main()
     printf("->>>> %s\n", bn3.get_hex().c_str());
     CHECK(bn3 == 9);
 
-    bn1 = 29;
-    bn2 = 11;
-    bn3 = bn1.mod_inv(bn2);
-    printf("->>>> %s\n", bn3.get_hex().c_str());
-    CHECK(((bn1 * bn3) % bn2) == 1);
-
-    bn2.set_bytes(Prime1024, sizeof(Prime1024));
-    BigNum::bench.Clear();
-    bn3 = bn1.mod_inv(bn2);
-    BigNum::bench.Report("mod_inv");
-    printf("->>>> %s\n", bn3.get_hex().c_str());
-    CHECK(((bn1 * bn3) % bn2) == 1);
-
-    BigNum::bench.Clear();
-    bn3 = bn1.bin_gcd(bn2);
-    BigNum::bench.Report("binary_gcd");
-    printf("->>>> %s\n", bn3.get_hex().c_str());
-
-    printf("testing bin gcd\n");
-    bn1.set_hex(Prime62);
-    for (size_t i = 0; i < (sizeof(Primes) / sizeof(Primes[0])); ++i) {
-        bn2.set_hex(Primes[i]);
-        bn3 = bn1.bin_gcd(bn2);
-        CHECK(bn3 == 1);
-        bn1 = bn2;
-    }
-
-    printf("testing bin mod inv\n");
-
-    bn1 = 29;
-    bn2 = 11;
-    bn3 = bn1.bin_mod_inv(bn2);
-    printf("->>>> %s\n", bn3.get_hex().c_str());
-    CHECK(((bn1 * bn3) % bn2) == 1);
-
-    bn1.set_hex(Prime62);
-    for (size_t i = 0; i < (sizeof(Primes) / sizeof(Primes[0])); ++i) {
-        bn2.set_hex(Primes[i]);
-        bn3 = bn1.bin_mod_inv(bn2);
-        printf("->>>> %s\n", bn3.get_hex().c_str());
-        CHECK(((bn1 * bn3) % bn2) == 1);
-        bn1 = bn2;
-    }
-
-    bn1.set_bytes(Prime1536, sizeof(Prime1536));
-    bn2.set_bytes(Prime1024, sizeof(Prime1024));
-    BigNum::bench.Clear();
-    bn3 = bn1.bin_mod_inv(bn2);
-    BigNum::bench.Report("bin_mod_inv");
-    printf("->>>> %s\n", bn3.get_hex().c_str());
-    CHECK(((bn1 * bn3) % bn2) == 1);
-
-    bn1.set_bytes(Prime1536, sizeof(Prime1536));
-    bn2.set_bytes(Prime1024, sizeof(Prime1024));
-    BigNum::bench.Clear();
-    bn3 = bn1.mod_inv(bn2);
-    BigNum::bench.Report("mod_inv");
-    printf("->>>> %s\n", bn3.get_hex().c_str());
-    CHECK(((bn1 * bn3) % bn2) == 1);
-
-    bn1.set_bytes(Prime1024, sizeof(Prime1024));
-    bn2.set_hex("0x100000000");
-    BigNum::bench.Clear();
-    bn3 = bn1.mod_inv(bn2);
-    BigNum::bench.Report("mod_inv");
-    printf("->>>> %s\n", bn3.get_hex().c_str());
-    CHECK(((bn1 * bn3) % bn2) == 1);
-
-    BigNum::bench.Clear();
-    bn3 = bn1.bin_mod_inv(bn2);
-    BigNum::bench.Report("bin_mod_inv");
-    printf("->>>> %s\n", bn3.get_hex().c_str());
-    CHECK(((bn1 * bn3) % bn2) == 1);
-
     bn1 = 5;
     bn3 = bn1.exp(14);
     printf("->>>> %s\n", bn3.get_hex().c_str());
@@ -463,10 +389,17 @@ int main()
           "DA053FB41C80F00352D95EC92E2CC7B69FAA921C1662738B96D5176EC806CB5E0920"
           "F855770AA11");
 
-    BigNum::bench.Clear();
+    bn1 = 3;
+    bn4 = bn1.mod_exp(4660, 290);
+    // Checks
+    bn3 = bn1.exp(4660);
+    bn5 = bn3 % 290;
+    printf("->>>> %s\n", bn5.get_hex().c_str());
+    printf("->>>> %s\n", bn4.get_hex().c_str());
+    CHECK(bn3 % 290 == bn4);
+
     bn1 = 3;
     bn4 = bn1.mod_exp(4660, 291);
-    BigNum::bench.Report("mod exp");
     // Checks
     bn3 = bn1.exp(4660);
     bn5 = bn3 % 291;
@@ -474,31 +407,11 @@ int main()
     printf("->>>> %s\n", bn4.get_hex().c_str());
     CHECK(bn3 % 291 == bn4);
 
-    //---------- Testing Montgomery multiplication ------
-
-    BigNum R;
-    M = 119;
-    R.set_hex("100000000");
-
-    uint32_t rho = M.monty_rho();
-    printf("rho 119 = %u\n", rho);
-
-    // Convert to monty domain
-    bn2 = R * 59 % M;
-    bn3 = R * 63 % M;
-    printf("x=%s y=%s\n", bn2.get_dec().c_str(), bn3.get_dec().c_str());
-
-    bn2.monty_mul(bn4, bn3, M, rho);
-    printf("monty_mul ->>>> %s\n", bn4.get_dec().c_str());
-    CHECK(bn4 == ((bn2 * bn3) % M));
-
-    //---------- Testing Modular Exponentiation using Montgomery multiplication ------
-
     // Test case with a small modulus
     M = 291;
     bn2 = 3;
 
-    bn4 = bn2.monty_mod_exp(4660, M);
+    bn4 = bn2.mod_exp(4660, M);
 
     // Checks
     bn5 = bn2.exp(4660) % M;
@@ -518,7 +431,7 @@ int main()
     BigNum::bench.Report("mod exp");
 
     BigNum::bench.Clear();
-    bn5 = bn1.monty_mod_exp(E, M);
+    bn5 = bn1.mod_exp(E, M);
     BigNum::bench.Report("monty mod exp");
     printf("->>>> %s\n", bn5.get_hex().c_str());
     printf("->>>> %s\n", bn4.get_hex().c_str());
@@ -526,8 +439,8 @@ int main()
 
     // Test over random values
     printf("divsion and multiplication stress\n");
-    for (int i = 1; i < 16; ++i) {
-        for (int j = 0; j < 1000; ++j) {
+    for (int i = 1; i < 200; ++i) {
+        for (int j = 0; j < 50; ++j) {
             bn1.gen_rand(i + 1);
             if ((i % 8) == 1) {
                 bn1 = -bn1;
@@ -543,24 +456,43 @@ int main()
             CHECK(((bn2 * bn3) + bn4) == bn1);
         }
         printf("%d ", i);
+        if ((i % 20) == 0) {
+            printf("\n");
+        }
     }
     printf("\n");
 
-    // Two different modular exponentation algorithms
-    printf("modular exponentiation stress\n");
-    for (int i = 3; i < 16; ++i) {
-        for (int j = 0; j < 1000; ++j) {
-            bn1.gen_rand(3);
-            bn2.gen_rand(i + 2);
+    printf("Modular exponentiation stress\n");
+    // Modular exponentiation stress
+    for (int i = 2; i < 200; ++i) {
+        BigNum e;
+        BigNum m;
+        BigNum a;
+        e.gen_rand(i);
+        for (int j = 2; j < 16; ++j) {
             do {
-                bn3.gen_rand(i);
-            } while (bn3.is_even());
-            bn4 = bn1.mod_exp(bn2, bn3);
-            bn5 = bn1.monty_mod_exp(bn2, bn3);
-            CHECK(bn4 == bn5);
+                m.gen_rand(j);
+            } while (m.is_even());
+            a.gen_rand(1);
+            // Modular exponentiation for checking
+            BigNum check = 1;
+            size_t i = e.bit_len();
+            while (i) {
+                check = (check * check) % m;
+                if (e.test_bit(--i)) {
+                    check = (check * a) % m;
+                }
+            }
+            BigNum exp = a.mod_exp(e, m);
+            CHECK(exp == check);
         }
         printf("%d ", i);
+        if ((i % 20) == 0) {
+            printf("\n");
+        }
     }
-    printf("\n");
+
+    printf("\nPassed\n");
+
 }
 
