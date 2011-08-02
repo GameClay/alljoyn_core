@@ -644,6 +644,7 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
          * didn't already start the join session process.
          */
         node->IncConnCount();
+
         if (IsMaster() &&
             !nodeDB.FindNode(node->GetBusAddress())->IsValid() &&
             !joinSessionNodeDB.FindNode(node->GetBusAddress())->IsValid()) {
@@ -674,11 +675,15 @@ void BTController::EndpointLost(BTNodeInfo& node)
                   node->GetBusAddress().ToString().c_str(),
                   node->GetConnectionCount(),
                   node->IsEIRCapable() ? "true" : "false"));
-    if (node->IsValid() && (node->DecConnCount() == 1) && node->IsEIRCapable()) {
-        SessionId sessionID = node->GetSessionID();
-        node->SetSessionID(0);
-        bus.LeaveSession(sessionID);
-        SessionLost(sessionID);
+    if (node->IsValid()) {
+        uint16_t connCnt = node->DecConnCount();
+
+        if ((connCnt == 1) && node->IsEIRCapable()) {
+            SessionId sessionID = node->GetSessionID();
+            node->SetSessionID(0);
+            bus.LeaveSession(sessionID);
+            SessionLost(sessionID);
+        }
     }
 }
 
@@ -820,8 +825,14 @@ void BTController::JoinSessionCB(QStatus status, SessionId sessionID, SessionOpt
     if (status == ER_OK) {
         assert((*node != masterNode) && !nodeDB.FindNode((*node)->GetBusAddress())->IsValid());
 
-        (*node)->SetSessionID(sessionID);
-        DispatchOperation(new SendSetStateDispatchInfo((*node)));
+        uint16_t connCnt = (*node)->GetConnectionCount();
+
+        if ((*node)->IsEIRCapable() && (connCnt == 1)) {
+            bus.LeaveSession(sessionID);
+        } else {
+            (*node)->SetSessionID(sessionID);
+            DispatchOperation(new SendSetStateDispatchInfo((*node)));
+        }
     }
     delete node;
 }
