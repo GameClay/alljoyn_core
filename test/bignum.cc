@@ -336,14 +336,14 @@ int main()
     bn2 = 11;
     bn3 = bn1.mod_inv(bn2);
     printf("->>>> %s\n", bn3.get_hex().c_str());
-    CHECK(bn1.mod_mul(bn3, bn2) == 1);
+    CHECK(((bn1 * bn3) % bn2) == 1);
 
     bn2.set_bytes(Prime1024, sizeof(Prime1024));
     BigNum::bench.Clear();
     bn3 = bn1.mod_inv(bn2);
     BigNum::bench.Report("mod_inv");
     printf("->>>> %s\n", bn3.get_hex().c_str());
-    CHECK(bn1.mod_mul(bn3, bn2) == 1);
+    CHECK(((bn1 * bn3) % bn2) == 1);
 
     BigNum::bench.Clear();
     bn3 = bn1.bin_gcd(bn2);
@@ -365,14 +365,14 @@ int main()
     bn2 = 11;
     bn3 = bn1.bin_mod_inv(bn2);
     printf("->>>> %s\n", bn3.get_hex().c_str());
-    CHECK(bn1.mod_mul(bn3, bn2) == 1);
+    CHECK(((bn1 * bn3) % bn2) == 1);
 
     bn1.set_hex(Prime62);
     for (size_t i = 0; i < (sizeof(Primes) / sizeof(Primes[0])); ++i) {
         bn2.set_hex(Primes[i]);
         bn3 = bn1.bin_mod_inv(bn2);
         printf("->>>> %s\n", bn3.get_hex().c_str());
-        CHECK(bn1.mod_mul(bn3, bn2) == 1);
+        CHECK(((bn1 * bn3) % bn2) == 1);
         bn1 = bn2;
     }
 
@@ -382,7 +382,7 @@ int main()
     bn3 = bn1.bin_mod_inv(bn2);
     BigNum::bench.Report("bin_mod_inv");
     printf("->>>> %s\n", bn3.get_hex().c_str());
-    CHECK(bn1.mod_mul(bn3, bn2) == 1);
+    CHECK(((bn1 * bn3) % bn2) == 1);
 
     bn1.set_bytes(Prime1536, sizeof(Prime1536));
     bn2.set_bytes(Prime1024, sizeof(Prime1024));
@@ -390,7 +390,7 @@ int main()
     bn3 = bn1.mod_inv(bn2);
     BigNum::bench.Report("mod_inv");
     printf("->>>> %s\n", bn3.get_hex().c_str());
-    CHECK(bn1.mod_mul(bn3, bn2) == 1);
+    CHECK(((bn1 * bn3) % bn2) == 1);
 
     bn1.set_bytes(Prime1024, sizeof(Prime1024));
     bn2.set_hex("0x100000000");
@@ -398,13 +398,13 @@ int main()
     bn3 = bn1.mod_inv(bn2);
     BigNum::bench.Report("mod_inv");
     printf("->>>> %s\n", bn3.get_hex().c_str());
-    CHECK(bn1.mod_mul(bn3, bn2) == 1);
+    CHECK(((bn1 * bn3) % bn2) == 1);
 
     BigNum::bench.Clear();
     bn3 = bn1.bin_mod_inv(bn2);
     BigNum::bench.Report("bin_mod_inv");
     printf("->>>> %s\n", bn3.get_hex().c_str());
-    CHECK(bn1.mod_mul(bn3, bn2) == 1);
+    CHECK(((bn1 * bn3) % bn2) == 1);
 
     bn1 = 5;
     bn3 = bn1.exp(14);
@@ -488,7 +488,7 @@ int main()
     bn3 = R * 63 % M;
     printf("x=%s y=%s\n", bn2.get_dec().c_str(), bn3.get_dec().c_str());
 
-    bn4 = bn2.monty_mul(bn3, M, rho);
+    bn2.monty_mul(bn4, bn3, M, rho);
     printf("monty_mul ->>>> %s\n", bn4.get_dec().c_str());
     CHECK(bn4 == ((bn2 * bn3) % M));
 
