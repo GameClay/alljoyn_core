@@ -358,10 +358,6 @@ QStatus BTTransport::StopListen(const char* listenSpec)
 
 void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
 {
-    fprintf(stderr, "SJK         ---------------------      BTTransport::EndpointExit(endpoint => \"%s\" - \"%s\")\n",
-            endpoint->GetRemoteGUID().ToShortString().c_str(),
-            endpoint->GetConnectSpec().c_str());
-
     if (!btmActive) {
         return;
     }
