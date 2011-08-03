@@ -1025,7 +1025,11 @@ QStatus DaemonTCPTransport::Connect(const char* connectSpec, RemoteEndpoint** ne
     SocketFd sockFd = -1;
     status = Socket(QCC_AF_INET, QCC_SOCK_STREAM, sockFd);
     if (status == ER_OK) {
+        /* Turn off Nagle */
+        status = SetNagle(sockFd, false);
+    }
 
+    if (status == ER_OK) {
         /*
          * We got a socket, now tell TCP to connect to the remote address and
          * port.
