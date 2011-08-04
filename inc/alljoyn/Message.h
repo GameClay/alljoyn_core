@@ -36,8 +36,8 @@
 namespace ajn {
 
 static const size_t ALLJOYN_MAX_NAME_LEN   =     255;  /*!<  The maximum length of certain bus names */
-static const size_t ALLJOYN_MAX_PACKET_LEN =  131072;  /*!<  DBus limits packet length to 2^27. AllJoyn limits it further to 2^17 */
-static const size_t ALLJOYN_MAX_ARRAY_LEN  =   65536;  /*!<  DBus limits array length to 2^26. AllJoyn limits it to 2^16 */
+static const size_t ALLJOYN_MAX_ARRAY_LEN  =  131072;  /*!<  DBus limits array length to 2^26. AllJoyn limits it to 2^17 */
+static const size_t ALLJOYN_MAX_PACKET_LEN =  (ALLJOYN_MAX_ARRAY_LEN + 4096);  /*!<  DBus limits packet length to 2^27. AllJoyn limits it further to 2^17 + 4096 to allow for 2^17 payload */
 
 /** @name Endianess indicators */
 // @{
