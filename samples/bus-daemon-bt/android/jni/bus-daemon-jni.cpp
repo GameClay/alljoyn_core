@@ -41,8 +41,8 @@ extern "C" {
 extern int DaemonMain(int argc, char** argv, char* config);
 }
 
-namespace ajn{
-  extern BTLiteController* z_btLiteController;
+namespace ajn {
+extern BTLiteController* z_btLiteController;
 }
 
 /** The cached JVM pointer, valid across all contexts. */
@@ -304,7 +304,7 @@ class JBTLiteController : public ajn::BTLiteController {
     qcc::String Connect(qcc::String spec);
     int DisConnect(qcc::String spec);
     void EndpointExit(qcc::String uniqueID);
-    
+
   private:
     jweak jbtcontroller;
     jmethodID MID_ensureDiscoverable;
@@ -362,7 +362,7 @@ JBTLiteController::JBTLiteController(jobject jobj)
         QCC_LogError(ER_FAIL, ("JBTLiteController::JBTLiteController(): Can't find stopDiscovery() in jbtcontroller\n"));
         return;
     }
-    
+
     MID_connect = env->GetMethodID(clazz, "connect", "(Ljava/lang/String;)Ljava/lang/String;");
     if (!MID_connect) {
         QCC_LogError(ER_FAIL, ("JBTLiteController::JBTLiteController(): Can't find connect() in jbtcontroller\n"));
@@ -371,15 +371,15 @@ JBTLiteController::JBTLiteController(jobject jobj)
 
     MID_disConnect = env->GetMethodID(clazz, "disConnect", "(Ljava/lang/String;)I");
     if (!MID_disConnect) {
-       QCC_LogError(ER_FAIL, ("JBTLiteController::JBTLiteController(): Can't find disConnect() in jbtcontroller\n"));
+        QCC_LogError(ER_FAIL, ("JBTLiteController::JBTLiteController(): Can't find disConnect() in jbtcontroller\n"));
         return;
-    }    
-    
+    }
+
     MID_endpointExit = env->GetMethodID(clazz, "endpointExit", "(Ljava/lang/String;)V");
     if (!MID_endpointExit) {
         QCC_LogError(ER_FAIL, ("JBTLiteController::JBTLiteController(): Can't find endpointExit() in jbtcontroller\n"));
         return;
-    }    
+    }
 }
 
 JBTLiteController::~JBTLiteController()
@@ -429,7 +429,7 @@ void JBTLiteController::EnableDiscovery(String namePrefix)
     env->CallVoidMethod(jbtcontroller, MID_startDiscovery, (jstring)jname);
 }
 
-void JBTLiteController::DisableDiscovery(qcc::String namePrefix){
+void JBTLiteController::DisableDiscovery(qcc::String namePrefix) {
     JScopedEnv env;
     JLocalRef<jstring> jname = env->NewStringUTF(namePrefix.c_str());
     if (env->ExceptionCheck()) {
@@ -437,7 +437,7 @@ void JBTLiteController::DisableDiscovery(qcc::String namePrefix){
     }
     env->CallVoidMethod(jbtcontroller, MID_stopDiscovery, (jstring)jname);
 }
-    
+
 void JBTLiteController::StartListen()
 {
     JScopedEnv env;
@@ -474,11 +474,11 @@ void JBTLiteController::EndpointExit(qcc::String uniqueID)
         return;
     }
     env->CallVoidMethod(jbtcontroller, MID_endpointExit, (jstring)juniqueID);
-}  
-    
+}
+
 extern "C" {
 
-JNIEXPORT void JNICALL Java_org_alljoyn_bus_daemonservice_DaemonService_registerBTController(JNIEnv* env, jobject thiz, jobject jbtcontroller){
+JNIEXPORT void JNICALL Java_org_alljoyn_bus_daemonservice_DaemonService_registerBTController(JNIEnv* env, jobject thiz, jobject jbtcontroller) {
 
     JBTLiteController* btcontroller = jbtcontroller ? new JBTLiteController(jbtcontroller) : NULL;
     if (!btcontroller) {
@@ -499,11 +499,11 @@ JNIEXPORT void JNICALL Java_org_alljoyn_bus_daemonservice_DaemonService_register
         delete btcontroller;
         return;
     }
-    
+
     ajn::z_btLiteController = btcontroller;
 }
 
-JNIEXPORT void JNICALL Java_org_alljoyn_bus_daemonservice_DaemonService_unregisterBTController(JNIEnv* env, jobject thiz, jobject jbtcontroller){
+JNIEXPORT void JNICALL Java_org_alljoyn_bus_daemonservice_DaemonService_unregisterBTController(JNIEnv* env, jobject thiz, jobject jbtcontroller) {
     JBTLiteController* btController = (JBTLiteController*)GetHandle(jbtcontroller);
     if (btController) {
         QCC_DbgPrintf(("Java_org_alljoyn_bus_daemonservice_DaemonService_unregisterBTController\n"));
@@ -512,8 +512,8 @@ JNIEXPORT void JNICALL Java_org_alljoyn_bus_daemonservice_DaemonService_unregist
     }
     ajn::z_btLiteController = NULL;
 }
-  
-JNIEXPORT void JNICALL Java_org_alljoyn_bus_daemonservice_BTLiteController_foundName(JNIEnv* env, jobject thiz, jstring jname, jstring jguid, jstring jaddr, jstring jport){
+
+JNIEXPORT void JNICALL Java_org_alljoyn_bus_daemonservice_BTLiteController_foundName(JNIEnv* env, jobject thiz, jstring jname, jstring jguid, jstring jaddr, jstring jport) {
     ajn::BTLiteController* btcontroller = (ajn::BTLiteController*)GetHandle(thiz);
     assert(btcontroller);
     JString name(jname);
@@ -521,13 +521,13 @@ JNIEXPORT void JNICALL Java_org_alljoyn_bus_daemonservice_BTLiteController_found
     JString port(jport);
     JString guid(jguid);
     if (env->ExceptionCheck()) {
-        return ;
+        return;
     }
     QCC_DbgPrintf(("Java_org_alljoyn_bus_daemonservice_BTLiteController_foundName() %s", name.c_str()));
     btcontroller->FoundName(name.c_str(), guid.c_str(), addr.c_str(), port.c_str());
 }
 
-JNIEXPORT jstring JNICALL Java_org_alljoyn_bus_daemonservice_BTLiteController_getGlobalGUID(JNIEnv* env, jobject thiz){
+JNIEXPORT jstring JNICALL Java_org_alljoyn_bus_daemonservice_BTLiteController_getGlobalGUID(JNIEnv* env, jobject thiz) {
     ajn::BTLiteController* btcontroller = (ajn::BTLiteController*)GetHandle(thiz);
     assert(btcontroller);
     if (env->ExceptionCheck()) {
@@ -536,13 +536,13 @@ JNIEXPORT jstring JNICALL Java_org_alljoyn_bus_daemonservice_BTLiteController_ge
     QCC_DbgPrintf(("Java_org_alljoyn_bus_daemonservice_BTLiteController_getGlobalGUID()"));
     return env->NewStringUTF(btcontroller->GetGlobalGUID().c_str());
 }
-  
-JNIEXPORT void JNICALL Java_org_alljoyn_bus_daemonservice_BTLiteController_accepted(JNIEnv* env, jobject thiz, jstring juniqueID){
+
+JNIEXPORT void JNICALL Java_org_alljoyn_bus_daemonservice_BTLiteController_accepted(JNIEnv* env, jobject thiz, jstring juniqueID) {
     ajn::BTLiteController* btcontroller = (ajn::BTLiteController*)GetHandle(thiz);
     assert(btcontroller);
     JString uniqueID(juniqueID);
     if (env->ExceptionCheck()) {
-        return ;
+        return;
     }
     QCC_DbgPrintf(("Java_org_alljoyn_bus_daemonservice_BTLiteController_accepted() %s", uniqueID.c_str()));
     btcontroller->Accepted(uniqueID.c_str());

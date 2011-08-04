@@ -28,10 +28,10 @@ include $(CLEAR_VARS)
 LOCAL_MODULE    := bus-daemon-jni
 LOCAL_SRC_FILES := bus-daemon-jni.cpp
 LOCAL_LDLIBS := -L$(BUS_LIB_DIR) -lalljoyn-daemon -lalljoyn -lcrypto -llog -lgcc
-LOCAL_C_INCLUDES := /home/huang/alljoyn/common/inc \
-                    /home/huang/alljoyn/alljoyn_core/daemon  \
-                    /home/huang/alljoyn/alljoyn_core/src     \
-                    /home/huang/alljoyn/alljoyn_core/inc/alljoyn  \
-                    /home/huang/alljoyn/alljoyn_core/inc        \
-                    /home/huang/alljoyn/stlport/cne/stlport/stlport             
+LOCAL_C_INCLUDES := /home/huang/ajn/common/inc \
+                    /home/huang/ajn/alljoyn_core/daemon  \
+                    /home/huang/ajn/alljoyn_core/src     \
+                    /home/huang/ajn/alljoyn_core/inc/alljoyn  \
+                    /home/huang/ajn/alljoyn_core/inc        \
+                    /home/huang/ajn/stlport/cne/stlport/stlport             
 include $(BUILD_SHARED_LIBRARY)
