@@ -1,0 +1,1 @@
+/home/huang/android/gingerbread/prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi-addr2line -C -f -e   /home/huang/alljoyn/alljoyn_core/samples/bus-daemon-bt/android/obj/local/armeabi/libbus-daemon-jni.so
