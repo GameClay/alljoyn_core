@@ -20,19 +20,29 @@ package org.alljoyn.bus.daemonservice;
  * This contains an entry of query information. It contains the address of the target device and the well-known name prefix
  */
 public class BTDevice {
-	public BTDevice(String addr, String prefix) {
+	private String mDeviceAddr = null;
+	private String mName = null;
+	private int mAction = -1;
+	
+	public static final int ACTION_ADVERTISE = 0;
+	public static final int ACTION_DISCOVER = 1;	
+	
+	public BTDevice(int action, String addr, String name) {
+		mAction = action;
 		mDeviceAddr = addr;     // Bluetooth MAC address
-		mNamePrefix = prefix;   // Name prefix to be queried
+		mName = name;           // Name prefix to be queried or wkn to be advertised
+	}
+	
+	public int getAction(){
+		return mAction;
 	}
 	
 	public String getDeviceAddr(){
 		return mDeviceAddr;
 	}
 	
-	public String getNamePrefix(){
-		return mNamePrefix;
+	public String getName(){
+		return mName;
 	}
 
-	private String mDeviceAddr;
-	private String mNamePrefix;
 }

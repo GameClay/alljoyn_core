@@ -19,12 +19,10 @@ package org.alljoyn.bus.daemonservice;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Set;
 import java.util.UUID;
 
@@ -68,8 +66,19 @@ public class NameService {
      * @param name
      * @return
      */
-    public boolean advertiseName(String name){   
-    	return mAdvertizedNameList.add(name);
+    public boolean advertiseName(String name){  
+    	mAdvertizedNameList.add(name);
+    	Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
+    	if (pairedDevices.size() > 0) {
+    		Iterator<BluetoothDevice> it = pairedDevices.iterator();
+    		while (it.hasNext()) {
+    			mQueryList.add(new BTDevice(BTDevice.ACTION_ADVERTISE, it.next().getAddress(), name));
+    	    }
+    		if(mState == STATE_IDLE){
+    	    	queryNextDevice();
+    		}
+    	}
+    	return true;
     }
     /**
      * Service stop to advertise a well-know name
@@ -90,19 +99,15 @@ public class NameService {
     	if (pairedDevices.size() > 0) {
     		Iterator<BluetoothDevice> it = pairedDevices.iterator();
     		while (it.hasNext()) {
-    			mQueryList.add(new BTDevice(it.next().getAddress(), namePrefix));
+    			mQueryList.add(new BTDevice(BTDevice.ACTION_DISCOVER, it.next().getAddress(), namePrefix));
     	    }
+    		if(mState == STATE_IDLE){
+    	    	queryNextDevice();
+    		}
     	}else{
     		Log.d(TAG, " No bounded Device ");
     		return false;
     	}
-
-		if (mState == STATE_IDLE) {
-			BTDevice bd = mQueryList.poll();
-			BluetoothDevice d = mBluetoothAdapter.getRemoteDevice(bd.getDeviceAddr());
-			new ConnectThread(d, namePrefix).start();
-			mState = STATE_QUERYING;
-		}
     	return true;
     }
  
@@ -116,9 +121,9 @@ public class NameService {
 			mState = STATE_IDLE;
 			return;
 		}
+		mState = STATE_QUERYING;
 		btEntry = mQueryList.poll();
-    	BluetoothDevice d = mBluetoothAdapter.getRemoteDevice(btEntry.getDeviceAddr());
-    	new ConnectThread(d, btEntry.getNamePrefix()).start();
+    	new ConnectThread(btEntry).start();
     }
    
     /**
@@ -127,8 +132,12 @@ public class NameService {
      * @return names that match
      */
     public String matchNamePrefix(String prefix){
+    	if(mAdvertizedNameList.isEmpty()){
+    		Log.d(TAG, "No well-known names advertised");
+    	}
     	String ret = "";
     	for(int i = 0; i < mAdvertizedNameList.size(); i++){
+    		//Log.i(TAG, "advertised Name " + i + ": " + mAdvertizedNameList.get(i));
     		if(mAdvertizedNameList.get(i).startsWith(prefix)){
     			ret += mAdvertizedNameList.get(i);
     			Log.d(TAG, "Matched name: " + mAdvertizedNameList.get(i));
@@ -153,12 +162,12 @@ public class NameService {
      */
     private class ConnectThread extends Thread {
         private BluetoothSocket mSocket = null;
-        private String namePrefix = null;
+        private BTDevice mConnectInfo = null;
         private BluetoothDevice mDevice = null;
      
-        public ConnectThread(BluetoothDevice device, String np) {
-            namePrefix = np;
-            mDevice = device;
+        public ConnectThread(BTDevice connectInfo) {
+            mDevice = mBluetoothAdapter.getRemoteDevice(connectInfo.getDeviceAddr());
+            mConnectInfo = connectInfo;
         }
      
         @Override
@@ -181,7 +190,7 @@ public class NameService {
 				queryNextDevice();
     			return;
             }
-            new ConnectedThread(mSocket, "secure", ConnectedThread.TYPE_CLIENT, namePrefix).start();
+            new ConnectedThread(mSocket, ConnectedThread.TYPE_CLIENT, mConnectInfo).start();
         }
     }
     
@@ -210,7 +219,7 @@ public class NameService {
             	while (true) {
             		socket = mmServerSocket.accept();
             		if (socket != null) {
-            			ConnectedThread connectedThread = new ConnectedThread(socket, "Secure", ConnectedThread.TYPE_SERVER, null);
+            			ConnectedThread connectedThread = new ConnectedThread(socket, ConnectedThread.TYPE_SERVER, null);
             			connectedThread.start();
             		}
             	}
@@ -231,16 +240,16 @@ public class NameService {
         private final BluetoothSocket mmSocket;
         private final InputStream mmInStream;
         private final OutputStream mmOutStream;
-        private String namePrefix;
+        private BTDevice mConnectInfo = null;
         private int mThreadType = -1;
 		public final static int TYPE_SERVER = 0;
 		public final static int TYPE_CLIENT = 1;
 			
-        public ConnectedThread(BluetoothSocket socket, String socketType, int threadType, String np) {
-            Log.d(TAG, "Create ConnectedThread: " + socketType);
+        public ConnectedThread(BluetoothSocket socket, int threadType, BTDevice connectInfo) {
+            Log.d(TAG, "Create ConnectedThread: " + threadType);
             mmSocket = socket;
             mThreadType = threadType;
-            namePrefix = np;
+            mConnectInfo = connectInfo;
             InputStream tmpIn = null;
             OutputStream tmpOut = null;
 
@@ -259,44 +268,29 @@ public class NameService {
         @Override
         public void run() {
             Log.i(TAG, "BEGIN mConnectedThread mThreadType = " + mThreadType);
-            switch(mThreadType){
-            	case TYPE_SERVER:
-            		handleServerRead();
-            		break;
-            	case TYPE_CLIENT:
-            		write(namePrefix.getBytes());
-            		handleClientRead();
-            		break;
-            	default:
-            		Log.e(TAG, "Unknow ConnectedThread Type = " + mThreadType);
+            if(mThreadType == TYPE_CLIENT){
+            	switch(mConnectInfo.getAction()){
+            		case BTDevice.ACTION_ADVERTISE:
+            			NameServiceMessage advRequest = new NameServiceMessage(NameServiceMessage.TYPE_ADVERTISE_NAME_REQUEST);
+            			advRequest.fillAdvertiseRequest(mBTTrans.getBTLiteController().getGlobalGUID(), mMyServiceUUID.toString(), mConnectInfo.getName());
+            			byte[] advRequestArray = Utils.serializeObject(advRequest);
+            			write(advRequestArray);
+            			break;
+            		case BTDevice.ACTION_DISCOVER:            		
+            			NameServiceMessage disRequest = new NameServiceMessage(NameServiceMessage.TYPE_DISCOVER_NAME_REQUEST);
+            			disRequest.fillDiscoverRequest(mConnectInfo.getName());
+						byte[] disRequestArray = Utils.serializeObject(disRequest);
+						write(disRequestArray);
+						break;
+            		default:
+            			Log.e(TAG, "Unknow Action Type = " + mThreadType);
+            			return;
+            	}
             }
+			handleRead();
         }
 
-		void handleServerRead() {
-            byte[] buffer = new byte[1024];
-            int nbytes = 0;
-            try {
-            	while (true) {
-					// Read from the InputStream
-					nbytes = mmInStream.read(buffer);
-					if(nbytes > 0){
-						String prefix = new String(buffer, 0, nbytes);
-						Log.d(TAG, "Received namePrefix: " + prefix);
-						IsAtAnswer isAt = new IsAtAnswer(NameService.this.mBTTrans.getBTLiteController().getGlobalGUID(), NameService.this.matchNamePrefix(prefix), NameService.this.mMyServiceUUID.toString());
-						byte[] r = Utils.serializeObject(isAt);
-						write(r);
-					}
-            	}
-			} catch (IOException e) {
-				Log.e(TAG, "disconnected", e);
-			}
-            
-			try {
-				mmSocket.close();
-			} catch (IOException e) {}
-		}
-
-		void handleClientRead() {
+		void handleRead() {
 			int bufferSize = 4048;
             byte[] buffer = new byte[bufferSize];
             int bytesRead;
@@ -306,14 +300,37 @@ public class NameService {
                     if(bytesRead >= bufferSize){
                     	Log.e(TAG, "Buffer is too small!");
                     }
-                    IsAtAnswer isAt = (IsAtAnswer) Utils.deserializeObject(buffer);
+                    NameServiceMessage message = (NameServiceMessage) Utils.deserializeObject(buffer);
                     
-                    Log.i(TAG, "Received advertized Names = " +  isAt.getNames() + "  GUID = " + isAt.getGuid());
-                    if(isAt.getNames().length() > 0){
-                    	String addr = mmSocket.getRemoteDevice().getAddress();
-                    	NameService.this.mBTTrans.getBTConnectionMgr().insertServiceRercord(addr, isAt.getServiceUUID());
-                		NameService.this.mBTTrans.getBTLiteController().foundName(isAt.getNames(), isAt.getGuid(), addr, getPort(mmSocket));
+                    Log.i(TAG, "Received NameServiceMessage Type :" + message.getType());
+                    switch(message.getType()){
+                    	case NameServiceMessage.TYPE_ADVERTISE_NAME_REQUEST:
+                            if(message.getWkn().length() > 0){
+                            	String addr = mmSocket.getRemoteDevice().getAddress();
+                            	NameService.this.mBTTrans.getBTConnectionMgr().insertServiceRercord(addr, message.getServiceUUID());
+                        		NameService.this.mBTTrans.getBTLiteController().foundName(message.getWkn(), message.getGuid(), addr, getPort(mmSocket));
+                            }
+                    		break;
+                    		
+                    	case NameServiceMessage.TYPE_DISCOVER_NAME_REQUEST:
+                    		NameServiceMessage reply = new NameServiceMessage(NameServiceMessage.TYPE_DISCOVER_NAME_REPLEY);
+                    		reply.fillDiscoverReply(mBTTrans.getBTLiteController().getGlobalGUID(), mMyServiceUUID.toString(), matchNamePrefix(message.getNamePrefix()));
+    						byte[] replyArray = Utils.serializeObject(reply);
+    						write(replyArray);
+                    		break;
+                    		
+                    	case NameServiceMessage.TYPE_DISCOVER_NAME_REPLEY:
+                            if(message.getWkn().length() > 0){
+                            	String addr = mmSocket.getRemoteDevice().getAddress();
+                            	NameService.this.mBTTrans.getBTConnectionMgr().insertServiceRercord(addr, message.getServiceUUID());
+                        		NameService.this.mBTTrans.getBTLiteController().foundName(message.getWkn(), message.getGuid(), addr, getPort(mmSocket));
+                            }
+                    		break;
+                    		
+                    	default:
+                    		Log.e(TAG, "Wrong NameServiceMessage type = " +  message.getType());
                     }
+                    // Terminate thread
                 	break;
             	}
 			} catch (IOException e) {
@@ -322,7 +339,9 @@ public class NameService {
 			try {
 				mmSocket.close();
 			} catch (IOException e) { }
-			queryNextDevice();
+			if(mThreadType == TYPE_CLIENT){
+				queryNextDevice();
+			}
 		}
 
 		String getPort(BluetoothSocket sock){
