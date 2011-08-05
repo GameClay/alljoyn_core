@@ -13,16 +13,6 @@ chat -
          This sample shows how to use AllJoyn's C++ API to discover and connect
          with other AllJoyn enabled devices.
 
-bus-daemon-service -  			  
-         This sample creates an AllJoyn daemon that can be launched by the end 
-         user via a standard APK file. Please note that a daemon that is
-         launched in this way will not be capable of using the Bluetooth
-         physical transport.
-
-bus-daemon-user -
-         This sample shows how to launch the user launchable daemon 
-         (bus-daemon-service) from within an AllJoyn client application
-         using the android.content.Intent Java class.
-
-
-
+bus-daemon-service, bus-daemon-user -
+         Replaced by the new AllJoyn daemon application, AllJoyn.apk
+         See ../alljoyn_android/alljoyn.
