@@ -17,7 +17,7 @@ Features added in this release
    non-rooted Android devices. Note that the Java launchable daemon
    of the daemon does not support peer connections over bluetooth.
 
-2) AllJoyn operation inside the Android emultor envirnonment is now
+2) AllJoyn operation inside the Android emulator envirnonment is now
    supported.
 
 3) Added an asynchronous version of BusAttachment::JoinSession.
@@ -65,7 +65,7 @@ Applications written for AllJoyn 1.X will need to be modified and rebuilt
 for use with AllJoyn 2.0 and later.
 
 The AllJoyn wire protocol related to encryption and authentication has changed
-in the 2.1.0 release. AllJoyn interfaces that use security will not interroperate
+in the 2.1.0 release. AllJoyn interfaces that use security will not interoperate
 with devices whose AllJoyn version is less than 2.1.0.
 
 The AllJoyn wire protocol was modified to have a 128kB maximum message size

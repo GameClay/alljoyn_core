@@ -27,13 +27,6 @@ env.SConscript('secure/SConscript')
 # Chat Sample program
 env.SConscript('chat/SConscript')
 
-# Daemon Service Sample program
-env.SConscript('bus-daemon-service/SConscript')
-
-# Daemon User Sample program
-env.SConscript('bus-daemon-user/SConscript')
-
-
 # Install readme
 if env['OS'] == 'android':
     env.InstallAs('$DISTDIR/samples/README.txt', 'README.android.txt')
