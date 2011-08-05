@@ -10,33 +10,53 @@ Platform Support
 
 Features added in this release
 ------------------------------
-None
-?? alljoyn-android a feature ??
+
+1) The Android  bus-daemon-user and bus-daemon-service samples were 
+   replaced with a new "Java launchable daemon" called Alljoyn.apk.
+   This new APK can be used to install and run the AllJoyn daemon on
+   non-rooted Android devices. Note that the Java launchable daemon
+   of the daemon does not support peer connections over bluetooth.
+
+2) AllJoyn operation inside the Android emultor envirnonment is now
+   supported.
+
+3) Added an asynchronous version of BusAttachment::JoinSession.
+
+4) Minor modifications to the security API to allow for shared keystores.
 
 
 Issues Addressed in this Release
 --------------------------------
 
-1) ALLJOYN-494: AllJoyn java binding calls that return QStatus can return
+1) Several Bluetooth related stability issues were addressed in this
+   release.
+
+2) ALLJOYN-341: The Java launchable (wifi-only) daemon for Android was
+   unstable in version 2.0.1. This sample has been updated and renamed
+   to Alljoyn.apk.
+
+3) ALLJOYN-494: AllJoyn java binding calls that return QStatus can return
    null instead of a valid QStatus in certain error situations.
 
-2) ALLJOYN-519: A ProxyBusObject may trigger a segmentation fault if it is
+4) ALLJOYN-519: A ProxyBusObject may trigger a segmentation fault if it is
    deleted while threads are blocked inside ProxyBusObjec::MethodCall().
+
+5) ALLJOYN-544: Java binding is now thread safe.
 
 
 Known issues and limitations with this release
 ----------------------------------------------
 
-1) Bluetooth related issues:
-   - There is erratic behavior with Bluetooth when built in release mode.
-   - Scatternets have not been significantly tested.
-   - Bluetooth does not support RAW session types at this time.
-   - Sending large messages (megabytes) between devices over Bluetooth may
-     impact Bluetooth topology manager operations.
+1) ALLJOYN-557: Signals can be delivered twice when eavsdropping mode is
+   enabled in the AllJoyn daemon.
 
-2) ALLJOYN-394: ProxyBusObject::GetChild() does not work from the root "/"
-   object.
-   ?? moved to release 3.x ??
+2) ALLJOYN-580: AllJoyn currently has separate versions for Froyo and
+   Gingerbread due to dependencies on libcrypto.
+
+3) ALLJOYN-584: An AllJoyn client and service on the same device cannot
+   share the same keystore.
+
+4) ALLJOYN-593: test/sessions sample does not handle LostAdvertisedName.
 
 
 Compatibility
@@ -44,12 +64,19 @@ Compatibility
 Applications written for AllJoyn 1.X will need to be modified and rebuilt
 for use with AllJoyn 2.0 and later.
 
-The AllJoyn daemon-to-daemon protocol has changed. Alljoyn version 2.X daemons
-are not backwards compatible with AllJoyn 1.X daemons.
+The AllJoyn wire protocol related to encryption and authentication has changed
+in the 2.1.0 release. AllJoyn interfaces that use security will not interroperate
+with devices whose AllJoyn version is less than 2.1.0.
+
+The AllJoyn wire protocol was modified to have a 128kB maximum message size
+starting with version 2.1.0. Earlier versions of AllJoyn which attempt to
+send messages that are greater than 128kB will not interoperate with versions
+greater than or equal to 2.1.0.
 
 
 Change history
 --------------
+2.1.0 - Added Java thread safety. Security fixes. Minor mods to security API.
 2.0.1 - Bug fixes.
 2.0.0 - Added sessions and topology management.
         API's and daemon protocols changed.
