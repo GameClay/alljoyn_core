@@ -449,9 +449,13 @@ qcc::String JBTLiteController::Connect(qcc::String spec)
     JScopedEnv env;
     JLocalRef<jstring> jspec = env->NewStringUTF(spec.c_str());
     if (env->ExceptionCheck()) {
-        return "";
+        return (const char*)NULL;
     }
     jstring juniqueID = (jstring)env->CallObjectMethod(jbtcontroller, MID_connect, (jstring)jspec);
+    if (juniqueID == NULL) {
+        return (const char*)NULL;
+    }
+
     JString uniqueID(juniqueID);
     return uniqueID.c_str();
 }
