@@ -132,13 +132,26 @@ QStatus BTSocketStream::PullBytes(void* buf, size_t reqBytes, size_t& actualByte
 QStatus BTSocketStream::PushBytes(const void* buf, size_t numBytes, size_t& numSent)
 {
     QStatus status;
+    int retry = 400;
+
     do {
+        errno = 0;
         status = SocketStream::PushBytes(buf, min(numBytes, outMtu), numSent);
-        if ((status == ER_OS_ERROR) && (errno == ENOMEM)) {
-            // BlueZ reports ENOMEM when it should report EBUSY or EAGAIN, just wait and try again.
-            Sleep(10);
+        if (status == ER_OK) {
+            retry = 0;
+        } else if ((status == ER_OS_ERROR) && ((errno == EAGAIN) ||
+                                               (errno == EBUSY) ||
+                                               (errno == ENOMEM) ||
+                                               (errno == EFAULT))) {
+            // BlueZ reports ENOMEM and EFAULT when it should report EBUSY or EAGAIN, just wait and try again.
+            Sleep(50);
+            --retry;
         }
-    } while ((status == ER_OS_ERROR) && (errno == ENOMEM));
+    } while (retry > 0);
+
+    if (status != ER_OK) {
+        QCC_LogError(status, ("Failed to send data over BT for 20 seconds (errno: %d - %s)", errno, strerror(errno)));
+    }
 
     return status;
 }
