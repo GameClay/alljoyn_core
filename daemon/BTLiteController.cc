@@ -91,7 +91,7 @@ String BTLiteController::GetGlobalGUID() {
 void BTLiteController::FoundName(String wkn, String guid, String addr, String port) {
     std::vector<qcc::String> namelist;
     String str(wkn);
-    int pos = -1;
+    size_t pos;
     if (wkn.size() == 0) return;
     while ((pos = str.find_first_of(";")) != String::npos) {
         namelist.push_back(str.substr(0, pos));

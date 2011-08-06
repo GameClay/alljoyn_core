@@ -230,7 +230,7 @@ class MyAuthListener : public AuthListener {
 
 };
 
-class MyBusListener : public BusListener, public SessionPortListener, public SessionListener {
+class MyBusListener : public SessionPortListener, public SessionListener {
 
   public:
     MyBusListener(BusAttachment& bus, const SessionOpts& opts) : bus(bus), opts(opts) { }
@@ -698,7 +698,6 @@ int main(int argc, char** argv)
     if (ER_OK == status) {
         /* Create a bus listener to be used to accept incoming session requests */
         MyBusListener* myBusListener = new MyBusListener(*g_msgBus, opts);
-        g_msgBus->RegisterBusListener(*myBusListener);
 
         /* Register local objects and connect to the daemon */
         LocalTestObject testObj(*g_msgBus, ::org::alljoyn::alljoyn_test::ObjectPath, reportInterval, opts);

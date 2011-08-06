@@ -77,7 +77,7 @@ class OptParse {
         PR_MISSING_OPTION
     };
 
-    OptParse(int argc, char** argv) { }
+    OptParse(int argc, char** argv) : argc(0), argv(NULL) { }
 
     ParseResultCode ParseResult();
 

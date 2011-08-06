@@ -54,6 +54,11 @@ struct DiscoverInfo {
     {
         return (peerName < other.peerName) || ((peerName == other.peerName) && (transport < other.transport));
     }
+
+    bool operator==(const DiscoverInfo& other) const
+    {
+        return (peerName == other.peerName) && (transport == other.transport);
+    }
 };
 
 struct SessionPortInfo {
@@ -159,8 +164,9 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
     void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
     {
         printf("Discovered name : \"%s\"\n", name);
-
+        s_lock.Lock();
         s_discoverSet.insert(DiscoverInfo(name, transport));
+        s_lock.Unlock();
     }
 
     void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner)
@@ -171,6 +177,9 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
 
     void LostAdvertisedName(const char* name, TransportMask transport, const char* namePrefix) {
         printf("LostAdvertisedName name=%s, namePrefix=%s\n", name, namePrefix);
+        s_lock.Lock();
+        s_discoverSet.erase(DiscoverInfo(name, transport));
+        s_lock.Unlock();
     }
 
     bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)

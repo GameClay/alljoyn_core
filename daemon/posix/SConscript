@@ -17,7 +17,7 @@ Import('env', 'daemon_objs', 'config_objs')
 
 # Build the posix daemon and service launcher helper.
 daemon = env.Program('alljoyn-daemon', ['daemon-main.cc'] + daemon_objs)
-servicehelper = env.Program('alljoyn-daemon-launch-helper', ['servicehelper-main.cc'] + config_objs)
+#servicehelper = env.Program('alljoyn-daemon-launch-helper', ['servicehelper-main.cc'] + config_objs)
 
 #
 # On Android, build a static library that can be linked into a JNI dynamic 
@@ -29,5 +29,6 @@ if env['OS'] == 'android':
    libdaemon = env.StaticLibrary(['alljoyn-daemon'] + daemon_objs + config_objs)
    dlibs = env.Install('$DISTDIR/lib', libdaemon)
 
-progs = daemon + servicehelper
+#progs = daemon + servicehelper
+progs = daemon
 Return('progs')
