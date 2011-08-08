@@ -51,7 +51,6 @@
 #include "DaemonTCPTransport.h"
 #include "DaemonUnixTransport.h"
 #include "BTTransport.h"
-#include "BTLiteTransport.h"
 #include "Bus.h"
 #include "BusController.h"
 #include "ConfigDB.h"
@@ -437,8 +436,6 @@ int daemon(OptParse& opts)
         } else if (it->compare("bluetooth:") == 0) {
             skip = opts.GetNoBT();
 
-        } else if (it->compare("btlite:") == 0) {
-
         } else {
             Log(LOG_ERR, "Unsupported listen address: %s (ignoring)\n", it->c_str());
             ++it;
@@ -469,7 +466,6 @@ int daemon(OptParse& opts)
     cntr.Add(new TransportFactory<DaemonTCPTransport>("tcp", false));
     cntr.Add(new TransportFactory<DaemonUnixTransport>("unix", false));
     cntr.Add(new TransportFactory<BTTransport>("bluetooth", false));
-    /*cntr.Add(new TransportFactory<BTLiteTransport>("btlite", false));*/
 
     Bus ajBus("alljoyn-daemon", cntr, listenSpecs.c_str());
     BusController ajBusController(ajBus, status);
