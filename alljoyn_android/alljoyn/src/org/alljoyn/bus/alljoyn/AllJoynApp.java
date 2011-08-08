@@ -56,6 +56,8 @@ public class AllJoynApp extends Application {
         if (mRunningService == null) {
             Log.i(TAG, "onCreate(): failed to startService()");
         }
+        
+        ensureRunning();
 	}
     
     ComponentName mRunningService = null;
