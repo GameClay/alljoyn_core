@@ -137,15 +137,16 @@ QStatus BTSocketStream::PushBytes(const void* buf, size_t numBytes, size_t& numS
     do {
         errno = 0;
         status = SocketStream::PushBytes(buf, min(numBytes, outMtu), numSent);
-        if (status == ER_OK) {
-            retry = 0;
-        } else if ((status == ER_OS_ERROR) && ((errno == EAGAIN) ||
-                                               (errno == EBUSY) ||
-                                               (errno == ENOMEM) ||
-                                               (errno == EFAULT))) {
+        if ((status == ER_OS_ERROR) && ((errno == EAGAIN) ||
+                                        (errno == EBUSY) ||
+                                        (errno == ENOMEM) ||
+                                        (errno == EFAULT))) {
             // BlueZ reports ENOMEM and EFAULT when it should report EBUSY or EAGAIN, just wait and try again.
             Sleep(50);
             --retry;
+        } else {
+            // Don't retry on success or errors not listed above.
+            retry = 0;
         }
     } while (retry > 0);
 
