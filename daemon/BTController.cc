@@ -484,6 +484,20 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                     return;
                 }
 
+                bool autoConnect = !eirCapable && !(knownAdNode && adNode->IsEIRCapable());
+
+                if (newAdInfo.FindNode(self->GetBusAddress())->IsValid()) {
+                    QCC_DbgPrintf(("Device %s is advertising a set of nodes that include our own BD Address, ignoring it for now.", adBdAddr.ToString().c_str()));
+                    // Clear out the newAdInfo DB then re-add minimal
+                    // information about the advertising node so that we'll
+                    // ignore it until its UUID revision changes.
+                    BTNodeInfo n(newAdInfo.FindNode(adBdAddr)->GetBusAddress());
+                    n->SetEIRCapable(eirCapable || adNode->IsEIRCapable());
+                    newAdInfo.Clear();
+                    newAdInfo.AddNode(n);
+                    autoConnect = false;  // We do not want to connect to this device since its probably in a bad state.
+                }
+
                 BTNodeInfo newConnNode = newAdInfo.FindNode(connAddr);
                 if (!newConnNode->IsValid()) {
                     QCC_LogError(ER_FAIL, ("No device with connect address %s in advertisement",
@@ -493,8 +507,6 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                 }
 
                 foundNodeDB.Lock();
-
-                bool autoConnect = !eirCapable && !(knownAdNode && adNode->IsEIRCapable());
 
                 if (knownAdNode) {
                     foundNodeDB.GetNodesFromConnectNode(adNode->GetConnectNode(), oldAdInfo);
