@@ -32,7 +32,7 @@ using namespace ajn;
 static const char* CHAT_SERVICE_INTERFACE_NAME = "org.alljoyn.bus.samples.chat";
 static const char* NAME_PREFIX = "org.alljoyn.bus.samples.chat.";
 static const char* CHAT_SERVICE_OBJECT_PATH = "/chatService";
-static const SessionPort CHAT_PORT = 25;
+static const SessionPort CHAT_PORT = 27;
 
 /* forward declaration */
 class ChatObject;
