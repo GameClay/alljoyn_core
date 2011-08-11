@@ -593,6 +593,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                         if (status == ER_OK) {
                             b2bEpName = b2bEp->GetUniqueName();
                             busAddr = busAddrs[i];
+                            replyCode = ALLJOYN_JOINSESSION_REPLY_SUCCESS;
                             break;
                         } else {
                             QCC_LogError(status, ("trans->Connect(%s) failed", busAddrs[i].c_str()));
