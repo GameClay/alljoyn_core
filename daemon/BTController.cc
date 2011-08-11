@@ -187,7 +187,8 @@ BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
     devAvailable(false),
     advertise(*this),
     find(*this),
-    dispatcher("BTC-Dispatcher")
+    dispatcher("BTC-Dispatcher"),
+    incompleteConnections(0)
 {
     while (masterUUIDRev == bt::INVALID_UUIDREV) {
         masterUUIDRev = qcc::Rand32();
@@ -621,18 +622,44 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
 BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
 {
     BTNodeInfo node;
-    lock.Lock();
-    if (!IsMinion()) {
-        node = nodeDB.FindNode(addr);
-        if (IsMaster() && !node->IsValid() && (directMinions < maxConnections)) {
-            node = foundNodeDB.FindNode(addr);
-        }
-    }
 
-    if (!IsMaster() && !node->IsValid()) {
-        node = masterNode;
-    }
-    lock.Unlock();
+    bool repeat;
+    bool newDevice;
+
+    do {
+        repeat = false;
+        newDevice = false;
+
+        lock.Lock();
+        if (!IsMinion()) {
+            node = nodeDB.FindNode(addr);
+            if (IsMaster() && !node->IsValid() && (directMinions < maxConnections)) {
+                node = foundNodeDB.FindNode(addr);
+                newDevice = node->IsValid() && !joinSessionNodeDB.FindNode(addr)->IsValid();
+            }
+        }
+
+        if (!IsMaster() && !node->IsValid()) {
+            node = masterNode;
+        }
+        lock.Unlock();
+
+        if (newDevice && IncrementAndFetch(&incompleteConnections) > 1) {
+            QStatus status = Event::Wait(connectCompleted);
+            connectCompleted.ResetEvent();
+            node = BTNodeInfo();
+            if (status != ER_OK) {
+                return node;  // Fail the connection (probably shutting down anyway).
+            } else {
+                repeat = true;
+            }
+
+            if (DecrementAndFetch(&incompleteConnections) > 0) {
+                connectCompleted.SetEvent();
+            }
+        }
+    } while (repeat);
+
 
     QCC_DEBUG_ONLY(connectStartTimes[node->GetBusAddress().addr] = connectTimer.StartTime());
 
@@ -1687,6 +1714,10 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
 exit:
     joinSessionNodeDB.RemoveNode(node);
     lock.Unlock();
+
+    if (DecrementAndFetch(&incompleteConnections) > 0) {
+        connectCompleted.SetEvent();
+    }
 }
 
 

@@ -926,6 +926,9 @@ class BTController :
     BDAddressSet blacklist;
     BTNodeDB joinSessionNodeDB;
 
+    int32_t incompleteConnections; // Number of outgoing connections that are being setup
+    qcc::Event connectCompleted;
+
     struct {
         struct {
             struct {
