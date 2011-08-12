@@ -655,7 +655,9 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
             }
 
             if (DecrementAndFetch(&incompleteConnections) > 0) {
-                connectCompleted.SetEvent();
+                if (!IsMaster()) {
+                    connectCompleted.SetEvent();
+                }
             }
         }
     } while (repeat);
