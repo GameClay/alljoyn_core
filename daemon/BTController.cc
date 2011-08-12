@@ -1355,15 +1355,6 @@ void BTController::HandleFoundNamesChange(const InterfaceDescription::Member* me
         assert(!devAvailable || (nodeDB.Size() > 0));
 
         DistributeAdvertisedNameChanges(newAdInfo, oldAdInfo);
-
-        if (self->FindNamesEmpty()) {
-            // Shouldn't have gotten this message if we were a minion if we
-            // weren't finding any names, but we could get this if we are a
-            // drone and one of our minions is finding names.  In any case, we
-            // want to ensure that the names we just got get expired out at
-            // the appropriate time.
-            ResetExpireNameAlarm();
-        }
     }
 }
 
@@ -2000,16 +1991,14 @@ void BTController::DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
         nodeDB.Lock();
         for (BTNodeDB::const_iterator it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
             const BTNodeInfo& node = *it;
-            if (!node->FindNamesEmpty()) {
-                if (node->IsDirectMinion()) {
-                    assert(node != self);  // We can't be a direct minion of ourself.
-                    QCC_DbgPrintf(("Notify %s of the name changes.", node->GetBusAddress().ToString().c_str()));
-                    if (oldAdInfo && oldAdInfo->Size() > 0) {
-                        destNodesOld.insert(node);
-                    }
-                    if (newAdInfo && newAdInfo->Size() > 0) {
-                        destNodesNew.insert(node);
-                    }
+            if (node->IsDirectMinion()) {
+                assert(node != self);  // We can't be a direct minion of ourself.
+                QCC_DbgPrintf(("Notify %s of the name changes.", node->GetBusAddress().ToString().c_str()));
+                if (oldAdInfo && oldAdInfo->Size() > 0) {
+                    destNodesOld.insert(node);
+                }
+                if (newAdInfo && newAdInfo->Size() > 0) {
+                    destNodesNew.insert(node);
                 }
             }
         }
