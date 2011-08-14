@@ -460,11 +460,33 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                     while (newSessionId == 0) {
                         newSessionId = qcc::Rand32();
                     }
+
+                    /* Add an entry to sessionMap here (before sending accept session) since accept session
+                     * may trigger a call to GetSessionFd or LeaveSession which must be aware of the new session's
+                     * existence in order to complete successfully.
+                     */
+                    bool hasSessionMapPlaceholder = false;
+                    sme.id = newSessionId;
+                    pair<String, SessionId> sKey(sme.endpointName, sme.id);
+                    ajObj.AcquireLocks();
+                    if (ajObj.sessionMap.find(sKey) == ajObj.sessionMap.end()) {
+                        ajObj.sessionMap.insert(pair<pair<String, SessionId>, SessionMapEntry>(sKey, sme));
+                        hasSessionMapPlaceholder = true;
+                    }
+                    ajObj.ReleaseLocks();
+
                     /* Ask creator to accept session */
                     status = ajObj.SendAcceptSession(sme.sessionPort, newSessionId, sessionHost, msg->GetSender(), optsIn, isAccepted);
                     if (status != ER_OK) {
                         QCC_LogError(status, ("SendAcceptSession failed"));
                         replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+                    }
+
+                    /* Cleanup failed raw session entry in sessionMap */
+                    if (hasSessionMapPlaceholder && ((status != ER_OK) || !isAccepted)) {
+                        ajObj.AcquireLocks();
+                        ajObj.sessionMap.erase(sKey);
+                        ajObj.ReleaseLocks();
                     }
                 }
                 if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
@@ -494,19 +516,10 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                                     sit->second.memberNames.push_back(msg->GetSender());
                                     sme = sit->second;
                                 } else {
-                                    sit = ajObj.sessionMap.find(pair<String, SessionId>(sme.endpointName, 0));
-                                    if (sit != ajObj.sessionMap.end()) {
-                                        sme = sit->second;
-                                        sme.id = newSessionId;
-                                        sme.memberNames.push_back(msg->GetSender());
-                                        ajObj.sessionMap.insert(pair<pair<String, SessionId>, SessionMapEntry>(pair<String, SessionId>(sme.endpointName, sme.id), sme));
-                                    }
+                                    replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+                                    status = ER_FAIL;
+                                    QCC_LogError(status, ("Failed to find sessionMap entry"));
                                 }
-                            } else {
-                                /* Add the creator-side entry in sessionMap if session is not multiPoint */
-                                sme.id = newSessionId;
-                                sme.memberNames.push_back(msg->GetSender());
-                                ajObj.sessionMap.insert(pair<pair<String, SessionId>, SessionMapEntry>(pair<String, SessionId>(sme.endpointName, sme.id), sme));
                             }
 
                             /* Create a joiner side entry in sessionMap */
@@ -518,26 +531,35 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                             id = joinerSme.id;
                             optsOut = sme.opts;
                         }
-                    } else if ((sme.opts.traffic == SessionOpts::TRAFFIC_RAW_RELIABLE) && !sme.opts.isMultipoint) {
-                        /* Create a raw socket pair for the two local  */
+                    } else if ((sme.opts.traffic != SessionOpts::TRAFFIC_MESSAGES) && !sme.opts.isMultipoint) {
+                        /* Create a raw socket pair for the two local session participants */
                         SocketFd fds[2];
                         status = SocketPair(fds);
                         if (status == ER_OK) {
-                            /* Add the creator-side entry in sessionMap */
+                            /* Update the creator-side entry in sessionMap */
+                            pair<String, SessionId> sKey(sme.endpointName, sme.id);
                             ajObj.AcquireLocks();
-                            SessionMapEntry sme2 = sme;
-                            sme2.id = newSessionId;
-                            sme2.fd = fds[0];
-                            sme2.memberNames.push_back(msg->GetSender());
-                            ajObj.sessionMap.insert(pair<pair<String, SessionId>, SessionMapEntry>(pair<String, SessionId>(sme2.endpointName, sme2.id), sme2));
+                            multimap<pair<String, SessionId>, SessionMapEntry>::iterator it = ajObj.sessionMap.find(sKey);
+                            if (it != ajObj.sessionMap.end()) {
+                                it->second.fd = fds[0];
+                                it->second.memberNames.push_back(msg->GetSender());
 
-                            /* Create a joiner side entry in sessionMap */
-                            sme2.endpointName = msg->GetSender();
-                            sme2.fd = fds[1];
-                            ajObj.sessionMap.insert(pair<pair<String, SessionId>, SessionMapEntry>(pair<String, SessionId>(sme2.endpointName, sme2.id), sme2));
+                                /* Create a joiner side entry in sessionMap */
+                                SessionMapEntry sme2 = sme;
+                                sme2.memberNames.push_back(msg->GetSender());
+                                sme2.endpointName = msg->GetSender();
+                                sme2.fd = fds[1];
+                                ajObj.sessionMap.insert(pair<pair<String, SessionId>, SessionMapEntry>(pair<String, SessionId>(sme2.endpointName, sme2.id), sme2));
+                                id = sme2.id;
+                                optsOut = sme.opts;
+                            } else {
+                                qcc::Close(fds[0]);
+                                qcc::Close(fds[1]);
+                                status = ER_FAIL;
+                                QCC_LogError(status, ("Failed to find sessionMap entry"));
+                                replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+                            }
                             ajObj.ReleaseLocks();
-                            id = sme2.id;
-                            optsOut = sme.opts;
                         } else {
                             QCC_LogError(status, ("SocketPair failed"));
                             replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
@@ -1588,7 +1610,7 @@ void AllJoynObj::GetSessionFd(const InterfaceDescription::Member* member, Messag
     QStatus status;
     SocketFd sockFd = -1;
 
-    QCC_DbgTrace(("AllJoynObj::GetSessionFd(%d)", id));
+    QCC_DbgTrace(("AllJoynObj::GetSessionFd(0x%x)", id));
 
     /* Wait for any join related operations to complete before returning fd */
     AcquireLocks();
