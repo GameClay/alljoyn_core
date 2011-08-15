@@ -194,17 +194,23 @@ BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
         masterUUIDRev = qcc::Rand32();
     }
 
-    InterfaceDescription* ifc;
-    bus.CreateInterface(bluetoothTopoMgrIfcName, ifc);
-    for (size_t i = 0; i < ArraySize(btmIfcTable); ++i) {
-        ifc->AddMember(btmIfcTable[i].type,
-                       btmIfcTable[i].name,
-                       btmIfcTable[i].inputSig,
-                       btmIfcTable[i].outSig,
-                       btmIfcTable[i].argNames,
-                       0);
+    const InterfaceDescription* ifc;
+    InterfaceDescription* newIfc;
+    QStatus status = bus.CreateInterface(bluetoothTopoMgrIfcName, newIfc);
+    if (status == ER_OK) {
+        for (size_t i = 0; i < ArraySize(btmIfcTable); ++i) {
+            newIfc->AddMember(btmIfcTable[i].type,
+                              btmIfcTable[i].name,
+                              btmIfcTable[i].inputSig,
+                              btmIfcTable[i].outSig,
+                              btmIfcTable[i].argNames,
+                              0);
+        }
+        newIfc->Activate();
+        ifc = newIfc;
+    } else if (status == ER_BUS_IFACE_ALREADY_EXISTS) {
+        ifc = bus.GetInterface(bluetoothTopoMgrIfcName);
     }
-    ifc->Activate();
 
     org.alljoyn.Bus.BTController.interface =           ifc;
     org.alljoyn.Bus.BTController.SetState =            ifc->GetMember("SetState");

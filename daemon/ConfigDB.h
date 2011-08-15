@@ -23,7 +23,7 @@
 
 #include <qcc/platform.h>
 
-#include <list>
+#include <set>
 #include <map>
 
 #include <qcc/String.h>
@@ -43,7 +43,7 @@ namespace ajn {
 class ConfigDB : public ajn::NameListener {
   public:
     /** Typedef for list of daemon listen addresses. */
-    typedef std::list<qcc::String> ListenList;
+    typedef std::set<qcc::String> ListenList;
 
     /** Typedef for map of certain resource limits. */
     typedef std::map<qcc::StringMapKey, uint32_t> LimitMap;

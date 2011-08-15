@@ -458,7 +458,11 @@ bool ConfigDB::DB::ProcessListen(const qcc::String fileName, const XmlElement& l
             fileName.c_str(), listen.GetName().c_str());
         success = false;
     } else {
-        listenList.push_back(addr);
+        if (listenList.find(addr) != listenList.end()) {
+            Log(LOG_WARNING, "Warning processing \"%s\": Duplicate listen spec found (ignoring): %s\n",
+                fileName.c_str(), addr.c_str());
+        }
+        listenList.insert(addr);
     }
 
     return success;
