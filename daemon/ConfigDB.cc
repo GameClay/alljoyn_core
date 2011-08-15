@@ -22,7 +22,9 @@
 
 #include <errno.h>
 #include <sys/types.h>
+#if !defined(QCC_OS_WINDOWS)
 #include <pwd.h>
+#endif
 
 #include <list>
 #include <map>
@@ -145,6 +147,7 @@ bool ConfigDB::DB::ParseFile(qcc::String fileName, bool ignore_missing)
 
     /* Check if the file path contains tilde (~) */
     if (fileName[0] == '~') {
+#if !defined(QCC_OS_WINDOWS)
         qcc::String home(getenv("HOME"));
         /* If HOME is not set get the user from the present working directory */
         if (home.empty()) {
@@ -157,6 +160,7 @@ bool ConfigDB::DB::ParseFile(qcc::String fileName, bool ignore_missing)
         /* Reconstruct the path from either case when HOME was set or not */
         position = fileName.find_first_of('/');
         expandedFileName = home + fileName.substr(position + 1);
+#endif
     } else {
         expandedFileName = fileName;
     }
