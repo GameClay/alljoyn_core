@@ -396,11 +396,6 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
     }
     transport->threadListLock.Unlock();
 
-    /*
-     * Close down the listen file descriptors
-     */
-    StopConnectable();
-
     bluetoothAvailable = false;
 
     /*
