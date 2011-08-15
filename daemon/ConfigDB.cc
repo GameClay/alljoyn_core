@@ -144,22 +144,21 @@ bool ConfigDB::DB::ParseFile(qcc::String fileName, bool ignore_missing)
     int position;
 
     /* Check if the file path contains tilde (~) */
-    if(fileName[0] == '~'){
-    	qcc::String home(getenv("HOME"));
-    	/* If HOME is not set get the user from the present working directory */
-    	if(home.empty()){
-    		struct passwd *pwd = getpwuid(getuid());
-    		if(pwd){
-    			home = pwd->pw_dir;
-    		}
-    	}
-    home += '/';
-    /* Reconstruct the path from either case when HOME was set or not */
-    position = fileName.find_first_of('/');
-    expandedFileName = home + fileName.substr(position+1);
-    }
-    else{
-    	expandedFileName = fileName;
+    if (fileName[0] == '~') {
+        qcc::String home(getenv("HOME"));
+        /* If HOME is not set get the user from the present working directory */
+        if (home.empty()) {
+            struct passwd*pwd = getpwuid(getuid());
+            if (pwd) {
+                home = pwd->pw_dir;
+            }
+        }
+        home += '/';
+        /* Reconstruct the path from either case when HOME was set or not */
+        position = fileName.find_first_of('/');
+        expandedFileName = home + fileName.substr(position + 1);
+    } else   {
+        expandedFileName = fileName;
     }
 
     FileSource fs(expandedFileName.c_str());
@@ -167,7 +166,7 @@ bool ConfigDB::DB::ParseFile(qcc::String fileName, bool ignore_missing)
     if (fs.IsValid()) {
         success = ParseSource(expandedFileName.c_str(), fs);
     } else if (!ignore_missing) {
-    	Log(LOG_ERR, "Failed to open \"%s\": %s\n", expandedFileName.c_str(), strerror(errno));
+        Log(LOG_ERR, "Failed to open \"%s\": %s\n", expandedFileName.c_str(), strerror(errno));
         success = false;
     }
 
@@ -301,7 +300,7 @@ bool ConfigDB::DB::ProcessFork(const qcc::String fileName, const XmlElement& for
 
 bool ConfigDB::DB::ProcessInclude(const qcc::String fileName, const XmlElement& include)
 {
-	bool success = true;
+    bool success = true;
     qcc::String includeFileName(include.GetContent());
     const map<qcc::String, qcc::String>& attrs(include.GetAttributes());
     bool ignore_missing(false);
@@ -314,7 +313,7 @@ bool ConfigDB::DB::ProcessInclude(const qcc::String fileName, const XmlElement& 
     }
 
     if (!attrs.empty()) {
-    	map<qcc::String, qcc::String>::const_iterator it;
+        map<qcc::String, qcc::String>::const_iterator it;
         for (it = attrs.begin(); it != attrs.end(); ++it) {
             if (it->first.compare("ignore_missing") == 0) {
                 ignore_missing = (it->second.compare("yes") == 0);
