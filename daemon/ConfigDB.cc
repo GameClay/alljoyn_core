@@ -151,9 +151,9 @@ bool ConfigDB::DB::ParseFile(qcc::String fileName, bool ignore_missing)
     		struct passwd *pwd = getpwuid(getuid());
     		if(pwd){
     			home = pwd->pw_dir;
-    			home += '/';
     		}
     	}
+    home += '/';
     /* Reconstruct the path from either case when HOME was set or not */
     position = fileName.find_first_of('/');
     expandedFileName = home + fileName.substr(position+1);
