@@ -2413,8 +2413,10 @@ QStatus BTController::ExtractNodeInfo(const MsgArg* entries, size_t size, BTNode
                            nodeAddr.ToString().c_str(),
                            connNodeAddr.ToString().c_str()));
 
-            // If the node is in our subnet, then we are the connect node for it from our and our minion's perspectives.
-            node->SetConnectNode(nodeDB.FindNode(nodeAddr)->IsValid() ? self : connNode);
+            // If the node is in our subnet, then use the real connect address.
+            BTNodeInfo n = nodeDB.FindNode(nodeAddr);
+            node->SetConnectNode(n->IsValid() ? n->GetConnectNode() : connNode);
+
             String guidStr(guidRaw);
             GUID guid(guidStr);
             node->SetGUID(guid);
