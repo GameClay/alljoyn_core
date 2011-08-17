@@ -30,6 +30,7 @@
 #include <qcc/atomic.h>
 
 #include <alljoyn/BusAttachment.h>
+#include <alljoyn/AllJoynStd.h>
 
 #include "Router.h"
 #include "RemoteEndpoint.h"
@@ -75,7 +76,11 @@ RemoteEndpoint::RemoteEndpoint(BusAttachment& bus,
     refCount(0),
     isSocket(isSocket),
     armRxPause(false),
-    numWaiters(0)
+    numWaiters(0),
+    idleTimeoutCount(0),
+    maxIdleProbes(0),
+    idleTimeout(0),
+    probeTimeout(0)
 {
     ++threadCount;
 }
@@ -87,6 +92,20 @@ RemoteEndpoint::~RemoteEndpoint()
 
     /* Wait for thread to shutdown */
     Join();
+}
+
+QStatus RemoteEndpoint::SetLinkTimeout(uint32_t idleTimeout, uint32_t probeTimeout, uint32_t maxIdleProbes)
+{
+    QCC_DbgTrace(("RemoteEndpoint::SetLinkTimeout(%u, %u, %u) for %s", idleTimeout, probeTimeout, maxIdleProbes, GetUniqueName().c_str()));
+
+    if (GetRemoteProtocolVersion() >= 3) {
+        this->idleTimeout = idleTimeout,
+        this->probeTimeout = probeTimeout;
+        this->maxIdleProbes = maxIdleProbes;
+        return rxThread.Alert();
+    } else {
+        return ER_ALLJOYN_SETLINKTIMEOUT_REPLY_NO_DEST_SUPPORT;
+    }
 }
 
 QStatus RemoteEndpoint::Start()
@@ -243,25 +262,41 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
     qcc::Event& ev = ep->GetSource().GetSourceEvent();
     /* Receive messages until the socket is disconnected */
     while (!IsStopping() && (ER_OK == status)) {
-        status = Event::Wait(ev);
+        uint32_t timeout = (ep->idleTimeoutCount == 0) ? ep->idleTimeout : ep->probeTimeout;
+        status = Event::Wait(ev, (timeout > 0) ? (1000 * timeout) : Event::WAIT_FOREVER);
         if (ER_OK == status) {
             Message msg(bus);
             status = msg->Unmarshal(*ep, (validateSender && !bus2bus));
             switch (status) {
             case ER_OK :
-                status = router.PushMessage(msg, *ep);
-                if (status != ER_OK) {
-                    /*
-                     * There are three cases where a failure to push a message to the router is ok:
-                     *
-                     * 1) The message received did not match the expected signature.
-                     * 2) The message was a method reply that did not match up to a method call.
-                     * 3) A daemon is pushing the message to a connected client or service.
-                     *
-                     */
-                    if ((router.IsDaemon() && !bus2bus) || (status == ER_BUS_SIGNATURE_MISMATCH) || (status == ER_BUS_UNMATCHED_REPLY_SERIAL)) {
-                        QCC_DbgHLPrintf(("Discarding %s: %s", msg->Description().c_str(), QCC_StatusText(status)));
-                        status = ER_OK;
+                ep->idleTimeoutCount = 0;
+                bool isAck;
+                if (ep->IsProbeMsg(msg, isAck)) {
+                    QCC_DbgPrintf(("%s: Received %s\n", ep->GetUniqueName().c_str(), isAck ? "ProbeAck" : "ProbeReq"));
+                    if (!isAck) {
+                        /* Respond to probe request */
+                        Message probeMsg(bus);
+                        status = ep->GenProbeMsg(true, probeMsg);
+                        if (status == ER_OK) {
+                            status = ep->PushMessage(probeMsg);
+                        }
+                        QCC_DbgPrintf(("%s: Sent ProbeAck (%s)\n", ep->GetUniqueName().c_str(), QCC_StatusText(status)));
+                    }
+                } else {
+                    status = router.PushMessage(msg, *ep);
+                    if (status != ER_OK) {
+                        /*
+                         * There are three cases where a failure to push a message to the router is ok:
+                         *
+                         * 1) The message received did not match the expected signature.
+                         * 2) The message was a method reply that did not match up to a method call.
+                         * 3) A daemon is pushing the message to a connected client or service.
+                         *
+                         */
+                        if ((router.IsDaemon() && !bus2bus) || (status == ER_BUS_SIGNATURE_MISMATCH) || (status == ER_BUS_UNMATCHED_REPLY_SERIAL)) {
+                            QCC_DbgHLPrintf(("Discarding %s: %s", msg->Description().c_str(), QCC_StatusText(status)));
+                            status = ER_OK;
+                        }
                     }
                 }
                 break;
@@ -309,6 +344,20 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
             if (ep->armRxPause && !IsStopping() && (msg->GetType() == MESSAGE_METHOD_RET)) {
                 status = Event::Wait(Event::neverSet);
             }
+        } else if (status == ER_TIMEOUT) {
+            if (ep->idleTimeoutCount++ < ep->maxIdleProbes) {
+                Message probeMsg(bus);
+                status = ep->GenProbeMsg(false, probeMsg);
+                if (status == ER_OK) {
+                    status = ep->PushMessage(probeMsg);
+                }
+                QCC_DbgPrintf(("%s: Sent ProbeReq (%s)\n", ep->GetUniqueName().c_str(), QCC_StatusText(status)));
+            } else {
+                QCC_DbgPrintf(("%s: Maximum number of idle probe (%d) attempts reached", ep->GetUniqueName().c_str(), ep->maxIdleProbes));
+            }
+        } else if (status == ER_ALERTED_THREAD) {
+            GetStopEvent().ResetEvent();
+            status = ER_OK;
         }
     }
     if ((status != ER_OK) && (status != ER_STOPPING_THREAD) && (status != ER_SOCK_OTHER_END_CLOSED) && (status != ER_BUS_STOPPING)) {
@@ -510,6 +559,36 @@ SocketFd RemoteEndpoint::GetSocketFd()
     } else {
         return -1;
     }
+}
+
+bool RemoteEndpoint::IsProbeMsg(const Message& msg, bool& isAck)
+{
+    bool ret = false;
+    if (0 == ::strcmp(org::alljoyn::Daemon::InterfaceName, msg->GetInterface())) {
+        if (0 == ::strcmp("ProbeReq", msg->GetMemberName())) {
+            ret = true;
+            isAck = false;
+        } else if (0 == ::strcmp("ProbeAck", msg->GetMemberName())) {
+            ret = true;
+            isAck = true;
+        }
+    }
+    return ret;
+}
+
+QStatus RemoteEndpoint::GenProbeMsg(bool isAck, Message msg)
+{
+    QStatus status = msg->SignalMsg("",
+                                    NULL,
+                                    0,
+                                    "/",
+                                    org::alljoyn::Daemon::InterfaceName,
+                                    isAck ? "ProbeAck" : "ProbeReq",
+                                    NULL,
+                                    0,
+                                    0,
+                                    0);
+    return status;
 }
 
 }

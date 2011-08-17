@@ -1349,6 +1349,55 @@ QStatus BusAttachment::GetSessionFd(SessionId sessionId, SocketFd& sockFd)
     return status;
 }
 
+QStatus BusAttachment::SetLinkTimeout(SessionId sessionId, uint32_t& linkTimeout)
+{
+    if (!IsConnected()) {
+        return ER_BUS_NOT_CONNECTED;
+    }
+
+    Message reply(*this);
+    MsgArg args[2];
+
+    args[0].Set("u", sessionId);
+    args[1].Set("u", linkTimeout);
+
+    QStatus status = this->GetAllJoynProxyObj().MethodCall(org::alljoyn::Bus::InterfaceName, "SetLinkTimeout", args, ArraySize(args), reply);
+    if (status != ER_OK) {
+        String errMsg;
+        const char* errName = reply->GetErrorName(&errMsg);
+        QCC_LogError(status, ("%s.SetLinkTimeout returned ERROR_MESSAGE (error=%s, \"%s\")",
+                              org::alljoyn::Bus::InterfaceName,
+                              errName,
+                              errMsg.c_str()));
+        status = ER_ALLJOYN_SETLINKTIMEOUT_REPLY_NOT_SUPPORTED;
+    } else {
+        uint32_t disposition;
+        uint32_t replyLinkTimeout = 0;
+        status = reply->GetArgs("uu", &disposition, &replyLinkTimeout);
+        if (status == ER_OK) {
+            switch (disposition) {
+            case ALLJOYN_SETLINKTIMEOUT_REPLY_SUCCESS:
+                linkTimeout = replyLinkTimeout;
+                break;
+
+            case ALLJOYN_SETLINKTIMEOUT_REPLY_NO_DEST_SUPPORT:
+                status = ER_ALLJOYN_SETLINKTIMEOUT_REPLY_NO_DEST_SUPPORT;
+                break;
+
+            case ALLJOYN_SETLINKTIMEOUT_REPLY_NO_SESSION:
+                status = ER_BUS_NO_SESSION;
+                break;
+
+            default:
+            case ALLJOYN_SETLINKTIMEOUT_REPLY_FAILED:
+                status = ER_ALLJOYN_SETLINKTIMEOUT_REPLY_FAILED;
+                break;
+            }
+        }
+    }
+    return status;
+}
+
 QStatus BusAttachment::Internal::DispatchMessage(AlarmListener& listener, Message& msg, uint32_t delay)
 {
     QStatus status;

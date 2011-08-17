@@ -700,6 +700,24 @@ class BusAttachment : public MessageReceiver {
     QStatus GetSessionFd(SessionId sessionId, qcc::SocketFd& sockFd);
 
     /**
+     * Set the link timeout for a session.
+     *
+     * Link timeout is the maximum number of seconds that an unresponsive daemon-to-daemon connection
+     * will be monitored before delcaring the session lost (via SessionLost callback). Link timeout
+     * defaults to 0 which indicates that AllJoyn link monitoring is disabled.
+     *
+     * Each transport type defines a lower bound on link timeout to avoid defeating transport
+     * specific power management algorithms.
+     *
+     * @param sessionId     Id of session whose link timeout will be modified.
+     * @param linkTimeout   [IN/OUT] Max number of seconds that a link can be unresponsive before being
+     *                      delcared lost. 0 indicates that AllJoyn link monitoring will be disabled. On
+     *                      return, this value will be the resulting (possibly upward) adjusted linkTimeout
+     *                      value that acceptible to the underlying transport.
+     */
+    QStatus SetLinkTimeout(SessionId sessionid, uint32_t& linkTimeout);
+
+    /**
      * Determine whether a given well-known name exists on the bus.
      * This method is a shortcut/helper that issues an org.freedesktop.DBus.NameHasOwner method call to the daemon
      * and interprets the response.

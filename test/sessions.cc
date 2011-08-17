@@ -253,6 +253,28 @@ static String NextTok(String& inStr)
     return Trim(ret);
 }
 
+static SessionId NextTokAsSessionId(String& inStr)
+{
+    uint32_t ret = 0;
+    String tok = NextTok(inStr);
+    if (tok[0] == '#') {
+        uint32_t i = StringToU32(tok.substr(1), 0, 0);
+        s_lock.Lock();
+        map<SessionId, SessionInfo>::const_iterator sit = s_sessionMap.begin();
+        if (i < s_sessionMap.size()) {
+            while (i--) {
+                sit++;
+            }
+            ret = sit->first;
+        }
+        s_lock.Unlock();
+    } else {
+        ret = StringToU32(tok, 0, 0);
+    }
+    return static_cast<SessionId>(ret);
+}
+
+
 static void DoRequestName(const String& name)
 {
     QStatus status = s_bus->RequestName(name.c_str(), DBUS_NAME_FLAG_DO_NOT_QUEUE);
@@ -397,8 +419,10 @@ static void DoList()
     }
     printf("---------Active sessions-----------------------\n");
     map<SessionId, SessionInfo>::const_iterator sit = s_sessionMap.begin();
+    int i = 0;
     while (sit != s_sessionMap.end()) {
-        printf("   SessionId: %u, Creator: %s, Port:%u, isMultipoint=%s, traffic=%u, proximity=%u, transports=0x%x\n",
+        printf("   #%d: SessionId: %u, Creator: %s, Port:%u, isMultipoint=%s, traffic=%u, proximity=%u, transports=0x%x\n",
+               i++,
                sit->first,
                sit->second.portInfo.sessionHost.c_str(),
                sit->second.portInfo.port,
@@ -446,6 +470,16 @@ static void DoLeave(SessionId id)
         s_lock.Unlock();
     } else {
         printf("Invalid session id %u specified in LeaveSession\n", id);
+    }
+}
+
+static void DoSetLinkTimeout(SessionId id, uint32_t timeout)
+{
+    QStatus status = s_bus->SetLinkTimeout(id, timeout);
+    if (status != ER_OK) {
+        printf("SetLinkTimeout(%u, %u) failed with %s\n", id, timeout, QCC_StatusText(status));
+    } else {
+        printf("Link timeout for session %u is %d\n", id, timeout);
     }
 }
 
@@ -606,23 +640,35 @@ int main(int argc, char** argv)
             opts.transports = static_cast<TransportMask>(StringToU32(NextTok(line), 0, 0xFFFF));
             DoJoin(name, port, opts);
         } else if (cmd == "leave") {
-            SessionId id = static_cast<SessionId>(StringToU32(NextTok(line), 0, 0));
+            SessionId id = NextTokAsSessionId(line);
             if (id == 0) {
                 printf("Usage: leave <sessionId>\n");
                 continue;
             }
             DoLeave(id);
+        } else if (cmd == "timeout") {
+            SessionId id = NextTokAsSessionId(line);
+            uint32_t timeout = StringToU32(NextTok(line), 0, 0);
+            if (id == 0) {
+                printf("Usage: timeout <sessionId> <timeout>\n");
+                continue;
+            }
+            DoSetLinkTimeout(id, timeout);
         } else if (cmd == "chat") {
             uint8_t flags = 0;
-            qcc::String tok = NextTok(line);
-            if (tok == "-c") {
-                flags |= ALLJOYN_FLAG_COMPRESSED;
-                tok = NextTok(line);
-            }
-            SessionId id = StringToU32(tok);
+            SessionId id = NextTokAsSessionId(line);
             String chatMsg = Trim(line);
             if ((id == 0) || chatMsg.empty()) {
-                printf("Usage: chat [-c] <sessionId> <msg>\n");
+                printf("Usage: chat <sessionId> <msg>\n");
+                continue;
+            }
+            sessionTestObj.SendChatSignal(id, chatMsg.c_str(), flags);
+        } else if (cmd == "cchat") {
+            uint8_t flags = ALLJOYN_FLAG_COMPRESSED;
+            SessionId id = NextTokAsSessionId(line);
+            String chatMsg = Trim(line);
+            if ((id == 0) || chatMsg.empty()) {
+                printf("Usage: cchat <sessionId> <msg>\n");
                 continue;
             }
             sessionTestObj.SendChatSignal(id, chatMsg.c_str(), flags);
@@ -641,10 +687,12 @@ int main(int argc, char** argv)
             printf("list                                                          - List port bindings, discovered names and active sessions\n");
             printf("join <name> <port> [isMultipoint] [traffic] [proximity] [transports] - Join a session\n");
             printf("leave <sessionId>                                             - Leave a session\n");
-            printf("chat [-c] <sessionId> <msg>                                   - Send a message over a given session\n");
-            printf("                                                                If present option -c means use header compression\n");
+            printf("chat <sessionId> <msg>                                        - Send a message over a given session\n");
+            printf("cchat <sessionId> <msg>                                       - Send a message over a given session with compression\n");
+            printf("timeout <sessionId> <linkTimeout>                             - Set link timeout for a session\n");
             printf("exit                                                          - Exit this program\n");
             printf("\n");
+            printf("SessionIds can be specified by value or by #<idx> where <idx> is the session index printed with \"list\" command\n");
         } else {
             printf("Unknown command: %s\n", cmd.c_str());
         }

@@ -32,7 +32,7 @@
 #define QCC_MODULE  "ALLJOYN"
 
 /** Daemon-to-daemon protocol version number */
-#define ALLJOYN_PROTOCOL_VERSION  2
+#define ALLJOYN_PROTOCOL_VERSION  3
 
 namespace ajn {
 
@@ -261,6 +261,33 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
  *
  *  Returns the socket descriptor request or an error response
  */
+
+/**
+ * @name org.alljoyn.Bus.SetLinkTimeout
+ *  Interface: org.alljoyn.Bus
+ *  Method: SetLinkTimeout(uint32_t sessionId, uint32_t linkTimeout)
+ *
+ *  Input params:
+ *     sessionId - Id of session whose link timeout will be modified.
+ *
+ *     linkTimeout - Max number of seconds that a link can be unresponsive before being
+ *                   delcared lost. 0 indicates that AllJoyn link monitoring will be disabled.
+ *
+ *  Output params:
+ *     disposition - One of the ALLJOYN_SETLINKTMEOUT_* dispositions listed below
+ *
+ *     replyLinkTimeout - On successful disposition, this value will contain the resulting
+ *                        (possibly upward) adjusted linkTimeout value that is acceptible
+ *                        to the underlying transport.
+ *
+ */
+// @{
+/* org.alljoyn.Bus.SetLinkTimeout */
+#define ALLJOYN_SETLINKTIMEOUT_REPLY_SUCCESS          1   /**< SetLinkTimeout reply: Success */
+#define ALLJOYN_SETLINKTIMEOUT_REPLY_NO_DEST_SUPPORT  2   /**< SetLinkTimeout reply: Dest ep does not support link monitoring */
+#define ALLJOYN_SETLINKTIMEOUT_REPLY_NO_SESSION       3   /**< SetLinkTimeout reply: Session with given id does not exist */
+#define ALLJOYN_SETLINKTIMEOUT_REPLY_FAILED           4   /**< SetLinkTimeout reply: Failed */
+// @}
 
 /**
  * Collection of Session Port numbers defined for org.alljoyn endpoint.

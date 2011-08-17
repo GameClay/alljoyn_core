@@ -42,6 +42,10 @@
 using namespace std;
 using namespace qcc;
 
+const uint32_t TCP_LINK_TIMEOUT_PROBE_ATTEMPTS       = 1;
+const uint32_t TCP_LINK_TIMEOUT_PROBE_RESPONSE_DELAY = 10;
+const uint32_t TCP_LINK_TIMEOUT_MIN_LINK_TIMEOUT     = 40;
+
 namespace ajn {
 
 /*
@@ -58,10 +62,14 @@ class DaemonTCPEndpoint : public RemoteEndpoint {
         SUCCEEDED
     };
 
-    DaemonTCPEndpoint(DaemonTCPTransport* transport, BusAttachment& bus, bool incoming,
-                      const qcc::String connectSpec, qcc::SocketFd sock, const qcc::IPAddress& ipAddr, uint16_t port)
-        :
-        RemoteEndpoint(bus, incoming, connectSpec, m_stream, "tcp"),
+    DaemonTCPEndpoint(DaemonTCPTransport* transport,
+                      BusAttachment& bus,
+                      bool incoming,
+                      const qcc::String connectSpec,
+                      qcc::SocketFd sock,
+                      const qcc::IPAddress& ipAddr,
+                      uint16_t port)
+        : RemoteEndpoint(bus, incoming, connectSpec, m_stream, "tcp"),
         m_transport(transport),
         m_state(INITIALIZED),
         m_tStart(qcc::Timespec(0)),
@@ -82,6 +90,23 @@ class DaemonTCPEndpoint : public RemoteEndpoint {
     bool IsFailed(void) { return m_state == FAILED; }
     bool IsSuddenDisconnect() { return m_wasSuddenDisconnect; }
     void SetSuddenDisconnect(bool val) { m_wasSuddenDisconnect = val; }
+
+    QStatus SetLinkTimeout(uint32_t& linkTimeout)
+    {
+        QStatus status = ER_OK;
+        if (linkTimeout > 0) {
+            uint32_t to = max(linkTimeout, TCP_LINK_TIMEOUT_MIN_LINK_TIMEOUT);
+            to -= TCP_LINK_TIMEOUT_PROBE_RESPONSE_DELAY * TCP_LINK_TIMEOUT_PROBE_ATTEMPTS;
+            status = RemoteEndpoint::SetLinkTimeout(to, TCP_LINK_TIMEOUT_PROBE_RESPONSE_DELAY, TCP_LINK_TIMEOUT_PROBE_ATTEMPTS);
+            if ((status == ER_OK) && (to > 0)) {
+                linkTimeout = to + TCP_LINK_TIMEOUT_PROBE_RESPONSE_DELAY * TCP_LINK_TIMEOUT_PROBE_ATTEMPTS;
+            }
+
+        } else {
+            RemoteEndpoint::SetLinkTimeout(0, 0, 0);
+        }
+        return status;
+    }
 
   private:
     class AuthThread : public qcc::Thread {

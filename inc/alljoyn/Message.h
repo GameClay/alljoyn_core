@@ -574,7 +574,7 @@ class _Message {
      * @param numArgs     The number of arguments
      * @param flags       A logical OR of the AllJoyn flags.
      * @param timeToLive  Time-to-live in milliseconds. Signals that cannot be sent within this time
-     *                    limit are discarded. Zero (the default) indicates reliable delivery.
+     *                    limit are discarded. Zero indicates reliable delivery.
      * @return
      *      - #ER_OK if successful
      *      - An error status otherwise

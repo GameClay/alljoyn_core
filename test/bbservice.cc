@@ -260,6 +260,17 @@ class MyBusListener : public SessionPortListener, public SessionListener {
         QStatus status = bus.SetSessionListener(sessionId, this);
         if (status != ER_OK) {
             QCC_LogError(status, ("SetSessionListener failed"));
+            return;
+        }
+
+        /* Set the link timeout */
+        uint32_t timeout = 10;
+        status = bus.SetLinkTimeout(sessionId, timeout);
+        if (status == ER_OK) {
+            QCC_SyncPrintf("Link timeout was successfully set to %d\n", timeout);
+        } else {
+            QCC_LogError(status, ("SetLinkTimeout failed"));
+            return;
         }
     }
 

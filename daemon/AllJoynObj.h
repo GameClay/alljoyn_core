@@ -210,6 +210,23 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     void GetSessionFd(const InterfaceDescription::Member* member, Message& msg);
 
     /**
+     * Respond to a bus request to set the link timeout for a given session.
+     *
+     * The input Message (METHOD_CALL) is expected to contain the following parameters:
+     *   sessionId      uint32    A session id that identifies an existing streaming session.
+     *   reqLinkTimeout uint32    Requested max number of seconds that an unresponsive comm link
+     *                            will be monitored before delcaring the link dead via SessionLost.
+     *
+     * The output Message (METHOD_REPLY) contains the following parameters:
+     *   resultCode     uint32    ALLJOYN_SETLINKTIMEOUT_REPLY_* value.
+     *   actLinkTimeout uint32    Actual link timeout value.
+     *
+     * @param member  Member.
+     * @param msg     The incoming message.
+     */
+    void SetLinkTimeout(const InterfaceDescription::Member* member, Message& msg);
+
+    /**
      * Add a new Bus-to-bus endpoint.
      *
      * @param endpoint  Bus-to-bus endpoint to add.

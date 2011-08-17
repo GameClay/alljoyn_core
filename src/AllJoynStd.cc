@@ -79,6 +79,7 @@ QStatus org::alljoyn::CreateInterfaces(BusAttachment& bus)
         ifc->AddMethod("FindAdvertisedName",       "s",                 "u",                 "name,disposition",                           0);
         ifc->AddMethod("CancelFindAdvertisedName", "s",                 "u",                 "name,disposition",                           0);
         ifc->AddMethod("GetSessionFd",             "u",                 "h",                 "sessionId,handle",                           0);
+        ifc->AddMethod("SetLinkTimeout",           "uu",                "uu",                "sessionId,inLinkTO,disposition,outLinkTO",   0);
 
         ifc->AddSignal("FoundAdvertisedName",      "sqs",              "name,transport,prefix",                        0);
         ifc->AddSignal("LostAdvertisedName",       "sqs",              "name,transport,prefix",                        0);
@@ -101,6 +102,8 @@ QStatus org::alljoyn::CreateInterfaces(BusAttachment& bus)
         ifc->AddSignal("DetachSession",  "us",     "sessionId,joiner",       0);
         ifc->AddSignal("ExchangeNames",  "a(sas)", "uniqueName,aliases",     0);
         ifc->AddSignal("NameChanged",    "sss",    "name,oldOwner,newOwner", 0);
+        ifc->AddSignal("ProbeReq",       "",       "",                       0);
+        ifc->AddSignal("ProbeAck",       "",       "",                       0);
         ifc->Activate();
     }
     {

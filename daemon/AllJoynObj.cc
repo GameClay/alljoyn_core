@@ -137,7 +137,8 @@ QStatus AllJoynObj::Init()
         { alljoynIntf->GetMember("UnbindSessionPort"),        static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::UnbindSessionPort) },
         { alljoynIntf->GetMember("JoinSession"),              static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::JoinSession) },
         { alljoynIntf->GetMember("LeaveSession"),             static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::LeaveSession) },
-        { alljoynIntf->GetMember("GetSessionFd"),             static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::GetSessionFd) }
+        { alljoynIntf->GetMember("GetSessionFd"),             static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::GetSessionFd) },
+        { alljoynIntf->GetMember("SetLinkTimeout"),           static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::SetLinkTimeout) }
     };
 
     AddInterface(*alljoynIntf);
@@ -1642,6 +1643,72 @@ void AllJoynObj::GetSessionFd(const InterfaceDescription::Member* member, Messag
         status = MethodReply(msg, ER_BUS_NO_SESSION);
     }
 
+    if (status != ER_OK) {
+        QCC_LogError(status, ("Failed to respond to org.alljoyn.Bus.GetSessionFd"));
+    }
+}
+
+void AllJoynObj::SetLinkTimeout(const InterfaceDescription::Member* member, Message& msg)
+{
+    /* Parse args */
+    size_t numArgs;
+    const MsgArg* args;
+    msg->GetArgs(numArgs, args);
+    SessionId id = args[0].v_uint32;
+    uint32_t reqLinkTimeout = args[1].v_uint32;
+    uint32_t actLinkTimeout = reqLinkTimeout;
+    bool foundEp = false;
+    uint32_t disposition;
+    QStatus status = ER_OK;
+
+    QCC_DbgTrace(("AllJoynObj::SetLinkTimeout(0x%x, %d)", id, reqLinkTimeout));
+
+    /* Set the link timeout on all endpoints that are involved in this session */
+    AcquireLocks();
+    pair<String, SessionId> key(msg->GetSender(), id);
+    multimap<pair<String, SessionId>, SessionMapEntry>::iterator it = sessionMap.find(key);
+    while (it != sessionMap.end()) {
+        SessionMapEntry& entry = it->second;
+        if (entry.opts.traffic == SessionOpts::TRAFFIC_MESSAGES) {
+            vector<String> memberNames = entry.memberNames;
+            memberNames.push_back(entry.sessionHost);
+            for (int i = 0; i < memberNames.size(); ++i) {
+                BusEndpoint* memberEp = router.FindEndpoint(memberNames[i]);
+                if (memberEp && (memberEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
+                    VirtualEndpoint* vMemberEp = static_cast<VirtualEndpoint*>(memberEp);
+                    RemoteEndpoint* b2bEp = vMemberEp->GetBusToBusEndpoint(id);
+                    if (b2bEp) {
+                        uint32_t tTimeout = reqLinkTimeout;
+                        QStatus tStatus = b2bEp->SetLinkTimeout(tTimeout);
+                        status = (status == ER_OK) ? tStatus : status;
+                        actLinkTimeout = ((tTimeout == 0) || (actLinkTimeout == 0)) ? 0 : max(actLinkTimeout, tTimeout);
+                        foundEp = true;
+                    }
+                }
+            }
+        }
+        ++it;
+    }
+    ReleaseLocks();
+
+    /* Set disposition */
+    if (status == ER_ALLJOYN_SETLINKTIMEOUT_REPLY_NO_DEST_SUPPORT) {
+        disposition = ALLJOYN_SETLINKTIMEOUT_REPLY_NO_DEST_SUPPORT;
+    } else if (!foundEp) {
+        disposition = ALLJOYN_SETLINKTIMEOUT_REPLY_NO_SESSION;
+        actLinkTimeout = 0;
+    } else if (status != ER_OK) {
+        disposition = ALLJOYN_SETLINKTIMEOUT_REPLY_FAILED;
+        actLinkTimeout = 0;
+    } else {
+        disposition = ALLJOYN_SETLINKTIMEOUT_REPLY_SUCCESS;
+    }
+
+    /* Send response */
+    MsgArg replyArgs[2];
+    replyArgs[0].Set("u", disposition);
+    replyArgs[1].Set("u", actLinkTimeout);
+    status = MethodReply(msg, replyArgs, ArraySize(replyArgs));
     if (status != ER_OK) {
         QCC_LogError(status, ("Failed to respond to org.alljoyn.Bus.GetSessionFd"));
     }
