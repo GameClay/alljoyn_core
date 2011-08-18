@@ -250,7 +250,7 @@ static QStatus SendSocketCreds(SocketFd sockFd, uid_t uid, gid_t gid, pid_t pid)
     int enableCred = 1;
     int rc = setsockopt(sockFd, SOL_SOCKET, SO_PASSCRED, &enableCred, sizeof(enableCred));
     if (rc == -1) {
-        QCC_LogError(status, ("UnixTransport(): setsockopt(SO_PASSCRED) failed"));
+        QCC_LogError(ER_OS_ERROR, ("UnixTransport(): setsockopt(SO_PASSCRED) failed"));
         qcc::Close(sockFd);
         return ER_OS_ERROR;
     }
@@ -287,20 +287,20 @@ static QStatus SendSocketCreds(SocketFd sockFd, uid_t uid, gid_t gid, pid_t pid)
 
     ret = sendmsg(sockFd, &msg, 0);
     if (ret != 1) {
-        return ERR_OS_ERROR;
+        return ER_OS_ERROR;
     }
 
     /*
      * If we don't disable this every read will have credentials which adds overhead if have
      * enabled unix file descriptor passing.
      */
-    enableCred = 0;
-    rc = setsockopt(sockFd, SOL_SOCKET, SO_PASSCRED, &enableCred, sizeof(enableCred));
+    int disableCred = 0;
+    rc = setsockopt(sockFd, SOL_SOCKET, SO_PASSCRED, &disableCred, sizeof(disableCred));
     if (rc == -1) {
-        QCC_LogError(status, ("UnixTransport(): setsockopt(SO_PASSCRED) failed"));
+        QCC_LogError(ER_OS_ERROR, ("UnixTransport(): setsockopt(SO_PASSCRED) failed"));
     }
 
-    return ERR_OK;
+    return ER_OK;
 #endif
 }
 

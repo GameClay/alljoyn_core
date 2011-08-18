@@ -277,6 +277,8 @@ class DaemonUnixTransport : public Transport, public RemoteEndpoint::EndpointLis
      */
     qcc::ThreadReturn STDCALL Run(void* arg);
 
+    QStatus GetSocketCreds(qcc::SocketFd sockFd, uid_t* uid, gid_t* gid, pid_t* pid);
+
     static const int CRED_TIMEOUT = 5000;  /**< Times out credentials exchange to avoid denial of service attack */
 };
 

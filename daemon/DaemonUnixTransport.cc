@@ -222,7 +222,7 @@ void DaemonUnixTransport::EndpointExit(RemoteEndpoint* ep)
     delete uep;
 }
 
-static QStatus GetSocketCreds(SocketFd sockFd, uid_t*uid, gid_t*gid, pid_t*pid)
+QStatus DaemonUnixTransport::GetSocketCreds(SocketFd sockFd, uid_t* uid, gid_t* gid, pid_t* pid)
 {
     QStatus status = ER_OK;
 #if defined(QCC_OS_DARWIN)
@@ -242,7 +242,6 @@ static QStatus GetSocketCreds(SocketFd sockFd, uid_t*uid, gid_t*gid, pid_t*pid)
 
     if (status == ER_OK) {
         qcc::String authName;
-        DaemonUnixEndpoint* conn;
         ssize_t ret;
         char nulbuf = 255;
         struct cmsghdr* cmsg;
@@ -258,10 +257,10 @@ static QStatus GetSocketCreds(SocketFd sockFd, uid_t*uid, gid_t*gid, pid_t*pid)
         msg.msg_controllen = CMSG_LEN(sizeof(struct ucred));
 
         while (true) {
-            ret = recvmsg(newSock, &msg, 0);
+            ret = recvmsg(sockFd, &msg, 0);
             if (ret == -1) {
                 if (errno == EWOULDBLOCK) {
-                    qcc::Event event(newSock, qcc::Event::IO_READ, false);
+                    qcc::Event event(sockFd, qcc::Event::IO_READ, false);
                     status = Event::Wait(event, CRED_TIMEOUT);
                     if (status != ER_OK) {
                         QCC_LogError(status, ("Credentials exhange timeout"));
