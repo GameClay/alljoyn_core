@@ -63,7 +63,7 @@
 
 #if !defined(DAEMON_LIB)
 
-#if defined(QCC_OS_LINUX)
+#if defined(QCC_OS_LINUX) || defined(QCC_OS_ANDROID)
 #include <sys/prctl.h>
 #include <linux/capability.h>
 extern "C" {
@@ -652,7 +652,7 @@ int main(int argc, char** argv, char** env)
 
 #if !defined(DAEMON_LIB)
     if (!opts.GetNoSwitchUser()) {
-#if defined(QCC_OS_LINUX)
+#if defined(QCC_OS_LINUX) || defined(QCC_OS_ANDROID)
         // Keep all capabilities before switching users
         prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0);
 #endif
@@ -683,7 +683,7 @@ int main(int argc, char** argv, char** env)
         }
 #endif
 
-#if defined(QCC_OS_LINUX)
+#if defined(QCC_OS_LINUX) || defined(QCC_OS_ANDROID)
         // Set the capabilities we need.
         struct __user_cap_header_struct header;
         struct __user_cap_data_struct cap;
