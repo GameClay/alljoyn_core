@@ -362,7 +362,6 @@ QStatus UnixTransport::Connect(const char* connectArgs, const SessionOpts& opts,
 
     status = SendSocketCreds(sockFd, GetUid(), GetGid(), GetPid());
     if (status == ER_OK) {
-        conn = new UnixEndpoint(m_bus, false, normSpec, sockFd);
         m_endpointListLock.Lock();
         if (m_stopping) {
             m_endpointListLock.Unlock();
