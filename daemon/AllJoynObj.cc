@@ -612,7 +612,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                     TransportList& transList = ajObj.bus.GetInternal().GetTransportList();
                     Transport* trans = transList.GetTransport(busAddrs[i]);
                     if (trans != NULL) {
-                        status = trans->Connect(busAddrs[i].c_str(), &b2bEp);
+                        status = trans->Connect(busAddrs[i].c_str(), optsIn, &b2bEp);
                         if (status == ER_OK) {
                             b2bEpName = b2bEp->GetUniqueName();
                             busAddr = busAddrs[i];
@@ -1135,7 +1135,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                     replyCode = ALLJOYN_JOINSESSION_REPLY_UNREACHABLE;
                 } else {
                     ReleaseLocks();
-                    status = trans->Connect(busAddr, &b2bEp);
+                    status = trans->Connect(busAddr, optsIn, &b2bEp);
                     AcquireLocks();
                     if (status == ER_OK) {
                         b2bEpName = b2bEp->GetUniqueName();
@@ -1672,7 +1672,7 @@ void AllJoynObj::SetLinkTimeout(const InterfaceDescription::Member* member, Mess
         if (entry.opts.traffic == SessionOpts::TRAFFIC_MESSAGES) {
             vector<String> memberNames = entry.memberNames;
             memberNames.push_back(entry.sessionHost);
-            for (int i = 0; i < memberNames.size(); ++i) {
+            for (size_t i = 0; i < memberNames.size(); ++i) {
                 BusEndpoint* memberEp = router.FindEndpoint(memberNames[i]);
                 if (memberEp && (memberEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) {
                     VirtualEndpoint* vMemberEp = static_cast<VirtualEndpoint*>(memberEp);

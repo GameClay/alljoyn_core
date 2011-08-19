@@ -898,7 +898,7 @@ QStatus DaemonTCPTransport::NormalizeTransportSpec(const char* inSpec, qcc::Stri
     return ER_OK;
 }
 
-QStatus DaemonTCPTransport::Connect(const char* connectSpec, RemoteEndpoint** newep)
+QStatus DaemonTCPTransport::Connect(const char* connectSpec, const SessionOpts& opts, RemoteEndpoint** newep)
 {
     QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): %s", connectSpec));
 

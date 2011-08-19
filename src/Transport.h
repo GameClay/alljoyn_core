@@ -186,11 +186,13 @@ class Transport {
      *
      * @param connectSpec    Transport specific key/value args used to configure the client-side endpoint.
      *                       The form of this string is @c "<transport>:<key1>=<val1>,<key2>=<val2>..."
+     * @param opts           Requested sessions opts.
+     * @param newep          [OUT] Endpoint created as a result of successful connect.
      * @return
      *      - ER_OK if successful.
      *      - an error status otherwise.
      */
-    virtual QStatus Connect(const char* connectSpec, RemoteEndpoint** newep) = 0;
+    virtual QStatus Connect(const char* connectSpec, const SessionOpts& opts, RemoteEndpoint** newep) = 0;
 
     /**
      * Disconnect from a specified AllJoyn/DBus address.

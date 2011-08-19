@@ -233,7 +233,8 @@ QStatus BusAttachment::Connect(const char* connectSpec, RemoteEndpoint** newep)
         /* Get or create transport for connection */
         Transport* trans = busInternal->transportList.GetTransport(connectSpec);
         if (trans) {
-            status = trans->Connect(connectSpec, newep);
+            SessionOpts emptyOpts;
+            status = trans->Connect(connectSpec, emptyOpts, newep);
         } else {
             status = ER_BUS_TRANSPORT_NOT_AVAILABLE;
         }

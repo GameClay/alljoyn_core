@@ -314,7 +314,7 @@ void BTTransport::DisableAdvertisement(const qcc::String& advertiseName, bool na
 }
 
 
-QStatus BTTransport::Connect(const char* connectSpec, RemoteEndpoint** newep)
+QStatus BTTransport::Connect(const char* connectSpec, const SessionOpts& opts, RemoteEndpoint** newep)
 {
     QCC_DbgTrace(("BTTransport::Connect(connectSpec = \"%s\")", connectSpec));
     if (!btmActive) {

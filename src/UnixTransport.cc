@@ -304,7 +304,7 @@ static QStatus SendSocketCreds(SocketFd sockFd, uid_t uid, gid_t gid, pid_t pid)
 #endif
 }
 
-QStatus UnixTransport::Connect(const char* connectArgs, RemoteEndpoint** newep)
+QStatus UnixTransport::Connect(const char* connectArgs, const SessionOpts& opts, RemoteEndpoint** newep)
 {
     /*
      * Parse and normalize the connectArgs.  For a client or service, there are

@@ -230,7 +230,7 @@ QStatus TCPTransport::NormalizeTransportSpec(const char* inSpec, qcc::String& ou
     return ER_OK;
 }
 
-QStatus TCPTransport::Connect(const char* connectSpec, RemoteEndpoint** newep)
+QStatus TCPTransport::Connect(const char* connectSpec, const SessionOpts& opts, RemoteEndpoint** newep)
 {
     QCC_DbgHLPrintf(("TCPTransport::Connect(): %s", connectSpec));
 

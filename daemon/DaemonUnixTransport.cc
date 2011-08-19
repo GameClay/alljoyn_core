@@ -442,7 +442,7 @@ QStatus DaemonUnixTransport::NormalizeTransportSpec(const char* inSpec, qcc::Str
     return status;
 }
 
-QStatus DaemonUnixTransport::Connect(const char* connectArgs, RemoteEndpoint** newep)
+QStatus DaemonUnixTransport::Connect(const char* connectArgs, const SessionOpts& opts, RemoteEndpoint** newep)
 {
     /* The daemon doesn't make outgoing connections over this transport */
     return ER_NOT_IMPLEMENTED;

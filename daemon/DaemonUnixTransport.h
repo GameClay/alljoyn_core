@@ -119,12 +119,14 @@ class DaemonUnixTransport : public Transport, public RemoteEndpoint::EndpointLis
      *                             - Valid keys are:
      *                                 - @c path = Filesystem path name for AF_UNIX socket
      *                                 - @c abstract = Abstract (unadvertised) filesystem path for AF_UNIX socket.
+     * @param opts           Requested sessions opts.
+     * @param newep          [OUT] Endpoint created as a result of successful connect.
      *
      * @return
      *      - ER_OK if successful.
      *      - an error status otherwise.
      */
-    QStatus Connect(const char* connectSpec, RemoteEndpoint** newep);
+    QStatus Connect(const char* connectSpec, const SessionOpts& opts, RemoteEndpoint** newep);
 
     /**
      * Disconnect from a given unix endpoint.

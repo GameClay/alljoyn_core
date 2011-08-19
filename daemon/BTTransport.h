@@ -187,13 +187,15 @@ class BTTransport :
      *                    - Valid keys are:
      *                        - @c addr = Bluetooth device address
      *                        - @c name = Bluetooth Bus name
+     * @param opts           Requested sessions opts.
+     * @param newep          [OUT] Endpoint created as a result of successful connect.
      *
      * @return
      *      - ER_OK if successful.
      *      - ER_BUS_BAD_TRANSPORT_ARGS if unable to parse the @c connectSpec param
      *      - An error status otherwise
      */
-    QStatus Connect(const char* connectSpec, RemoteEndpoint** newep);
+    QStatus Connect(const char* connectSpec, const SessionOpts& opts, RemoteEndpoint** newep);
 
     /**
      * Disconnect a bluetooth endpoint

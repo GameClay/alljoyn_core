@@ -498,9 +498,11 @@ class LocalTransport : public Transport {
      * Connect a local endpoint. (Not used for local transports)
      *
      * @param connectSpec     Unused parameter.
+     * @param opts            Requested sessions opts.
+     * @param newep           [OUT] Endpoint created as a result of successful connect.
      * @return  ER_NOT_IMPLEMENTED.
      */
-    QStatus Connect(const char* connectSpec, RemoteEndpoint** newep) { return ER_NOT_IMPLEMENTED; }
+    QStatus Connect(const char* connectSpec, const SessionOpts& opts, RemoteEndpoint** newep) { return ER_NOT_IMPLEMENTED; }
 
     /**
      * Disconnect a local endpoint. (Not used for local transports)
