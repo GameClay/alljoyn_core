@@ -1661,8 +1661,6 @@ void AllJoynObj::SetLinkTimeout(const InterfaceDescription::Member* member, Mess
     uint32_t disposition;
     QStatus status = ER_OK;
 
-    QCC_DbgTrace(("AllJoynObj::SetLinkTimeout(0x%x, %d)", id, reqLinkTimeout));
-
     /* Set the link timeout on all endpoints that are involved in this session */
     AcquireLocks();
     pair<String, SessionId> key(msg->GetSender(), id);
@@ -1684,6 +1682,12 @@ void AllJoynObj::SetLinkTimeout(const InterfaceDescription::Member* member, Mess
                         actLinkTimeout = ((tTimeout == 0) || (actLinkTimeout == 0)) ? 0 : max(actLinkTimeout, tTimeout);
                         foundEp = true;
                     }
+                } else if (memberEp && (memberEp->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_REMOTE)) {
+                    /*
+                     * This is a locally connected client. These clients do not have per-session connecions
+                     * therefore we silently allow this as if we had granted the user's request
+                     */
+                    foundEp = true;
                 }
             }
         }
@@ -1710,8 +1714,10 @@ void AllJoynObj::SetLinkTimeout(const InterfaceDescription::Member* member, Mess
     replyArgs[1].Set("u", actLinkTimeout);
     status = MethodReply(msg, replyArgs, ArraySize(replyArgs));
     if (status != ER_OK) {
-        QCC_LogError(status, ("Failed to respond to org.alljoyn.Bus.GetSessionFd"));
+        QCC_LogError(status, ("Failed to respond to org.alljoyn.Bus.SetLinkTimeout"));
     }
+    QCC_DbgTrace(("AllJoynObj::SetLinkTimeout(0x%x, %d) (status=%s, disp=%d, lto=%d)", id, reqLinkTimeout,
+                  QCC_StatusText(status), disposition, actLinkTimeout));
 }
 
 void AllJoynObj::AdvertiseName(const InterfaceDescription::Member* member, Message& msg)
