@@ -20,6 +20,7 @@
  *    limitations under the License.
  ******************************************************************************/
 #include "LaunchdTransport.h"
+#include <qcc/StringUtil.h>
 
 #define QCC_MODULE "ALLJOYN"
 
@@ -56,6 +57,7 @@ QStatus LaunchdTransport::NormalizeTransportSpec(const char* inSpec, qcc::String
 
 QStatus LaunchdTransport::GetUnixTransportSpec(const char* launchdConnectSpec, qcc::String& unixConnectSpec)
 {
+#if defined(QCC_OS_DARWIN)
     QStatus status;
     qcc::String normSpec;
     map<qcc::String, qcc::String> argMap;
@@ -90,6 +92,9 @@ QStatus LaunchdTransport::GetUnixTransportSpec(const char* launchdConnectSpec, q
     }
     pclose(launchctl);
     return status;
+#else
+    return ER_NOT_IMPLEMENTED;
+#endif
 }
 
 QStatus LaunchdTransport::Connect(const char* connectArgs, const SessionOpts& opts, RemoteEndpoint** newep)

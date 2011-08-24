@@ -26,6 +26,7 @@
 #if defined(QCC_OS_DARWIN)
 #include <launch.h>
 #endif
+#include <qcc/StringUtil.h>
 
 #define QCC_MODULE "ALLJOYN"
 
