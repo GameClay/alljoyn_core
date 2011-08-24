@@ -454,6 +454,47 @@ QStatus DaemonUnixTransport::Disconnect(const char* connectSpec)
     return ER_NOT_IMPLEMENTED;
 }
 
+QStatus DaemonUnixTransport::ListenFd(map<qcc::String, qcc::String>& serverArgs, SocketFd& listenFd)
+{
+    QStatus status = Socket(QCC_AF_UNIX, QCC_SOCK_STREAM, listenFd);
+    if (status != ER_OK) {
+        QCC_LogError(status, ("DaemonUnixTransport::StartListen(): Socket() failed"));
+        return status;
+    }
+
+    /* Calculate bindAddr */
+    qcc::String bindAddr;
+    if (status == ER_OK) {
+        if (!serverArgs["path"].empty()) {
+            bindAddr = serverArgs["path"];
+        } else if (!serverArgs["abstract"].empty()) {
+            bindAddr = qcc::String("@") + serverArgs["abstract"];
+        } else {
+            status = ER_BUS_BAD_TRANSPORT_ARGS;
+            QCC_LogError(status, ("DaemonUnixTransport::StartListen(): Invalid listen spec for unix transport"));
+            return status;
+        }
+    }
+
+    /*
+     * Bind the socket to the listen address and start listening for incoming
+     * connections on it.
+     */
+    status = Bind(listenFd, bindAddr.c_str());
+    if (ER_OK == status) {
+        status = qcc::Listen(listenFd, 0);
+        if (ER_OK == status) {
+            QCC_DbgPrintf(("DaemonUnixTransport::StartListen(): Listening on %s", bindAddr.c_str()));
+        } else {
+            QCC_LogError(status, ("DaemonUnixTransport::StartListen(): Listen failed"));
+        }
+    } else {
+        QCC_LogError(status, ("DaemonUnixTransport::StartListen(): Failed to bind to %s", bindAddr.c_str()));
+    }
+
+    return status;
+}
+
 QStatus DaemonUnixTransport::StartListen(const char* listenSpec)
 {
     /*
@@ -488,44 +529,13 @@ QStatus DaemonUnixTransport::StartListen(const char* listenSpec)
     }
 
     SocketFd listenFd = -1;
-    status = Socket(QCC_AF_UNIX, QCC_SOCK_STREAM, listenFd);
+    status = ListenFd(serverArgs, listenFd);
     if (status != ER_OK) {
         m_listenFdsLock.Unlock();
-        QCC_LogError(status, ("DaemonUnixTransport::StartListen(): Socket() failed"));
         return status;
     }
 
-    /* Calculate bindAddr */
-    qcc::String bindAddr;
-    if (status == ER_OK) {
-        if (!serverArgs["path"].empty()) {
-            bindAddr = serverArgs["path"];
-        } else if (!serverArgs["abstract"].empty()) {
-            bindAddr = qcc::String("@") + serverArgs["abstract"];
-        } else {
-            m_listenFdsLock.Unlock();
-            QCC_LogError(status, ("DaemonUnixTransport::StartListen(): Invalid listen spec for unix transport"));
-            return ER_BUS_BAD_TRANSPORT_ARGS;
-        }
-    }
-
-    /*
-     * Bind the socket to the listen address and start listening for incoming
-     * connections on it.
-     */
-    status = Bind(listenFd, bindAddr.c_str());
-    if (ER_OK == status) {
-        status = qcc::Listen(listenFd, 0);
-        if (status == ER_OK) {
-            QCC_DbgPrintf(("DaemonUnixTransport::StartListen(): Listening on %s", bindAddr.c_str()));
-            m_listenFds.push_back(pair<qcc::String, SocketFd>(normSpec, listenFd));
-        } else {
-            QCC_LogError(status, ("DaemonUnixTransport::StartListen(): Listen failed"));
-        }
-    } else {
-        QCC_LogError(status, ("DaemonUnixTransport::StartListen(): Failed to bind to %s", bindAddr.c_str()));
-    }
-
+    m_listenFds.push_back(pair<qcc::String, SocketFd>(normSpec, listenFd));
     m_listenFdsLock.Unlock();
 
     /*

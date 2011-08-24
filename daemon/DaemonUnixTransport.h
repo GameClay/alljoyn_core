@@ -262,6 +262,18 @@ class DaemonUnixTransport : public Transport, public RemoteEndpoint::EndpointLis
      */
     void EndpointExit(RemoteEndpoint* endpoint);
 
+  protected:
+    /**
+     * The socket that this transport accepts connections from.  Called by
+     * StartListen().
+     *
+     * @param[in] serverArgs The arguments of the listen spec.
+     * @param[out] listenFd The bound and listening socket FD.
+     *
+     * @return ER_OK if successful.
+     */
+    virtual QStatus ListenFd(std::map<qcc::String, qcc::String>& serverArgs, qcc::SocketFd& listenFd);
+
   private:
     BusAttachment& m_bus;                                          /**< The message bus for this transport */
     bool m_stopping;                                               /**< True if Stop() has been called but endpoints still exist */

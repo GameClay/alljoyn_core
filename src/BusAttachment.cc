@@ -55,6 +55,7 @@
 #include "BusInternal.h"
 #include "AllJoynPeerObj.h"
 #include "XmlHelper.h"
+#include "LaunchdTransport.h"
 
 #define QCC_MODULE "ALLJOYN"
 
@@ -130,12 +131,13 @@ class LocalTransportFactoryContainer : public TransportFactoryContainer {
   public:
     LocalTransportFactoryContainer()
     {
-#ifdef QCC_OS_WINDOWS
+#if defined(QCC_OS_WINDOWS)
         Add(new TransportFactory<TCPTransport>("tcp", true));
+#elif defined(QCC_OS_DARWIN)
+        Add(new TransportFactory<LaunchdTransport>("launchd", true));
 #else
         Add(new TransportFactory<UnixTransport>("unix", true));
 #endif
-
     }
 } localTransportsContainer;
 

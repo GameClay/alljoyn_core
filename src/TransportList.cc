@@ -28,6 +28,9 @@
 #ifndef QCC_OS_WINDOWS
 #include "UnixTransport.h"
 #endif
+#ifdef QCC_OS_DARWIN
+#include "LaunchdTransport.h"
+#endif
 
 #define QCC_MODULE "ALLJOYN"
 

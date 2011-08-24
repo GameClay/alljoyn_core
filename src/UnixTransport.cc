@@ -314,7 +314,7 @@ QStatus UnixTransport::Connect(const char* connectArgs, const SessionOpts& opts,
     QStatus status;
     qcc::String normSpec;
     map<qcc::String, qcc::String> argMap;
-    status = NormalizeTransportSpec(connectArgs, normSpec, argMap);
+    status = UnixTransport::NormalizeTransportSpec(connectArgs, normSpec, argMap);
     if (ER_OK != status) {
         QCC_LogError(status, ("UnixTransport::Connect(): Invalid Unix connect spec \"%s\"", connectArgs));
         return status;
@@ -439,7 +439,7 @@ QStatus UnixTransport::Disconnect(const char* connectSpec)
      */
     qcc::String normSpec;
     map<qcc::String, qcc::String> argMap;
-    QStatus status = NormalizeTransportSpec(connectSpec, normSpec, argMap);
+    QStatus status = UnixTransport::NormalizeTransportSpec(connectSpec, normSpec, argMap);
     if (ER_OK != status) {
         QCC_LogError(status, ("UnixTransport::Disconnect(): Invalid Unix connect spec \"%s\"", connectSpec));
         return status;
