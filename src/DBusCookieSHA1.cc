@@ -202,14 +202,6 @@ qcc::String AuthMechDBusCookieSHA1::InitialResponse(AuthResult& result)
 }
 
 
-static qcc::String RandHex(uint16_t len)
-{
-    Crypto_BigNum bigNum;
-    bigNum.GenerateRandomValue(len * 8);
-    return bigNum.RenderString(true /* toLower */);
-}
-
-
 #define NONCE_LEN 32
 
 /*
@@ -260,7 +252,7 @@ qcc::String AuthMechDBusCookieSHA1::Response(const qcc::String& inChallenge,
             QStatus status = ReadCookie(cookieContext.c_str(), userName, cookieId, cookie);
             if (status == ER_OK) {
                 qcc::String& srvNonce = challenge.erase(0, pos + 1);
-                qcc::String cliNonce = RandHex(NONCE_LEN);
+                qcc::String cliNonce = RandHexString(NONCE_LEN, true /*toLower*/);
                 response = cliNonce + ' ' + ComputeSHA1(cookie, srvNonce, cliNonce);
                 /*
                  * The client's part is done
@@ -303,7 +295,7 @@ qcc::String AuthMechDBusCookieSHA1::Challenge(const qcc::String& inResponse,
         userName = response;
         status = ChooseCookie(DEFAULT_COOKIE_CONTEXT, userName, cookieId, cookie);
         if (status == ER_OK) {
-            nonce = RandHex(NONCE_LEN);
+            nonce = RandHexString(NONCE_LEN, true /*toLower*/);
             challenge = DEFAULT_COOKIE_CONTEXT;
             challenge += ' ' + I32ToString(cookieId);
             challenge += ' ' + nonce;

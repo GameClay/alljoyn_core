@@ -304,7 +304,7 @@ int main(int argc, char** argv)
         size_t len = HexStringToBytes(testVector[i].input, msg, sizeof(msg), ' ');
 
         KeyBlob kb(key, keyLen, KeyBlob::AES);
-        Crypto_AES aes(kb, Crypto_AES::ENCRYPT);
+        Crypto_AES aes(kb, Crypto_AES::CCM);
 
         status = aes.Encrypt_CCM(msg, len, testVector[i].hdrLen, nonce, testVector[i].authLen);
         if (status != ER_OK) {

@@ -74,7 +74,7 @@ int main(int argc, char** argv)
         /*
          * Encrypt our test string
          */
-        Crypto_AES aes(key, Crypto_AES::ENCRYPT);
+        Crypto_AES aes(key, Crypto_AES::ECB_ENCRYPT);
         status = aes.Encrypt(testData, sizeof(testData), encrypted, Crypto_AES::NumBlocks(sizeof(testData)));
         if (status != ER_OK) {
             printf("Encrypt failed\n");
@@ -130,7 +130,7 @@ int main(int argc, char** argv)
          */
         {
             char* out = new char[sizeof(testData)];
-            Crypto_AES aes(inKey, Crypto_AES::DECRYPT);
+            Crypto_AES aes(inKey, Crypto_AES::ECB_DECRYPT);
             status = aes.Decrypt(encrypted, Crypto_AES::NumBlocks(sizeof(testData)), out, sizeof(testData));
             if (status != ER_OK) {
                 printf("Encrypt failed\n");

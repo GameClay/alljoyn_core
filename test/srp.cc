@@ -32,13 +32,29 @@
 #include <qcc/BigNum.h>
 
 #include <alljoyn/version.h>
+#include <alljoyn/BusAttachment.h>
+#include <alljoyn/AuthListener.h>
 
 #include <Status.h>
+
+/* Private files included for unit testing */
+#include <SASLEngine.h>
 
 #define QCC_MODULE "CRYPTO"
 
 using namespace qcc;
 using namespace std;
+using namespace ajn;
+
+class SRPAuthListener : public AuthListener {
+    bool RequestCredentials(const char* authMechanism, const char* authPeer, uint16_t authCount, const char* userId, uint16_t credMask, Credentials& creds) {
+        creds.SetPassword("123456");
+        return true;
+    }
+    void AuthenticationComplete(const char* authMechanism, const char* authPeer, bool success) {
+        printf("Authentication %s %s\n", authMechanism, success ? "succesful" : "failed");
+    }
+};
 
 int main(int argc, char** argv)
 {
@@ -69,7 +85,7 @@ int main(int argc, char** argv)
     /*
      * Basic API test.
      */
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 1; ++i) {
         {
             Crypto_SRP client;
             Crypto_SRP server;
@@ -172,6 +188,41 @@ int main(int argc, char** argv)
 
         }
         printf("#################################\n");
+    }
+
+    /*
+     * Now test the SRP authentication mechanism
+     */
+    {
+
+        BusAttachment bus("srp");
+        SRPAuthListener authListener;
+        bus.EnablePeerSecurity("ALLJOYN_SRP_KEYX", &authListener);
+
+        SASLEngine responder(bus, ajn::AuthMechanism::RESPONDER, "ALLJOYN_SRP_KEYX", "1:1", &authListener);
+        SASLEngine challenger(bus, ajn::AuthMechanism::CHALLENGER, "ALLJOYN_SRP_KEYX", "1:1", &authListener);
+
+        SASLEngine::AuthState rState = SASLEngine::ALLJOYN_AUTH_FAILED;
+        SASLEngine::AuthState cState = SASLEngine::ALLJOYN_AUTH_FAILED;
+
+        qcc::String rStr;
+        qcc::String cStr;
+
+        while (status == ER_OK) {
+            status = responder.Advance(cStr, rStr, rState);
+            if (status != ER_OK) {
+                printf("Responder returned %s\n", QCC_StatusText(status));
+                goto TestFail;
+            }
+            status = challenger.Advance(rStr, cStr, cState);
+            if (status != ER_OK) {
+                printf("Challenger returned %s\n", QCC_StatusText(status));
+                goto TestFail;
+            }
+            if ((rState == SASLEngine::ALLJOYN_AUTH_SUCCESS) && (cState == SASLEngine::ALLJOYN_AUTH_SUCCESS)) {
+                break;
+            }
+        }
     }
 
     printf("Passed\n");

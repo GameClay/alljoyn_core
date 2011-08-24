@@ -118,9 +118,9 @@ int main()
     CHECK(memcmp(buf, Prime1024, sizeof(Prime1024)) == 0);
 
     // test that zero padding works
-    bn1.get_bytes(buf, 13 + sizeof(Prime1024), true/* pad */);
+    bn1.get_bytes(buf, 13 + sizeof(Prime1024), true /* pad */);
     CHECK(memcmp(buf + 13, Prime1024, sizeof(Prime1024)) == 0);
-    CHECK(memcmp(buf, zeroes, 13) == 0); 
+    CHECK(memcmp(buf, zeroes, 13) == 0);
 
     bn1.set_hex("0x10000000000000000");
     bn2.set_hex("0x10000000000000001");

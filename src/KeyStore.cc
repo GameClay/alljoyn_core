@@ -353,7 +353,7 @@ QStatus KeyStore::Pull(Source& source, const qcc::String& password)
              * Decrypt the key store.
              */
             KeyBlob nonce((uint8_t*)&revision, sizeof(revision), KeyBlob::GENERIC);
-            Crypto_AES aes(*keyStoreKey, Crypto_AES::ENCRYPT);
+            Crypto_AES aes(*keyStoreKey, Crypto_AES::CCM);
             status = aes.Decrypt_CCM(data, data, len, nonce, NULL, 0, 16);
             /*
              * Unpack the guid/key pairs from an intermediate string source.
@@ -551,7 +551,7 @@ QStatus KeyStore::Push(Sink& sink)
          */
         KeyBlob nonce((uint8_t*)&revision, sizeof(revision), KeyBlob::GENERIC);
         uint8_t* keysData = new uint8_t[keysLen + 16];
-        Crypto_AES aes(*keyStoreKey, Crypto_AES::ENCRYPT);
+        Crypto_AES aes(*keyStoreKey, Crypto_AES::CCM);
         status = aes.Encrypt_CCM(strSink.GetString().data(), keysData, keysLen, nonce, NULL, 0, 16);
         /* Store the length of the encrypted keys */
         if (status == ER_OK) {

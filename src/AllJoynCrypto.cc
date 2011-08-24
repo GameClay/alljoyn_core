@@ -102,7 +102,7 @@ QStatus Crypto::Encrypt(const Message& message, const KeyBlob& keyBlob, uint8_t*
         QCC_DbgHLPrintf(("Encrypt key:   %s", BytesToHexString(keyBlob.GetData(), keyBlob.GetSize()).c_str()));
         QCC_DbgHLPrintf(("        nonce: %s", BytesToHexString(nonce.GetData(), nonce.GetSize()).c_str()));
 
-        Crypto_AES aes(keyBlob, Crypto_AES::ENCRYPT);
+        Crypto_AES aes(keyBlob, Crypto_AES::CCM);
         if (message->GetFlags() & ALLJOYN_FLAG_COMPRESSED) {
             /*
              * To prevent an attack where the attacker sends a bogus expansion rule we
@@ -144,7 +144,7 @@ QStatus Crypto::Decrypt(const Message& message, const KeyBlob& keyBlob, uint8_t*
         QCC_DbgHLPrintf(("Decrypt key:   %s", BytesToHexString(keyBlob.GetData(), keyBlob.GetSize()).c_str()));
         QCC_DbgHLPrintf(("        nonce: %s", BytesToHexString(nonce.GetData(), nonce.GetSize()).c_str()));
 
-        Crypto_AES aes(keyBlob, Crypto_AES::ENCRYPT);
+        Crypto_AES aes(keyBlob, Crypto_AES::CCM);
         if (message->GetFlags() & ALLJOYN_FLAG_COMPRESSED) {
             /*
              * To prevent an attack where the attacker sends a bogus expansion rule we

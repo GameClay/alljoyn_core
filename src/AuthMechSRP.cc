@@ -74,11 +74,13 @@ void AuthMechSRP::ComputeMS()
     uint8_t keymatter[48];
     KeyBlob pms;
     srp.GetPremasterSecret(pms);
+    QCC_DbgHLPrintf(("PMS:  %s", BytesToHexString(pms.GetData(), pms.GetSize()).c_str()));
     /*
      * Use the PRF function to compute the master secret.
      */
     Crypto_PseudorandomFunction(pms, label, clientRandom + serverRandom, keymatter, sizeof(keymatter));
     masterSecret.Set(keymatter, sizeof(keymatter), KeyBlob::GENERIC);
+    QCC_DbgHLPrintf(("MasterSecret:  %s", BytesToHexString(masterSecret.GetData(), masterSecret.GetSize()).c_str()));
 }
 
 /*
@@ -99,7 +101,7 @@ qcc::String AuthMechSRP::ComputeVerifier(const char* label)
      */
     qcc::String seed((const char*)digest, sizeof(digest));
     Crypto_PseudorandomFunction(masterSecret, label, seed, verifier, sizeof(verifier));
-    QCC_DbgHLPrintf(("Verifier:  %s", BytesToHexString(verifier, sizeof(verifier)).c_str()));
+    QCC_DbgHLPrintf(("Verifier(%s):  %s", label, BytesToHexString(verifier, sizeof(verifier)).c_str()));
     return BytesToHexString(verifier, sizeof(verifier));
 }
 
@@ -141,12 +143,16 @@ qcc::String AuthMechSRP::Response(const qcc::String& challenge,
 
     case 2:
         /*
-         * Server sends a random nonce concatenated wiht a verifier string.
+         * Server sends a random nonce concatenated with a verifier string.
          */
         pos = challenge.find_first_of(":");
         serverRandom = HexStringToByteString(challenge.substr(0, pos));
         if (pos == qcc::String::npos) {
-            result = ALLJOYN_AUTH_ERROR;
+            /*
+             * String is incorrectly formatted - fail the authentication
+             */
+            QCC_LogError(ER_FAIL, ("AuthMechSRP::Response has wrong format"));
+            result = ALLJOYN_AUTH_FAIL;
             break;
         }
         if (listener->RequestCredentials(GetName(), authPeer.c_str(), authCount, "", AuthListener::CRED_PASSWORD, creds)) {

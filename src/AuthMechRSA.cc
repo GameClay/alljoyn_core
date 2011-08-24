@@ -98,16 +98,16 @@ QStatus AuthMechRSA::Init(AuthRole authRole, const qcc::String& authPeer)
         if (status != ER_OK) {
             status = local.rsa.MakeSelfCertificate(peerGuid.ToString(), keyStore.GetApplication());
             if (status == ER_OK) {
-                qcc::String pkcs8;
+                KeyBlob privBlob;
                 /*
                  * Get the new cert
                  */
-                status = local.rsa.PublicToPEM(local.certChain);
+                status = local.rsa.ExportPEM(local.certChain);
                 if (status == ER_OK) {
                     /*
                      * Encrypt the private key.
                      */
-                    status = local.rsa.PrivateToPEM(pkcs8, this);
+                    status = local.rsa.ExportPrivateKey(privBlob, this);
                 }
                 /*
                  * Fail the authentication mechanism if the user rejected the passphrase request.
@@ -117,9 +117,8 @@ QStatus AuthMechRSA::Init(AuthRole authRole, const qcc::String& authPeer)
                 }
                 if (status == ER_OK) {
                     /*
-                     * Get the cert and private key into key blobs
+                     * Get the cert into a key blobs
                      */
-                    KeyBlob privBlob(pkcs8, KeyBlob::PKCS8);
                     KeyBlob certBlob(local.certChain, KeyBlob::PEM);
                     /*
                      * Store cert and private key in keystore.
@@ -140,19 +139,18 @@ QStatus AuthMechRSA::Init(AuthRole authRole, const qcc::String& authPeer)
             }
             KeyBlob privBlob;
             status = keyStore.GetKey(privGuid, privBlob);
-            if ((status == ER_OK) && (privBlob.GetType() == KeyBlob::PKCS8)) {
-                qcc::String pkcs8((const char*)privBlob.GetData(), privBlob.GetSize());
+            if ((status == ER_OK) && (privBlob.GetType() == KeyBlob::PRIVATE)) {
                 /*
                  * Decrypt the private key using the passphrase is there is one.
                  */
                 if (creds.IsSet(AuthListener::CRED_PASSWORD)) {
-                    status = local.rsa.FromPKCS8(pkcs8, creds.GetPassword());
+                    status = local.rsa.ImportPrivateKey(privBlob, creds.GetPassword());
                     authCount++;
                 } else {
                     status = ER_AUTH_FAIL;
                 }
                 while (status == ER_AUTH_FAIL) {
-                    status = local.rsa.FromPKCS8(pkcs8, this);
+                    status = local.rsa.ImportPrivateKey(privBlob, this);
                     authCount++;
                 }
             } else {
@@ -165,7 +163,7 @@ QStatus AuthMechRSA::Init(AuthRole authRole, const qcc::String& authPeer)
         /*
          * This verifies that the cert chain string contains at least one certificate.
          */
-        status = rsa.FromPEM(local.certChain);
+        status = rsa.ImportPEM(local.certChain);
         /*
          * Get private key.
          */
@@ -182,26 +180,21 @@ QStatus AuthMechRSA::Init(AuthRole authRole, const qcc::String& authPeer)
                  * We might already have the passphrase.
                  */
                 if (creds.IsSet(AuthListener::CRED_PASSWORD)) {
-                    status = local.rsa.FromPKCS8(pkcs8, creds.GetPassword());
+                    status = local.rsa.ImportPKCS8(pkcs8, creds.GetPassword());
                     creds.Clear();
                 } else {
-                    status = local.rsa.FromPKCS8(pkcs8, this);
+                    status = local.rsa.ImportPKCS8(pkcs8, this);
                 }
                 authCount++;
             } while (status == ER_AUTH_FAIL);
-            /*
-             * Store private key in the keystore.
-             */
-            if (status == ER_OK) {
-                KeyBlob privBlob(pkcs8, KeyBlob::PKCS8);
-                keyStore.AddKey(privGuid, privBlob);
-            }
         }
         /*
          * Store cert in the keystore. Note we don't store the entire cert chain.
          */
         if (status == ER_OK) {
-            KeyBlob certBlob(rsa.CertToString(), KeyBlob::PEM);
+            qcc::String pem;
+            rsa.ExportPEM(pem);
+            KeyBlob certBlob(pem, KeyBlob::PEM);
             keyStore.AddKey(certGuid, certBlob);
         }
     }
@@ -301,7 +294,7 @@ qcc::String AuthMechRSA::Response(const qcc::String& challenge,
         /*
          * Check we have a least one correctly encoded cert in the cert chain.
          */
-        status = remote.rsa.FromPEM(remote.certChain);
+        status = remote.rsa.ImportPEM(remote.certChain);
         /*
          * Call up to app to accept or reject the cert chain
          */
@@ -345,13 +338,14 @@ qcc::String AuthMechRSA::Response(const qcc::String& challenge,
             Crypto_SHA1 sha1(msgHash);
             sha1.GetDigest(digest);
             /*
-             * Sign (encrypt) msg hash with the client's private key.
+             * Sign msg hash with the client's private key.
              */
-            status = local.rsa.PrivateEncrypt(digest, sizeof(digest), outBytes, outLen);
+            status = local.rsa.SignDigest(digest, sizeof(digest), outBytes, outLen);
             if (status == ER_OK) {
                 response = BytesToHexString(outBytes, outLen);
                 result = ALLJOYN_AUTH_CONTINUE;
             }
+            delete [] outBytes;
         }
         break;
 
@@ -413,7 +407,7 @@ qcc::String AuthMechRSA::Challenge(const qcc::String& response,
         /*
          * Check we have a least one correctly encoded cert in the cert chain.
          */
-        status = remote.rsa.FromPEM(remote.certChain);
+        status = remote.rsa.ImportPEM(remote.certChain);
         /*
          * Call up to app to accept or reject the cert chain
          */
@@ -474,30 +468,19 @@ qcc::String AuthMechRSA::Challenge(const qcc::String& response,
     {
         size_t inLen = response.size() / 2;
         uint8_t* inBytes = new uint8_t[inLen];
-        size_t outLen = remote.rsa.MaxDigestSize();
-        uint8_t* outBytes = new uint8_t[outLen];
         /*
          * Decrypt client's certificate verification string.
          */
         if (HexStringToBytes(response, inBytes, inLen) != inLen) {
             status = ER_BAD_STRING_ENCODING;
         } else {
-            status = remote.rsa.PublicDecrypt(inBytes, inLen, outBytes, outLen);
-            if (status == ER_OK) {
-                if (outLen != Crypto_SHA1::DIGEST_SIZE) {
-                    status = ER_AUTH_FAIL;
-                } else {
-                    uint8_t digest[Crypto_SHA1::DIGEST_SIZE];
-                    /*
-                     * Snapshot msg hash and get the digest.
-                     */
-                    Crypto_SHA1 sha1(msgHash);
-                    sha1.GetDigest(digest);
-                    if (memcmp(digest, outBytes, sizeof(digest)) != 0) {
-                        status = ER_AUTH_FAIL;
-                    }
-                }
-            }
+            uint8_t digest[Crypto_SHA1::DIGEST_SIZE];
+            /*
+             * Snapshot msg hash and get the digest.
+             */
+            Crypto_SHA1 sha1(msgHash);
+            sha1.GetDigest(digest);
+            status = remote.rsa.VerifyDigest(digest, sizeof(digest), inBytes, inLen);
         }
         if (status == ER_OK) {
             msgHash.Update((const uint8_t*)response.data(), response.size());
@@ -507,7 +490,6 @@ qcc::String AuthMechRSA::Challenge(const qcc::String& response,
             result = ALLJOYN_AUTH_FAIL;
         }
         delete [] inBytes;
-        delete [] outBytes;
     }
     break;
 
