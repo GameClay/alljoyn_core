@@ -79,8 +79,8 @@ QStatus org::freedesktop::DBus::CreateInterfaces(BusAttachment& bus) {
     intf->AddMethod("RemoveMatch",                         "s",     NULL, NULL,         0);
     intf->AddMethod("GetId",                               NULL,    "s",  NULL,         0);
 
-    intf->AddMethod("UpdateActivationEnvironment",         "a{ss}", NULL, NULL,         0);
-    intf->AddMethod("ListQueuedOwners",                    "s",     "as", NULL,         0);
+    intf->AddMethod("UpdateActivationEnvironment",         "a{ss}", NULL, "environment", 0);
+    intf->AddMethod("ListQueuedOwners",                    "s",     "as", "name,names", 0);
     intf->AddMethod("GetAdtAuditSessionData",              "s",     "ay", NULL,         0);
     intf->AddMethod("GetConnectionSELinuxSecurityContext", "s",     "ay", NULL,         0);
     intf->AddMethod("ReloadConfig",                        NULL,    NULL, NULL,         0);

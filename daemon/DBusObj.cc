@@ -505,10 +505,44 @@ void DBusObj::UpdateActivationEnvironment(const InterfaceDescription::Member* me
 
 void DBusObj::ListQueuedOwners(const InterfaceDescription::Member* member, Message& msg)
 {
-    // TODO: Implement me.
-    QStatus status = MethodReply(msg, "org.freedesktop.DBus.Error.NotSupported", NULL);
+    void* context = (void*) &msg;
+
+    const MsgArg* nameArg = msg->GetArg(0);
+    assert(nameArg && (ALLJOYN_STRING == nameArg->typeId));
+
+    vector<qcc::String> namesVec;
+    router.GetQueuedNames(nameArg->v_string.str, namesVec);
+
+    /* Send the response */
+    /*
+     * The first name in the list returned by the GetQueuedNames is the primary
+     * owner.  ListQueuedNames returns a list of queued secondary owners.
+     * The messaged returned by org.freedesktop.DBus.ListQueuedOwners should
+     * only send a list of secondary owners.
+     */
+    size_t numNames = namesVec.size();
+    if (numNames > 0) {
+        --numNames;
+    }
+    MsgArg* names = new MsgArg[numNames];
+    vector<qcc::String>::const_iterator it = namesVec.begin();
+    size_t i = 0;
+    if (it != namesVec.end()) {
+        ++it; //skip the first Queued Name it is the primary owner.
+        while (it != namesVec.end()) {
+            names[i].typeId = ALLJOYN_STRING;
+            names[i].v_string.str = it->c_str();
+            names[i].v_string.len = it->size();
+            ++it;
+            ++i;
+        }
+    }
+    MsgArg namesArray(ALLJOYN_ARRAY);
+    namesArray.v_array.SetElements("s", numNames, names);
+
+    QStatus status = MethodReply(msg, &namesArray, 1);
     if (ER_OK != status) {
-        QCC_LogError(status, ("Reply failed"));
+        QCC_LogError(status, ("DBusObj::ListQueuedOwners failed"));
     }
 }
 

@@ -339,6 +339,19 @@ void NameTable::GetUniqueNamesAndAliases(vector<pair<qcc::String, vector<qcc::St
     }
 }
 
+void NameTable::GetQueuedNames(const qcc::String& busName, std::vector<qcc::String>& names)
+{
+    hash_map<qcc::String, deque<NameQueueEntry>, Hash, Equal>::iterator ait = aliasNames.find(busName.c_str());
+    if (ait != aliasNames.end()) {
+
+        names.reserve(ait->second.size()); //prevent dynamic resizing in loop
+        for (deque<NameQueueEntry>::iterator lit = ait->second.begin(); lit != ait->second.end(); ++lit) {
+            names.push_back(lit->endpointName);
+        }
+    } else {
+        names.clear();
+    }
+}
 void NameTable::RemoveVirtualAliases(VirtualEndpoint& ep)
 {
     lock.Lock();

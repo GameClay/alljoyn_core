@@ -235,6 +235,16 @@ class DaemonRouter : public Router {
     }
 
     /**
+     * Get all the unique names that are in queue for the same alias (well-known) name
+     *
+     * @param[in] busName (well-known) name
+     * @param[out] names vecter of uniqueNames in queue for the
+     */
+    void GetQueuedNames(const qcc::String& busName, std::vector<qcc::String>& names)
+    {
+        nameTable.GetQueuedNames(busName, names);
+    }
+    /**
      * Set (or clear) a virtual alias.
      * A virtual alias is a well-known bus name for a virtual endpoint.
      * Virtual aliases differ from regular aliases in that the local bus controller
