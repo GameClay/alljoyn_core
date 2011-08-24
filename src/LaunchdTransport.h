@@ -39,7 +39,7 @@ namespace ajn {
  * class provides a specialization of class UnixTransport for use by clients and
  * services.
  */
- class LaunchdTransport : public UnixTransport {
+class LaunchdTransport : public UnixTransport {
 
   public:
     /**

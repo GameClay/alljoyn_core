@@ -100,7 +100,7 @@ QStatus DaemonLaunchdTransport::ListenFd(std::map<qcc::String, qcc::String>& ser
     listenFd = launch_data_get_fd(launch_data_array_get_index(fdArray, 0));
     status = ER_OK;
 
- exit:
+exit:
     if (response) {
         launch_data_free(response);
     }

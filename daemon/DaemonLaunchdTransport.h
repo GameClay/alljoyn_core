@@ -1,6 +1,6 @@
 /**
  * @file
- * LaunchdTransport is a specialization of class UnixTransport for daemons talking 
+ * LaunchdTransport is a specialization of class UnixTransport for daemons talking
  * over Unix domain sockets created by launchd.
  */
 
