@@ -1276,8 +1276,8 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                 tStatus = ShutdownEndpoint(*b2bEp, b2bFd);
                 status = (status == ER_OK) ? tStatus : status;
                 if (status == ER_OK) {
-                    SocketStream ss1(srcB2bFd);
-                    SocketStream ss2(b2bFd);
+                    SocketStream* ss1 = new SocketStream(srcB2bFd);
+                    SocketStream* ss2 = new SocketStream(b2bFd);
                     size_t chunkSize = 4096;
                     String threadNameStr = id;
                     threadNameStr.append("-pump");
