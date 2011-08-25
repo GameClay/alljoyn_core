@@ -89,7 +89,7 @@ void ConfigL2capMTU(SocketFd sockFd)
 void ConfigL2capMaster(SocketFd sockFd)
 {
     int ret;
-    uint8_t lmOpt = 0;
+    int lmOpt = 0;
     socklen_t optLen = sizeof(lmOpt);
     ret = getsockopt(sockFd, SOL_L2CAP, L2CAP_LM, &lmOpt, &optLen);
     if (ret == -1) {
