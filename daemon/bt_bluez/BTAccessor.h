@@ -30,6 +30,7 @@
 #include <qcc/XmlElement.h>
 
 #include <alljoyn/BusAttachment.h>
+#include <alljoyn/BusListener.h>
 #include <alljoyn/MessageReceiver.h>
 #include <alljoyn/ProxyBusObject.h>
 

@@ -14,6 +14,7 @@
 # 
 
 Import('env', 'daemon_objs')
+from os.path import basename
 
 env.Append(CPPPATH=['..'])
 
@@ -25,7 +26,13 @@ progs = [
     env.Program('DaemonTest', ['DaemonTest.cc']),
     env.Program('mcmd', ['mcmd.cc'] + daemon_objs),
     env.Program('ns', ['ns.cc'] + daemon_objs)
-    ]
+   ]
+
+if env['OS_GROUP'] == 'posix':
+   progs.append(env.Program('BTAccessorTester', ['BTAccessorTester.cc'] + [ o for o in daemon_objs
+                                                                            if ((basename(str(o)) != 'BTTransport.o') and
+                                                                                (basename(str(o)) != 'BTController.o'))]))
+
 
 #
 # On Android, build a static library that can be linked into a JNI dynamic 

@@ -245,7 +245,7 @@ class BTTransport :
      *
      * @param avail    true if BT device is powered on and available, false otherwise.
      */
-    void BTDeviceAvailable(bool avail) { btController->BTDeviceAvailable(avail); }
+    void BTDeviceAvailable(bool avail);
 
     /**
      * Check if it is OK to accept the incoming connection from the specified
@@ -255,7 +255,12 @@ class BTTransport :
      *
      * @return  true if OK to accept the connection, false otherwise.
      */
-    bool CheckIncomingAddress(const BDAddress& addr) const { return btController->CheckIncomingAddress(addr); }
+    bool CheckIncomingAddress(const BDAddress& addr) const;
+
+    /**
+     * Disconnect all endpoints.
+     */
+    void DisconnectAll();
 
     /**
      * Callback for BTEndpoint thead exit.

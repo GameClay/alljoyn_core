@@ -360,6 +360,26 @@ QStatus BTTransport::StopListen(const char* listenSpec)
     return ER_OK;
 }
 
+void BTTransport::BTDeviceAvailable(bool avail)
+{
+    btController->BTDeviceAvailable(avail);
+}
+
+bool BTTransport::CheckIncomingAddress(const BDAddress& addr) const
+{
+    return btController->CheckIncomingAddress(addr);
+}
+
+void BTTransport::DisconnectAll()
+{
+    set<RemoteEndpoint*>::iterator eit;
+    threadListLock.Lock();
+    for (eit = threadList.begin(); eit != threadList.end(); ++eit) {
+        (*eit)->Stop();
+    }
+    threadListLock.Unlock();
+}
+
 void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
 {
     if (!btmActive) {
@@ -388,13 +408,11 @@ void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
 }
 
 
-void BTTransport::DeviceChange(const BDAddress& adBdAddr,
+void BTTransport::DeviceChange(const BDAddress& bdAddr,
                                uint32_t uuidRev,
                                bool eirCapable)
 {
-    if (btmActive) {
-        btController->ProcessDeviceChange(adBdAddr, uuidRev, eirCapable);
-    }
+    btController->ProcessDeviceChange(bdAddr, uuidRev, eirCapable);
 }
 
 

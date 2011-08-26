@@ -389,13 +389,7 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
     /*
      * Shut down all endpoints
      */
-    set<RemoteEndpoint*>::iterator eit;
-    transport->threadListLock.Lock();
-    for (eit = transport->threadList.begin(); eit != transport->threadList.end(); ++eit) {
-        (*eit)->Stop();
-    }
-    transport->threadListLock.Unlock();
-
+    transport->DisconnectAll();
     bluetoothAvailable = false;
 
     /*
