@@ -334,7 +334,7 @@ class MsgArg {
      *
      * @return  The assigned MsgArg
      */
-    MsgArg& operator =(const MsgArg& other) {
+    MsgArg& operator=(const MsgArg& other) {
         if (this != &other) {
             Clone(*this, other);
         }

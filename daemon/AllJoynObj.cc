@@ -2277,10 +2277,11 @@ void AllJoynObj::ExchangeNamesSignalHandler(const InterfaceDescription::Member* 
         while (it != b2bEndpoints.end()) {
             if ((bit == b2bEndpoints.end()) || (bit->second->GetRemoteGUID() != it->second->GetRemoteGUID())) {
                 QCC_DbgPrintf(("Propagating ExchangeName signal to %s", it->second->GetUniqueName().c_str()));
-                msg->ReMarshal(bus.GetInternal().GetLocalEndpoint().GetUniqueName().c_str(), true);
-                QStatus status = it->second->PushMessage(msg);
+                Message m2(msg, true);
+                m2->ReMarshal(bus.GetInternal().GetLocalEndpoint().GetUniqueName().c_str(), true);
+                QStatus status = it->second->PushMessage(m2);
                 if (ER_OK != status) {
-                    QCC_LogError(status, ("Failed to forward NameChanged to %s", it->second->GetUniqueName().c_str()));
+                    QCC_LogError(status, ("Failed to forward ExchangeNames to %s", it->second->GetUniqueName().c_str()));
                 }
             }
             ++it;
@@ -2354,9 +2355,10 @@ void AllJoynObj::NameChangedSignalHandler(const InterfaceDescription::Member* me
         map<qcc::StringMapKey, RemoteEndpoint*>::iterator it = b2bEndpoints.begin();
         while (it != b2bEndpoints.end()) {
             if ((bit == b2bEndpoints.end()) || (bit->second->GetRemoteGUID() != it->second->GetRemoteGUID())) {
-                QCC_DbgPrintf(("Propagating ExchangeName signal to %s", it->second->GetUniqueName().c_str()));
-                msg->ReMarshal(bus.GetInternal().GetLocalEndpoint().GetUniqueName().c_str(), true);
-                QStatus status = it->second->PushMessage(msg);
+                QCC_DbgPrintf(("Propagating NameChanged signal to %s", it->second->GetUniqueName().c_str()));
+                Message m2(msg, true);
+                m2->ReMarshal(bus.GetInternal().GetLocalEndpoint().GetUniqueName().c_str(), true);
+                QStatus status = it->second->PushMessage(m2);
                 if (ER_OK != status) {
                     QCC_LogError(status, ("Failed to forward NameChanged to %s", it->second->GetUniqueName().c_str()));
                 }

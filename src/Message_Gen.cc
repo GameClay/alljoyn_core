@@ -601,16 +601,21 @@ void _Message::MarshalHeaderFields()
              * We relocate the string pointers in the fields to point to the marshaled versions to
              * so the lifetime of the message is not bound to the lifetime of values passed in.
              */
-            const char* str;
+            const char* tPos;
+            uint32_t tLen;
             switch (field->typeId) {
             case ALLJOYN_SIGNATURE:
                 Marshal1(1);
                 Marshal1((uint8_t)ALLJOYN_SIGNATURE);
                 Marshal1(0);
                 Marshal1(field->v_signature.len);
-                str = field->v_signature.sig;
-                field->v_signature.sig = (char*)bufPos;
-                MarshalBytes((void*)str, field->v_signature.len + 1);
+                tPos = (char*)bufPos;
+                tLen = field->v_signature.len;
+                MarshalBytes((void*)field->v_signature.sig, field->v_signature.len + 1);
+                field->Clear();
+                field->typeId = ALLJOYN_SIGNATURE;
+                field->v_signature.sig = tPos;
+                field->v_signature.len = tLen;
                 break;
 
             case ALLJOYN_UINT32:
@@ -634,9 +639,13 @@ void _Message::MarshalHeaderFields()
                 } else {
                     Marshal4(field->v_string.len);
                 }
-                str = field->v_string.str;
-                field->v_string.str = (char*)bufPos;
-                MarshalBytes((void*)str, field->v_string.len + 1);
+                tPos = (char*)bufPos;
+                tLen = field->v_signature.len;
+                MarshalBytes((void*)field->v_string.str, field->v_string.len + 1);
+                field->Clear();
+                field->typeId = ALLJOYN_STRING;
+                field->v_string.str = tPos;
+                field->v_string.len = tLen;
                 break;
 
             default:
@@ -758,6 +767,7 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
     /*
      * Add the destination if there is one.
      */
+    hdrFields.field[ALLJOYN_HDR_FIELD_DESTINATION].Clear();
     if (!destination.empty()) {
         hdrFields.field[ALLJOYN_HDR_FIELD_DESTINATION].typeId = ALLJOYN_STRING;
         hdrFields.field[ALLJOYN_HDR_FIELD_DESTINATION].v_string.str = destination.c_str();
@@ -767,6 +777,7 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
      * Sender is obtained from the bus
      */
     const qcc::String& sender = bus.GetInternal().GetLocalEndpoint().GetUniqueName();
+    hdrFields.field[ALLJOYN_HDR_FIELD_SENDER].Clear();
     if (!sender.empty()) {
         hdrFields.field[ALLJOYN_HDR_FIELD_SENDER].typeId = ALLJOYN_STRING;
         hdrFields.field[ALLJOYN_HDR_FIELD_SENDER].v_string.str = sender.c_str();
@@ -775,6 +786,7 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
     /*
      * If there are arguments build the signature
      */
+    hdrFields.field[ALLJOYN_HDR_FIELD_SIGNATURE].Clear();
     if (numArgs > 0) {
         size_t sigLen = 0;
         status = SignatureUtils::MakeSignature(args, numArgs, signature, sigLen);
@@ -788,7 +800,6 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
         }
     } else {
         signature[0] = 0;
-        hdrFields.field[ALLJOYN_HDR_FIELD_SIGNATURE].typeId = ALLJOYN_INVALID;
     }
     /*
      * Check the signature computed from the args matches the expected signature.
@@ -799,21 +810,19 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
         goto ExitMarshalMessage;
     }
     /* Check if we are adding a session id */
+    hdrFields.field[ALLJOYN_HDR_FIELD_SESSION_ID].Clear();
     if (sessionId != 0) {
         hdrFields.field[ALLJOYN_HDR_FIELD_SESSION_ID].v_uint32 = sessionId;
         hdrFields.field[ALLJOYN_HDR_FIELD_SESSION_ID].typeId = ALLJOYN_UINT32;
-    } else {
-        hdrFields.field[ALLJOYN_HDR_FIELD_SESSION_ID].typeId = ALLJOYN_INVALID;
     }
     /*
      * Check if we are to do header compression. We must do this last after all the other fields
      * have been initialized.
      */
+    hdrFields.field[ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN].Clear();
     if ((msgHeader.flags & ALLJOYN_FLAG_COMPRESSED)) {
         hdrFields.field[ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN].v_uint32 = bus.GetInternal().GetCompressionRules().GetToken(hdrFields);
         hdrFields.field[ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN].typeId = ALLJOYN_UINT32;
-    } else {
-        hdrFields.field[ALLJOYN_HDR_FIELD_COMPRESSION_TOKEN].typeId = ALLJOYN_INVALID;
     }
     /*
      * Calculate space required for the header fields
@@ -830,7 +839,8 @@ QStatus _Message::MarshalMessage(const qcc::String& expectedSignature,
     /*
      * Allocate buffer for entire message.
      */
-    msgBuf = new uint64_t[(hdrLen + msgHeader.bodyLen + 7) / 8];
+    bufSize = (hdrLen + msgHeader.bodyLen + 7);
+    msgBuf = new uint64_t[bufSize / 8];
     /*
      * Initialize the buffer and copy in the message header
      */
@@ -917,17 +927,9 @@ QStatus _Message::HelloMessage(bool isBusToBus, bool allowRemote, uint32_t& seri
     ClearHeader();
     if (isBusToBus) {
         /* org.alljoyn.Bus.BusHello */
-        hdrFields.field[ALLJOYN_HDR_FIELD_PATH].typeId = ALLJOYN_OBJECT_PATH;
-        hdrFields.field[ALLJOYN_HDR_FIELD_PATH].v_string.str = org::alljoyn::Bus::ObjectPath;
-        hdrFields.field[ALLJOYN_HDR_FIELD_PATH].v_string.len = strlen(org::alljoyn::Bus::ObjectPath);
-
-        hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].typeId = ALLJOYN_STRING;
-        hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].v_string.str = org::alljoyn::Bus::InterfaceName;
-        hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].v_string.len = strlen(org::alljoyn::Bus::InterfaceName);
-
-        hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].typeId = ALLJOYN_STRING;
-        hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].v_string.str = "BusHello";
-        hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].v_string.len = 8;
+        hdrFields.field[ALLJOYN_HDR_FIELD_PATH].Set("o", org::alljoyn::Bus::ObjectPath);
+        hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].Set("s", org::alljoyn::Bus::InterfaceName);
+        hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].Set("s", "BusHello");
 
         qcc::String guid = bus.GetInternal().GetGlobalGUID().ToString();
         MsgArg args[2];
@@ -942,17 +944,9 @@ QStatus _Message::HelloMessage(bool isBusToBus, bool allowRemote, uint32_t& seri
                                 0);
     } else {
         /* Standard org.freedesktop.DBus.Hello */
-        hdrFields.field[ALLJOYN_HDR_FIELD_PATH].typeId = ALLJOYN_OBJECT_PATH;
-        hdrFields.field[ALLJOYN_HDR_FIELD_PATH].v_string.str = org::freedesktop::DBus::ObjectPath;
-        hdrFields.field[ALLJOYN_HDR_FIELD_PATH].v_string.len = strlen(org::freedesktop::DBus::ObjectPath);
-
-        hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].typeId = ALLJOYN_STRING;
-        hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].v_string.str = org::freedesktop::DBus::InterfaceName;
-        hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].v_string.len = strlen(org::freedesktop::DBus::InterfaceName);
-
-        hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].typeId = ALLJOYN_STRING;
-        hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].v_string.str = "Hello";
-        hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].v_string.len = 5;
+        hdrFields.field[ALLJOYN_HDR_FIELD_PATH].Set("o", org::freedesktop::DBus::ObjectPath);
+        hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].Set("s", org::freedesktop::DBus::InterfaceName);
+        hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].Set("s", "Hello");
 
         status = MarshalMessage("",
                                 org::freedesktop::DBus::WellKnownName,
@@ -985,8 +979,7 @@ QStatus _Message::HelloReply(bool isBusToBus, const qcc::String& uniqueName)
     /*
      * Return serial number
      */
-    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].typeId = ALLJOYN_UINT32;
-    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].v_uint32 = msgHeader.serialNum;
+    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].Set("u", msgHeader.serialNum);
 
     if (isBusToBus) {
         guidStr = bus.GetInternal().GetGlobalGUID().ToString();
@@ -1036,18 +1029,21 @@ QStatus _Message::CallMsg(const qcc::String& signature,
         status = ER_BUS_BAD_OBJ_PATH;
         goto ExitCallMsg;
     }
+    hdrFields.field[ALLJOYN_HDR_FIELD_PATH].Clear();
     hdrFields.field[ALLJOYN_HDR_FIELD_PATH].typeId = ALLJOYN_OBJECT_PATH;
     hdrFields.field[ALLJOYN_HDR_FIELD_PATH].v_string.str = objPath.c_str();
     hdrFields.field[ALLJOYN_HDR_FIELD_PATH].v_string.len = objPath.size();
     /*
      * Member name is required
      */
+    hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].Clear();
     hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].typeId = ALLJOYN_STRING;
     hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].v_string.str = methodName.c_str();
     hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].v_string.len = methodName.size();
     /*
      * Interface name can be NULL
      */
+    hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].Clear();
     if (!iface.empty()) {
         hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].typeId = ALLJOYN_STRING;
         hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].v_string.str = iface.c_str();
@@ -1115,6 +1111,8 @@ QStatus _Message::SignalMsg(const qcc::String& signature,
     /*
      * If signal has a ttl timestamp the message and set the ttl and timestamp headers.
      */
+    hdrFields.field[ALLJOYN_HDR_FIELD_TIME_TO_LIVE].Clear();
+    hdrFields.field[ALLJOYN_HDR_FIELD_TIMESTAMP].Clear();
     if (timeToLive) {
         timestamp = GetTimestamp();
         ttl = timeToLive;
@@ -1124,14 +1122,17 @@ QStatus _Message::SignalMsg(const qcc::String& signature,
         hdrFields.field[ALLJOYN_HDR_FIELD_TIMESTAMP].v_uint32 = timestamp;
     }
 
+    hdrFields.field[ALLJOYN_HDR_FIELD_PATH].Clear();
     hdrFields.field[ALLJOYN_HDR_FIELD_PATH].typeId = ALLJOYN_OBJECT_PATH;
     hdrFields.field[ALLJOYN_HDR_FIELD_PATH].v_string.str = objPath.c_str();
     hdrFields.field[ALLJOYN_HDR_FIELD_PATH].v_string.len = objPath.size();
 
+    hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].Clear();
     hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].typeId = ALLJOYN_STRING;
     hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].v_string.str = signalName.c_str();
     hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].v_string.len = signalName.size();
 
+    hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].Clear();
     hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].typeId = ALLJOYN_STRING;
     hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].v_string.str = iface.c_str();
     hdrFields.field[ALLJOYN_HDR_FIELD_INTERFACE].v_string.len = iface.size();
@@ -1166,6 +1167,7 @@ QStatus _Message::ReplyMsg(const MsgArg* args,
     /*
      * Return serial number from call
      */
+    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].Clear();
     hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].typeId = ALLJOYN_UINT32;
     hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].v_uint32 = msgHeader.serialNum;
     /*
@@ -1197,14 +1199,11 @@ QStatus _Message::ErrorMsg(const char* errorName,
         status = ER_BUS_BAD_ERROR_NAME;
         goto ExitErrorMsg;
     }
-    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].typeId = ALLJOYN_STRING;
-    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].v_string.str = errorName;
-    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].v_string.len = strlen(errorName);
+    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].Set("s", errorName);
     /*
      * Return serial number
      */
-    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].typeId = ALLJOYN_UINT32;
-    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].v_uint32 = msgHeader.serialNum;
+    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].Set("u", msgHeader.serialNum);
     /*
      * Build error message
      */
@@ -1234,14 +1233,11 @@ QStatus _Message::ErrorMsg(QStatus status)
     /*
      * Error name is required
      */
-    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].typeId = ALLJOYN_STRING;
-    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].v_string.str = org::alljoyn::Bus::ErrorName;
-    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].v_string.len = strlen(org::alljoyn::Bus::ErrorName);
+    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].Set("s", org::alljoyn::Bus::ErrorName);
     /*
      * Return serial number
      */
-    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].typeId = ALLJOYN_UINT32;
-    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].v_uint32 = msgHeader.serialNum;
+    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].Set("u", msgHeader.serialNum);
     /*
      * Build error message
      */
@@ -1266,14 +1262,11 @@ void _Message::ErrorMsg(const char* errorName,
     if ((errorName == NULL) || (*errorName == 0)) {
         errorName = "err.unknown";
     }
-    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].typeId = ALLJOYN_STRING;
-    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].v_string.str = errorName;
-    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].v_string.len = strlen(errorName);
+    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].Set("s", errorName);
     /*
      * Return serial number
      */
-    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].typeId = ALLJOYN_UINT32;
-    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].v_uint32 = replySerial;
+    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].Set("u", replySerial);
     /*
      * Build error message
      */
@@ -1292,12 +1285,8 @@ void _Message::ErrorMsg(QStatus status,
      */
     ClearHeader();
 
-    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].typeId = ALLJOYN_STRING;
-    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].v_string.str = org::alljoyn::Bus::ErrorName;
-    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].v_string.len = strlen(org::alljoyn::Bus::ErrorName);
-
-    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].typeId = ALLJOYN_UINT32;
-    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].v_uint32 = replySerial;
+    hdrFields.field[ALLJOYN_HDR_FIELD_ERROR_NAME].Set("s", org::alljoyn::Bus::ErrorName);
+    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].Set("u", replySerial);
 
     MsgArg args[2];
     size_t numArgs = 2;

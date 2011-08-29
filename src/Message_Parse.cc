@@ -281,7 +281,6 @@ QStatus _Message::ParseStruct(MsgArg* arg, const char*& sigPtr)
     arg->typeId = ALLJOYN_STRUCT;
     QStatus status = SignatureUtils::ParseContainerSignature(*arg, sigPtr);
     if (status != ER_OK) {
-        arg->typeId = ALLJOYN_INVALID;
         QCC_LogError(status, ("ParseStruct error in signature\n"));
         return status;
     }
@@ -294,7 +293,6 @@ QStatus _Message::ParseStruct(MsgArg* arg, const char*& sigPtr)
 
     arg->v_struct.members = new MsgArg[arg->v_struct.numMembers];
     arg->flags |= MsgArg::OwnsArgs;
-    arg->typeId = ALLJOYN_STRUCT;
     for (uint32_t i = 0; i < arg->v_struct.numMembers; ++i) {
         status = ParseValue(&arg->v_struct.members[i], memberSig);
         if (status != ER_OK) {
@@ -328,7 +326,6 @@ QStatus _Message::ParseDictEntry(MsgArg* arg,
 
         QCC_DbgPrintf(("ParseDictEntry at pos:%d", bufPos - bodyPtr));
 
-        arg->typeId = ALLJOYN_DICT_ENTRY;
         arg->v_dictEntry.key = new MsgArg();
         arg->v_dictEntry.val = new MsgArg();
         arg->flags |= MsgArg::OwnsArgs;
@@ -388,6 +385,7 @@ QStatus _Message::ParseValue(MsgArg* arg, const char*& sigPtr)
 {
     QStatus status = ER_OK;
 
+    arg->Clear();
     switch (AllJoynTypeId typeId = (AllJoynTypeId)(*sigPtr++)) {
     case ALLJOYN_BYTE:
         arg->v_byte = *bufPos++;
@@ -827,7 +825,6 @@ QStatus _Message::Unmarshal(RemoteEndpoint& endpoint, bool checkSender, bool ped
 {
     QStatus status;
     size_t pktSize;
-    size_t allocSize;
     uint8_t* endOfHdr;
     qcc::SocketFd fdList[qcc::SOCKET_MAX_FILE_DESCRIPTORS];
     size_t maxFds = endpoint.GetFeatures().handlePassing ? ArraySize(fdList) : 0;
@@ -914,8 +911,8 @@ QStatus _Message::Unmarshal(RemoteEndpoint& endpoint, bool checkSender, bool ped
      * Padding the end of the buffer ensures we can unmarshal a few bytes beyond the end of the
      * message reducing the places where we need to check for bufEOD when unmarshaling the body.
      */
-    allocSize = sizeof(msgHeader) + ((pktSize + 7) & ~7) + 8;
-    msgBuf = new uint64_t[allocSize / 8];
+    bufSize = sizeof(msgHeader) + ((pktSize + 7) & ~7) + 8;
+    msgBuf = new uint64_t[bufSize / 8];
     /*
      * Copy header into the buffer
      */
@@ -926,7 +923,7 @@ QStatus _Message::Unmarshal(RemoteEndpoint& endpoint, bool checkSender, bool ped
     /*
      * Zero fill the pad at the end of the buffer
      */
-    memset(bufEOD, 0, (uint8_t*)msgBuf + allocSize - bufEOD);
+    memset(bufEOD, 0, (uint8_t*)msgBuf + bufSize - bufEOD);
 
     QCC_DbgPrintf(("Msg type:%d headerLen: %d Attempting to read %d bytes", msgHeader.msgType, msgHeader.headerLen, pktSize));
 
@@ -1146,6 +1143,9 @@ ExitUnmarshal:
         delete [] msgBuf;
         msgBuf = NULL;
         ClearHeader();
+        if (status == ER_OS_ERROR) {
+            QCC_LogError(status, ("Windows error = %d\n", GetLastError()));
+        }
         QCC_LogError(status, ("Failed to unmarshal message"));
     }
     return status;

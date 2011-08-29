@@ -136,6 +136,14 @@ class HeaderFields {
      */
     qcc::String ToString(size_t indent =  0) const;
 
+    /** Default constructor */
+    HeaderFields() { }
+
+    /** Copy constructor */
+    HeaderFields(const HeaderFields& other);
+
+    /** Assignment */
+    HeaderFields& operator=(const HeaderFields& other);
 };
 
 
@@ -175,6 +183,13 @@ class _Message {
      * @param bus  The bus that this message is sent or received on.
      */
     _Message(BusAttachment& bus);
+
+    /**
+     * Copy constructor for a message
+     *
+     * @param other  Message to copy from.
+     */
+    _Message(const _Message& other);
 
     /**
      * Determine if message is a broadcast signal.
@@ -639,13 +654,6 @@ class _Message {
 
     /// @endcond
   private:
-
-    /**
-     * Copy constructor.
-     *
-     * @param other   Copy from %_Message.
-     */
-    _Message(const _Message& other);
 
     /**
      * Assignment operator.
