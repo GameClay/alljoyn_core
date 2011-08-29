@@ -703,17 +703,25 @@ class BusAttachment : public MessageReceiver {
      * Set the link timeout for a session.
      *
      * Link timeout is the maximum number of seconds that an unresponsive daemon-to-daemon connection
-     * will be monitored before delcaring the session lost (via SessionLost callback). Link timeout
+     * will be monitored before declaring the session lost (via SessionLost callback). Link timeout
      * defaults to 0 which indicates that AllJoyn link monitoring is disabled.
      *
      * Each transport type defines a lower bound on link timeout to avoid defeating transport
      * specific power management algorithms.
      *
-     * @param sessionId     Id of session whose link timeout will be modified.
+     * @param sessionid     Id of session whose link timeout will be modified.
      * @param linkTimeout   [IN/OUT] Max number of seconds that a link can be unresponsive before being
-     *                      delcared lost. 0 indicates that AllJoyn link monitoring will be disabled. On
+     *                      declared lost. 0 indicates that AllJoyn link monitoring will be disabled. On
      *                      return, this value will be the resulting (possibly upward) adjusted linkTimeout
-     *                      value that acceptible to the underlying transport.
+     *                      value that acceptable to the underlying transport.
+     *
+     * @return
+     *      - #ER_OK if successful
+     *      - #ER_ALLJOYN_SETLINKTIMEOUT_REPLY_NOT_SUPPORTED if local daemon does not support SetLinkTimeout
+     *      - #ER_ALLJOYN_SETLINKTIMEOUT_REPLY_NO_DEST_SUPPORT if SetLinkTimeout not supported by destination
+     *      - #ER_BUS_NO_SESSION if the Session id is not valid
+     *      - #ER_ALLJOYN_SETLINKTIMEOUT_REPLY_FAILED if SetLinkTimeout failed
+     *      - #ER_BUS_NOT_CONNECTED if the BusAttachment is not connected to the daemon
      */
     QStatus SetLinkTimeout(SessionId sessionid, uint32_t& linkTimeout);
 
