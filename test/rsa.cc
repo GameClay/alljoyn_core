@@ -164,6 +164,37 @@ class SRPAuthListener : public AuthListener {
     }
 };
 
+QStatus RoundTrip(Crypto_RSA& pk)
+{
+    size_t pkSize = pk.GetSize();
+    size_t inLen;
+    uint8_t in[2048];
+    size_t outLen;
+    uint8_t out[2048];
+    memcpy(in, hw, sizeof(hw));
+    inLen = sizeof(hw);
+    outLen = pkSize;
+    QStatus status = pk.PublicEncrypt(in, inLen, out, outLen);
+    if (status == ER_OK) {
+        printf("Encrypted size %u\n", static_cast<uint32_t>(outLen));
+    } else {
+        printf("PublicEncrypt failed %s\n", QCC_StatusText(status));
+        return status;
+    }
+    inLen = outLen;
+    outLen = pkSize;
+    memcpy(in, out, pkSize);
+    status = pk.PrivateDecrypt(in, inLen, out, outLen);
+    if (status == ER_OK) {
+        printf("Decrypted size %u\n", static_cast<uint32_t>(outLen));
+        printf("Decrypted %s\n", out);
+    } else {
+        printf("PrivateDecrypt failed %s\n", QCC_StatusText(status));
+        return status;
+    }
+    return ER_OK;
+}
+
 int main(int argc, char** argv)
 {
     QStatus status;
@@ -191,6 +222,12 @@ int main(int argc, char** argv)
             printf("ImportPKCS8 failed %s\n", QCC_StatusText(status));
             goto FailExit;
         }
+        status = RoundTrip(priv);
+        if (status != ER_OK) {
+            printf("Roundtrip encrypt/decrypt failed %s\n", QCC_StatusText(status));
+            goto FailExit;
+        }
+
     }
     // Import PEM encoded PKCS8 (AES encrypted SSLeay legacy format)
     {
@@ -199,6 +236,11 @@ int main(int argc, char** argv)
         status = priv.ImportPKCS8(PEM_AES, "123456");
         if (status != ER_OK) {
             printf("ImportPKCS8 failed %s\n", QCC_StatusText(status));
+            goto FailExit;
+        }
+        status = RoundTrip(priv);
+        if (status != ER_OK) {
+            printf("Roundtrip encrypt/decrypt failed %s\n", QCC_StatusText(status));
             goto FailExit;
         }
     }
@@ -211,6 +253,11 @@ int main(int argc, char** argv)
             printf("ImportPKCS8 failed %s\n", QCC_StatusText(status));
             goto FailExit;
         }
+        status = RoundTrip(priv);
+        if (status != ER_OK) {
+            printf("Roundtrip encrypt/decrypt failed %s\n", QCC_StatusText(status));
+            goto FailExit;
+        }
     }
     // Import PEM encoded PKCS8 v1.5 encrypted format)
     {
@@ -219,6 +266,11 @@ int main(int argc, char** argv)
         status = priv.ImportPKCS8(PEM_PKCS8_V2, "123456");
         if (status != ER_OK) {
             printf("ImportPKCS8 failed %s\n", QCC_StatusText(status));
+            goto FailExit;
+        }
+        status = RoundTrip(priv);
+        if (status != ER_OK) {
+            printf("Roundtrip encrypt/decrypt failed %s\n", QCC_StatusText(status));
             goto FailExit;
         }
     }
@@ -340,6 +392,23 @@ int main(int argc, char** argv)
         }
     }
 
+    if (1) {
+        printf("Testing digest sign/verify\n");
+        uint8_t digest[] = { 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3 };
+        uint8_t signature[64];
+        size_t sigLen = sizeof(signature);
+        status = pk.SignDigest(digest, sizeof(digest), signature, sigLen);
+        if (status != ER_OK) {
+            printf("Failed to sign digest %s\n", QCC_StatusText(status));
+            goto FailExit;
+        }
+        status = pk.VerifyDigest(digest, sizeof(digest), signature, sigLen);
+        if (status != ER_OK) {
+            printf("Failed to verify digest %s\n", QCC_StatusText(status));
+            goto FailExit;
+        }
+    }
+
     {
         printf("Testing empty passphrase\n");
         /*
@@ -367,7 +436,7 @@ int main(int argc, char** argv)
         Crypto_RSA pri;
         status = pri.ImportPrivateKey(privKey, "");
         if (status != ER_OK) {
-            printf("ImportPrivateKey failed %s\n", QCC_StatusText(status));
+            printf("ImportPrivateKey (empty passphrase) failed %s\n", QCC_StatusText(status));
             goto FailExit;
         }
 
@@ -397,6 +466,7 @@ int main(int argc, char** argv)
      * Now test the RSA authentication mechanism
      */
     {
+        printf("Testing RSA authentication mechanism\n");
 
         BusAttachment bus("srp");
         SRPAuthListener authListener;
