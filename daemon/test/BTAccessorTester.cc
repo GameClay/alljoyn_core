@@ -45,6 +45,11 @@ static const size_t NUM_PRIMARY_NAMES = 100;
 static const size_t NUM_SECONDARY_NAMES = 5;
 static const size_t NUM_SECONDARY_NODES = 100;
 
+static const size_t EXCHANGE_DATA_LARGE = 256 * 1024;
+static const size_t EXCHANGE_DATA_SMALL = 1;
+
+static const size_t CONNECT_MULTIPLE_MAX_CONNECTIONS = 16;
+
 static const size_t HASH_SIZE = Crypto_MD5::DIGEST_SIZE;
 
 
@@ -515,11 +520,15 @@ bool TestDriver::RecvBuf(uint8_t* buf, size_t size)
 
     while (size > 0) {
         status = ep->GetSource().PullBytes(buf + offset, size, received, 30000);
-        if (status != ER_OK) {
+        if (status != ER_OK || 0 == received) {
             String detail = "Receiving ";
             detail += U32ToString(size);
             detail += " bytes failed: ";
             detail += QCC_StatusText(status);
+            detail += ". Total received = ";
+            detail += U32ToString(offset);
+            detail += ". Last received = ";
+            detail += U32ToString(received);
             detail += ".";
             ReportTestDetail(detail);
             return false;
@@ -609,14 +618,14 @@ void TestDriver::TestDeviceChange(const BDAddress& bdAddr,
                                   uint32_t uuidRev,
                                   bool eirCapable)
 {
-    ReportTestDetail("BTAccessor reported a found device to us.  Ignoring since this is the base Test Driver.");
+    ReportTestDetail("BTAccessor reported a found device to use.  Ignoring since this is the base Test Driver.");
 }
 
 void ClientTestDriver::TestDeviceChange(const BDAddress& bdAddr,
                                         uint32_t uuidRev,
                                         bool eirCapable)
 {
-    String detail = "BTAccessor reported a found device to us: ";
+    String detail = "BTAccessor reported a found device to use: ";
     detail += bdAddr.ToString().c_str();
     if (eirCapable) {
         detail += ".  It is EIR capable with a UUID revision of 0x";
@@ -637,7 +646,7 @@ void ServerTestDriver::TestDeviceChange(const BDAddress& bdAddr,
                                         uint32_t uuidRev,
                                         bool eirCapable)
 {
-    ReportTestDetail("BTAccessor reported a found device to us.  Ignoring since this is the Server Test Driver.");
+    ReportTestDetail("BTAccessor reported a found device to use.  Ignoring since this is the Server Test Driver.");
 }
 
 
@@ -878,7 +887,7 @@ bool ClientTestDriver::TC_StartDiscovery()
             }
         }
 
-        Sleep(5000);
+        ::Sleep(5000);
 
         devChangeLock.Lock();
         devChangeQueue.clear();
@@ -932,7 +941,7 @@ bool ClientTestDriver::TC_StopDiscovery()
     }
 
     if (!opts.fastDiscovery) {
-        Sleep(5000);
+        ::Sleep(5000);
 
         devChangeLock.Lock();
         count = devChangeQueue.size();
@@ -1164,7 +1173,7 @@ exit:
 bool ClientTestDriver::TC_ConnectMultiple()
 {
     bool tcSuccess = true;
-    RemoteEndpoint* eps[100];
+    RemoteEndpoint* eps[CONNECT_MULTIPLE_MAX_CONNECTIONS];
 
     memset(eps, 0, sizeof(eps));
 
@@ -1201,12 +1210,12 @@ exit:
 
 bool ClientTestDriver::TC_ExchangeSmallData()
 {
-    return ExchangeData(1);
+    return ExchangeData(EXCHANGE_DATA_SMALL);
 }
 
 bool ClientTestDriver::TC_ExchangeLargeData()
 {
-    return ExchangeData(256 * 1024);
+    return ExchangeData(EXCHANGE_DATA_LARGE);
 }
 
 bool ClientTestDriver::TC_IsMaster()
@@ -1274,6 +1283,32 @@ exit:
     return tcSuccess;
 }
 
+static String GetOffsetOfDifference(uint8_t* buf, uint8_t* expBuf, size_t bufSize)
+{
+    String returnValue;
+    size_t offset;
+
+    for (offset = 0; offset < bufSize; offset++) {
+        if (buf[offset] != expBuf[offset]) {
+            String offsetString = U32ToString((uint32_t)offset);
+            String bufVal = BytesToHexString(buf + offset, 1);
+            String expBufVal = BytesToHexString(expBuf + offset, 1);
+
+            returnValue += "buf[";
+            returnValue += offsetString;
+            returnValue += "] = 0x";
+            returnValue += bufVal;
+            returnValue += ", expBuf[";
+            returnValue += offsetString;
+            returnValue += "] = 0x";
+            returnValue += expBufVal;
+            break;
+        }
+    }
+
+    return returnValue;
+}
+
 bool ClientTestDriver::ExchangeData(size_t size)
 {
     bool tcSuccess = true;
@@ -1301,18 +1336,21 @@ bool ClientTestDriver::ExchangeData(size_t size)
     XorByteArray(txBuf, rxBuf, buf, bufSize);
 
     if (memcmp(buf, expBuf, bufSize) != 0) {
-        String detail = "Recieved bytes does not match expected.";
+        String detail = "Received bytes does not match expected.";
+        ReportTestDetail(detail);
+        detail = GetOffsetOfDifference(buf, expBuf, bufSize);
         ReportTestDetail(detail);
         tcSuccess = false;
     }
 
 exit:
+    // Give some time for the transfer to complete before terminating the connection.
+    qcc::Sleep(1000);
+
     delete[] txBuf;
     delete[] rxBuf;
     delete[] buf;
     delete[] expBuf;
-
-    Sleep(1000);
 
     return tcSuccess;
 }
@@ -1469,7 +1507,7 @@ bool ServerTestDriver::TC_AcceptMultiple()
 {
     bool tcSuccess = true;
     QStatus status;
-    RemoteEndpoint* eps[100];
+    RemoteEndpoint* eps[CONNECT_MULTIPLE_MAX_CONNECTIONS];
 
     Event* l2capEvent = btAccessor->GetL2CAPConnectEvent();
 
@@ -1517,12 +1555,12 @@ exit:
 
 bool ServerTestDriver::TC_ExchangeSmallData()
 {
-    return ExchangeData(1);
+    return ExchangeData(EXCHANGE_DATA_SMALL);
 }
 
 bool ServerTestDriver::TC_ExchangeLargeData()
 {
-    return ExchangeData(256 * 1024);
+    return ExchangeData(EXCHANGE_DATA_LARGE);
 }
 
 bool ServerTestDriver::ExchangeData(size_t size)
@@ -1545,13 +1583,12 @@ bool ServerTestDriver::ExchangeData(size_t size)
     XorByteArray(rxBuf, buf, txBuf, bufSize);
 
     tcSuccess = SendBuf(txBuf, bufSize);
+    qcc::Sleep(1000); // Wait for data to be received before disconnecting.
 
 exit:
     delete[] txBuf;
     delete[] rxBuf;
     delete[] buf;
-
-    Sleep(1000);
 
     return tcSuccess;
 }

@@ -37,14 +37,17 @@
 #include <Status.h>
 
 #include "DaemonTCPTransport.h"
+
 #if !defined(QCC_OS_WINDOWS)
 #include "DaemonUnixTransport.h"
+#endif
+
 #if defined(QCC_OS_DARWIN)
-#warning BT needs to be implemented on Darwin
+#warning "Bluetooth transport not implemented on DarwinQ"
 #else
 #include "BTTransport.h"
 #endif
-#endif
+
 #include "Bus.h"
 #include "BusController.h"
 #include "ConfigDB.h"
@@ -409,7 +412,7 @@ int main(int argc, char** argv)
     Environ* env = Environ::GetAppEnviron();
 
 #ifdef QCC_OS_WINDOWS
-    serverArgs = env->Find("BUS_SERVER_ADDRESSES", "tcp:addr=0.0.0.0,port=9955");
+    serverArgs = env->Find("BUS_SERVER_ADDRESSES", "tcp:addr=0.0.0.0,port=9955;bluetooth:");
 #else
 
 #if defined(DAEMON_LIB)
@@ -443,9 +446,10 @@ int main(int argc, char** argv)
 
 #if !defined(QCC_OS_WINDOWS)
     cntr.Add(new TransportFactory<DaemonUnixTransport>("unix", false));
+#endif
+
 #if !defined(QCC_OS_DARWIN)
     cntr.Add(new TransportFactory<BTTransport>("bluetooth", false));
-#endif
 #endif
 
     /* Create message bus with support for alternate transports */

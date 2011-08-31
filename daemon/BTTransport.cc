@@ -44,7 +44,7 @@
 #include "bt_bluez/BTAccessor.h"
 #endif
 #elif defined QCC_OS_GROUP_WINDOWS
-#error Windows support to be implemented
+#include "bt_windows/BTAccessor.h"
 #endif
 
 #include <Status.h>
@@ -55,7 +55,10 @@
 using namespace std;
 using namespace qcc;
 using namespace ajn;
+
+#if !defined QCC_OS_GROUP_WINDOWS
 using namespace ajn::bluez;
+#endif
 
 namespace ajn {
 
@@ -87,6 +90,7 @@ BTTransport::~BTTransport()
     Join();
 
     delete btController;
+    btController = NULL;
     if (btmActive) {
         delete btAccessor;
     }
@@ -371,12 +375,18 @@ QStatus BTTransport::StopListen(const char* listenSpec)
 
 void BTTransport::BTDeviceAvailable(bool avail)
 {
-    btController->BTDeviceAvailable(avail);
+    if (btController) {
+        btController->BTDeviceAvailable(avail);
+    }
 }
 
 bool BTTransport::CheckIncomingAddress(const BDAddress& addr) const
 {
-    return btController->CheckIncomingAddress(addr);
+    if (btController) {
+        return btController->CheckIncomingAddress(addr);
+    } else {
+        return false;
+    }
 }
 
 void BTTransport::DisconnectAll()
@@ -440,7 +450,9 @@ void BTTransport::DeviceChange(const BDAddress& bdAddr,
                                uint32_t uuidRev,
                                bool eirCapable)
 {
-    btController->ProcessDeviceChange(bdAddr, uuidRev, eirCapable);
+    if (btController) {
+        btController->ProcessDeviceChange(bdAddr, uuidRev, eirCapable);
+    }
 }
 
 

@@ -20,10 +20,12 @@ srcs = [ f for f in env.Glob('*.cc') + env.Glob('*.c') ]
 bt_srcs = [ 'BTController.cc', 'BTTransport.cc', 'BTNodeDB.cc' ]
 
 if env['OS_GROUP'] == "windows":
-    srcs = [ f for f in srcs if basename(str(f)) not in ['DaemonUnixTransport.cc'] + bt_srcs ]
+    srcs = [ f for f in srcs if basename(str(f)) not in ['DaemonUnixTransport.cc'] ]
 elif env['OS'] == "darwin":
     srcs = [ f for f in srcs if basename(str(f)) not in bt_srcs ]
 
+srcs = [ f for f in env.Glob('*.cc') + env.Glob('*.c')
+         if not (env['OS_GROUP'] == 'windows' and (str(f).endswith('DaemonUnixTransport.cc') )) ]
 daemon_objs = env.Object(srcs)
 config_objs = env.Object(['ConfigDB.cc',
                           'ServiceDB.cc',
@@ -31,12 +33,16 @@ config_objs = env.Object(['ConfigDB.cc',
                           'PolicyDB.cc'])
 
 # Select BlueZ or BM3 for bluetooth support
-if env['OS_GROUP'] == 'windows' or env['OS'] == 'android_donut' or env['OS'] =="darwin":
+if env['OS'] == 'android_donut' or env['OS'] =="darwin":
     # Skip bluetooth
     #env.Append(CPPPATH=['bt_bm3'])
     #bm3_srcs, bm3_objs = env.SConscript('bt_bm3/SConscript')
     #daemon_objs.extend(env.Object(bm3_srcs) + bm3_objs)
     pass
+elif env['OS_GROUP'] == "windows":
+    win_srcs = env.SConscript('bt_windows/SConscript')
+    daemon_objs.extend(env.Object(win_srcs))
+    env.AppendUnique(LIBS = ['Bthprops'])
 else:
     # Use BlueZ
     bz_srcs = env.SConscript('bt_bluez/SConscript')

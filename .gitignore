@@ -7,7 +7,9 @@ build
 .*.swp
 .cproject
 *.ncb
+*.log
 *.suo
+*.aps
 *.user
 installer/windows/VS_Projects/AlljoynService/bin/
 bin
@@ -15,3 +17,6 @@ obj
 gen
 libs
 /installer/osx/AllJoyn/AllJoyn.xcodeproj/project.xcworkspace/xcuserdata/
+/daemon/bt_windowsKernel/objchk_win7_amd64/
+/daemon/bt_windowsKernel/objchk_win7_x86/
+

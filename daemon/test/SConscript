@@ -35,6 +35,10 @@ if env['OS_GROUP'] == 'posix' and env['OS'] != 'darwin':
                                                                                 if ((basename(str(o)) != 'BTTransport.o') and
                                                                                     (basename(str(o)) != 'BTController.o'))]))
 
+if env['OS_GROUP'] == 'windows':
+   progs.append(env.Program('BTAccessorTester.exe', ['BTAccessorTester.cc'] + [ o for o in daemon_objs
+                                                                            if ((basename(str(o)) != 'BTTransport.obj') and
+                                                                                (basename(str(o)) != 'BTController.obj'))]))
 
 #
 # On Android, build a static library that can be linked into a JNI dynamic 
