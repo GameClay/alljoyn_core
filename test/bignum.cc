@@ -307,23 +307,15 @@ int main()
     bn1.set_bytes(Prime1024, sizeof(Prime1024));
     bn2 = bn1 * 7 + 3;
     printf("->>>> %s\n", bn2.get_hex().c_str());
-    BigNum::bench.Clear();
     bn3 = bn2 % bn1;
-    BigNum::bench.Report("modulus");
     CHECK(bn3 == 3);
 
     bn2.set_bytes(Prime1536, sizeof(Prime1536));
-    BigNum::bench.Clear();
     bn3 = bn2 % bn1;
-    BigNum::bench.Report("modulus");
 
-    BigNum::bench.Clear();
     bn4 = bn2 / bn1;
-    BigNum::bench.Report("division");
 
-    BigNum::bench.Clear();
     bn5 = bn4 * bn1;
-    BigNum::bench.Report("multiplication");
     CHECK((bn5 + bn3) == bn2);
 
     bn1 = 9;
@@ -356,9 +348,7 @@ int main()
     CHECK(bn3 % 291 == bn4);
 
     bn1 = 3;
-    BigNum::bench.Clear();
     bn3 = bn1.exp(4660);
-    BigNum::bench.Report("basic exp");
     CHECK(bn3.get_hex() ==
           "3CC4C0CA53F42E24B0D77B04E687D700BF971365053CF92200B3EE380B2A5630BE06"
           "91E8E373CD0499E5B8A7F376123443A7AB628E914C2D48D062720D1BB512E8287192"
@@ -426,13 +416,9 @@ int main()
     bn1 = 3;
     E.set_bytes(Prime1024, sizeof(Prime1024));
 
-    BigNum::bench.Clear();
     bn4 = bn1.mod_exp(E, M);
-    BigNum::bench.Report("mod exp");
 
-    BigNum::bench.Clear();
     bn5 = bn1.mod_exp(E, M);
-    BigNum::bench.Report("monty mod exp");
     printf("->>>> %s\n", bn5.get_hex().c_str());
     printf("->>>> %s\n", bn4.get_hex().c_str());
     CHECK(bn4 == bn5);
