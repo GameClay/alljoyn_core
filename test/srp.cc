@@ -73,9 +73,7 @@ int main(int argc, char** argv)
     /* Test vector as defined in RFC 5246 built in to Crypto_SRP class */
     {
         Crypto_SRP srp;
-        BigNum::bench.Clear();
         status = srp.TestVector();
-        BigNum::bench.Report("SRP test vector");
         if (status != ER_OK) {
             printf("Test vector failed\n");
             exit(1);
