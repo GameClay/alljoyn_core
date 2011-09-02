@@ -114,9 +114,9 @@ class MyBusListener : public BusListener, public SessionListener {
         }
     }
 
-    void LostAdvertisedName(const char* name, const char* guid, const char* prefix, const char* busAddress)
+    void LostAdvertisedName(const char* name, TransportMask transport, const char* prefix)
     {
-        QCC_SyncPrintf("LostAdvertisedName(name=%s, guid=%s, prefix=%s, addr=%s)\n", name, guid, prefix, busAddress);
+        QCC_SyncPrintf("LostAdvertisedName(name=%s, transport=0x%x, prefix=%s)\n", name, transport, prefix);
     }
 
     void NameOwnerChanged(const char* name, const char* previousOwner, const char* newOwner)
