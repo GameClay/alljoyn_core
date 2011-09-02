@@ -1143,9 +1143,6 @@ ExitUnmarshal:
         delete [] msgBuf;
         msgBuf = NULL;
         ClearHeader();
-        if (status == ER_OS_ERROR) {
-            QCC_LogError(status, ("Windows error = %d\n", GetLastError()));
-        }
         QCC_LogError(status, ("Failed to unmarshal message"));
     }
     return status;
