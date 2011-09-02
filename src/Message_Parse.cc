@@ -1187,8 +1187,8 @@ QStatus _Message::AddExpansionRule(uint32_t token, const MsgArg* expansionArg)
         switch (fieldId) {
         case ALLJOYN_HDR_FIELD_PATH:
             expFields.field[fieldId].typeId = ALLJOYN_OBJECT_PATH;
-            expFields.field[fieldId].v_string.str = variant->v_variant.val->v_string.str;
-            expFields.field[fieldId].v_string.len = variant->v_variant.val->v_string.len;
+            expFields.field[fieldId].v_objPath.str = variant->v_variant.val->v_string.str;
+            expFields.field[fieldId].v_objPath.len = variant->v_variant.val->v_string.len;
             break;
 
         case ALLJOYN_HDR_FIELD_INTERFACE:

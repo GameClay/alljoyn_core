@@ -392,7 +392,7 @@ QStatus _Message::MarshalArgs(const MsgArg* arg, size_t numArgs)
             break;
 
         case ALLJOYN_OBJECT_PATH:
-            if (!arg->v_string.str || (arg->v_string.len == 0)) {
+            if (!arg->v_objPath.str || (arg->v_objPath.len == 0)) {
                 status = ER_BUS_BAD_OBJ_PATH;
                 break;
             }
@@ -603,7 +603,8 @@ void _Message::MarshalHeaderFields()
              */
             const char* tPos;
             uint32_t tLen;
-            switch (field->typeId) {
+            AllJoynTypeId id = field->typeId;
+            switch (id) {
             case ALLJOYN_SIGNATURE:
                 Marshal1(1);
                 Marshal1((uint8_t)ALLJOYN_SIGNATURE);
@@ -632,7 +633,7 @@ void _Message::MarshalHeaderFields()
             case ALLJOYN_OBJECT_PATH:
             case ALLJOYN_STRING:
                 Marshal1(1);
-                Marshal1((uint8_t)field->typeId);
+                Marshal1((uint8_t)id);
                 Marshal1(0);
                 if (endianSwap) {
                     MarshalReversed(&field->v_string.len, 4);
@@ -643,7 +644,7 @@ void _Message::MarshalHeaderFields()
                 tLen = field->v_signature.len;
                 MarshalBytes((void*)field->v_string.str, field->v_string.len + 1);
                 field->Clear();
-                field->typeId = ALLJOYN_STRING;
+                field->typeId = id;
                 field->v_string.str = tPos;
                 field->v_string.len = tLen;
                 break;
@@ -1031,8 +1032,9 @@ QStatus _Message::CallMsg(const qcc::String& signature,
     }
     hdrFields.field[ALLJOYN_HDR_FIELD_PATH].Clear();
     hdrFields.field[ALLJOYN_HDR_FIELD_PATH].typeId = ALLJOYN_OBJECT_PATH;
-    hdrFields.field[ALLJOYN_HDR_FIELD_PATH].v_string.str = objPath.c_str();
-    hdrFields.field[ALLJOYN_HDR_FIELD_PATH].v_string.len = objPath.size();
+    hdrFields.field[ALLJOYN_HDR_FIELD_PATH].v_objPath.str = objPath.c_str();
+    hdrFields.field[ALLJOYN_HDR_FIELD_PATH].v_objPath.len = objPath.size();
+
     /*
      * Member name is required
      */
@@ -1124,8 +1126,8 @@ QStatus _Message::SignalMsg(const qcc::String& signature,
 
     hdrFields.field[ALLJOYN_HDR_FIELD_PATH].Clear();
     hdrFields.field[ALLJOYN_HDR_FIELD_PATH].typeId = ALLJOYN_OBJECT_PATH;
-    hdrFields.field[ALLJOYN_HDR_FIELD_PATH].v_string.str = objPath.c_str();
-    hdrFields.field[ALLJOYN_HDR_FIELD_PATH].v_string.len = objPath.size();
+    hdrFields.field[ALLJOYN_HDR_FIELD_PATH].v_objPath.str = objPath.c_str();
+    hdrFields.field[ALLJOYN_HDR_FIELD_PATH].v_objPath.len = objPath.size();
 
     hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].Clear();
     hdrFields.field[ALLJOYN_HDR_FIELD_MEMBER].typeId = ALLJOYN_STRING;
