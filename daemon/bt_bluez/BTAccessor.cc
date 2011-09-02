@@ -795,6 +795,9 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
     BT_SOCKADDR skaddr;
     QStatus status = ER_OK;
     bool resumeDiscovery = false;
+    bool connected = false;
+    uint8_t nul = 0;
+    size_t sent;
 
     if (discoveryActive) {
         resumeDiscovery = true;
@@ -862,18 +865,24 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
                 goto exit;
             }
         } else {
-            uint8_t nul = 0;
-            size_t sent;
-            status = qcc::Send(sockFd, &nul, 1, sent);
-            if (status != ER_OK) {
-                QCC_LogError(status, ("Failed to send nul byte (errno: %d - %s)", errno, strerror(errno)));
-                goto exit;
-            }
-            QCC_DbgPrintf(("BTTransport::BTAccessor::Connect() success sockFd = %d connAddr = %s",
-                           sockFd, connAddr.addr.ToString().c_str()));
+            connected = true;
             break;
         }
     }
+
+    if (!connected) {
+        status = ER_FAIL;
+        QCC_LogError(status, ("Failed to establish connection with %s", connAddr.ToString().c_str()));
+        goto exit;
+    }
+
+    status = qcc::Send(sockFd, &nul, 1, sent);
+    if (status != ER_OK) {
+        QCC_LogError(status, ("Failed to send nul byte (errno: %d - %s)", errno, strerror(errno)));
+        goto exit;
+    }
+    QCC_DbgPrintf(("BTTransport::BTAccessor::Connect() success sockFd = %d connAddr = %s",
+                   sockFd, connAddr.addr.ToString().c_str()));
 
     flags = fcntl(sockFd, F_GETFL);
     ret = fcntl(sockFd, F_SETFL, flags | O_NONBLOCK);
