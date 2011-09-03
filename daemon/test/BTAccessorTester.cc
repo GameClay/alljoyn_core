@@ -26,7 +26,9 @@
 #include <set>
 
 #include <qcc/GUID.h>
+#include <qcc/Logger.h>
 #include <qcc/Mutex.h>
+#include <qcc/Stream.h>
 #include <qcc/String.h>
 #include <qcc/Thread.h>
 #include <qcc/time.h>
@@ -45,19 +47,6 @@ namespace ajn {
  * TEST STUBS
  ********************/
 
-
-#define _ALLJOYN_REMOTEENDPOINT_H
-class RemoteEndpoint {
-  public:
-    RemoteEndpoint(BusAttachment& bus,
-                   bool incoming,
-                   const qcc::String& connectSpec,
-                   qcc::Stream& stream,
-                   const char* type = "endpoint",
-                   bool isSocket = true);
-};
-
-
 #define _ALLJOYNBTTRANSPORT_H
 class BTTransport {
 
@@ -74,6 +63,7 @@ class BTTransport {
     bool CheckIncomingAddress(const BDAddress& addr) const;
     void DisconnectAll();
 
+  protected:
     virtual void TestBTDeviceAvailable(bool avail) = 0;
     virtual bool TestCheckIncomingAddress(const BDAddress& addr) const = 0;
     virtual void TestDeviceChange(const BDAddress& bdAddr, uint32_t uuidRev, bool eirCapable) = 0;
@@ -122,6 +112,36 @@ void BTTransport::DisconnectAll()
 
 using namespace ajn;
 
+void XorByteArray(const uint8_t* in1, const uint8_t* in2, uint8_t* out, size_t size)
+{
+    for (size_t i = 0; i < size; ++i) {
+        out[i] = in1[i] ^ in2[i];
+    }
+}
+
+
+struct CmdLineOptions {
+    String basename;
+    bool client;
+    bool server;
+    bool allowInteractive;
+    bool reportDetails;
+    bool local;
+    bool fastDiscovery;
+    bool quiet;
+    CmdLineOptions() :
+        basename("org.alljoyn.BTAccessorTester"),
+        client(false),
+        server(false),
+        allowInteractive(true),
+        reportDetails(false),
+        local(false),
+        fastDiscovery(false),
+        quiet(false)
+    {
+    }
+};
+
 class TestDriver : public BTTransport {
   public:
     typedef bool (TestDriver::*TestCase)();
@@ -147,16 +167,11 @@ class TestDriver : public BTTransport {
     };
 
 
-    TestDriver(const String& basename, bool allowInteractive, bool reportDetails);
+    TestDriver(const CmdLineOptions& opts);
     virtual ~TestDriver();
 
     void AddTestCase(TestDriver::TestCase tc, const String description);
     int RunTests();
-    void ReportTestDetail(const String detail) const;
-
-    void TestBTDeviceAvailable(bool available);
-    virtual bool TestCheckIncomingAddress(const BDAddress& addr) const = 0;
-    virtual void TestDeviceChange(const BDAddress& bdAddr, uint32_t uuidRev, bool eirCapable) = 0;
 
     bool TC_CreateBTAccessor();
     bool TC_DestroyBTAccessor();
@@ -170,9 +185,10 @@ class TestDriver : public BTTransport {
 
   protected:
     BTAccessor* btAccessor;
-    String basename;
-    GUID busGuid;
-    const bool allowInteractive;
+    BusAttachment bus;
+    const CmdLineOptions& opts;
+    qcc::GUID busGuid;
+    RemoteEndpoint* ep;
 
     deque<bool> btDevAvailQueue;
     Event btDevAvailEvent;
@@ -188,29 +204,49 @@ class TestDriver : public BTTransport {
     BTNodeInfo self;
     BTNodeDB nodeDB;
 
+    void TestBTDeviceAvailable(bool available);
+    virtual bool TestCheckIncomingAddress(const BDAddress& addr) const;
+    virtual void TestDeviceChange(const BDAddress& bdAddr, uint32_t uuidRev, bool eirCapable);
+
+    void ReportTestDetail(const String detail) const;
+    bool SendBuf(const uint8_t* buf, size_t size);
+    bool RecvBuf(uint8_t* buf, size_t size);
+
+
   private:
-    const bool reportDetails;
     list<TestCaseInfo> tcList;
     uint32_t testcase;
     mutable list<String> detailList;
     bool success;
     list<TestCaseInfo>::iterator insertPos;
+    size_t maxWidth;
+    size_t tcNumWidth;
+    static const size_t tcWidth = 2;
+    static const size_t tcColonWidth = 2;
+    static const size_t pfWidth = 5;
 
-    void ReportTest(const TestCaseInfo& test);
+    void RunTest(TestCaseInfo& test);
 };
 
 
 class ClientTestDriver : public TestDriver {
   public:
-    struct Counts {
+    struct FoundInfo {
         uint32_t found;
         uint32_t changed;
         uint32_t uuidRev;
-        Counts() : found(0), changed(0), uuidRev(0) { }
-        Counts(uint32_t uuidRev) : found(1), changed(0), uuidRev(uuidRev) { }
+        bool checked;
+        FoundInfo() :
+            found(0), changed(0), uuidRev(0), checked(false)
+        {
+        }
+        FoundInfo(uint32_t uuidRev) :
+            found(1), changed(0), uuidRev(uuidRev), checked(false)
+        {
+        }
     };
 
-    ClientTestDriver(const String& basename, bool allowInteractive, bool reportDetails);
+    ClientTestDriver(const CmdLineOptions& opts);
     virtual ~ClientTestDriver() { }
 
     bool TestCheckIncomingAddress(const BDAddress& addr) const;
@@ -218,20 +254,28 @@ class ClientTestDriver : public TestDriver {
 
     bool TC_StartDiscovery();
     bool TC_StopDiscovery();
+    bool TC_GetDeviceInfo();
     bool TC_ConnectSingle();
     bool TC_ConnectMultiple();
-    bool TC_GetDeviceInfo();
     bool TC_ExchangeSmallData();
     bool TC_ExchangeLargeData();
+    bool TC_IsMaster();
+    bool TC_RequestBTRole();
 
   private:
+    map<BDAddress, FoundInfo> foundInfo;
+    uint32_t connUUIDRev;
+    BTBusAddress connAddr;
+    BTNodeDB connAdInfo;
+    BTNodeInfo connNode;
 
+    bool ExchangeData(size_t size);
 };
 
 
 class ServerTestDriver : public TestDriver {
   public:
-    ServerTestDriver(const String& basename, bool allowInteractive, bool reportDetails);
+    ServerTestDriver(const CmdLineOptions& opts);
     virtual ~ServerTestDriver() { }
 
     bool TestCheckIncomingAddress(const BDAddress& addr) const;
@@ -240,23 +284,29 @@ class ServerTestDriver : public TestDriver {
     bool TC_StartDiscoverability();
     bool TC_StopDiscoverability();
     bool TC_SetSDPInfo();
-    bool TC_Accept();
     bool TC_GetL2CAPConnectEvent();
+    bool TC_AcceptSingle();
+    bool TC_AcceptMultiple();
+    bool TC_ExchangeSmallData();
+    bool TC_ExchangeLargeData();
 
   private:
     bool allowIncomingAddress;
-
     uint32_t uuidRev;
+
+    bool ExchangeData(size_t size);
 };
 
 
-TestDriver::TestDriver(const String& basename, bool allowInteractive, bool reportDetails) :
+TestDriver::TestDriver(const CmdLineOptions& opts) :
     btAccessor(NULL),
-    basename(basename),
-    allowInteractive(allowInteractive),
-    reportDetails(reportDetails),
+    bus("BTAccessorTester"),
+    opts(opts),
+    ep(NULL), 
     testcase(0),
-    success(true)
+    success(true),
+    maxWidth(80),
+    tcNumWidth(2)
 {
     String uniqueName = ":";
     uniqueName += busGuid.ToShortString();
@@ -278,6 +328,9 @@ TestDriver::TestDriver(const String& basename, bool allowInteractive, bool repor
 
 TestDriver::~TestDriver()
 {
+    if (ep) {
+        delete ep;
+    }
     if (btAccessor) {
         delete btAccessor;
     }
@@ -286,6 +339,11 @@ TestDriver::~TestDriver()
 void TestDriver::AddTestCase(TestDriver::TestCase tc, const String description)
 {
     tcList.insert(insertPos, TestCaseInfo(tc, description));
+    tcNumWidth = 1 + ((tcList.size() > 100) ? 3 :
+                      ((tcList.size() > 10) ? 2 : 1));
+    if ((tcWidth + tcNumWidth + 1 + description.size() + tcColonWidth + pfWidth) > (maxWidth)) {
+        maxWidth = (tcWidth + tcNumWidth + description.size() + tcColonWidth + pfWidth);
+    }
 }
 
 int TestDriver::RunTests()
@@ -293,84 +351,64 @@ int TestDriver::RunTests()
     list<TestCaseInfo>::iterator it;
     for (it = tcList.begin(); success && (it != tcList.end()); ++it) {
         TestCaseInfo& test = *it;
-        test.success = (this->*(test.tc))();
-        ReportTest(test);
+        RunTest(test);
     }
 
     return success ? 0 : 1;
 }
 
-void TestDriver::ReportTest(const TestCaseInfo& test)
+void TestDriver::RunTest(TestCaseInfo& test)
 {
-    static const size_t maxWidth = 80;
-    static const size_t tcWidth = 2;
-    static const size_t tcNumWidth = 1 + ((detailList.size() > 100) ? 3 :
-                                          ((detailList.size() > 10) ? 2 : 1));
-    static const size_t tcColonWidth = 1;
-    static const size_t pfWidth = 5;
     static const size_t dashWidth = 2;
-    static const size_t descWidth = maxWidth - (tcWidth + tcNumWidth + tcColonWidth + pfWidth + dashWidth + 1);
-    static const size_t detailIndent = (4 + (maxWidth - descWidth));
-    static const size_t detailWidth = maxWidth - (detailIndent + dashWidth);
+    const size_t detailIndent = (4 + tcWidth + tcNumWidth + 1);
+    const size_t detailWidth = maxWidth - (detailIndent + dashWidth);
 
     size_t i;
     String line;
-    String tc;
-    String desc = test.description;
-    tc.reserve(maxWidth);
+    line.reserve(maxWidth);
 
-    tc.append("TC");
-    tc.append(U32ToString(++testcase, 10, tcNumWidth, ' '));
-    tc.append(":");
-    tc.append(test.success ? " PASS" : " FAIL");
+    line.append("TC");
+    line.append(U32ToString(++testcase, 10, tcNumWidth, ' '));
+    line.push_back(' ');
+    line.append(test.description);
+    line.append(": ");
 
-    if (!desc.empty()) {
-        tc.append(" - ");
+    while (line.size() < (maxWidth - (pfWidth + 1))) {
+        line.push_back('.');
     }
 
-    while (!desc.empty()) {
-        if (desc.size() > descWidth) {
-            line = desc.substr(0, desc.find_last_of(' ', descWidth));
-            desc = desc.substr(line.size() + 1);
-        } else {
-            line = desc;
-            desc.clear();
-        }
-        tc.append(line);
-        printf("%s\n", tc.c_str());
-        tc.clear();
-        for (i = 0; i < (maxWidth - descWidth); ++i) {
-            tc.push_back(' ');
-        }
-    }
+    printf("%s", line.c_str());
+    fflush(stdout);
 
-    for (; i < detailIndent; ++i) {
-        tc.push_back(' ');
-    }
+    test.success = (this->*(test.tc))();
+
+    line.clear();
+
+    line.append(test.success ? " PASS" : " FAIL");
+
+    printf("%s\n", line.c_str());
+    line.clear();
 
     while (detailList.begin() != detailList.end()) {
         String detail = detailList.front();
         if (!detail.empty()) {
             bool wrapped = false;
             while (!detail.empty()) {
+                for (i = 0; i < detailIndent; ++i) {
+                    line.push_back(' ');
+                }
+                line.append(wrapped ? "  " : "- ");
+
                 if (detail.size() > detailWidth) {
-                    line = detail.substr(0, detail.find_last_of(' ', detailWidth));
-                    detail = detail.substr(detail.find_first_not_of(" ", line.size()));
+                    String subline = detail.substr(0, detail.find_last_of(' ', detailWidth));
+                    detail = detail.substr(detail.find_first_not_of(" ", subline.size()));
+                    line.append(subline);
                 } else {
-                    line = detail;
+                    line.append(detail);
                     detail.clear();
                 }
-                if (wrapped) {
-                    tc.append("  ");
-                } else {
-                    tc.append("- ");
-                }
-                tc.append(line);
-                printf("%s\n", tc.c_str());
-                tc.clear();
-                for (i = 0; i < detailIndent; ++i) {
-                    tc.push_back(' ');
-                }
+                printf("%s\n", line.c_str());
+                line.clear();
                 wrapped = !detail.empty();
             }
         }
@@ -381,9 +419,56 @@ void TestDriver::ReportTest(const TestCaseInfo& test)
 
 void TestDriver::ReportTestDetail(const String detail) const
 {
-    if (reportDetails) {
+    if (opts.reportDetails) {
         detailList.push_back(detail);
     }
+}
+
+bool TestDriver::SendBuf(const uint8_t* buf, size_t size)
+{
+    QStatus status;
+    size_t offset = 0;
+    size_t sent = 0;
+
+    while (size > 0) {
+        status = ep->GetSink().PushBytes(buf + offset, size, sent);
+        if (status != ER_OK) {
+            String detail = "Sending ";
+            detail += U32ToString(size);
+            detail += " bytes failed: ";
+            detail += QCC_StatusText(status);
+            detail += ".";
+            ReportTestDetail(detail);
+            return false;
+        }
+
+        offset += sent;
+        size -= sent;
+    }
+    return true;
+}
+
+bool TestDriver::RecvBuf(uint8_t* buf, size_t size)
+{
+    QStatus status;
+    size_t offset = 0;
+    size_t received = 0;
+
+    while (size > 0) {
+        status = ep->GetSource().PullBytes(buf + offset, size, received, 30000);
+        if (status != ER_OK) {
+            String detail = "Receiving ";
+            detail += U32ToString(size);
+            detail += " bytes failed: ";
+            detail += QCC_StatusText(status);
+            detail += ".";
+            ReportTestDetail(detail);
+            return false;
+        }
+        offset += received;
+        size -= received;
+    }
+    return true;
 }
 
 void TestDriver::TestBTDeviceAvailable(bool available)
@@ -398,13 +483,21 @@ void TestDriver::TestBTDeviceAvailable(bool available)
     btDevAvailEvent.SetEvent();
 }
 
+bool TestDriver::TestCheckIncomingAddress(const BDAddress& addr) const
+{
+    String detail = "BTAccessor needs BD Address ";
+    detail += addr.ToString().c_str();
+    detail += " checked: REJECTED (base test driver).";
+    ReportTestDetail(detail);
+
+    return false;
+}
+
 bool ClientTestDriver::TestCheckIncomingAddress(const BDAddress& addr) const
 {
     String detail = "BTAccessor needs BD Address ";
     detail += addr.ToString().c_str();
-    detail += " checked.";
-    ReportTestDetail(detail);
-    detail = "Responding with reject since this is the Client Test Driver.";
+    detail += " checked: REJECTED (client test driver).";
     ReportTestDetail(detail);
 
     return false;
@@ -414,14 +507,18 @@ bool ServerTestDriver::TestCheckIncomingAddress(const BDAddress& addr) const
 {
     String detail = "BTAccessor needs BD Address ";
     detail += addr.ToString().c_str();
-    detail += " checked.";
-    ReportTestDetail(detail);
-    detail = "Responding with ";
-    detail += allowIncomingAddress ? "allow" : "reject";
-    detail += ".";
+    detail += " checked: ";
+    detail += allowIncomingAddress ? "allowed." : "rejected.";
     ReportTestDetail(detail);
 
     return allowIncomingAddress;
+}
+
+void TestDriver::TestDeviceChange(const BDAddress& bdAddr,
+                                        uint32_t uuidRev,
+                                        bool eirCapable)
+{
+    ReportTestDetail("BTAccessor reported a found device to us.  Ignoring since this is the base Test Driver.");
 }
 
 void ClientTestDriver::TestDeviceChange(const BDAddress& bdAddr,
@@ -431,7 +528,7 @@ void ClientTestDriver::TestDeviceChange(const BDAddress& bdAddr,
     String detail = "BTAccessor reported a found device to us: ";
     detail += bdAddr.ToString().c_str();
     if (eirCapable) {
-        detail += ".  It is EIR capable with a UUID Revision of 0x";
+        detail += ".  It is EIR capable with a UUID revision of 0x";
         detail += U32ToString(uuidRev, 16, 8, '0');
         detail += ".";
     } else {
@@ -451,8 +548,6 @@ void ServerTestDriver::TestDeviceChange(const BDAddress& bdAddr,
 {
     ReportTestDetail("BTAccessor reported a found device to us.  Ignoring since this is the Server Test Driver.");
 }
-
-
 
 
 /****************************************/
@@ -695,103 +790,112 @@ bool ClientTestDriver::TC_StartDiscovery()
     bool tcSuccess = true;
     QStatus status;
     BDAddressSet ignoreAddrs;
-    uint64_t now;
-    uint64_t stop;
-    Timespec tsNow;
     String detail;
-    map<BDAddress, Counts> findCount;
-    map<BDAddress, Counts>::iterator fcit;
+    map<BDAddress, FoundInfo>::iterator fit;
 
     set<BDAddress>::const_iterator it;
     for (it = connectedDevices.begin(); it != connectedDevices.end(); ++it) {
         ignoreAddrs->insert(*it);
     }
 
-    GetTimeNow(&tsNow);
-    now = tsNow.GetAbsoluteMillis() + 35000;
-    stop = now + 30000;
-
-    devChangeLock.Lock();
-    devChangeQueue.clear();
-    devChangeEvent.ResetEvent();
-    devChangeLock.Unlock();
-
-    status = btAccessor->StartDiscovery(ignoreAddrs, 30);
-    if (status != ER_OK) {
-        detail = "Call to start discovery failed: ";
-        detail += QCC_StatusText(status);
-        detail += ".";
-        ReportTestDetail(detail);
-        tcSuccess = false;
-        goto exit;
-    }
-
-    while (now < stop) {
-        status = Event::Wait(devChangeEvent, stop - now);
-        if (status == ER_TIMEOUT) {
-            break;
-        }
-
-        devChangeEvent.ResetEvent();
-
-        devChangeLock.Lock();
-        while (!devChangeQueue.empty()) {
-            fcit = findCount.find(devChangeQueue.front().addr);
-            if (fcit == findCount.end()) {
-                findCount[devChangeQueue.front().addr] = Counts(devChangeQueue.front().uuidRev);
-            } else {
-                ++(fcit->second.found);
-                if (fcit->second.uuidRev != devChangeQueue.front().uuidRev) {
-                    ++(fcit->second.changed);
-                    fcit->second.uuidRev = devChangeQueue.front().uuidRev;
-                }
-            }
-            devChangeQueue.pop_front();
-        }
-        devChangeLock.Unlock();
+    if (!opts.fastDiscovery) {
+        uint64_t now;
+        uint64_t stop;
+        Timespec tsNow;
 
         GetTimeNow(&tsNow);
         now = tsNow.GetAbsoluteMillis();
-    }
+        stop = now + 35000;
 
-    if (findCount.empty()) {
-        ReportTestDetail("No devices found");
-    } else {
-        for (fcit = findCount.begin(); fcit != findCount.end(); ++fcit) {
-            detail = "Found ";
-            detail += fcit->first.ToString().c_str();
-            detail += " ";
-            detail += U32ToString(fcit->second.found).c_str();
-            detail += " times";
-            if (fcit->second.changed > 0) {
-                detail += " - changed ";
-                detail += U32ToString(fcit->second.changed).c_str();
-                detail += " times";
-            }
-            detail += " (UUID Rev: 0x";
-            detail += U32ToString(fcit->second.uuidRev, 16, 8, '0');
-            detail += ")";
-            detail += ".";
-            ReportTestDetail(detail);
-        }
-    }
-
-    Sleep(5000);
-
-    devChangeLock.Lock();
-    devChangeQueue.clear();
-    devChangeEvent.ResetEvent();
-    devChangeLock.Unlock();
-
-    status = Event::Wait(devChangeEvent, 30000);
-    if (status != ER_TIMEOUT) {
-        ReportTestDetail("Received device found notification long after discovery should have stopped.");
-        tcSuccess = false;
         devChangeLock.Lock();
         devChangeQueue.clear();
         devChangeEvent.ResetEvent();
         devChangeLock.Unlock();
-        goto exit;
+
+        status = btAccessor->StartDiscovery(ignoreAddrs, 30);
+        if (status != ER_OK) {
+            detail = "Call to start discovery failed: ";
+            detail += QCC_StatusText(status);
+            detail += ".";
+            ReportTestDetail(detail);
+            tcSuccess = false;
+            goto exit;
+        }
+
+        while (now < stop) {
+            status = Event::Wait(devChangeEvent, stop - now);
+            if (status == ER_TIMEOUT) {
+                break;
+            } else if (status != ER_OK) {
+                detail = "Wait for device change event failed: ";
+                detail += QCC_StatusText(status);
+                detail += ".";
+                ReportTestDetail(detail);
+                tcSuccess = false;
+                goto exit;
+            }
+
+            devChangeEvent.ResetEvent();
+
+            devChangeLock.Lock();
+            while (!devChangeQueue.empty()) {
+                fit = foundInfo.find(devChangeQueue.front().addr);
+                if (fit == foundInfo.end()) {
+                    foundInfo[devChangeQueue.front().addr] = FoundInfo(devChangeQueue.front().uuidRev);
+                } else {
+                    ++(fit->second.found);
+                    if (fit->second.uuidRev != devChangeQueue.front().uuidRev) {
+                        ++(fit->second.changed);
+                        fit->second.uuidRev = devChangeQueue.front().uuidRev;
+                    }
+                }
+                devChangeQueue.pop_front();
+            }
+            devChangeLock.Unlock();
+
+            GetTimeNow(&tsNow);
+            now = tsNow.GetAbsoluteMillis();
+        }
+
+        if (foundInfo.empty()) {
+            ReportTestDetail("No devices found");
+        } else {
+            for (fit = foundInfo.begin(); fit != foundInfo.end(); ++fit) {
+                detail = "Found ";
+                detail += fit->first.ToString().c_str();
+                detail += " ";
+                detail += U32ToString(fit->second.found).c_str();
+                detail += " times";
+                if (fit->second.changed > 0) {
+                    detail += " - changed ";
+                    detail += U32ToString(fit->second.changed).c_str();
+                    detail += " times";
+                }
+                detail += " (UUID Rev: 0x";
+                detail += U32ToString(fit->second.uuidRev, 16, 8, '0');
+                detail += ")";
+                detail += ".";
+                ReportTestDetail(detail);
+            }
+        }
+
+        Sleep(5000);
+
+        devChangeLock.Lock();
+        devChangeQueue.clear();
+        devChangeEvent.ResetEvent();
+        devChangeLock.Unlock();
+
+        status = Event::Wait(devChangeEvent, 30000);
+        if (status != ER_TIMEOUT) {
+            ReportTestDetail("Received device found notification long after discovery should have stopped.");
+            //tcSuccess = false;
+            devChangeLock.Lock();
+            devChangeQueue.clear();
+            devChangeEvent.ResetEvent();
+            devChangeLock.Unlock();
+            goto exit;
+        }
     }
 
     // Start infinite discovery until stopped
@@ -826,22 +930,103 @@ bool ClientTestDriver::TC_StopDiscovery()
         goto exit;
     }
 
-    Sleep(5000);
+    if (!opts.fastDiscovery) {
+        Sleep(5000);
 
-    devChangeLock.Lock();
-    count = devChangeQueue.size();
-    devChangeQueue.clear();
-    devChangeEvent.ResetEvent();
-    devChangeLock.Unlock();
-
-    status = Event::Wait(devChangeEvent, 30000);
-    if (status != ER_TIMEOUT) {
-        ReportTestDetail("Received device found notification long after discovery should have stopped.");
-        tcSuccess = false;
         devChangeLock.Lock();
+        count = devChangeQueue.size();
         devChangeQueue.clear();
         devChangeEvent.ResetEvent();
         devChangeLock.Unlock();
+
+        status = Event::Wait(devChangeEvent, 30000);
+        if (status != ER_TIMEOUT) {
+            ReportTestDetail("Received device found notification long after discovery should have stopped.");
+            //tcSuccess = false;
+            devChangeLock.Lock();
+            devChangeQueue.clear();
+            devChangeEvent.ResetEvent();
+            devChangeLock.Unlock();
+        }
+    }
+
+exit:
+    return tcSuccess;
+}
+
+bool ClientTestDriver::TC_GetDeviceInfo()
+{
+    QStatus status;
+    bool tcSuccess = true;
+    map<BDAddress, FoundInfo>::iterator fit;
+    bool found = false;
+
+    while (!found) {
+        for (fit = foundInfo.begin(); !found && (fit != foundInfo.end()); ++fit) {
+            if (!fit->second.checked) {
+                status = btAccessor->GetDeviceInfo(fit->first, &connUUIDRev, &connAddr, &connAdInfo);
+                if (status != ER_OK) {
+                    String detail = "Failed to get device information from ";
+                    detail += fit->first.ToString();
+                    detail += " (non-critical): ";
+                    detail += QCC_StatusText(status);
+                    detail += ".";
+                    ReportTestDetail(detail);
+                } else if (connUUIDRev != bt::INVALID_UUIDREV) {
+                    BTNodeDB::const_iterator nit;
+                    for (nit = connAdInfo.Begin(); !found && (nit != connAdInfo.End()); ++nit) {
+                        NameSet::const_iterator nsit;
+                        for (nsit = (*nit)->GetAdvertiseNamesBegin();
+                             !found && (nsit != (*nit)->GetAdvertiseNamesEnd());
+                             ++nsit) {
+                            if (nsit->compare(0, opts.basename.size(), opts.basename) == 0) {
+                                found = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!found) {
+            status = Event::Wait(devChangeEvent, 60000);
+            if (status != ER_OK) {
+                String detail = "Wait for device change event failed: ";
+                detail += QCC_StatusText(status);
+                detail += ".";
+                ReportTestDetail(detail);
+                tcSuccess = false;
+                goto exit;
+            }
+
+            devChangeEvent.ResetEvent();
+
+            devChangeLock.Lock();
+            while (!devChangeQueue.empty()) {
+                fit = foundInfo.find(devChangeQueue.front().addr);
+                if (fit == foundInfo.end()) {
+                    foundInfo[devChangeQueue.front().addr] = FoundInfo(devChangeQueue.front().uuidRev);
+                } else {
+                    ++(fit->second.found);
+                    if (fit->second.uuidRev != devChangeQueue.front().uuidRev) {
+                        ++(fit->second.changed);
+                        fit->second.uuidRev = devChangeQueue.front().uuidRev;
+                    }
+                }
+                devChangeQueue.pop_front();
+            }
+            devChangeLock.Unlock();
+        }
+    }
+
+    if (found) {
+        String detail = "Found \"";
+        detail += opts.basename;
+        detail += "\" in advertisement for device with connect address ";
+        detail += connAddr.ToString();
+        detail += ".";
+        ReportTestDetail(detail);
+        connNode = connAdInfo.FindNode(connAddr);
     }
 
 exit:
@@ -850,32 +1035,179 @@ exit:
 
 bool ClientTestDriver::TC_ConnectSingle()
 {
-    ReportTestDetail("NOT YET IMPLEMENTED");
-    return true;
+    bool tcSuccess = true;
+
+    if (!connNode->IsValid()) {
+        ReportTestDetail("Cannot continue with connection testing.  Connection address not set (no device found).");
+        tcSuccess = false;
+        goto exit;
+    }
+
+    ep = btAccessor->Connect(bus, connNode);
+
+    if (!ep) {
+        String detail = "Failed to connect to ";
+        detail += connNode->GetBusAddress().ToString();
+        detail += ".";
+        ReportTestDetail(detail);
+        tcSuccess = false;
+    }
+
+exit:
+    return tcSuccess;
 }
 
 bool ClientTestDriver::TC_ConnectMultiple()
 {
-    ReportTestDetail("NOT YET IMPLEMENTED");
-    return true;
-}
+    bool tcSuccess = true;
+    RemoteEndpoint* eps[100];
 
-bool ClientTestDriver::TC_GetDeviceInfo()
-{
-    ReportTestDetail("NOT YET IMPLEMENTED");
-    return true;
+    memset(eps, 0, sizeof(eps));
+
+    if (!connNode->IsValid()) {
+        ReportTestDetail("Cannot continue with connection testing.  Connection address not set (no device found).");
+        tcSuccess = false;
+        goto exit;
+    }
+
+    for (size_t i = 0; i < ArraySize(eps); ++i) {
+        eps[i] = btAccessor->Connect(bus, connNode);
+
+        if (!eps[i]) {
+            String detail = "Failed connect ";
+            detail += U32ToString(i);
+            detail += " to ";
+            detail += connNode->GetBusAddress().ToString();
+            detail += ".";
+            ReportTestDetail(detail);
+            tcSuccess = false;
+            goto exit;
+        }
+    }
+
+exit:
+    for (size_t i = 0; i < ArraySize(eps); ++i) {
+        if (eps[i]) {
+            delete eps[i];
+        }
+    }
+
+    return tcSuccess;
 }
 
 bool ClientTestDriver::TC_ExchangeSmallData()
 {
-    ReportTestDetail("NOT YET IMPLEMENTED");
-    return true;
+    return ExchangeData(1);
 }
 
 bool ClientTestDriver::TC_ExchangeLargeData()
 {
-    ReportTestDetail("NOT YET IMPLEMENTED");
-    return true;
+    return ExchangeData(256 * 1024);
+}
+
+bool ClientTestDriver::TC_IsMaster()
+{
+    QStatus status;
+    bool tcSuccess = true;
+    bool master;
+    String detail;
+
+    status = btAccessor->IsMaster(connAddr.addr, master);
+    if (status != ER_OK) {
+        detail = "Failed to get BT master/slave role: ";
+        detail += QCC_StatusText(status);
+        detail += ".";
+        ReportTestDetail(detail);
+        tcSuccess = false;
+        goto exit;
+    }
+
+    detail = "We are ";
+    detail += master ? "the master." : "a slave.";
+    ReportTestDetail(detail);
+
+exit:
+    return tcSuccess;
+}
+
+bool ClientTestDriver::TC_RequestBTRole()
+{
+    QStatus status;
+    bool tcSuccess = true;
+    bool oldMaster;
+    bool newMaster;
+    String detail;
+
+    status = btAccessor->IsMaster(connAddr.addr, oldMaster);
+    if (status != ER_OK) {
+        detail = "Failed to get BT master/slave role: ";
+        detail += QCC_StatusText(status);
+        detail += ".";
+        ReportTestDetail(detail);
+        tcSuccess = false;
+        goto exit;
+    }
+
+    btAccessor->RequestBTRole(connAddr.addr, oldMaster ? bt::SLAVE : bt::MASTER);
+
+    status = btAccessor->IsMaster(connAddr.addr, newMaster);
+    if (status != ER_OK) {
+        detail = "Failed to get BT master/slave role: ";
+        detail += QCC_StatusText(status);
+        detail += ".";
+        ReportTestDetail(detail);
+        tcSuccess = false;
+        goto exit;
+    }
+
+    if (newMaster == oldMaster) {
+        ReportTestDetail("Failed to change BT master/slave role.");
+        tcSuccess = false;
+    }
+
+exit:
+    return tcSuccess;
+}
+
+bool ClientTestDriver::ExchangeData(size_t size)
+{
+    bool tcSuccess = true;
+    size_t bufSize = size * qcc::GUID::SIZE;
+    uint8_t* txBuf = new uint8_t[bufSize];
+    uint8_t* rxBuf = new uint8_t[bufSize];
+    uint8_t* buf = new uint8_t[bufSize];
+    uint8_t* expBuf = new uint8_t[bufSize];
+    
+    for (size_t i = 0; i < bufSize; i += qcc::GUID::SIZE) {
+        memcpy(txBuf + i, busGuid.GetBytes(), qcc::GUID::SIZE);
+        memcpy(expBuf + i, connNode->GetGUID().GetBytes(), qcc::GUID::SIZE);
+    }
+
+    tcSuccess = SendBuf(txBuf, bufSize);
+    if (!tcSuccess) {
+        goto exit;
+    }
+
+    tcSuccess = RecvBuf(rxBuf, bufSize);
+    if (!tcSuccess) {
+        goto exit;
+    }
+
+    XorByteArray(txBuf, rxBuf, buf, bufSize);
+
+    if (memcmp(buf, expBuf, bufSize) != 0) {
+        String detail = "Recieved bytes does not match expected.";
+        ReportTestDetail(detail);
+        tcSuccess = false;
+    }
+
+exit:
+    delete[] txBuf;
+    delete[] rxBuf;
+    delete[] buf;
+    delete[] expBuf;
+
+    return tcSuccess;
 }
 
 
@@ -913,8 +1245,10 @@ bool ServerTestDriver::TC_StopDiscoverability()
 
 bool ServerTestDriver::TC_SetSDPInfo()
 {
+    bool tcSuccess = true;
     QStatus status;
-    String adName = basename + "." + self->GetBusAddress().addr.ToString('_') + ".";
+    String adName = opts.basename + "." + self->GetBusAddress().addr.ToString('_') + ".";
+    String detail;
     int i;
 
     // Advertise 100 names for the local device.
@@ -929,7 +1263,7 @@ bool ServerTestDriver::TC_SetSDPInfo()
         BTNodeInfo fakeNode;
         int j;
         fakeNode = BTNodeInfo(busAddr);
-        adName = basename + "." + fakeNode->GetBusAddress().addr.ToString('_') + ".";
+        adName = opts.basename + "." + fakeNode->GetBusAddress().addr.ToString('_') + ".";
         for (j = 0; j < 5; ++j) {
             fakeNode->AddAdvertiseName(adName + RandHexString(4));
         }
@@ -940,22 +1274,18 @@ bool ServerTestDriver::TC_SetSDPInfo()
                                     self->GetBusAddress().addr,
                                     self->GetBusAddress().psm,
                                     nodeDB);
-    bool tcSuccess = (status == ER_OK);
-    if (!tcSuccess) {
-        String detail = "Call to set SDP information returned failure code: ";
+    if (status != ER_OK) {
+        detail = "Call to set SDP information returned failure code: ";
         detail += QCC_StatusText(status);
-        detail += ".";
-        ReportTestDetail(status);
+        tcSuccess = false;
+    } else {
+        detail = "UUID revision for SDP record set to 0x";
+        detail += U32ToString(uuidRev, 16, 8, '0');
     }
+    detail += ".";
+    ReportTestDetail(detail);
+
     return tcSuccess;
-}
-
-bool ServerTestDriver::TC_Accept()
-{
-    Sleep(120000);  // Temporary until TC_Accpet() is implemented
-
-    ReportTestDetail("NOT YET IMPLEMENTED");
-    return true;
 }
 
 bool ServerTestDriver::TC_GetL2CAPConnectEvent()
@@ -976,23 +1306,152 @@ bool ServerTestDriver::TC_GetL2CAPConnectEvent()
     return tcSuccess;
 }
 
-/****************************************/
-
-ClientTestDriver::ClientTestDriver(const String& basename, bool allowInteractive, bool reportDetails) :
-    TestDriver(basename, allowInteractive, reportDetails)
+bool ServerTestDriver::TC_AcceptSingle()
 {
-    AddTestCase(TestCaseFunction(ClientTestDriver::TC_StartDiscovery), "Start Discovery");
-    AddTestCase(TestCaseFunction(ClientTestDriver::TC_GetDeviceInfo), "Get Device Information");
-    AddTestCase(TestCaseFunction(ClientTestDriver::TC_StopDiscovery), "Stop Discovery");
-    AddTestCase(TestCaseFunction(ClientTestDriver::TC_ConnectSingle), "Single Connection to Server");
-    AddTestCase(TestCaseFunction(ClientTestDriver::TC_ConnectMultiple), "Multiple Simultaneous Connections to Server");
-    AddTestCase(TestCaseFunction(ClientTestDriver::TC_ExchangeSmallData), "Exchange Small Amount of Data");
-    AddTestCase(TestCaseFunction(ClientTestDriver::TC_ExchangeLargeData), "Exchange Large Amount of Data");
+    bool tcSuccess = true;
+    QStatus status;
+
+    Event* l2capEvent = btAccessor->GetL2CAPConnectEvent();
+
+    if (!l2capEvent) {
+        ReportTestDetail("L2CAP connect event object does not exist.");
+        tcSuccess = false;
+        goto exit;
+    }
+
+    status = Event::Wait(*l2capEvent, 120000);
+    if (status != ER_OK) {
+        String detail = "Failed to wait for incoming connection: ";
+        detail += QCC_StatusText(status);
+        detail += ".";
+        ReportTestDetail(detail);
+        tcSuccess = false;
+        goto exit;
+    }
+
+    ep = btAccessor->Accept(bus, l2capEvent);
+
+    if (!ep) {
+        ReportTestDetail("Failed to accept incoming connection.");
+        tcSuccess = false;
+    }
+
+exit:
+    return tcSuccess;
+}
+
+bool ServerTestDriver::TC_AcceptMultiple()
+{
+    bool tcSuccess = true;
+    QStatus status;
+    RemoteEndpoint* eps[100];
+
+    Event* l2capEvent = btAccessor->GetL2CAPConnectEvent();
+
+    memset(eps, 0, sizeof(eps));
+
+    if (!l2capEvent) {
+        ReportTestDetail("L2CAP connect event object does not exist.");
+        tcSuccess = false;
+        goto exit;
+    }
+
+    for (size_t i = 0; i < ArraySize(eps); ++i) {
+        status = Event::Wait(*l2capEvent, 120000);
+        if (status != ER_OK) {
+            String detail = "Failed to wait for incoming connection: ";
+            detail += QCC_StatusText(status);
+            detail += ".";
+            ReportTestDetail(detail);
+            tcSuccess = false;
+            goto exit;
+        }
+
+        eps[i] = btAccessor->Accept(bus, l2capEvent);
+
+        if (!eps[i]) {
+            String detail = "Failed to accept incoming connection ";
+            detail += U32ToString(i);
+            detail += ".";
+            ReportTestDetail(detail);
+            tcSuccess = false;
+            goto exit;
+        }
+    }
+
+exit:
+    for (size_t i = 0; i < ArraySize(eps); ++i) {
+        if (eps[i]) {
+            delete eps[i];
+        }
+    }
+
+    return tcSuccess;
+}
+
+bool ServerTestDriver::TC_ExchangeSmallData()
+{
+    return ExchangeData(1);
+}
+
+bool ServerTestDriver::TC_ExchangeLargeData()
+{
+    return ExchangeData(256 * 1024);
+}
+
+bool ServerTestDriver::ExchangeData(size_t size)
+{
+    bool tcSuccess = true;
+    size_t bufSize = size * qcc::GUID::SIZE;
+    uint8_t* txBuf = new uint8_t[bufSize];
+    uint8_t* rxBuf = new uint8_t[bufSize];
+    uint8_t* buf = new uint8_t[bufSize];
+
+    for (size_t i = 0; i < bufSize; i += qcc::GUID::SIZE) {
+        memcpy(buf + i, busGuid.GetBytes(), qcc::GUID::SIZE);
+    }
+
+    tcSuccess = RecvBuf(rxBuf, bufSize);
+    if (!tcSuccess) {
+        goto exit;
+    }
+
+    XorByteArray(rxBuf, buf, txBuf, bufSize);
+
+    tcSuccess = SendBuf(txBuf, bufSize);
+
+exit:
+    delete[] txBuf;
+    delete[] rxBuf;
+    delete[] buf;
+
+    return tcSuccess;
 }
 
 
-ServerTestDriver::ServerTestDriver(const String& basename, bool allowInteractive, bool reportDetails) :
-    TestDriver(basename, allowInteractive, reportDetails),
+/****************************************/
+
+ClientTestDriver::ClientTestDriver(const CmdLineOptions& opts) :
+    TestDriver(opts)
+{
+    AddTestCase(TestCaseFunction(ClientTestDriver::TC_StartDiscovery), "Start Discovery (~70 sec)");
+    if (!opts.local) {
+        AddTestCase(TestCaseFunction(ClientTestDriver::TC_GetDeviceInfo), "Get Device Information");
+    }
+    AddTestCase(TestCaseFunction(ClientTestDriver::TC_StopDiscovery), "Stop Discovery (~35 sec)");
+    if (!opts.local) {
+        AddTestCase(TestCaseFunction(ClientTestDriver::TC_ConnectSingle), "Single Connection to Server");
+        AddTestCase(TestCaseFunction(ClientTestDriver::TC_ConnectMultiple), "Multiple Simultaneous Connections to Server");
+        AddTestCase(TestCaseFunction(ClientTestDriver::TC_ExchangeSmallData), "Exchange Small Amount of Data");
+        AddTestCase(TestCaseFunction(ClientTestDriver::TC_ExchangeLargeData), "Exchange Large Amount of Data");
+        AddTestCase(TestCaseFunction(ClientTestDriver::TC_IsMaster), "Check BT master/slave role");
+        AddTestCase(TestCaseFunction(ClientTestDriver::TC_RequestBTRole), "Switch BT master/slave role");
+    }
+}
+
+
+ServerTestDriver::ServerTestDriver(const CmdLineOptions& opts) :
+    TestDriver(opts),
     allowIncomingAddress(true)
 {
     while (uuidRev == bt::INVALID_UUIDREV) {
@@ -1002,7 +1461,12 @@ ServerTestDriver::ServerTestDriver(const String& basename, bool allowInteractive
     AddTestCase(TestCaseFunction(ServerTestDriver::TC_SetSDPInfo), "Set SDP Information");
     AddTestCase(TestCaseFunction(ServerTestDriver::TC_GetL2CAPConnectEvent), "Check L2CAP Connect Event Object");
     AddTestCase(TestCaseFunction(ServerTestDriver::TC_StartDiscoverability), "Start Discoverability");
-    AddTestCase(TestCaseFunction(ServerTestDriver::TC_Accept), "Accept Incoming Connections");
+    if (!opts.local) {
+        AddTestCase(TestCaseFunction(ServerTestDriver::TC_AcceptSingle), "Accept Single Incoming Connection");
+        AddTestCase(TestCaseFunction(ServerTestDriver::TC_AcceptMultiple), "Accept Multiple Incoming Connections");
+        AddTestCase(TestCaseFunction(ServerTestDriver::TC_ExchangeSmallData), "Exchange Small Amount of Data");
+        AddTestCase(TestCaseFunction(ServerTestDriver::TC_ExchangeLargeData), "Exchange Large Amount of Data");
+    }
     AddTestCase(TestCaseFunction(ServerTestDriver::TC_StopDiscoverability), "Stop Discoverability");
 }
 
@@ -1018,11 +1482,13 @@ static void Usage(void)
            "    -s              Run in server mode\n"
            "    -n <basename>   Set the base name for advertised/find names\n"
            "    -a              Automatic tests only (disable interactive tests)\n"
+           "    -l              Only run local tests (skip inter-device tests)\n"
+           "    -f              Fast discovery (client only - skips some discovery testing)\n"
+           "    -q              Quiet - suppress debug and log errors\n"
            "    -d              Output test details\n");
 }
 
-
-static void ParseCmdLine(int argc, char** argv, bool& client, String& basename, bool& allowInteractive, bool& reportDetails)
+static void ParseCmdLine(int argc, char** argv, CmdLineOptions& opts)
 {
     int i;
 
@@ -1031,9 +1497,19 @@ static void ParseCmdLine(int argc, char** argv, bool& client, String& basename, 
             Usage();
             exit(0);
         } else if (strcmp(argv[i], "-c") == 0) {
-            client = true;
+            if (opts.server) {
+                printf("Cannot specify server and client at the same time.\n");
+                Usage();
+                exit(-1);
+            }
+            opts.client = true;
         } else if (strcmp(argv[i], "-s") == 0) {
-            client = false;
+            if (opts.client) {
+                printf("Cannot specify server and client at the same time.\n");
+                Usage();
+                exit(-1);
+            }
+            opts.server = true;
         } else if (strcmp(argv[i], "-n") == 0) {
             ++i;
             if (i == argc) {
@@ -1041,30 +1517,53 @@ static void ParseCmdLine(int argc, char** argv, bool& client, String& basename, 
                 Usage();
                 exit(-1);
             } else {
-                basename = argv[i];
+                opts.basename = argv[i];
             }
         } else if (strcmp(argv[i], "-a") == 0) {
-            allowInteractive = false;
+            opts.allowInteractive = false;
         } else if (strcmp(argv[i], "-d") == 0) {
-            reportDetails = true;
+            opts.reportDetails = true;
+        } else if (strcmp(argv[i], "-l") == 0) {
+            opts.local = true;
+        } else if (strcmp(argv[i], "-f") == 0) {
+            opts.fastDiscovery = true;
+        } else if (strcmp(argv[i], "-q") == 0) {
+            opts.quiet = true;
         }
     }
 }
 
+void DebugOutputHandler(DbgMsgType type,
+                        const char* module,
+                        const char* msg,
+                        void* context)
+{
+}
+
 int main(int argc, char** argv)
 {
-    bool client = false;
-    String basename = "org.alljoyn.BTAccessorTester";
+#if defined(NDEBUG) && defined(QCC_OS_ANDROID)
+    LoggerSetting::GetLoggerSetting("bbdaemon", LOG_ERR, true, NULL);
+#else
+    LoggerSetting::GetLoggerSetting("bbdaemon", LOG_DEBUG, false, stdout);
+#endif
+
     TestDriver* driver;
-    bool allowInteractive = true;
-    bool reportDetails = false;
 
-    ParseCmdLine(argc, argv, client, basename, allowInteractive, reportDetails);
+    CmdLineOptions opts;
 
-    if (client) {
-        driver = new ClientTestDriver(basename, allowInteractive, reportDetails);
+    ParseCmdLine(argc, argv, opts);
+
+    if (opts.quiet) {
+        QCC_RegisterOutputCallback(DebugOutputHandler, NULL);
+    }
+
+    if (opts.client) {
+        driver = new ClientTestDriver(opts);
+    } else if (opts.server) {
+        driver = new ServerTestDriver(opts);
     } else {
-        driver = new ServerTestDriver(basename, allowInteractive, reportDetails);
+        driver = new TestDriver(opts);
     }
 
     int ret = driver->RunTests();

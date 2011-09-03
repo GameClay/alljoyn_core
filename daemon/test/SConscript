@@ -29,9 +29,11 @@ progs = [
    ]
 
 if env['OS_GROUP'] == 'posix':
-   progs.append(env.Program('BTAccessorTester', ['BTAccessorTester.cc'] + [ o for o in daemon_objs
-                                                                            if ((basename(str(o)) != 'BTTransport.o') and
-                                                                                (basename(str(o)) != 'BTController.o'))]))
+   testenv = env.Clone()
+   testenv.Append(LINKFLAGS=['-Wl,--allow-multiple-definition'])
+   progs.append(testenv.Program('BTAccessorTester', ['BTAccessorTester.cc'] + [ o for o in daemon_objs
+                                                                                if ((basename(str(o)) != 'BTTransport.o') and
+                                                                                    (basename(str(o)) != 'BTController.o'))]))
 
 
 #
