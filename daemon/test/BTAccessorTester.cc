@@ -302,7 +302,7 @@ TestDriver::TestDriver(const CmdLineOptions& opts) :
     btAccessor(NULL),
     bus("BTAccessorTester"),
     opts(opts),
-    ep(NULL), 
+    ep(NULL),
     testcase(0),
     success(true),
     maxWidth(80),
@@ -1177,7 +1177,7 @@ bool ClientTestDriver::ExchangeData(size_t size)
     uint8_t* rxBuf = new uint8_t[bufSize];
     uint8_t* buf = new uint8_t[bufSize];
     uint8_t* expBuf = new uint8_t[bufSize];
-    
+
     for (size_t i = 0; i < bufSize; i += qcc::GUID::SIZE) {
         memcpy(txBuf + i, busGuid.GetBytes(), qcc::GUID::SIZE);
         memcpy(expBuf + i, connNode->GetGUID().GetBytes(), qcc::GUID::SIZE);
