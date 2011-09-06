@@ -464,7 +464,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
 
             // Make sure we are still master
             if (IsMaster()) {
-                if (status != ER_OK) {
+                if ((status != ER_OK) || !connAddr.IsValid()) {
                     if (!eirCapable) {
                         QCC_DbgPrintf(("Blacklisting %s", adBdAddr.ToString().c_str()));
                         blacklist->insert(adBdAddr);
@@ -474,13 +474,6 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                         find.dirty = true;
                         DispatchOperation(new UpdateDelegationsDispatchInfo());
                     }
-                    lock.Unlock();
-                    return;
-                }
-
-                if (!connAddr.IsValid()) {
-                    QCC_LogError(ER_FAIL, ("Invalid connect address %s in advertisement",
-                                           connAddr.ToString().c_str()));
                     lock.Unlock();
                     return;
                 }
