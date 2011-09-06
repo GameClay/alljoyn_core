@@ -515,8 +515,8 @@ bool ServerTestDriver::TestCheckIncomingAddress(const BDAddress& addr) const
 }
 
 void TestDriver::TestDeviceChange(const BDAddress& bdAddr,
-                                        uint32_t uuidRev,
-                                        bool eirCapable)
+                                  uint32_t uuidRev,
+                                  bool eirCapable)
 {
     ReportTestDetail("BTAccessor reported a found device to us.  Ignoring since this is the base Test Driver.");
 }
