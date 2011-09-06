@@ -39,8 +39,9 @@ progs = [
     ]
 
 if env['OS'] == 'linux' or env['OS'] == 'android':
-   progs.extend(env.Program('bbkiller',   ['bbkiller.cc'])),
-   progs.extend(env.Program('mc-rcv',     ['mc-rcv.cc'])),
+   progs.extend(env.Program('bbkiller',   ['bbkiller.cc']))
+   progs.extend(env.Program('mc-rcv',     ['mc-rcv.cc']))
    progs.extend(env.Program('mc-snd',     ['mc-snd.cc']))
+   progs.extend(env.Program('bluetoothd-crasher',     ['bluetoothd-crasher.cc']))
 
 Return('progs')
