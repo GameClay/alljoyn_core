@@ -327,6 +327,7 @@ int main(int argc, char** argv)
             goto Exit;
         }
         for (size_t i = 0; i < iterations; ++i) {
+            printf("Iteration %d: ", i + 1);
             /* Create a connected pair if sockets */
             status = SocketPair(handles, 9900 + i);
             if (status != ER_OK) {
@@ -353,7 +354,7 @@ int main(int argc, char** argv)
                         break;
                     }
                     if (status == ER_OK) {
-                        printf("Received %d bytes: %s\n", (int)recvd, buf);
+                        printf("received %d bytes: %s", (int)recvd, buf);
                     } else {
                         QCC_LogError(status, ("Recv failed"));
                     }
@@ -364,7 +365,10 @@ int main(int argc, char** argv)
                 }
             }
         }
-        bus.WaitStop();
+        status = bus.Stop(false);
+        if (ER_OK != status) {
+            QCC_LogError(status, ("BusAttachment::Stop() failed"));
+        }
     } else {
         QStatus status = bus.CreateInterfacesFromXml(ifcXML);
         if (status != ER_OK) {
