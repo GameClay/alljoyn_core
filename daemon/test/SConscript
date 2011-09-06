@@ -28,7 +28,7 @@ progs = [
     env.Program('ns', ['ns.cc'] + daemon_objs)
    ]
 
-if env['OS_GROUP'] == 'posix':
+if env['OS_GROUP'] == 'posix' and env['OS'] != 'darwin':
    testenv = env.Clone()
    testenv.Append(LINKFLAGS=['-Wl,--allow-multiple-definition'])
    progs.append(testenv.Program('BTAccessorTester', ['BTAccessorTester.cc'] + [ o for o in daemon_objs
