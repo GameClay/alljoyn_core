@@ -209,7 +209,7 @@ class Crasher : public Thread, public MessageReceiver {
     Crasher(BusAttachment& bus, ProxyBusObject& bzAdapterObj) :
         bus(bus),
         bzAdapterObj(bzAdapterObj)
-    { 
+    {
         QStatus status = bus.RegisterSignalHandler(this,
                                                    static_cast<MessageReceiver::SignalHandler>(&Crasher::DeviceFoundSignalHandler),
                                                    test::org.bluez.Adapter.DeviceFound, NULL);
