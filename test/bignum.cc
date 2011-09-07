@@ -97,8 +97,6 @@ static const uint8_t zeroes[256] = { 0 };
 
 int main()
 {
-    uint32_t x;
-    uint32_t y;
     BigNum M;
     BigNum E;
     BigNum bn1;
@@ -460,7 +458,7 @@ int main()
                 m.gen_rand(j);
             } while (m.is_even());
             a.gen_rand(1);
-            // Modular exponentiation for checking
+            // Brute force modular exponentiation for checking
             BigNum check = 1;
             size_t i = e.bit_len();
             while (i) {
