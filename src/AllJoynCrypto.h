@@ -58,7 +58,7 @@ class Crypto {
      *         - ER_BUS_KEYBLOB_OP_INVALID if the key blob cannot be used for encryption.
      *         - Other errors if the arguments are invalid.
      */
-    static QStatus Encrypt(const Message& message, const qcc::KeyBlob& keyBlob, uint8_t* msgBuf, size_t hdrLen, size_t& bodyLen);
+    static QStatus Encrypt(const _Message& message, const qcc::KeyBlob& keyBlob, uint8_t* msgBuf, size_t hdrLen, size_t& bodyLen);
 
     /**
      * Decrypt and authenticate marshaled message inplace using the key blob provided and the
@@ -75,7 +75,7 @@ class Crypto {
      *         - ER_BUS_KEYBLOB_OP_INVALID if the key blob cannot be used for decryption.
      *         - Other errors if the arguments are invalid.
      */
-    static QStatus Decrypt(const Message& message, const qcc::KeyBlob& keyBlob, uint8_t* msgBuf, size_t hdrLen, size_t& bodyLen);
+    static QStatus Decrypt(const _Message& message, const qcc::KeyBlob& keyBlob, uint8_t* msgBuf, size_t hdrLen, size_t& bodyLen);
 
     /**
      * Compute a SHA1 hash over the header fields and return the result in a key blob.

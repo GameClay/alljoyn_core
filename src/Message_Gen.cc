@@ -696,10 +696,9 @@ QStatus _Message::EncryptMessage()
     KeyBlob key;
     status = peerStateTable->GetPeerState(GetDestination())->GetKey(key, PEER_SESSION_KEY);
     if (status == ER_OK) {
-        Message thisMsg(this);
         size_t argsLen = msgHeader.bodyLen - ajn::Crypto::ExpansionBytes;
         size_t hdrLen = ROUNDUP8(sizeof(msgHeader) + msgHeader.headerLen);
-        status = ajn::Crypto::Encrypt(thisMsg, key, (uint8_t*)msgBuf, hdrLen, argsLen);
+        status = ajn::Crypto::Encrypt(*this, key, (uint8_t*)msgBuf, hdrLen, argsLen);
         if (status == ER_OK) {
             authMechanism = key.GetTag();
             assert(msgHeader.bodyLen == argsLen);

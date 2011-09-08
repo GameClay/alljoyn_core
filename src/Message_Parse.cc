@@ -567,9 +567,8 @@ QStatus _Message::UnmarshalArgs(const qcc::String& expectedSignature, const char
          * Decryption will typically make the body length slightly smaller because the encryption
          * algorithm adds appends a MAC block to the end of the encrypted data.
          */
-        Message thisMsg(this);
         size_t bodyLen = msgHeader.bodyLen;
-        status = ajn::Crypto::Decrypt(thisMsg, key, (uint8_t*)msgBuf, hdrLen, bodyLen);
+        status = ajn::Crypto::Decrypt(*this, key, (uint8_t*)msgBuf, hdrLen, bodyLen);
         if (status != ER_OK) {
             goto ExitUnmarshalArgs;
         }
