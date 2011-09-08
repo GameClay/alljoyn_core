@@ -936,7 +936,9 @@ QStatus _Message::Unmarshal(RemoteEndpoint& endpoint, bool checkSender, bool ped
     while (bufPos < endOfHdr) {
         bufPos = AlignPtr(bufPos, 8);
         AllJoynFieldType fieldId = (*bufPos >= ArraySize(FieldTypeMapping)) ? ALLJOYN_HDR_FIELD_UNKNOWN : FieldTypeMapping[*bufPos];
-        const char* sigPtr = (char*)(++bufPos);
+        if (++bufPos > endOfHdr) {
+            break;
+        }
         /*
          * An invalid field type is an error
          */
@@ -944,15 +946,14 @@ QStatus _Message::Unmarshal(RemoteEndpoint& endpoint, bool checkSender, bool ped
             status = ER_BUS_BAD_HEADER_FIELD;
             goto ExitUnmarshal;
         }
+        size_t sigLen = (size_t)(*bufPos++);
+        const char* sigPtr = (char*)(bufPos);
         /*
          * Skip over the signature
          */
-        uint8_t sigLen = *sigPtr++;
-        bufPos += 2 + sigLen;
+        bufPos += 1 + sigLen;
         if (bufPos > endOfHdr) {
-            status = ER_BUS_BAD_HEADER_LEN;
-            QCC_LogError(status, ("Unmarshal bad header length %d != %d\n", bufPos - (uint8_t*)msgBuf, msgHeader.headerLen));
-            goto ExitUnmarshal;
+            break;
         }
         if (fieldId == ALLJOYN_HDR_FIELD_UNKNOWN) {
             MsgArg unknownHdr;
