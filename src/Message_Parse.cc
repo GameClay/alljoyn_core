@@ -947,7 +947,7 @@ QStatus _Message::Unmarshal(RemoteEndpoint& endpoint, bool checkSender, bool ped
         /*
          * Skip over the signature
          */
-        size_t sigLen = *sigPtr++;
+        uint8_t sigLen = *sigPtr++;
         bufPos += 2 + sigLen;
         if (bufPos > endOfHdr) {
             status = ER_BUS_BAD_HEADER_LEN;
