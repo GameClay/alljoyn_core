@@ -347,7 +347,6 @@ QStatus BTController::RemoveAdvertiseName(const qcc::String& name)
     lock.Unlock();
 
     if (isMaster && (status == ER_OK)) {
-        self->RemoveAdvertiseName(name);
         if (lDevAvailable) {
             BTNodeDB oldAdInfo;
             BTNodeInfo node(addr, self->GetUniqueName(), self->GetGUID());  // make an actual copy of self
@@ -1349,7 +1348,7 @@ void BTController::HandleFoundNamesChange(const InterfaceDescription::Member* me
         const BTNodeDB* oldExternalDB = lost ? &externalDB : NULL;
 
         nodeDB.UpdateDB(newMinionDB, oldMinionDB, false);
-        foundNodeDB.UpdateDB(newExternalDB, oldExternalDB);
+        foundNodeDB.UpdateDB(newExternalDB, oldExternalDB, false);
         foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices");
         assert(!devAvailable || (nodeDB.Size() > 0));
 
@@ -2798,6 +2797,10 @@ void BTController::NameArgInfo::StopOp(bool immediate)
     if ((this != &bto.advertise) || immediate) {
         ClearArgs();
     } else {
+        SetArgs();  // Update advertise to inlcude all devices with no advertised names
+    }
+
+    if (this == &bto.advertise) {
         // Set the duration to the delegate time if this is not an immediate stop operation command.
         args->args[SIG_DELEGATE_AD_DURATION_PARAM].Set(SIG_DURATION, immediate ? static_cast<uint32_t>(0) : static_cast<uint32_t>(DELEGATE_TIME));
     }
