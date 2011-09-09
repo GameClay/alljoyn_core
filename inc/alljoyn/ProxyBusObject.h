@@ -388,7 +388,7 @@ class ProxyBusObject : public MessageReceiver {
      * @param method       Method being invoked.
      * @param args         The arguments for the method call (can be NULL)
      * @param numArgs      The number of arguments
-     * @param replyMsg     The arguments for the method call (can be NULL)
+     * @param replyMsg     The reply message received for the method call
      * @param timeout      Timeout specified in milliseconds to wait for a reply
      * @param flags        Logical OR of the message flags for this method call. The following flags apply to method calls:
      *                     - If #ALLJOYN_FLAG_ENCRYPTED is set the message is authenticated and the payload if any is encrypted.
@@ -414,7 +414,7 @@ class ProxyBusObject : public MessageReceiver {
      * @param methodName   Name of method.
      * @param args         The arguments for the method call (can be NULL)
      * @param numArgs      The number of arguments
-     * @param replyMsg     The arguments for the method call (can be NULL)
+     * @param replyMsg     The reply message received for the method call
      * @param timeout      Timeout specified in milliseconds to wait for a reply
      * @param flags        Logical OR of the message flags for this method call. The following flags apply to method calls:
      *                     - If #ALLJOYN_FLAG_ENCRYPTED is set the message is authenticated and the payload if any is encrypted.
