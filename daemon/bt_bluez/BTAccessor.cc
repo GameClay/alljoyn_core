@@ -1280,6 +1280,7 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
     QStatus status;
     qcc::String devObjPath;
     bool resumeDiscovery = false;
+    bool created;
 
     if (discoveryActive) {
         resumeDiscovery = true;
@@ -1287,7 +1288,7 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
         DiscoveryControl(*org.bluez.Adapter.StopDiscovery);
     }
 
-    status = GetDeviceObjPath(addr, devObjPath);
+    status = GetDeviceObjPath(addr, devObjPath, created);
     if (status == ER_OK) {
         Message rsp(bzBus);
         MsgArg arg("s", "");
@@ -1328,6 +1329,10 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
             QCC_LogError(status, ("Failed to get the AllJoyn service information for %s: %s - %s",
                                   addr.ToString().c_str(),
                                   errName, errMsg.c_str()));
+        }
+
+        if (created) {
+            RemoveDeviceObjPath(devObjPath);
         }
     }
 
@@ -1622,7 +1627,8 @@ exit:
 
 
 QStatus BTTransport::BTAccessor::GetDeviceObjPath(const BDAddress& bdAddr,
-                                                  qcc::String& devObjPath)
+                                                  qcc::String& devObjPath,
+                                                  bool& created)
 {
     const qcc::String& bdAddrStr(bdAddr.ToString());
     QCC_DbgTrace(("BTTransport::BTAccessor::GetDeviceObjPath(bdAddr = %s)", bdAddrStr.c_str()));
@@ -1655,18 +1661,22 @@ QStatus BTTransport::BTAccessor::GetDeviceObjPath(const BDAddress& bdAddr,
         }
     }
 
-    if (status != ER_OK) {
+    if (status == ER_OK) {
+        created = false;
+    } else {
         // Not found on any of the adapters, so create it on the default adapter.
         adapter = GetDefaultAdapterObject();
         if (adapter->IsValid()) {
             status = adapter->MethodCall(*org.bluez.Adapter.CreateDevice, &arg, 1, rsp, BT_CREATE_DEV_TO);
+            if (status == ER_OK) {
+                created = true;
 #ifndef NDEBUG
-            if (status != ER_OK) {
+            } else {
                 qcc::String errMsg;
                 const char* errName = rsp->GetErrorName(&errMsg);
                 QCC_DbgPrintf(("GetDeviceObjPath(): CreateDevice method call: %s - %s", errName, errMsg.c_str()));
-            }
 #endif
+            }
         }
     }
 
@@ -1677,6 +1687,18 @@ QStatus BTTransport::BTAccessor::GetDeviceObjPath(const BDAddress& bdAddr,
     }
 
     return status;
+}
+
+
+void BTTransport::BTAccessor::RemoveDeviceObjPath(const String& devObjPath)
+{
+    AdapterObject adapter;
+    MsgArg arg("o", devObjPath.c_str());
+
+    adapter = GetDefaultAdapterObject();
+    if (adapter->IsValid()) {
+        adapter->MethodCall(*org.bluez.Adapter.RemoveDevice, &arg, 1);
+    }
 }
 
 

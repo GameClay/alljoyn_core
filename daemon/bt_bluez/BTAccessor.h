@@ -249,7 +249,9 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
                                                 BTNodeDB& adInfo,
                                                 uint32_t remoteVersion);
     QStatus GetDeviceObjPath(const BDAddress& bdAddr,
-                             qcc::String& devObjPath);
+                             qcc::String& devObjPath,
+                             bool& created);
+    void RemoveDeviceObjPath(const qcc::String& devObjPath);
     QStatus DiscoveryControl(const InterfaceDescription::Member& method);
     QStatus SetDiscoverabilityProperty();
 
