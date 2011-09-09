@@ -28,7 +28,7 @@
 
 #include <qcc/platform.h>
 #include <qcc/String.h>
-#include <qcc/Atomic.h>
+#include <qcc/atomic.h>
 #include <qcc/Thread.h>
 
 #include <alljoyn/AuthListener.h>
