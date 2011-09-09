@@ -78,7 +78,7 @@ class AuthMechRSA : public AuthMechanism, qcc::Crypto_RSA::PassphraseListener {
      *
      * @return An object of class AuthMechRSA
      */
-    static AuthMechanism* Factory(KeyStore& keyStore, AuthListener* listener) { return new AuthMechRSA(keyStore, listener); }
+    static AuthMechanism* Factory(KeyStore& keyStore, ProtectedAuthListener& listener) { return new AuthMechRSA(keyStore, listener); }
 
     /**
      * Initial response from the client.
@@ -130,12 +130,7 @@ class AuthMechRSA : public AuthMechanism, qcc::Crypto_RSA::PassphraseListener {
     /**
      * Objects must be created using the factory function
      */
-    AuthMechRSA(KeyStore& keyStore, AuthListener* listener);
-
-    /**
-     * Default constructor is private
-     */
-    AuthMechRSA(KeyStore& keyStore) : AuthMechanism(keyStore) { }
+    AuthMechRSA(KeyStore& keyStore, ProtectedAuthListener& listener);
 
     /**
      * Compute the master secret.

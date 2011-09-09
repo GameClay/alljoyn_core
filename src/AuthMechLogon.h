@@ -75,7 +75,7 @@ class AuthMechLogon : public AuthMechanism {
      *
      * @return  An object of class AuthMechLogon
      */
-    static AuthMechanism* Factory(KeyStore& keyStore, AuthListener* listener) { return listener ? new AuthMechLogon(keyStore, listener) : NULL; }
+    static AuthMechanism* Factory(KeyStore& keyStore, ProtectedAuthListener& listener) { return new AuthMechLogon(keyStore, listener); }
 
     /**
      * Client initiates the conversation by sending a random nonce
@@ -121,12 +121,7 @@ class AuthMechLogon : public AuthMechanism {
     /**
      * Objects must be created using the factory function
      */
-    AuthMechLogon(KeyStore& keyStore, AuthListener* listener);
-
-    /**
-     * Default constructor is private
-     */
-    AuthMechLogon(KeyStore& keyStore) : AuthMechanism(keyStore) { }
+    AuthMechLogon(KeyStore& keyStore, ProtectedAuthListener& listener);
 
     /**
      * Computes the master secret.

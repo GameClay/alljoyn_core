@@ -38,6 +38,7 @@
 #include "BusEndpoint.h"
 #include "RemoteEndpoint.h"
 #include "PeerState.h"
+#include "AuthMechanism.h"
 
 namespace ajn {
 
@@ -45,7 +46,6 @@ namespace ajn {
 /* Forward declaration */
 class SASLEngine;
 class BusAttachment;
-class AuthListener;
 
 /**
  * The AllJoynPeer object @c /org/alljoyn/Bus/Peer implements interfaces that provide AllJoyn
@@ -112,7 +112,7 @@ class AllJoynPeerObj : public BusObject, public BusListener {
      */
     void SetupPeerAuthentication(const qcc::String& authMechanisms, AuthListener* listener) {
         peerAuthMechanisms = authMechanisms;
-        peerAuthListener = listener;
+        peerAuthListener.Set(listener);
     }
 
     /**
@@ -282,7 +282,7 @@ class AllJoynPeerObj : public BusObject, public BusListener {
     /**
      * The listener for interacting with the application
      */
-    AuthListener* peerAuthListener;
+    ProtectedAuthListener peerAuthListener;
 
     /**
      * Peer endpoints currently in an authentication conversation

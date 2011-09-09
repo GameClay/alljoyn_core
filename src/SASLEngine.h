@@ -28,6 +28,7 @@
 #include <qcc/String.h>
 #include <qcc/GUID.h>
 #include <qcc/KeyBlob.h>
+#include <qcc/Mutex.h>
 
 #include <alljoyn/BusAttachment.h>
 
@@ -97,7 +98,7 @@ class SASLEngine {
      * @param listener      Listener for handling password and other authentication related requests.
      * @param extHandler    The an optional handler for extension commands.
      */
-    SASLEngine(BusAttachment& bus, AuthMechanism::AuthRole authRole, const qcc::String& mechanisms, const char* authPeer, AuthListener* listener = NULL, ExtensionHandler* extHandler = NULL);
+    SASLEngine(BusAttachment& bus, AuthMechanism::AuthRole authRole, const qcc::String& mechanisms, const char* authPeer, ProtectedAuthListener& listener, ExtensionHandler* extHandler = NULL);
 
     /**
      * Destructor
@@ -156,14 +157,14 @@ class SASLEngine {
   private:
 
     /**
-     * Copy constructor is private and does nothing
+     * Copy constructor not defined this class
      */
-    SASLEngine(const SASLEngine& other) : bus(other.bus), listener(NULL), authMechanism(NULL), extHandler(NULL) { }
+    SASLEngine(const SASLEngine& other);
 
     /**
-     * Assigment operator is private and does nothing
+     * Assigment operator not defined for this class
      */
-    SASLEngine& operator=(const SASLEngine& other) { return *this; }
+    SASLEngine& operator=(const SASLEngine& other);
 
     /**
      * Default constructor is private
@@ -188,7 +189,7 @@ class SASLEngine {
     /**
      * Listener for handling interactive authentication methods.
      */
-    AuthListener* listener;
+    ProtectedAuthListener& listener;
 
     /**
      * Set of available authentication method names

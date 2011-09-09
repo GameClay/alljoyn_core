@@ -635,7 +635,7 @@ QStatus SASLEngine::Advance(qcc::String authIn, qcc::String& authOut, AuthState&
     return status;
 }
 
-SASLEngine::SASLEngine(BusAttachment& bus, AuthMechanism::AuthRole authRole, const qcc::String& mechanisms, const char* authPeer, AuthListener* listener, ExtensionHandler* extHandler) :
+SASLEngine::SASLEngine(BusAttachment& bus, AuthMechanism::AuthRole authRole, const qcc::String& mechanisms, const char* authPeer, ProtectedAuthListener& listener, ExtensionHandler* extHandler) :
     bus(bus),
     authRole(authRole),
     authPeer(authPeer),

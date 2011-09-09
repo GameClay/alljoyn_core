@@ -37,7 +37,7 @@
 #include <alljoyn/SessionPortListener.h>
 #include <alljoyn/SessionListener.h>
 
-#include "AuthMechanism.h"
+#include "AuthManager.h"
 #include "ClientRouter.h"
 #include "KeyStore.h"
 #include "PeerState.h"

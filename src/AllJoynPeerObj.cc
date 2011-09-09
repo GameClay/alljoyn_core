@@ -59,7 +59,7 @@ static const uint32_t PEER_AUTH_VERSION = 0x00010000;
  */
 qcc::Mutex AllJoynPeerObj::clientLock;
 
-AllJoynPeerObj::AllJoynPeerObj(BusAttachment& bus) : BusObject(bus, org::alljoyn::Bus::Peer::ObjectPath, false), peerAuthListener(0), requestThread(*this)
+AllJoynPeerObj::AllJoynPeerObj(BusAttachment& bus) : BusObject(bus, org::alljoyn::Bus::Peer::ObjectPath, false), requestThread(*this)
 {
     /* Add org.alljoyn.Bus.Peer.HeaderCompression interface */
     {
@@ -442,8 +442,8 @@ void AllJoynPeerObj::AuthAdvance(Message& msg)
         /*
          * Report the succesful authentication to allow application to clear UI etc.
          */
-        if ((status == ER_OK) && peerAuthListener) {
-            peerAuthListener->AuthenticationComplete(mech.c_str(), sender.c_str(), true /* success */);
+        if (status == ER_OK) {
+            peerAuthListener.AuthenticationComplete(mech.c_str(), sender.c_str(), true /* success */);
         }
         /*
          * All done with this SASL engine.
@@ -455,9 +455,7 @@ void AllJoynPeerObj::AuthAdvance(Message& msg)
         /*
          * Report the failed authentication to allow application to clear UI etc.
          */
-        if (peerAuthListener) {
-            peerAuthListener->AuthenticationComplete(mech.c_str(), sender.c_str(), false /* failure */);
-        }
+        peerAuthListener.AuthenticationComplete(mech.c_str(), sender.c_str(), false /* failure */);
         /*
          * All done with this SASL engine.
          */
@@ -743,9 +741,7 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
     /*
      * Report the authentication completion to allow application to clear UI etc.
      */
-    if (peerAuthListener) {
-        peerAuthListener->AuthenticationComplete(mech.c_str(), sender.c_str(), status == ER_OK);
-    }
+    peerAuthListener.AuthenticationComplete(mech.c_str(), sender.c_str(), status == ER_OK);
     /*
      * All done, release the lock
      */
@@ -794,9 +790,7 @@ qcc::ThreadReturn AllJoynPeerObj::RequestThread::Run(void* args)
             case AUTHENTICATE_PEER:
                 status = peerObj.AuthenticatePeer(req.msg->GetDestination());
                 if (status != ER_OK) {
-                    if (peerObj.peerAuthListener) {
-                        peerObj.peerAuthListener->SecurityViolation(status, req.msg);
-                    }
+                    peerObj.peerAuthListener.SecurityViolation(status, req.msg);
                     /*
                      * If the failed message was a method call push an error response.
                      */
@@ -813,9 +807,7 @@ qcc::ThreadReturn AllJoynPeerObj::RequestThread::Run(void* args)
             case REVERSE_AUTH_PEER:
                 status = peerObj.AuthenticatePeer(req.msg->GetSender());
                 if (status != ER_OK) {
-                    if (peerObj.peerAuthListener) {
-                        peerObj.peerAuthListener->SecurityViolation(status, req.msg);
-                    }
+                    peerObj.peerAuthListener.SecurityViolation(status, req.msg);
                 } else {
                     peerObj.bus.GetInternal().GetLocalEndpoint().PushMessage(req.msg);
                 }
@@ -874,8 +866,8 @@ void AllJoynPeerObj::HandleSecurityViolation(Message& msg, QStatus status)
     /*
      * Report the security violation
      */
-    if ((status != ER_OK) && peerAuthListener) {
-        peerAuthListener->SecurityViolation(status, msg);
+    if (status != ER_OK) {
+        peerAuthListener.SecurityViolation(status, msg);
     }
 }
 

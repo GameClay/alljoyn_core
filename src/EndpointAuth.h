@@ -136,6 +136,8 @@ class EndpointAuth : public SASLEngine::ExtensionHandler {
     qcc::GUID remoteGUID;            ///< GUID of the remote side (when applicable)
     uint32_t remoteProtocolVersion;  ///< ALLJOYN protocol version of the remote side
 
+    ProtectedAuthListener authListener;  ///< Authentication listener
+
     /* Internal methods */
 
     QStatus Hello();

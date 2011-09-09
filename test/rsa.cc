@@ -146,7 +146,7 @@ static const char PEM_PKCS8_V2[] = {
     "-----END ENCRYPTED PRIVATE KEY-----\n"
 };
 
-class SRPAuthListener : public AuthListener {
+class MyAuthListener : public AuthListener {
     bool RequestCredentials(const char* authMechanism, const char* authPeer, uint16_t authCount, const char* userId, uint16_t credMask, Credentials& creds) {
         if (credMask & AuthListener::CRED_CERT_CHAIN) {
             creds.SetCertChain(x509cert);
@@ -399,11 +399,14 @@ int main(int argc, char** argv)
     {
 
         BusAttachment bus("srp");
-        SRPAuthListener authListener;
-        bus.EnablePeerSecurity("ALLJOYN_RSA_KEYX", &authListener);
+        MyAuthListener myListener;
+        bus.EnablePeerSecurity("ALLJOYN_RSA_KEYX", &myListener);
 
-        SASLEngine responder(bus, ajn::AuthMechanism::RESPONDER, "ALLJOYN_RSA_KEYX", "1:1", &authListener);
-        SASLEngine challenger(bus, ajn::AuthMechanism::CHALLENGER, "ALLJOYN_RSA_KEYX", "1:1", &authListener);
+        ProtectedAuthListener listener;
+        listener.Set(&myListener);
+
+        SASLEngine responder(bus, ajn::AuthMechanism::RESPONDER, "ALLJOYN_RSA_KEYX", "1:1", listener);
+        SASLEngine challenger(bus, ajn::AuthMechanism::CHALLENGER, "ALLJOYN_RSA_KEYX", "1:1", listener);
 
         SASLEngine::AuthState rState = SASLEngine::ALLJOYN_AUTH_FAILED;
         SASLEngine::AuthState cState = SASLEngine::ALLJOYN_AUTH_FAILED;

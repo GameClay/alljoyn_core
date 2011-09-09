@@ -67,7 +67,7 @@ class AuthMechAnonymous : public AuthMechanism {
      *
      * @return  An object of class AuthMechAnonymous
      */
-    static AuthMechanism* Factory(KeyStore& keyStore, AuthListener* listener) { return new AuthMechAnonymous(keyStore); }
+    static AuthMechanism* Factory(KeyStore& keyStore, ProtectedAuthListener& listener) { return new AuthMechAnonymous(keyStore, listener); }
 
     /**
      * Responses flow from clients to servers.
@@ -112,7 +112,7 @@ class AuthMechAnonymous : public AuthMechanism {
 
   private:
 
-    AuthMechAnonymous(KeyStore& keyStore) : AuthMechanism(keyStore) { }
+    AuthMechAnonymous(KeyStore& keyStore, ProtectedAuthListener& listener) : AuthMechanism(keyStore, listener) { }
 
 };
 

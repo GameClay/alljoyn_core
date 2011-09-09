@@ -258,7 +258,7 @@ QStatus EndpointAuth::Establish(const qcc::String& authMechanisms,
     QCC_DbgPrintf(("EndpointAuth::Establish authMechanisms=\"%s\"", authMechanisms.c_str()));
 
     if (isAccepting) {
-        SASLEngine sasl(bus, AuthMechanism::CHALLENGER, authMechanisms, NULL, NULL, this);
+        SASLEngine sasl(bus, AuthMechanism::CHALLENGER, authMechanisms, NULL, authListener, this);
         /*
          * The server's GUID is sent to the client when the authentication succeeds
          */
@@ -302,7 +302,7 @@ QStatus EndpointAuth::Establish(const qcc::String& authMechanisms,
          */
         status = WaitHello();
     } else {
-        SASLEngine sasl(bus, AuthMechanism::RESPONDER, authMechanisms, NULL, NULL, endpoint.features.isBusToBus ? NULL : this);
+        SASLEngine sasl(bus, AuthMechanism::RESPONDER, authMechanisms, NULL, authListener, endpoint.features.isBusToBus ? NULL : this);
         while (true) {
             status = sasl.Advance(inStr, outStr, state);
             if (status != ER_OK) {

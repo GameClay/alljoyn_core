@@ -72,7 +72,7 @@ class AuthMechExternal : public AuthMechanism {
      *
      * @return An object of class AuthMechExternal
      */
-    static AuthMechanism* Factory(KeyStore& keyStore, AuthListener* listener) { return new AuthMechExternal(keyStore); }
+    static AuthMechanism* Factory(KeyStore& keyStore, ProtectedAuthListener& listener) { return new AuthMechExternal(keyStore, listener); }
 
     /**
      * Client sends the user id in the initial response
@@ -127,7 +127,7 @@ class AuthMechExternal : public AuthMechanism {
 
   private:
 
-    AuthMechExternal(KeyStore& keyStore) : AuthMechanism(keyStore) { }
+    AuthMechExternal(KeyStore& keyStore, ProtectedAuthListener& listener) : AuthMechanism(keyStore, listener) { }
 
 };
 

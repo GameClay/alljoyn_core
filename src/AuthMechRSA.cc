@@ -51,7 +51,7 @@ namespace ajn {
 static const char* SELF_CERT_GUID = "9D689C804B9C47C1ADA7397AE0215B26";
 static const char* SELF_PRIV_GUID = "B125ABEF3724453899E04B6B1D5C2CC4";
 
-AuthMechRSA::AuthMechRSA(KeyStore& keyStore, AuthListener* listener) : AuthMechanism(keyStore, listener), step(255)
+AuthMechRSA::AuthMechRSA(KeyStore& keyStore, ProtectedAuthListener& listener) : AuthMechanism(keyStore, listener), step(255)
 {
 }
 
@@ -60,9 +60,9 @@ bool AuthMechRSA::GetPassphrase(qcc::String& passphrase, bool toWrite)
     bool ok;
     AuthListener::Credentials creds;
     if (toWrite) {
-        ok = listener->RequestCredentials(GetName(), authPeer.c_str(), authCount, "", AuthListener::CRED_NEW_PASSWORD, creds);
+        ok = listener.RequestCredentials(GetName(), authPeer.c_str(), authCount, "", AuthListener::CRED_NEW_PASSWORD, creds);
     } else {
-        ok = listener->RequestCredentials(GetName(), authPeer.c_str(), authCount, "", AuthListener::CRED_PASSWORD, creds);
+        ok = listener.RequestCredentials(GetName(), authPeer.c_str(), authCount, "", AuthListener::CRED_PASSWORD, creds);
     }
     if (ok) {
         passphrase = creds.GetPassword();
@@ -82,10 +82,8 @@ QStatus AuthMechRSA::Init(AuthRole authRole, const qcc::String& authPeer)
      */
     qcc::GUID certGuid(SELF_CERT_GUID);
     qcc::GUID privGuid(SELF_PRIV_GUID);
-    if (listener) {
-        if (!listener->RequestCredentials(GetName(), authPeer.c_str(), authCount, "", mask, creds)) {
-            return ER_AUTH_FAIL;
-        }
+    if (!listener.RequestCredentials(GetName(), authPeer.c_str(), authCount, "", mask, creds)) {
+        return ER_AUTH_FAIL;
     }
     /*
      * If the listener didn't provide a cert chain see if we have stored credentials.
@@ -301,7 +299,7 @@ qcc::String AuthMechRSA::Response(const qcc::String& challenge,
         if (status == ER_OK) {
             AuthListener::Credentials creds;
             creds.SetCertChain(remote.certChain.c_str());
-            if (!listener->VerifyCredentials(GetName(), authPeer.c_str(), creds)) {
+            if (!listener.VerifyCredentials(GetName(), authPeer.c_str(), creds)) {
                 status = ER_AUTH_FAIL;
             }
         }
@@ -414,7 +412,7 @@ qcc::String AuthMechRSA::Challenge(const qcc::String& response,
         if (status == ER_OK) {
             AuthListener::Credentials creds;
             creds.SetCertChain(remote.certChain.c_str());
-            if (!listener->VerifyCredentials(GetName(), authPeer.c_str(), creds)) {
+            if (!listener.VerifyCredentials(GetName(), authPeer.c_str(), creds)) {
                 status = ER_AUTH_FAIL;
             }
         }

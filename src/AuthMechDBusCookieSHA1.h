@@ -63,7 +63,7 @@ class AuthMechDBusCookieSHA1 : public AuthMechanism {
      *
      * @return  An object of class AuthMechDBusCookieSHA1
      */
-    static AuthMechanism* Factory(KeyStore& keyStore, AuthListener* listener) { return new AuthMechDBusCookieSHA1(keyStore); }
+    static AuthMechanism* Factory(KeyStore& keyStore, ProtectedAuthListener& listener) { return new AuthMechDBusCookieSHA1(keyStore, listener); }
 
     /**
      * Initial response from this client which in this case is the current user name
@@ -104,7 +104,7 @@ class AuthMechDBusCookieSHA1 : public AuthMechanism {
 
   private:
 
-    AuthMechDBusCookieSHA1(KeyStore& keyStore) : AuthMechanism(keyStore) { }
+    AuthMechDBusCookieSHA1(KeyStore& keyStore, ProtectedAuthListener& listener) : AuthMechanism(keyStore, listener) { }
 
     qcc::String userName;
     qcc::String cookie;
