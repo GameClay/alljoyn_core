@@ -285,6 +285,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_236C80DB105149F1B626A73E067115CE"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_2415979A2D4E44FEA7DD1ABEFB100D42"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -2581,6 +2587,26 @@
             "Tag" = "8:"
             "Folder" = "8:_9ED747D30A214FA58170A44C5C577A53"
             "Condition" = "8:CHECKBOXA3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_236C80DB105149F1B626A73E067115CE"
+            {
+            "SourcePath" = "8:aj.ico"
+            "TargetName" = "8:aj.ico"
+            "Tag" = "8:"
+            "Folder" = "8:_10467045E6804950995D46A9E3A03A72"
+            "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -7443,7 +7469,7 @@
         "Keywords" = "8:"
         "ARPCOMMENTS" = "8:"
         "ARPURLINFOABOUT" = "8:"
-        "ARPPRODUCTICON" = "8:"
+        "ARPPRODUCTICON" = "8:_236C80DB105149F1B626A73E067115CE"
         "ARPIconIndex" = "3:0"
         "SearchPath" = "8:"
         "UseSystemSearchPath" = "11:TRUE"
