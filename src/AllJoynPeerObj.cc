@@ -608,7 +608,8 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
      * local peer we obviously don't need to authenticate but we must initialize a peer state object
      * with a session key and group key.
      */
-    if (remoteGuidStr == localGuidStr) {
+    if (bus.GetUniqueName() == sender) {
+        assert(remoteGuidStr == localGuidStr);
         QCC_DbgHLPrintf(("Securing local peer to itself"));
         KeyBlob key;
         /* Use the local peer's GROUP key */
