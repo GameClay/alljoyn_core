@@ -73,7 +73,7 @@ class DefaultKeyStoreListener : public KeyStoreListener {
 
     DefaultKeyStoreListener(const qcc::String& application, const char* fname) {
         if (fname) {
-            fileName = GetHomeDir() + fname;
+            fileName = GetHomeDir() + "/" + fname;
         } else {
             fileName = GetHomeDir() + "/.alljoyn_keystore/" + application;
         }

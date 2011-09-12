@@ -578,15 +578,16 @@ static void usage(void)
 {
     printf("Usage: bbservice [-h <name>] [-m] [-e] [-x] [-i #] [-n <name>] [-b] [t] [-l]\n\n");
     printf("Options:\n");
-    printf("   -h         = Print this help message\n");
-    printf("   -m         = Session is a multi-point session\n");
-    printf("   -e         = Echo received signals back to sender\n");
-    printf("   -x         = Compress signals echoed back to sender\n");
-    printf("   -i #       = Signal report interval (number of signals rx per update; default = 1000)\n");
-    printf("   -n <name>  = Well-known name to advertise\n");
-    printf("   -b         = Advertise over Bluetooth (enables selective advertising)\n");
-    printf("   -t         = Advertise over TCP (enables selective advertising)\n");
-    printf("   -l         = Advertise locally (enables selective advertising)\n");
+    printf("   -h                    = Print this help message\n");
+    printf("   -k <key store name>   = The key store file name\n");
+    printf("   -m                    = Session is a multi-point session\n");
+    printf("   -e                    = Echo received signals back to sender\n");
+    printf("   -x                    = Compress signals echoed back to sender\n");
+    printf("   -i #                  = Signal report interval (number of signals rx per update; default = 1000)\n");
+    printf("   -n <well-known name>  = Well-known name to advertise\n");
+    printf("   -b                    = Advertise over Bluetooth (enables selective advertising)\n");
+    printf("   -t                    = Advertise over TCP (enables selective advertising)\n");
+    printf("   -l                    = Advertise locally (enables selective advertising)\n");
 }
 
 /** Main entry point */
@@ -594,7 +595,7 @@ int main(int argc, char** argv)
 {
     QStatus status = ER_OK;
     unsigned long reportInterval = 1000;
-    qcc::String listenSpec;
+    const char* keyStore = NULL;
     SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_NONE);
 
 #ifdef _WIN32
@@ -635,6 +636,15 @@ int main(int argc, char** argv)
                 exit(1);
             } else {
                 g_wellKnownName = argv[i];
+            }
+        } else if (0 == strcmp("-k", argv[i])) {
+            ++i;
+            if (i == argc) {
+                printf("option %s requires a parameter\n", argv[i - 1]);
+                usage();
+                exit(1);
+            } else {
+                keyStore = argv[i];
             }
         } else if (0 == strcmp("-m", argv[i])) {
             opts.isMultipoint = true;
@@ -715,7 +725,7 @@ int main(int argc, char** argv)
         g_msgBus->RegisterBusObject(testObj);
 
 
-        g_msgBus->EnablePeerSecurity("ALLJOYN_SRP_KEYX ALLJOYN_RSA_KEYX ALLJOYN_SRP_LOGON", new MyAuthListener());
+        g_msgBus->EnablePeerSecurity("ALLJOYN_SRP_KEYX ALLJOYN_RSA_KEYX ALLJOYN_SRP_LOGON", new MyAuthListener(), keyStore, keyStore != NULL);
         /*
          * Pre-compute logon entry for user sleepy
          */

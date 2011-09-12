@@ -158,6 +158,7 @@ static void usage(void)
     printf("Usage: bbclient [-h] [-c <count>] [-i] [-e] [-r #] [-l | -la | -d[s]] [-n <well-known name>] [-t[a] <delay> [<interval>] | -rt]\n\n");
     printf("Options:\n");
     printf("   -h                    = Print this help message\n");
+    printf("   -k <key store name>   = The key store file name\n");
     printf("   -c <count>            = Number of pings to send to the server\n");
     printf("   -i                    = Use introspection to discover remote interfaces\n");
     printf("   -e[k] [RSA|SRP]       = Encrypt the test interface using specified auth mechanism, -ek means clear keys\n");
@@ -333,6 +334,7 @@ int main(int argc, char** argv)
     qcc::String authMechs;
     qcc::String pbusConnect;
     qcc::String userId;
+    const char* keyStore = NULL;
     unsigned long pingCount = 1;
     unsigned long repCount = 1;
     unsigned long authCount = 1000;
@@ -396,6 +398,15 @@ int main(int argc, char** argv)
                 printf("option %s requires an auth mechanism \n", argv[i - 1]);
                 usage();
                 exit(1);
+            }
+        } else if (0 == strcmp("-k", argv[i])) {
+            ++i;
+            if (i == argc) {
+                printf("option %s requires a parameter\n", argv[i - 1]);
+                usage();
+                exit(1);
+            } else {
+                keyStore = argv[i];
             }
         } else if (0 == strcmp("-a", argv[i])) {
             ++i;
@@ -548,7 +559,7 @@ int main(int argc, char** argv)
             status = g_msgBus->Start();
             if (ER_OK == status) {
                 if (encryptIfc) {
-                    g_msgBus->EnablePeerSecurity(authMechs.c_str(), new MyAuthListener(userId, authCount));
+                    g_msgBus->EnablePeerSecurity(authMechs.c_str(), new MyAuthListener(userId, authCount), keyStore, keyStore != NULL);
                     if (clearKeys) {
                         g_msgBus->ClearKeyStore();
                     }
