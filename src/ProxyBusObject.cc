@@ -496,7 +496,7 @@ QStatus ProxyBusObject::MethodCall(const InterfaceDescription::Member& method,
         goto MethodCallExit;
     }
     /*
-     * If the interface is secure or encryption is explicitly rerquested the method call must be encrypted.
+     * If the interface is secure or encryption is explicitly requested the method call must be encrypted.
      */
     if (method.iface->IsSecure()) {
         flags |= ALLJOYN_FLAG_ENCRYPTED;
