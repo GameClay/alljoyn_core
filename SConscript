@@ -20,7 +20,7 @@ env['_ALLJOYNCORE_'] = True
 
 # Dependent Projects
 common_hdrs, common_objs = env.SConscript(['../common/SConscript'])
-if env['OS'] == 'windows' or env['OS'] == 'android':
+if env['OS_GROUP'] == 'windows' or env['OS'] == 'android':
     env.SConscript(['../stlport/SConscript'])
 
 # manually add dependencies for xml to h, and for files included in the xml
