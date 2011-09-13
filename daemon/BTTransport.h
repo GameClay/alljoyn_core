@@ -490,6 +490,7 @@ class BTTransport :
     BTController* btController;                    /**< Bus Object that manages the BT topology */
     std::set<RemoteEndpoint*> threadList;          /**< List of active BT endpoints */
     qcc::Mutex threadListLock;                     /**< Mutex that protects threadList */
+    BTNodeDB connNodeDB;
     TransportListener* listener;
     bool transportIsStopping;                      /**< The transport has recevied a stop request */
     bool btmActive;                                /**< Indicates if the Bluetooth Topology Manager is registered */

@@ -28,6 +28,7 @@ namespace ajn {
 namespace bt {
 
 const uint16_t INVALID_PSM = 0;          /**< Invalid L2CAP PSM value */
+const uint16_t INCOMING_PSM = 0xffff;    /**< PSM value to indicate incomming connection */
 const uint32_t INVALID_UUIDREV = 0;      /**< Invalide UUID revision value */
 
 /** Bluetooth connection roles */

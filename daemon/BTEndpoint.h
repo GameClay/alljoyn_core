@@ -49,7 +49,7 @@ class BTEndpoint : public RemoteEndpoint {
 
     virtual ~BTEndpoint() { }
 
-    const BTNodeInfo& GetNode() const { return node; }
+    BTNodeInfo& GetNode() { return node; }
 
   private:
     BTNodeInfo node;

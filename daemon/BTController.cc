@@ -682,8 +682,6 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
         /* Only call JoinSessionAsync for new outgoing connections where we
          * didn't already start the join session process.
          */
-        node->IncConnCount();
-
         if (IsMaster() &&
             !nodeDB.FindNode(node->GetBusAddress())->IsValid() &&
             !joinSessionNodeDB.FindNode(node->GetBusAddress())->IsValid()) {
@@ -708,21 +706,31 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
 }
 
 
-void BTController::EndpointLost(BTNodeInfo& node)
+void BTController::LostLastConnection(const BDAddress& addr)
 {
-    QCC_DbgTrace(("BTController::EndpointLost(node = <%s - conn: %u  EIR: %s>)",
-                  node->GetBusAddress().ToString().c_str(),
-                  node->GetConnectionCount(),
-                  node->IsEIRCapable() ? "true" : "false"));
-    if (node->IsValid()) {
-        uint16_t connCnt = node->DecConnCount();
+    QCC_DbgTrace(("BTController::LostLastConnection(addr = %s)",
+                  addr.ToString().c_str()));
 
-        if ((connCnt == 1) && node->IsEIRCapable()) {
-            SessionId sessionID = node->GetSessionID();
-            node->SetSessionID(0);
-            bus.LeaveSession(sessionID);
-            SessionLost(sessionID);
+    BTNodeInfo node;
+
+    if (addr == masterNode->GetBusAddress().addr) {
+        node = masterNode;
+    } else {
+        BTNodeDB::const_iterator it;
+        BTNodeDB::const_iterator end;
+        nodeDB.FindNodes(addr, it, end);
+        for (; it != end; ++it) {
+            if ((*it)->GetConnectionCount() == 1) {
+                node = *it;
+                break;
+            }
         }
+    }
+
+    if ((node->IsValid()) && (node->IsEIRCapable())) {
+        SessionId sessionID = node->GetSessionID();
+        nodeDB.NodeSessionLost(sessionID);
+        bus.LeaveSession(sessionID);
     }
 }
 

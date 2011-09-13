@@ -89,6 +89,17 @@ class BTNodeDB {
      */
     const BTNodeInfo FindNode(const BDAddress& addr) const;
 
+    void FindNodes(const BDAddress& addr, const_iterator& begin, const_iterator& end)
+    {
+        BTBusAddress lower(addr, 0x0000);
+        BTBusAddress upper(addr, 0xffff);
+        Lock();
+        begin = nodes.lower_bound(lower);
+        end = nodes.upper_bound(upper);
+        Unlock();
+    }
+
+
     /**
      * Find a minion starting with the specified start node in the set of
      * nodes, and skipping over the skip node.  If any nodes (beside start and

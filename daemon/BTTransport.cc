@@ -176,7 +176,16 @@ void* BTTransport::Run(void* arg)
                     status = conn->Start();
                 }
 
-                if (ER_OK != status) {
+                if (ER_OK == status) {
+                    const BTNodeInfo& connNode = reinterpret_cast<BTEndpoint*>(conn)->GetNode();
+                    BTNodeInfo node = connNodeDB.FindNode(connNode->GetBusAddress());
+                    if (!node->IsValid()) {
+                        node = connNode;
+                        connNodeDB.AddNode(node);
+                    }
+
+                    node->IncConnCount();
+                } else {
                     QCC_LogError(status, ("Error starting RemoteEndpoint"));
                     EndpointExit(conn);
                     conn = NULL;
@@ -397,12 +406,31 @@ void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
     set<RemoteEndpoint*>::iterator eit = threadList.find(endpoint);
     if (eit != threadList.end()) {
         BTEndpoint* btEp = reinterpret_cast<BTEndpoint*>(endpoint);
-        node = btEp->GetNode();
+        node = connNodeDB.FindNode(btEp->GetNode()->GetBusAddress());
         threadList.erase(eit);
     }
     threadListLock.Unlock();
 
-    btController->EndpointLost(node);
+    if (node->IsValid()) {
+        if (node->DecConnCount() == 0) {
+            connNodeDB.RemoveNode(node);
+        }
+
+        BTNodeDB::const_iterator it;
+        BTNodeDB::const_iterator end;
+        uint32_t connCount = 0;
+        BDAddress addr = node->GetBusAddress().addr;
+
+        connNodeDB.FindNodes(addr, it, end);
+
+        for (; it != end; ++it) {
+            connCount += (*it)->GetConnectionCount();
+        }
+
+        if (connCount == 1) {
+            btController->LostLastConnection(addr);
+        }
+    }
 
     delete endpoint;
 }
@@ -567,6 +595,15 @@ exit:
     if (status == ER_OK) {
         if (newep) {
             *newep = conn;
+
+            const BTNodeInfo& connNode = reinterpret_cast<BTEndpoint*>(conn)->GetNode();
+            BTNodeInfo node = connNodeDB.FindNode(connNode->GetBusAddress());
+            if (!node->IsValid()) {
+                node = connNode;
+                connNodeDB.AddNode(node);
+            }
+
+            node->IncConnCount();
         }
     } else {
         if (newep) {

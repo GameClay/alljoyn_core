@@ -95,6 +95,7 @@ void BTTransport::DisconnectAll()
 
 #include "BTNodeDB.h"
 #include "BTNodeInfo.h"
+#include "BTEndpoint.h"
 
 #if defined QCC_OS_GROUP_POSIX
 #if defined(QCC_OS_DARWIN)
@@ -177,8 +178,6 @@ class TestDriver : public BTTransport {
     bool TC_DestroyBTAccessor();
     bool TC_StartBTAccessor();
     bool TC_StopBTAccessor();
-    bool TC_IsMaster();
-    bool TC_RequestBTRole();
     bool TC_IsEIRCapable();
     bool TC_StartConnectable();
     bool TC_StopConnectable();
@@ -197,8 +196,6 @@ class TestDriver : public BTTransport {
     deque<DeviceChange> devChangeQueue;
     Event devChangeEvent;
     Mutex devChangeLock;
-
-    set<BDAddress> connectedDevices;
 
     bool eirCapable;
     BTNodeInfo self;
@@ -360,7 +357,7 @@ int TestDriver::RunTests()
 void TestDriver::RunTest(TestCaseInfo& test)
 {
     static const size_t dashWidth = 2;
-    const size_t detailIndent = (4 + tcWidth + tcNumWidth + 1);
+    const size_t detailIndent = (tcWidth + tcNumWidth + 1);
     const size_t detailWidth = maxWidth - (detailIndent + dashWidth);
 
     size_t i;
@@ -643,97 +640,6 @@ exit:
     return (status == ER_OK);
 }
 
-bool TestDriver::TC_IsMaster()
-{
-    bool tcSuccess = true;
-    set<BDAddress>::const_iterator it;
-    for (it = connectedDevices.begin(); it != connectedDevices.end(); ++it) {
-        bool master;
-        String detail;
-        QStatus status = btAccessor->IsMaster(*it, master);
-        if (status == ER_OK) {
-            detail = "Got the ";
-            detail += master ? "master" : "slave";
-        } else {
-            detail = "Failed to get master/slave";
-            tcSuccess = false;
-            goto exit;
-        }
-        detail += " role for connection with ";
-        detail += it->ToString().c_str();
-        if (status != ER_OK) {
-            detail += ": ";
-            detail += QCC_StatusText(status);
-        }
-        detail += ".";
-        ReportTestDetail(detail);
-    }
-
-exit:
-    return tcSuccess;
-}
-
-bool TestDriver::TC_RequestBTRole()
-{
-    bool tcSuccess = true;
-    set<BDAddress>::const_iterator it;
-    for (it = connectedDevices.begin(); it != connectedDevices.end(); ++it) {
-        bool master;
-        String detail;
-        QStatus status = btAccessor->IsMaster(*it, master);
-        if (status != ER_OK) {
-            detail = "Failed to get master/slave role with ";
-            detail += it->ToString().c_str();
-            detail += ": ";
-            detail += QCC_StatusText(status);
-            detail += ".";
-            ReportTestDetail(detail);
-            tcSuccess = false;
-            goto exit;
-        }
-
-        detail = "Switching role with ";
-        detail += it->ToString().c_str();
-        detail += master ? " to slave" : " to master";
-        detail += ".";
-        ReportTestDetail(detail);
-
-        bt::BluetoothRole role = master ? bt::SLAVE : bt::MASTER;
-        btAccessor->RequestBTRole(*it, role);
-
-        status = btAccessor->IsMaster(*it, master);
-        if (status != ER_OK) {
-            detail = "Failed to get master/slave role with ";
-            detail += it->ToString().c_str();
-            detail += ": ";
-            detail += QCC_StatusText(status);
-            detail += ".";
-            ReportTestDetail(detail);
-            tcSuccess = false;
-            goto exit;
-        }
-
-        if (master != (role == bt::MASTER)) {
-            detail = "Failed to switch role with ";
-            detail += it->ToString().c_str();
-            detail += " (not a test case failure).";
-            ReportTestDetail(detail);
-        }
-
-        detail = "Switching role with ";
-        detail += it->ToString().c_str();
-        detail += " back to ";
-        detail += (role == bt::SLAVE) ? "master" : "slave";
-        detail += ".";
-        ReportTestDetail(detail);
-        role = (role == bt::SLAVE) ? bt::MASTER : bt::SLAVE;
-        btAccessor->RequestBTRole(*it, role);
-    }
-
-exit:
-    return tcSuccess;
-}
-
 bool TestDriver::TC_IsEIRCapable()
 {
     eirCapable = btAccessor->IsEIRCapable();
@@ -792,11 +698,6 @@ bool ClientTestDriver::TC_StartDiscovery()
     BDAddressSet ignoreAddrs;
     String detail;
     map<BDAddress, FoundInfo>::iterator fit;
-
-    set<BDAddress>::const_iterator it;
-    for (it = connectedDevices.begin(); it != connectedDevices.end(); ++it) {
-        ignoreAddrs->insert(*it);
-    }
 
     if (!opts.fastDiscovery) {
         uint64_t now;
@@ -1036,12 +937,19 @@ exit:
 bool ClientTestDriver::TC_ConnectSingle()
 {
     bool tcSuccess = true;
+    BTNodeInfo node;
+    String detail;
 
     if (!connNode->IsValid()) {
         ReportTestDetail("Cannot continue with connection testing.  Connection address not set (no device found).");
         tcSuccess = false;
         goto exit;
     }
+
+    detail = "Connecting to ";
+    detail += connNode->GetBusAddress().ToString();
+    detail += ".";
+    ReportTestDetail(detail);
 
     ep = btAccessor->Connect(bus, connNode);
 
@@ -1050,6 +958,26 @@ bool ClientTestDriver::TC_ConnectSingle()
         detail += connNode->GetBusAddress().ToString();
         detail += ".";
         ReportTestDetail(detail);
+        tcSuccess = false;
+        goto exit;
+    }
+
+    node = reinterpret_cast<BTEndpoint*>(ep)->GetNode();
+
+    node->SetSessionID(0xdeadbeef);
+
+    if ((node != connNode) || (connNode->GetSessionID() != 0xdeadbeef)) {
+        detail = "BTAccessor failed to put the connection BTNodeInfo into the BTEndpoint instance (";
+        detail += node->GetBusAddress().ToString();
+        detail += " != ";
+        detail += connNode->GetBusAddress().ToString();
+        detail += " || ";
+        detail += U32ToString(node->GetSessionID(), 16, 8, 0);
+        detail += " != ";
+        detail += U32ToString(connNode->GetSessionID(), 16, 8, 0);
+        ReportTestDetail(detail);
+        delete ep;
+        ep = NULL;
         tcSuccess = false;
     }
 
@@ -1123,7 +1051,8 @@ bool ClientTestDriver::TC_IsMaster()
     }
 
     detail = "We are ";
-    detail += master ? "the master." : "a slave.";
+    detail += master ? "the master (slave is " : "a slave (";
+    detail += "prefered but not required).";
     ReportTestDetail(detail);
 
 exit:
@@ -1310,6 +1239,9 @@ bool ServerTestDriver::TC_AcceptSingle()
 {
     bool tcSuccess = true;
     QStatus status;
+    BTNodeInfo node;
+    String detail;
+    BDAddress invalidAddr;
 
     Event* l2capEvent = btAccessor->GetL2CAPConnectEvent();
 
@@ -1321,7 +1253,7 @@ bool ServerTestDriver::TC_AcceptSingle()
 
     status = Event::Wait(*l2capEvent, 120000);
     if (status != ER_OK) {
-        String detail = "Failed to wait for incoming connection: ";
+        detail = "Failed to wait for incoming connection: ";
         detail += QCC_StatusText(status);
         detail += ".";
         ReportTestDetail(detail);
@@ -1334,7 +1266,23 @@ bool ServerTestDriver::TC_AcceptSingle()
     if (!ep) {
         ReportTestDetail("Failed to accept incoming connection.");
         tcSuccess = false;
+        goto exit;
     }
+
+    node = reinterpret_cast<BTEndpoint*>(ep)->GetNode();
+
+    if ((node->GetBusAddress().addr == invalidAddr) || (node->GetBusAddress().psm != bt::INCOMING_PSM)) {
+        ReportTestDetail("BTAccessor failed to fill out the BTNodeInfo with appropriate data in the BTEndpoint instance.");
+        delete ep;
+        ep = NULL;
+        tcSuccess = false;
+        goto exit;
+    }
+
+    detail = "Accepted connection from ";
+    detail += node->GetBusAddress().addr.ToString();
+    detail += ".";
+    ReportTestDetail(detail);
 
 exit:
     return tcSuccess;

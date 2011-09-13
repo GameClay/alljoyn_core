@@ -768,7 +768,8 @@ exit:
             sockFd = -1;
         }
     } else {
-        BTNodeInfo dummyNode;
+        BTBusAddress incomingAddr(remAddr, bt::INCOMING_PSM);
+        BTNodeInfo dummyNode(incomingAddr);
         conn = new BlueZBTEndpoint(alljoyn, true, sockFd, dummyNode);
     }
 
