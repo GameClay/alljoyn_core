@@ -67,7 +67,7 @@ size_t StringData::GetSerializedSize(void) const
 
 size_t StringData::Serialize(uint8_t* buffer) const
 {
-    QCC_DbgPrintf(("StringData::Serialize(): %s to buffer 0x%x\n", m_string.c_str(), buffer));
+    QCC_DbgPrintf(("StringData::Serialize(): %s to buffer 0x%x", m_string.c_str(), buffer));
     assert(m_size == m_string.size());
     buffer[0] = static_cast<uint8_t>(m_size);
     strncpy(reinterpret_cast<char*>(&buffer[1]), m_string.c_str(), m_size);
@@ -77,14 +77,14 @@ size_t StringData::Serialize(uint8_t* buffer) const
 
 size_t StringData::Deserialize(uint8_t const* buffer, uint32_t bufsize)
 {
-    QCC_DbgPrintf(("StringData::Deserialize()\n"));
+    QCC_DbgPrintf(("StringData::Deserialize()"));
 
     //
     // If there's not enough room in the buffer to even get the string size out
     // then bail.
     //
     if (bufsize < 1) {
-        QCC_DbgPrintf(("StringData::Deserialize(): Insufficient bufsize %d\n", bufsize));
+        QCC_DbgPrintf(("StringData::Deserialize(): Insufficient bufsize %d", bufsize));
         return 0;
     }
 
@@ -97,7 +97,7 @@ size_t StringData::Deserialize(uint8_t const* buffer, uint32_t bufsize)
     // the buffer says is there, then bail.
     //
     if (bufsize < m_size) {
-        QCC_DbgPrintf(("StringData::Deserialize(): Insufficient bufsize %d\n", bufsize));
+        QCC_DbgPrintf(("StringData::Deserialize(): Insufficient bufsize %d", bufsize));
         m_size = 0;
         return 0;
     }
@@ -106,7 +106,7 @@ size_t StringData::Deserialize(uint8_t const* buffer, uint32_t bufsize)
         m_string += buffer[i];
     }
 
-    QCC_DbgPrintf(("StringData::Deserialize(): %s from buffer\n", m_string.c_str()));
+    QCC_DbgPrintf(("StringData::Deserialize(): %s from buffer", m_string.c_str()));
     return 1 + m_size;
 }
 
@@ -237,7 +237,7 @@ size_t IsAt::GetSerializedSize(void) const
 
 size_t IsAt::Serialize(uint8_t* buffer) const
 {
-    QCC_DbgPrintf(("IsAt::Serialize(): to buffer 0x%x\n", buffer));
+    QCC_DbgPrintf(("IsAt::Serialize(): to buffer 0x%x", buffer));
     //
     // We keep track of the size so testers can check coherence between
     // GetSerializedSize() and Serialize() and Deserialize().
@@ -250,27 +250,27 @@ size_t IsAt::Serialize(uint8_t* buffer) const
     uint8_t typeAndFlags = 1 << 6;
 
     if (m_flagG) {
-        QCC_DbgPrintf(("IsAt::Serialize(): G flag\n"));
+        QCC_DbgPrintf(("IsAt::Serialize(): G flag"));
         typeAndFlags |= 0x20;
     }
     if (m_flagC) {
-        QCC_DbgPrintf(("IsAt::Serialize(): C flag\n"));
+        QCC_DbgPrintf(("IsAt::Serialize(): C flag"));
         typeAndFlags |= 0x10;
     }
     if (m_flagT) {
-        QCC_DbgPrintf(("IsAt::Serialize(): T flag\n"));
+        QCC_DbgPrintf(("IsAt::Serialize(): T flag"));
         typeAndFlags |= 0x8;
     }
     if (m_flagU) {
-        QCC_DbgPrintf(("IsAt::Serialize(): U flag\n"));
+        QCC_DbgPrintf(("IsAt::Serialize(): U flag"));
         typeAndFlags |= 0x4;
     }
     if (m_flagS) {
-        QCC_DbgPrintf(("IsAt::Serialize(): S flag\n"));
+        QCC_DbgPrintf(("IsAt::Serialize(): S flag"));
         typeAndFlags |= 0x2;
     }
     if (m_flagF) {
-        QCC_DbgPrintf(("IsAt::Serialize(): F flag\n"));
+        QCC_DbgPrintf(("IsAt::Serialize(): F flag"));
         typeAndFlags |= 0x1;
     }
 
@@ -282,7 +282,7 @@ size_t IsAt::Serialize(uint8_t* buffer) const
     //
     assert(m_names.size() < 256);
     buffer[1] = static_cast<uint8_t>(m_names.size());
-    QCC_DbgPrintf(("IsAt::Serialize(): Count %d\n", m_names.size()));
+    QCC_DbgPrintf(("IsAt::Serialize(): Count %d", m_names.size()));
     size += 1;
 
     //
@@ -291,7 +291,7 @@ size_t IsAt::Serialize(uint8_t* buffer) const
     //
     buffer[2] = static_cast<uint8_t>(m_port >> 8);
     buffer[3] = static_cast<uint8_t>(m_port);
-    QCC_DbgPrintf(("IsAt::Serialize(): Port %d\n", m_port));
+    QCC_DbgPrintf(("IsAt::Serialize(): Port %d", m_port));
     size += 2;
 
     //
@@ -304,7 +304,7 @@ size_t IsAt::Serialize(uint8_t* buffer) const
     //
     if (m_flagF) {
         INET_PTON(AF_INET, m_ipv4.c_str(), p);
-        QCC_DbgPrintf(("IsAt::Serialize(): IPv4: %s\n", m_ipv4.c_str()));
+        QCC_DbgPrintf(("IsAt::Serialize(): IPv4: %s", m_ipv4.c_str()));
         p += 4;
         size += 4;
     }
@@ -314,7 +314,7 @@ size_t IsAt::Serialize(uint8_t* buffer) const
     //
     if (m_flagS) {
         INET_PTON(AF_INET6, m_ipv6.c_str(), p);
-        QCC_DbgPrintf(("IsAt::Serialize(): IPv6: %s\n", m_ipv6.c_str()));
+        QCC_DbgPrintf(("IsAt::Serialize(): IPv6: %s", m_ipv6.c_str()));
         p += 16;
         size += 16;
     }
@@ -327,7 +327,7 @@ size_t IsAt::Serialize(uint8_t* buffer) const
     if (m_flagG) {
         StringData stringData;
         stringData.Set(m_guid);
-        QCC_DbgPrintf(("IsAt::Serialize(): GUID %s\n", m_guid.c_str()));
+        QCC_DbgPrintf(("IsAt::Serialize(): GUID %s", m_guid.c_str()));
         size_t stringSize = stringData.Serialize(p);
         size += stringSize;
         p += stringSize;
@@ -337,7 +337,7 @@ size_t IsAt::Serialize(uint8_t* buffer) const
     for (uint32_t i = 0; i < m_names.size(); ++i) {
         StringData stringData;
         stringData.Set(m_names[i]);
-        QCC_DbgPrintf(("IsAt::Serialize(): name %s\n", m_names[i].c_str()));
+        QCC_DbgPrintf(("IsAt::Serialize(): name %s", m_names[i].c_str()));
         size_t stringSize = stringData.Serialize(p);
         size += stringSize;
         p += stringSize;
@@ -348,7 +348,7 @@ size_t IsAt::Serialize(uint8_t* buffer) const
 
 size_t IsAt::Deserialize(uint8_t const* buffer, uint32_t bufsize)
 {
-    QCC_DbgPrintf(("IsAt::Deserialize()\n"));
+    QCC_DbgPrintf(("IsAt::Deserialize()"));
 
     //
     // If there's not enough room in the buffer to get the fixed part out then
@@ -356,7 +356,7 @@ size_t IsAt::Deserialize(uint8_t const* buffer, uint32_t bufsize)
     // of port).
     //
     if (bufsize < 4) {
-        QCC_DbgPrintf(("IsAt::Deserialize(): Insufficient bufsize %d\n", bufsize));
+        QCC_DbgPrintf(("IsAt::Deserialize(): Insufficient bufsize %d", bufsize));
         return 0;
     }
 
@@ -377,33 +377,33 @@ size_t IsAt::Deserialize(uint8_t const* buffer, uint32_t bufsize)
     // This had better be an IsAt message we're working on
     //
     if ((typeAndFlags & 0xc0) != 1 << 6) {
-        QCC_DbgPrintf(("IsAt::Deserialize(): Incorrect type %d\n", typeAndFlags & 0xc0));
+        QCC_DbgPrintf(("IsAt::Deserialize(): Incorrect type %d", typeAndFlags & 0xc0));
         return 0;
     }
 
     m_flagG = (typeAndFlags & 0x20) != 0;
-    QCC_DbgPrintf(("IsAt::Deserialize(): G flag %d\n", m_flagG));
+    QCC_DbgPrintf(("IsAt::Deserialize(): G flag %d", m_flagG));
 
     m_flagC = (typeAndFlags & 0x10) != 0;
-    QCC_DbgPrintf(("IsAt::Deserialize(): C flag %d\n", m_flagC));
+    QCC_DbgPrintf(("IsAt::Deserialize(): C flag %d", m_flagC));
 
     m_flagT = (typeAndFlags & 0x8) != 0;
-    QCC_DbgPrintf(("IsAt::Deserialize(): T flag %d\n", m_flagT));
+    QCC_DbgPrintf(("IsAt::Deserialize(): T flag %d", m_flagT));
 
     m_flagU = (typeAndFlags & 0x4) != 0;
-    QCC_DbgPrintf(("IsAt::Deserialize(): U flag %d\n", m_flagU));
+    QCC_DbgPrintf(("IsAt::Deserialize(): U flag %d", m_flagU));
 
     m_flagS = (typeAndFlags & 0x2) != 0;
-    QCC_DbgPrintf(("IsAt::Deserialize(): S flag %d\n", m_flagS));
+    QCC_DbgPrintf(("IsAt::Deserialize(): S flag %d", m_flagS));
 
     m_flagF = (typeAndFlags & 0x1) != 0;
-    QCC_DbgPrintf(("IsAt::Deserialize(): F flag %d\n", m_flagF));
+    QCC_DbgPrintf(("IsAt::Deserialize(): F flag %d", m_flagF));
 
     //
     // The second octet is the count of bus names.
     //
     uint8_t numberNames = buffer[1];
-    QCC_DbgPrintf(("IsAt::Deserialize(): Count %d\n", numberNames));
+    QCC_DbgPrintf(("IsAt::Deserialize(): Count %d", numberNames));
     size += 1;
 
     //
@@ -411,7 +411,7 @@ size_t IsAt::Deserialize(uint8_t const* buffer, uint32_t bufsize)
     // order (big endian, or most significant byte first).
     //
     m_port = (static_cast<uint16_t>(buffer[2]) << 8) | (static_cast<uint16_t>(buffer[3]) & 0xff);
-    QCC_DbgPrintf(("IsAt::Deserialize(): Port %d\n", m_port));
+    QCC_DbgPrintf(("IsAt::Deserialize(): Port %d", m_port));
     size += 2;
 
     //
@@ -426,13 +426,13 @@ size_t IsAt::Deserialize(uint8_t const* buffer, uint32_t bufsize)
     //
     if (m_flagF) {
         if (bufsize < 4) {
-            QCC_DbgPrintf(("IsAt::Deserialize(): Insufficient bufsize %d\n", bufsize));
+            QCC_DbgPrintf(("IsAt::Deserialize(): Insufficient bufsize %d", bufsize));
             return 0;
         }
         char strbuf[INET_ADDRSTRLEN];
         INET_NTOP(AF_INET, (void*)p, strbuf, INET_ADDRSTRLEN);
         m_ipv4 = qcc::String(strbuf);
-        QCC_DbgPrintf(("IsAt::Deserialize(): IPv4: %s\n", m_ipv4.c_str()));
+        QCC_DbgPrintf(("IsAt::Deserialize(): IPv4: %s", m_ipv4.c_str()));
         p += 4;
         size += 4;
         bufsize -= 4;
@@ -444,13 +444,13 @@ size_t IsAt::Deserialize(uint8_t const* buffer, uint32_t bufsize)
     //
     if (m_flagS) {
         if (bufsize < 16) {
-            QCC_DbgPrintf(("IsAt::Deserialize(): Insufficient bufsize %d\n", bufsize));
+            QCC_DbgPrintf(("IsAt::Deserialize(): Insufficient bufsize %d", bufsize));
             return 0;
         }
         char strbuf[INET6_ADDRSTRLEN];
         INET_NTOP(AF_INET6, (void*)p, strbuf, INET6_ADDRSTRLEN);
         m_ipv6 = qcc::String(strbuf);
-        QCC_DbgPrintf(("IsAt::Deserialize(): IPv6: %s\n", m_ipv6.c_str()));
+        QCC_DbgPrintf(("IsAt::Deserialize(): IPv6: %s", m_ipv6.c_str()));
         p += 16;
         size += 16;
         bufsize -= 16;
@@ -460,7 +460,7 @@ size_t IsAt::Deserialize(uint8_t const* buffer, uint32_t bufsize)
     // If the G bit is set, we need to read off a GUID string.
     //
     if (m_flagG) {
-        QCC_DbgPrintf(("IsAt::Deserialize(): StringData::Deserialize() GUID\n"));
+        QCC_DbgPrintf(("IsAt::Deserialize(): StringData::Deserialize() GUID"));
         StringData stringData;
 
         //
@@ -469,7 +469,7 @@ size_t IsAt::Deserialize(uint8_t const* buffer, uint32_t bufsize)
         //
         size_t stringSize = stringData.Deserialize(p, bufsize);
         if (stringSize == 0) {
-            QCC_DbgPrintf(("IsAt::Deserialize(): StringData::Deserialize():  Error\n"));
+            QCC_DbgPrintf(("IsAt::Deserialize(): StringData::Deserialize():  Error"));
             return 0;
         }
         SetGuid(stringData.Get());
@@ -483,7 +483,7 @@ size_t IsAt::Deserialize(uint8_t const* buffer, uint32_t bufsize)
     // will be there.
     //
     for (uint32_t i = 0; i < numberNames; ++i) {
-        QCC_DbgPrintf(("IsAt::Deserialize(): StringData::Deserialize() name %d\n", i));
+        QCC_DbgPrintf(("IsAt::Deserialize(): StringData::Deserialize() name %d", i));
         StringData stringData;
 
         //
@@ -492,7 +492,7 @@ size_t IsAt::Deserialize(uint8_t const* buffer, uint32_t bufsize)
         //
         size_t stringSize = stringData.Deserialize(p, bufsize);
         if (stringSize == 0) {
-            QCC_DbgPrintf(("IsAt::Deserialize(): StringData::Deserialize():  Error\n"));
+            QCC_DbgPrintf(("IsAt::Deserialize(): StringData::Deserialize():  Error"));
             return 0;
         }
         AddName(stringData.Get());
@@ -552,7 +552,7 @@ size_t WhoHas::GetSerializedSize(void) const
 
 size_t WhoHas::Serialize(uint8_t* buffer) const
 {
-    QCC_DbgPrintf(("WhoHas::Serialize(): to buffer 0x%x\n", buffer));
+    QCC_DbgPrintf(("WhoHas::Serialize(): to buffer 0x%x", buffer));
     //
     // We keep track of the size so testers can check coherence between
     // GetSerializedSize() and Serialize() and Deserialize().
@@ -565,19 +565,19 @@ size_t WhoHas::Serialize(uint8_t* buffer) const
     uint8_t typeAndFlags = 2 << 6;
 
     if (m_flagT) {
-        QCC_DbgPrintf(("WhoHas::Serialize(): T flag\n"));
+        QCC_DbgPrintf(("WhoHas::Serialize(): T flag"));
         typeAndFlags |= 0x8;
     }
     if (m_flagU) {
-        QCC_DbgPrintf(("WhoHas::Serialize(): U flag\n"));
+        QCC_DbgPrintf(("WhoHas::Serialize(): U flag"));
         typeAndFlags |= 0x4;
     }
     if (m_flagS) {
-        QCC_DbgPrintf(("WhoHas::Serialize(): S flag\n"));
+        QCC_DbgPrintf(("WhoHas::Serialize(): S flag"));
         typeAndFlags |= 0x2;
     }
     if (m_flagF) {
-        QCC_DbgPrintf(("WhoHas::Serialize(): F flag\n"));
+        QCC_DbgPrintf(("WhoHas::Serialize(): F flag"));
         typeAndFlags |= 0x1;
     }
 
@@ -589,7 +589,7 @@ size_t WhoHas::Serialize(uint8_t* buffer) const
     //
     assert(m_names.size() < 256);
     buffer[1] = static_cast<uint8_t>(m_names.size());
-    QCC_DbgPrintf(("WhoHas::Serialize(): Count %d\n", m_names.size()));
+    QCC_DbgPrintf(("WhoHas::Serialize(): Count %d", m_names.size()));
     size += 1;
 
     //
@@ -604,7 +604,7 @@ size_t WhoHas::Serialize(uint8_t* buffer) const
     for (uint32_t i = 0; i < m_names.size(); ++i) {
         StringData stringData;
         stringData.Set(m_names[i]);
-        QCC_DbgPrintf(("Whohas::Serialize(): name %s\n", m_names[i].c_str()));
+        QCC_DbgPrintf(("Whohas::Serialize(): name %s", m_names[i].c_str()));
         size_t stringSize = stringData.Serialize(p);
         size += stringSize;
         p += stringSize;
@@ -615,14 +615,14 @@ size_t WhoHas::Serialize(uint8_t* buffer) const
 
 size_t WhoHas::Deserialize(uint8_t const* buffer, uint32_t bufsize)
 {
-    QCC_DbgPrintf(("WhoHas::Deserialize()\n"));
+    QCC_DbgPrintf(("WhoHas::Deserialize()"));
 
     //
     // If there's not enough room in the buffer to get the fixed part out then
     // bail (one byte of type and flags, one byte of name count).
     //
     if (bufsize < 2) {
-        QCC_DbgPrintf(("WhoHas::Deserialize(): Insufficient bufsize %d\n", bufsize));
+        QCC_DbgPrintf(("WhoHas::Deserialize(): Insufficient bufsize %d", bufsize));
         return 0;
     }
 
@@ -642,27 +642,27 @@ size_t WhoHas::Deserialize(uint8_t const* buffer, uint32_t bufsize)
     // This had better be an WhoHas message we're working on
     //
     if ((typeAndFlags & 0xc0) != 2 << 6) {
-        QCC_DbgPrintf(("WhoHas::Deserialize(): Incorrect type %d\n", typeAndFlags & 0xc0));
+        QCC_DbgPrintf(("WhoHas::Deserialize(): Incorrect type %d", typeAndFlags & 0xc0));
         return 0;
     }
 
     m_flagT = (typeAndFlags & 0x8) != 0;
-    QCC_DbgPrintf(("WhoHas::Deserialize(): T flag %d\n", m_flagT));
+    QCC_DbgPrintf(("WhoHas::Deserialize(): T flag %d", m_flagT));
 
     m_flagU = (typeAndFlags & 0x4) != 0;
-    QCC_DbgPrintf(("WhoHas::Deserialize(): U flag %d\n", m_flagU));
+    QCC_DbgPrintf(("WhoHas::Deserialize(): U flag %d", m_flagU));
 
     m_flagS = (typeAndFlags & 0x2) != 0;
-    QCC_DbgPrintf(("WhoHas::Deserialize(): S flag %d\n", m_flagS));
+    QCC_DbgPrintf(("WhoHas::Deserialize(): S flag %d", m_flagS));
 
     m_flagF = (typeAndFlags & 0x1) != 0;
-    QCC_DbgPrintf(("WhoHas::Deserialize(): F flag %d\n", m_flagF));
+    QCC_DbgPrintf(("WhoHas::Deserialize(): F flag %d", m_flagF));
 
     //
     // The second octet is the count of bus names.
     //
     uint8_t numberNames = buffer[1];
-    QCC_DbgPrintf(("WhoHas::Deserialize(): Count %d\n", numberNames));
+    QCC_DbgPrintf(("WhoHas::Deserialize(): Count %d", numberNames));
     size += 1;
 
     //
@@ -676,7 +676,7 @@ size_t WhoHas::Deserialize(uint8_t const* buffer, uint32_t bufsize)
     // will be there.
     //
     for (uint32_t i = 0; i < numberNames; ++i) {
-        QCC_DbgPrintf(("WhoHas::Deserialize(): StringData::Deserialize() name %d\n", i));
+        QCC_DbgPrintf(("WhoHas::Deserialize(): StringData::Deserialize() name %d", i));
         StringData stringData;
 
         //
@@ -685,7 +685,7 @@ size_t WhoHas::Deserialize(uint8_t const* buffer, uint32_t bufsize)
         //
         size_t stringSize = stringData.Deserialize(p, bufsize);
         if (stringSize == 0) {
-            QCC_DbgPrintf(("WhoHas::Deserialize(): StringData::Deserialize():  Error\n"));
+            QCC_DbgPrintf(("WhoHas::Deserialize(): StringData::Deserialize():  Error"));
             return 0;
         }
 
@@ -802,7 +802,7 @@ size_t Header::GetSerializedSize(void) const
 
 size_t Header::Serialize(uint8_t* buffer) const
 {
-    QCC_DbgPrintf(("Header::Serialize(): to buffer 0x%x\n", buffer));
+    QCC_DbgPrintf(("Header::Serialize(): to buffer 0x%x", buffer));
     //
     // We keep track of the size so testers can check coherence between
     // GetSerializedSize() and Serialize() and Deserialize().
@@ -813,28 +813,28 @@ size_t Header::Serialize(uint8_t* buffer) const
     // The first octet is version
     //
     buffer[0] = m_version;;
-    QCC_DbgPrintf(("Header::Serialize(): version = %d\n", m_version));
+    QCC_DbgPrintf(("Header::Serialize(): version = %d", m_version));
     size += 1;
 
     //
     // The second octet is the count of questions.
     //
     buffer[1] = static_cast<uint8_t>(m_questions.size());
-    QCC_DbgPrintf(("Header::Serialize(): QCount = %d\n", m_questions.size()));
+    QCC_DbgPrintf(("Header::Serialize(): QCount = %d", m_questions.size()));
     size += 1;
 
     //
     // The third octet is the count of answers.
     //
     buffer[2] = static_cast<uint8_t>(m_answers.size());
-    QCC_DbgPrintf(("Header::Serialize(): ACount = %d\n", m_answers.size()));
+    QCC_DbgPrintf(("Header::Serialize(): ACount = %d", m_answers.size()));
     size += 1;
 
     //
     // The fourth octet is the timer for the answers.
     //
     buffer[3] = m_timer;
-    QCC_DbgPrintf(("Header::Serialize(): timer = %d\n", m_timer));
+    QCC_DbgPrintf(("Header::Serialize(): timer = %d", m_timer));
     size += 1;
 
     //
@@ -846,7 +846,7 @@ size_t Header::Serialize(uint8_t* buffer) const
     // Let the questions push themselves out.
     //
     for (uint32_t i = 0; i < m_questions.size(); ++i) {
-        QCC_DbgPrintf(("Header::Serialize(): WhoHas::Serialize() question %d\n", i));
+        QCC_DbgPrintf(("Header::Serialize(): WhoHas::Serialize() question %d", i));
         WhoHas whoHas = m_questions[i];
         size_t questionSize = whoHas.Serialize(p);
         size += questionSize;
@@ -857,7 +857,7 @@ size_t Header::Serialize(uint8_t* buffer) const
     // Let the answers push themselves out.
     //
     for (uint32_t i = 0; i < m_answers.size(); ++i) {
-        QCC_DbgPrintf(("Header::Serialize(): IsAt::Serialize() answer %d\n", i));
+        QCC_DbgPrintf(("Header::Serialize(): IsAt::Serialize() answer %d", i));
         IsAt isAt = m_answers[i];
         size_t answerSize = isAt.Serialize(p);
         size += answerSize;
@@ -875,7 +875,7 @@ size_t Header::Deserialize(uint8_t const* buffer, uint32_t bufsize)
     // count and one byte of timer).
     //
     if (bufsize < 4) {
-        QCC_DbgPrintf(("Header::Deserialize(): Insufficient bufsize %d\n", bufsize));
+        QCC_DbgPrintf(("Header::Deserialize(): Insufficient bufsize %d", bufsize));
         return 0;
     }
 
@@ -920,7 +920,7 @@ size_t Header::Deserialize(uint8_t const* buffer, uint32_t bufsize)
     // will be there.
     //
     for (uint8_t i = 0; i < qCount; ++i) {
-        QCC_DbgPrintf(("Header::Deserialize(): WhoHas::Deserialize() question %d\n", i));
+        QCC_DbgPrintf(("Header::Deserialize(): WhoHas::Deserialize() question %d", i));
         WhoHas whoHas;
 
         //
@@ -929,7 +929,7 @@ size_t Header::Deserialize(uint8_t const* buffer, uint32_t bufsize)
         //
         size_t qSize = whoHas.Deserialize(p, bufsize);
         if (qSize == 0) {
-            QCC_DbgPrintf(("Header::Deserialize(): WhoHas::Deserialize():  Error\n"));
+            QCC_DbgPrintf(("Header::Deserialize(): WhoHas::Deserialize():  Error"));
             return 0;
         }
         m_questions.push_back(whoHas);
@@ -943,7 +943,7 @@ size_t Header::Deserialize(uint8_t const* buffer, uint32_t bufsize)
     // will be there.
     //
     for (uint8_t i = 0; i < aCount; ++i) {
-        QCC_DbgPrintf(("Header::Deserialize(): IsAt::Deserialize() answer %d\n", i));
+        QCC_DbgPrintf(("Header::Deserialize(): IsAt::Deserialize() answer %d", i));
         IsAt isAt;
 
         //
@@ -952,7 +952,7 @@ size_t Header::Deserialize(uint8_t const* buffer, uint32_t bufsize)
         //
         size_t aSize = isAt.Deserialize(p, bufsize);
         if (aSize == 0) {
-            QCC_DbgPrintf(("Header::Deserialize(): IsAt::Deserialize():  Error\n"));
+            QCC_DbgPrintf(("Header::Deserialize(): IsAt::Deserialize():  Error"));
             return 0;
         }
         m_answers.push_back(isAt);
