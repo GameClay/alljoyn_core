@@ -1186,6 +1186,36 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
             bool newDevice = (it == foundDevices.end());
             FoundInfo& foundInfo = newDevice ? foundDevices[addr] : it->second;
 
+
+#ifndef NDEBUG
+            String deviceInfoStr = "Found ";
+            uint32_t cod;
+            const char* icon = NULL;
+            const char* name = NULL;
+            dictionary->GetElement("{su}", "Class", &cod);
+            dictionary->GetElement("{ss}", "Icon", &icon);
+            dictionary->GetElement("{ss}", "Name", &name);
+
+            if (!eirCapable) {
+                deviceInfoStr += "possible ";
+            }
+            deviceInfoStr += "AllJoyn device: ";
+            deviceInfoStr += addrStr;
+            deviceInfoStr += "   CoD: 0x";
+            deviceInfoStr += U32ToString(cod, 16, 8, '0');
+            deviceInfoStr += "   Icon: ";
+            deviceInfoStr += icon ? icon : "<null>";
+            deviceInfoStr += "   Name: ";
+            deviceInfoStr += name ? name : "<null>";
+            if (eirCapable) {
+                deviceInfoStr += "   uuidRev: ";
+                deviceInfoStr += U32ToString(uuidRev, 16, 8, '0');
+                deviceInfoStr += "   foundInfo.uuidRev: ";
+                deviceInfoStr += U32ToString(foundInfo.uuidRev, 16, 8, '0');
+            }
+            QCC_DbgHLPrintf(("%s", deviceInfoStr.c_str()));
+#endif
+
             if (newDevice) {
                 Timespec now;
                 GetTimeNow(&now);
@@ -1207,9 +1237,6 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
              * its foundExpiration triggers.
              */
             if (eirCapable) {
-                QCC_DbgHLPrintf(("Found AllJoyn device: %s  uuidRev = %08x  foundInfo.uuidRev = %08x",
-                                 addrStr, uuidRev, foundInfo.uuidRev));
-
                 if (newDevice || ((foundInfo.uuidRev != uuidRev) && (uuidRev != bt::INVALID_UUIDREV))) {
                     // Newly found device or changed advertisments, so inform the topology manager.
                     foundInfo.uuidRev = uuidRev;
@@ -1257,7 +1284,6 @@ void BTTransport::BTAccessor::ExpireFoundDevices()
 
         if (fimit != foundDevices.end()) {
             if (fimit->second.uuidRev == bt::INVALID_UUIDREV) {
-                QCC_DbgHLPrintf(("Found possible AllJoyn device: %s", it->second.ToString().c_str()));
                 DispatchOperation(new DeviceDispatchInfo(DispatchInfo::DEVICE_FOUND, it->second, bt::INVALID_UUIDREV, false));
             }
             foundDevices.erase(fimit);
