@@ -397,8 +397,8 @@ QStatus _Message::ReMarshal(const char* senderName, bool newSerial)
      */
     if (msgHeader.bodyLen != 0) {
         memcpy(bufPos, bodyPtr, msgHeader.bodyLen);
-        bodyPtr = bufPos;
     }
+    bodyPtr = bufPos;
     bufPos += msgHeader.bodyLen;
     bufEOD = bufPos;
     /*

@@ -343,12 +343,16 @@ QStatus _Message::ParseVariant(MsgArg* arg)
     QStatus status;
 
     arg->typeId = ALLJOYN_VARIANT;
+    arg->v_variant.val = NULL;
+
     size_t len = (size_t)(*((uint8_t*)bufPos));
     const char* sigPtr = (char*)(++bufPos);
 
     bufPos += len;
 
-    if (*bufPos++ != 0) {
+    if (bufPos >= bufEOD) {
+        status = ER_BUS_BAD_LENGTH;
+    } else if (*bufPos++ != 0) {
         status = ER_BUS_BAD_SIGNATURE;
     } else {
         arg->v_variant.val = new MsgArg();
@@ -372,7 +376,9 @@ QStatus _Message::ParseSignature(MsgArg* arg)
     arg->v_signature.len = (size_t)(*((uint8_t*)bufPos));
     arg->v_signature.sig = (char*)(++bufPos);
     bufPos += arg->v_signature.len;
-    if (*bufPos++ != 0) {
+    if (bufPos >= bufEOD) {
+        status = ER_BUS_BAD_LENGTH;
+    } else if (*bufPos++ != 0) {
         status = ER_BUS_NOT_NUL_TERMINATED;
     } else {
         arg->typeId = ALLJOYN_SIGNATURE;
@@ -542,7 +548,7 @@ QStatus _Message::UnmarshalArgs(const qcc::String& expectedSignature, const char
         return status;
     }
     if (msgHeader.bodyLen == 0) {
-        if (!expectedSignature.empty() && expectedSignature != WildCardSignature) {
+        if (*sig || (!expectedSignature.empty() && expectedSignature != WildCardSignature)) {
             status = ER_BUS_BAD_BODY_LEN;
             QCC_LogError(status, ("Expected a message body with signature %s", sig));
             return status;
@@ -910,7 +916,7 @@ QStatus _Message::Unmarshal(RemoteEndpoint& endpoint, bool checkSender, bool ped
      * Padding the end of the buffer ensures we can unmarshal a few bytes beyond the end of the
      * message reducing the places where we need to check for bufEOD when unmarshaling the body.
      */
-    bufSize = sizeof(msgHeader) + ((pktSize + 7) & ~7) + 8;
+    bufSize = sizeof(msgHeader) + ((pktSize + 7) & ~7) + sizeof(uint64_t);
     msgBuf = new uint64_t[bufSize / 8];
     /*
      * Copy header into the buffer
