@@ -1750,6 +1750,7 @@ QStatus BTTransport::BTAccessor::DiscoveryControl(const InterfaceDescription::Me
         if (status == ER_OK) {
             bool started = &method == org.bluez.Adapter.StartDiscovery;
             QCC_DbgHLPrintf(("%s discovery", started ? "Started" : "Stopped"));
+#if 0
             if (started) {
                 static const uint16_t MIN_PERIOD = 6;
                 static const uint16_t MAX_PERIOD = 10;
@@ -1758,6 +1759,7 @@ QStatus BTTransport::BTAccessor::DiscoveryControl(const InterfaceDescription::Me
 
                 ConfigurePeriodicInquiry(adapter->id, MIN_PERIOD, MAX_PERIOD, LENGTH, NUM_RESPONSES);
             }
+#endif
         } else {
             qcc::String errMsg;
             const char* errName = rsp->GetErrorName(&errMsg);
