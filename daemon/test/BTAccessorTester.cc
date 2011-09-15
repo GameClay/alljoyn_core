@@ -205,7 +205,7 @@ class TestDriver : public BTTransport {
     virtual bool TestCheckIncomingAddress(const BDAddress& addr) const;
     virtual void TestDeviceChange(const BDAddress& bdAddr, uint32_t uuidRev, bool eirCapable);
 
-    void ReportTestDetail(const String detail) const;
+    void ReportTestDetail(const String& detail) const;
     bool SendBuf(const uint8_t* buf, size_t size);
     bool RecvBuf(uint8_t* buf, size_t size);
 
@@ -213,7 +213,6 @@ class TestDriver : public BTTransport {
   private:
     list<TestCaseInfo> tcList;
     uint32_t testcase;
-    mutable list<String> detailList;
     bool success;
     list<TestCaseInfo>::iterator insertPos;
     size_t maxWidth;
@@ -221,8 +220,19 @@ class TestDriver : public BTTransport {
     static const size_t tcWidth = 2;
     static const size_t tcColonWidth = 2;
     static const size_t pfWidth = 5;
+    static const size_t dashWidth = 2;
+    size_t detailIndent;
+    size_t detailWidth;
+
+    mutable String lastLine;
+    mutable uint32_t lastLineRepeat;
+    mutable size_t lastIndent;
+    mutable bool lastBullet;
+
+    bool silenceDetails;
 
     void RunTest(TestCaseInfo& test);
+    void OutputLine(String line, size_t indent = 0, bool bullet = false) const;
 };
 
 
@@ -303,7 +313,13 @@ TestDriver::TestDriver(const CmdLineOptions& opts) :
     testcase(0),
     success(true),
     maxWidth(80),
-    tcNumWidth(2)
+    tcNumWidth(2),
+    detailIndent(tcWidth + tcNumWidth + 1),
+    detailWidth(maxWidth - (detailIndent + dashWidth)),
+    lastLineRepeat(0),
+    lastIndent(0),
+    lastBullet(false),
+    silenceDetails(false)
 {
     String uniqueName = ":";
     uniqueName += busGuid.ToShortString();
@@ -336,93 +352,117 @@ TestDriver::~TestDriver()
 void TestDriver::AddTestCase(TestDriver::TestCase tc, const String description)
 {
     tcList.insert(insertPos, TestCaseInfo(tc, description));
-    tcNumWidth = 1 + ((tcList.size() > 100) ? 3 :
-                      ((tcList.size() > 10) ? 2 : 1));
+    tcNumWidth = 1 + ((tcList.size() >= 100) ? 3 :
+                      ((tcList.size() >= 10) ? 2 : 1));
     if ((tcWidth + tcNumWidth + 1 + description.size() + tcColonWidth + pfWidth) > (maxWidth)) {
         maxWidth = (tcWidth + tcNumWidth + description.size() + tcColonWidth + pfWidth);
     }
+
+    detailIndent = (tcWidth + tcNumWidth + 2);
+    detailWidth = maxWidth - (detailIndent + dashWidth);
 }
 
 int TestDriver::RunTests()
 {
-    list<TestCaseInfo>::iterator it;
+    list<TestCaseInfo>::iterator it = tcList.begin();
 
-    for (it = tcList.begin(); (opts.keepgoing || success) && (it != tcList.end()); ++it) {
+    while ((opts.keepgoing || success) && (it != tcList.end())) {
         TestCaseInfo& test = *it;
         RunTest(test);
+        ++it;
+        if ((opts.keepgoing || success) && (it != tcList.end())) {
+            printf("-------------------------------------------------------------------------------\n");
+        }
     }
 
-    printf("\n"
-           "-------------\n"
+    printf("===============================================================================\n"
            "Overall: %s\n", success ? "PASS" : "FAIL");
+
+    if (opts.keepgoing) {
+        silenceDetails = true;
+        btAccessor->StopConnectable();
+        btAccessor->Stop();
+        Event::Wait(btDevAvailEvent, 30000);
+        delete btAccessor;
+        btAccessor = NULL;
+    }
 
     return success ? 0 : 1;
 }
 
 void TestDriver::RunTest(TestCaseInfo& test)
 {
-    static const size_t dashWidth = 2;
-    const size_t detailIndent = (tcWidth + tcNumWidth + 1);
-    const size_t detailWidth = maxWidth - (detailIndent + dashWidth);
-
-    size_t i;
+    String tcLine;
     String line;
-    line.reserve(maxWidth);
 
-    line.append("TC");
-    line.append(U32ToString(++testcase, 10, tcNumWidth, ' '));
-    line.push_back(' ');
-    line.append(test.description);
-    line.append(": ");
+    tcLine.append("TC");
+    tcLine.append(U32ToString(++testcase, 10, tcNumWidth, ' '));
+    tcLine.append(": ");
+    tcLine.append(test.description);
 
-    while (line.size() < (maxWidth - (pfWidth + 1))) {
-        line.push_back('.');
-    }
-
-    printf("%s", line.c_str());
-    fflush(stdout);
+    line = tcLine;
+    line.append(": Start");
+    OutputLine(line);
 
     test.success = (this->*(test.tc))();
 
-    line.clear();
+    line = tcLine;
+    line.append(": ");
+    line.append(test.success ? "PASS" : "FAIL");
+    OutputLine(line);
 
-    line.append(test.success ? " PASS" : " FAIL");
-
-    printf("%s\n", line.c_str());
-    line.clear();
-
-    while (detailList.begin() != detailList.end()) {
-        String detail = detailList.front();
-        if (!detail.empty()) {
-            bool wrapped = false;
-            while (!detail.empty()) {
-                for (i = 0; i < detailIndent; ++i) {
-                    line.push_back(' ');
-                }
-                line.append(wrapped ? "  " : "- ");
-
-                if (detail.size() > detailWidth) {
-                    String subline = detail.substr(0, detail.find_last_of(' ', detailWidth));
-                    detail = detail.substr(detail.find_first_not_of(" ", subline.size()));
-                    line.append(subline);
-                } else {
-                    line.append(detail);
-                    detail.clear();
-                }
-                printf("%s\n", line.c_str());
-                line.clear();
-                wrapped = !detail.empty();
-            }
-        }
-        detailList.erase(detailList.begin());
-    }
     success = success && test.success;
 }
 
-void TestDriver::ReportTestDetail(const String detail) const
+void TestDriver::OutputLine(String line, size_t indent, bool bullet) const
 {
-    if (opts.reportDetails) {
-        detailList.push_back(detail);
+
+    if (line == lastLine) {
+        ++lastLineRepeat;
+    } else {
+        String l;
+        if (lastLineRepeat > 0) {
+            l = "(Previous line repeated ";
+            l += U32ToString(lastLineRepeat);
+            l += " times.)";
+            lastLineRepeat = 0;
+            OutputLine(l, lastIndent, lastBullet);
+        } else {
+            if (!line.empty()) {
+                bool wrapped = false;
+                size_t lineWidth = maxWidth - (indent + (bullet ? 2 : 0));
+                lastLine = line;
+                lastIndent = indent;
+                lastBullet = bullet;
+                while (!line.empty()) {
+                    for (size_t i = 0; i < indent; ++i) {
+                        l.push_back(' ');
+                    }
+                    if (bullet) {
+                        l.append(wrapped ? "  " : "- ");
+                    }
+                    if (line.size() > lineWidth) {
+                        String subline = line.substr(0, line.find_last_of(' ', lineWidth));
+                        line = line.substr(line.find_first_not_of(" ", subline.size()));
+                        l.append(subline);
+                    } else {
+                        l.append(line);
+                        line.clear();
+                    }
+                    printf("%s\n", l.c_str());
+                    l.clear();
+                    wrapped = !line.empty();
+                }
+            }
+
+        }
+    }
+}
+
+void TestDriver::ReportTestDetail(const String& detail) const
+{
+    if (opts.reportDetails && !silenceDetails) {
+        OutputLine(detail, detailIndent, true);
     }
 }
 
@@ -670,18 +710,21 @@ bool TestDriver::TC_StartConnectable()
 {
     QStatus status;
     BTBusAddress addr;
+    String detail;
 
     status = btAccessor->StartConnectable(addr.addr, addr.psm);
     bool tcSuccess = (status == ER_OK);
     if (tcSuccess) {
         self->SetBusAddress(addr);
         nodeDB.AddNode(self);
+        detail = "Now connectable on ";
+        detail += self->GetBusAddress().ToString();
     } else {
         String detail = "Call to start connectable returned failure code: ";
         detail += QCC_StatusText(status);
-        detail += ".";
-        ReportTestDetail(status);
     }
+    detail += ".";
+    ReportTestDetail(detail);
 
     return tcSuccess;
 }
@@ -728,6 +771,7 @@ bool ClientTestDriver::TC_StartDiscovery()
         devChangeEvent.ResetEvent();
         devChangeLock.Unlock();
 
+        ReportTestDetail("Starting discovery for 30 seconds.");
         status = btAccessor->StartDiscovery(ignoreAddrs, 30);
         if (status != ER_OK) {
             detail = "Call to start discovery failed: ";
@@ -774,7 +818,7 @@ bool ClientTestDriver::TC_StartDiscovery()
         }
 
         if (foundInfo.empty()) {
-            ReportTestDetail("No devices found");
+            ReportTestDetail("No devices found.");
         } else {
             for (fit = foundInfo.begin(); fit != foundInfo.end(); ++fit) {
                 detail = "Found ";
@@ -802,10 +846,11 @@ bool ClientTestDriver::TC_StartDiscovery()
         devChangeEvent.ResetEvent();
         devChangeLock.Unlock();
 
+        ReportTestDetail("Waiting for 30 seconds after discovery should have stopped for late found device indications.");
         status = Event::Wait(devChangeEvent, 30000);
         if (status != ER_TIMEOUT) {
             ReportTestDetail("Received device found notification long after discovery should have stopped.");
-            //tcSuccess = false;
+            tcSuccess = false;
             devChangeLock.Lock();
             devChangeQueue.clear();
             devChangeEvent.ResetEvent();
@@ -814,7 +859,7 @@ bool ClientTestDriver::TC_StartDiscovery()
         }
     }
 
-    // Start infinite discovery until stopped
+    ReportTestDetail("Starting infinite discovery.");
     status = btAccessor->StartDiscovery(ignoreAddrs, 0);
     if (status != ER_OK) {
         detail = "Call to start discovery with infinite timeout failed: ";
@@ -836,6 +881,7 @@ bool ClientTestDriver::TC_StopDiscovery()
     BDAddressSet ignoreAddrs;
     String detail;
 
+    ReportTestDetail("Stopping infinite discovery.");
     status = btAccessor->StopDiscovery();
     if (status != ER_OK) {
         detail = "Call to stop discovery failed: ";
@@ -855,10 +901,11 @@ bool ClientTestDriver::TC_StopDiscovery()
         devChangeEvent.ResetEvent();
         devChangeLock.Unlock();
 
+        ReportTestDetail("Waiting for 30 seconds after stopping discovery for late found device indications.");
         status = Event::Wait(devChangeEvent, 30000);
         if (status != ER_TIMEOUT) {
             ReportTestDetail("Received device found notification long after discovery should have stopped.");
-            //tcSuccess = false;
+            tcSuccess = false;
             devChangeLock.Lock();
             devChangeQueue.clear();
             devChangeEvent.ResetEvent();
@@ -879,6 +926,7 @@ bool ClientTestDriver::TC_GetDeviceInfo()
     uint64_t now;
     uint64_t stop;
     Timespec tsNow;
+    String detail;
 
     GetTimeNow(&tsNow);
     now = tsNow.GetAbsoluteMillis();
@@ -887,9 +935,13 @@ bool ClientTestDriver::TC_GetDeviceInfo()
     while (!found && (now < stop)) {
         for (fit = foundInfo.begin(); !found && (fit != foundInfo.end()); ++fit) {
             if (!fit->second.checked) {
+                detail = "Checking ";
+                detail += fit->first.ToString();
+                detail += ".";
+                ReportTestDetail(detail);
                 status = btAccessor->GetDeviceInfo(fit->first, &connUUIDRev, &connAddr, &connAdInfo);
                 if (status != ER_OK) {
-                    String detail = "Failed to get device information from ";
+                    detail = "Failed to get device information from ";
                     detail += fit->first.ToString();
                     detail += " (non-critical): ";
                     detail += QCC_StatusText(status);
@@ -902,7 +954,7 @@ bool ClientTestDriver::TC_GetDeviceInfo()
                         for (nsit = (*nit)->GetAdvertiseNamesBegin();
                              !found && (nsit != (*nit)->GetAdvertiseNamesEnd());
                              ++nsit) {
-                            if (*nsit == opts.basename) {
+                            if (nsit->compare(0, opts.basename.size(), opts.basename) == 0) {
                                 found = true;
                             }
                         }
@@ -914,7 +966,7 @@ bool ClientTestDriver::TC_GetDeviceInfo()
         if (!found) {
             status = Event::Wait(devChangeEvent, 60000);
             if (status != ER_OK) {
-                String detail = "Wait for device change event failed: ";
+                detail = "Wait for device change event failed: ";
                 detail += QCC_StatusText(status);
                 detail += ".";
                 ReportTestDetail(detail);
@@ -946,7 +998,7 @@ bool ClientTestDriver::TC_GetDeviceInfo()
     }
 
     if (found) {
-        String detail = "Found \"";
+        detail = "Found \"";
         detail += opts.basename;
         detail += "\" in advertisement for device with connect address ";
         detail += connAddr.ToString();
@@ -1279,7 +1331,8 @@ bool ServerTestDriver::TC_AcceptSingle()
         goto exit;
     }
 
-    status = Event::Wait(*l2capEvent, 120000);
+    ReportTestDetail("Waiting up to 3 minutes for incoming connection.");
+    status = Event::Wait(*l2capEvent, 180000);
     if (status != ER_OK) {
         detail = "Failed to wait for incoming connection: ";
         detail += QCC_StatusText(status);
@@ -1332,8 +1385,9 @@ bool ServerTestDriver::TC_AcceptMultiple()
         goto exit;
     }
 
+    ReportTestDetail("Waiting up to 30 seconds for incoming connections.");
     for (size_t i = 0; i < ArraySize(eps); ++i) {
-        status = Event::Wait(*l2capEvent, 120000);
+        status = Event::Wait(*l2capEvent, 30000);
         if (status != ER_OK) {
             String detail = "Failed to wait for incoming connection: ";
             detail += QCC_StatusText(status);
