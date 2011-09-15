@@ -125,20 +125,20 @@ struct CmdLineOptions {
     String basename;
     bool client;
     bool server;
-    bool allowInteractive;
     bool reportDetails;
     bool local;
     bool fastDiscovery;
     bool quiet;
+    bool keepgoing;
     CmdLineOptions() :
         basename("org.alljoyn.BTAccessorTester"),
         client(false),
         server(false),
-        allowInteractive(true),
         reportDetails(false),
         local(false),
         fastDiscovery(false),
-        quiet(false)
+        quiet(false),
+        keepgoing(false)
     {
     }
 };
@@ -346,10 +346,15 @@ void TestDriver::AddTestCase(TestDriver::TestCase tc, const String description)
 int TestDriver::RunTests()
 {
     list<TestCaseInfo>::iterator it;
-    for (it = tcList.begin(); success && (it != tcList.end()); ++it) {
+
+    for (it = tcList.begin(); (opts.keepgoing || success) && (it != tcList.end()); ++it) {
         TestCaseInfo& test = *it;
         RunTest(test);
     }
+
+    printf("\n"
+           "-------------\n"
+           "Overall: %s\n", success ? "PASS" : "FAIL");
 
     return success ? 0 : 1;
 }
@@ -427,6 +432,11 @@ bool TestDriver::SendBuf(const uint8_t* buf, size_t size)
     size_t offset = 0;
     size_t sent = 0;
 
+    if (!ep) {
+        ReportTestDetail("No connection to send data to.  Skipping.");
+        return true;
+    }
+
     while (size > 0) {
         status = ep->GetSink().PushBytes(buf + offset, size, sent);
         if (status != ER_OK) {
@@ -450,6 +460,11 @@ bool TestDriver::RecvBuf(uint8_t* buf, size_t size)
     QStatus status;
     size_t offset = 0;
     size_t received = 0;
+
+    if (!ep) {
+        ReportTestDetail("No connection to send data to.  Skipping.");
+        return true;
+    }
 
     while (size > 0) {
         status = ep->GetSource().PullBytes(buf + offset, size, received, 30000);
@@ -861,8 +876,15 @@ bool ClientTestDriver::TC_GetDeviceInfo()
     bool tcSuccess = true;
     map<BDAddress, FoundInfo>::iterator fit;
     bool found = false;
+    uint64_t now;
+    uint64_t stop;
+    Timespec tsNow;
 
-    while (!found) {
+    GetTimeNow(&tsNow);
+    now = tsNow.GetAbsoluteMillis();
+    stop = now + 70000;
+
+    while (!found && (now < stop)) {
         for (fit = foundInfo.begin(); !found && (fit != foundInfo.end()); ++fit) {
             if (!fit->second.checked) {
                 status = btAccessor->GetDeviceInfo(fit->first, &connUUIDRev, &connAddr, &connAdInfo);
@@ -880,7 +902,7 @@ bool ClientTestDriver::TC_GetDeviceInfo()
                         for (nsit = (*nit)->GetAdvertiseNamesBegin();
                              !found && (nsit != (*nit)->GetAdvertiseNamesEnd());
                              ++nsit) {
-                            if (nsit->compare(0, opts.basename.size(), opts.basename) == 0) {
+                            if (*nsit == opts.basename) {
                                 found = true;
                             }
                         }
@@ -917,6 +939,9 @@ bool ClientTestDriver::TC_GetDeviceInfo()
                 devChangeQueue.pop_front();
             }
             devChangeLock.Unlock();
+
+            GetTimeNow(&tsNow);
+            now = tsNow.GetAbsoluteMillis();
         }
     }
 
@@ -928,6 +953,9 @@ bool ClientTestDriver::TC_GetDeviceInfo()
         detail += ".";
         ReportTestDetail(detail);
         connNode = connAdInfo.FindNode(connAddr);
+    } else {
+        ReportTestDetail("Failed to find corresponding device running BTAccessorTester in service mode.");
+        tcSuccess = false;
     }
 
 exit:
@@ -1423,17 +1451,17 @@ ServerTestDriver::ServerTestDriver(const CmdLineOptions& opts) :
 
 static void Usage(void)
 {
-    printf("Usage: BTAccessorTester [-h] [-c | -s] [-n <basename>] [-a] [-d]\n"
+    printf("Usage: BTAccessorTester OPTIONS...\n"
            "\n"
            "    -h              Print this help message\n"
            "    -c              Run in client mode\n"
            "    -s              Run in server mode\n"
-           "    -n <basename>   Set the base name for advertised/find names\n"
-           "    -a              Automatic tests only (disable interactive tests)\n"
            "    -l              Only run local tests (skip inter-device tests)\n"
+           "    -n <basename>   Set the base name for advertised/find names\n"
            "    -f              Fast discovery (client only - skips some discovery testing)\n"
            "    -q              Quiet - suppress debug and log errors\n"
-           "    -d              Output test details\n");
+           "    -d              Output test details\n"
+           "    -k              Keep going if a test case fails\n");
 }
 
 static void ParseCmdLine(int argc, char** argv, CmdLineOptions& opts)
@@ -1467,8 +1495,6 @@ static void ParseCmdLine(int argc, char** argv, CmdLineOptions& opts)
             } else {
                 opts.basename = argv[i];
             }
-        } else if (strcmp(argv[i], "-a") == 0) {
-            opts.allowInteractive = false;
         } else if (strcmp(argv[i], "-d") == 0) {
             opts.reportDetails = true;
         } else if (strcmp(argv[i], "-l") == 0) {
@@ -1477,6 +1503,8 @@ static void ParseCmdLine(int argc, char** argv, CmdLineOptions& opts)
             opts.fastDiscovery = true;
         } else if (strcmp(argv[i], "-q") == 0) {
             opts.quiet = true;
+        } else if (strcmp(argv[i], "-k") == 0) {
+            opts.keepgoing = true;
         }
     }
 }
