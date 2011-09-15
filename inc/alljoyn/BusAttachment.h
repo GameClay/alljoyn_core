@@ -21,11 +21,10 @@
 #ifndef _ALLJOYN_BUSATTACHMENT_H
 #define _ALLJOYN_BUSATTACHMENT_H
 
-#ifndef __cplusplus
-#error Only include BusAttachment.h in C++ code.
-#endif
-
 #include <qcc/platform.h>
+#include <Status.h>
+
+#ifdef __cplusplus
 
 #include <qcc/String.h>
 #include <alljoyn/KeyStoreListener.h>
@@ -37,7 +36,7 @@
 #include <alljoyn/Session.h>
 #include <alljoyn/SessionListener.h>
 #include <alljoyn/SessionPortListener.h>
-#include <Status.h>
+
 
 namespace ajn {
 
@@ -898,5 +897,31 @@ class BusAttachment : public MessageReceiver {
 };
 
 }
+
+extern "C" {
+#endif /* #ifdef __cplusplus */
+
+typedef struct _alljoyn_busattachment* alljoyn_busattachment; /**< Opaque pointer to BusAttachment */
+
+/**
+ * Allocate a BusAttachment.
+ *
+ * @note Any BusAttachment allocated using this function must be freed using
+ *
+ * @param applicationName       Name of the application.
+ * @param allowRemoteMessages   QC_TRUE if this attachment is allowed to receive messages from remote devices.
+ */
+alljoyn_busattachment alljoyn_busattachment_create(const char* applicationName, QC_BOOL allowRemoteMessages);
+
+/**
+ * Free an allocated BusAttachment.
+ *
+ * @param busAttachment BusAttachment to free.
+ */
+void alljoyn_busattachment_destroy(alljoyn_busattachment* busAttachment);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif

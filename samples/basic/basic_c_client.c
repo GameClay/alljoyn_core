@@ -21,12 +21,77 @@
  *    limitations under the License.
  ******************************************************************************/
 
-#include <alljoyn/version.h>
-#include <stdio.h>
+#include <qcc/platform.h>
 
+#include <assert.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+//#include <qcc/String.h>
+
+#include <alljoyn/BusAttachment.h>
+#include <alljoyn/version.h>
+//#include <alljoyn/AllJoynStd.h>
+#include <Status.h>
+
+/** Static top level message bus object */
+static alljoyn_busattachment g_msgBus = NULL;
+
+/** Signal handler */
+static void SigIntHandler(int sig)
+{
+    if (NULL != g_msgBus) {
+        QStatus status = ER_OK; //g_msgBus->Stop(false);
+        if (ER_OK != status) {
+            printf("BusAttachment::Stop() failed\n");
+        }
+    }
+    exit(0);
+}
+
+
+/** Main entry point */
 int main(int argc, char** argv, char** envArg)
 {
-    printf("%s\n%s\n%d\n", alljoyn_getversion(), alljoyn_getbuildinfo(), alljoyn_getnumericversion());
+    QStatus status = ER_OK;
 
-    return 0;
+    printf("AllJoyn Library version: %s\n", alljoyn_getversion());
+    printf("AllJoyn Library build info: %s\n", alljoyn_getbuildinfo());
+
+    /* Install SIGINT handler */
+    signal(SIGINT, SigIntHandler);
+
+    const char* connectArgs = getenv("BUS_ADDRESS");
+    if (connectArgs == NULL) {
+#ifdef _WIN32
+        connectArgs = "tcp:addr=127.0.0.1,port=9955";
+#else
+        connectArgs = "unix:abstract=alljoyn";
+#endif
+    }
+
+    /* Create message bus */
+    g_msgBus = alljoyn_busattachment_create("myApp", QC_TRUE);
+
+    // TODO: Rest of stuff...
+
+    /* Stop the bus (not strictly necessary since we are going to delete it anyways) */
+    if (g_msgBus) {
+        QStatus s = ER_OK; //g_msgBus->Stop();
+        if (ER_OK != s) {
+            printf("BusAttachment::Stop failed\n");
+        }
+    }
+
+    /* Deallocate bus */
+    if (g_msgBus) {
+        alljoyn_busattachment deleteMe = g_msgBus;
+        g_msgBus = NULL;
+        alljoyn_busattachment_destroy(&deleteMe);
+    }
+
+    printf("basic client exiting with status %d (%s)\n", status, QCC_StatusText(status));
+
+    return (int) status;
 }

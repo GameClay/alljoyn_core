@@ -1831,3 +1831,29 @@ QStatus BusAttachment::GetKeyExpiration(const qcc::String& guid, uint32_t& timeo
 }
 
 }
+
+struct _alljoyn_busattachment {
+    ajn::BusAttachment* busAttachment;
+};
+
+alljoyn_busattachment alljoyn_busattachment_create(const char* applicationName, QC_BOOL allowRemoteMessages)
+{
+    bool allowRemoteMessagesBool = (allowRemoteMessages == QC_TRUE ? true : false);
+    _alljoyn_busattachment* ret = new struct _alljoyn_busattachment;
+    ret->busAttachment = NULL;
+    ret->busAttachment = new ajn::BusAttachment(applicationName, allowRemoteMessagesBool);
+
+    assert(ret->busAttachment != NULL && "Failed to allocate ajn::BusAttachment.");
+    return ret;
+}
+
+void alljoyn_busattachment_destroy(alljoyn_busattachment* busAttachment)
+{
+    assert(*busAttachment != NULL && "NULL parameter passed to alljoyn_destroy_busattachment.");
+    assert((*busAttachment)->busAttachment != NULL &&
+           "Improperly allocated alljoyn_busattachment passed to alljoyn_destroy_busattachment.");
+
+    delete (*busAttachment)->busAttachment;
+    delete *busAttachment;
+    busAttachment = NULL;
+}
