@@ -94,8 +94,8 @@ namespace ajn {
  */
 #define BT_DEFAULT_TO      10000
 #define BT_GETPROP_TO      3000
-#define BT_SDPQUERY_TO     200000
-#define BT_CREATE_DEV_TO   200000
+#define BT_SDPQUERY_TO     60000
+#define BT_CREATE_DEV_TO   60000
 
 #define MAX_CONNECT_ATTEMPTS  3
 #define MAX_CONNECT_WAITS    30
@@ -441,6 +441,9 @@ QStatus BTTransport::BTAccessor::StopDiscovery()
 {
     QStatus status = DiscoveryControl(*org.bluez.Adapter.StopDiscovery);
     discoveryActive = false;
+
+    DispatchOperation(new DispatchInfo(DispatchInfo::FLUSH_FOUND_EXPIRATIONS));
+
     return status;
 }
 
@@ -1096,7 +1099,11 @@ void BTTransport::BTAccessor::AlarmTriggered(const Alarm& alarm, QStatus reason)
             break;
 
         case DispatchInfo::EXPIRE_DEVICE_FOUND:
-            ExpireFoundDevices();
+            ExpireFoundDevices(false);
+            break;
+
+        case DispatchInfo::FLUSH_FOUND_EXPIRATIONS:
+            ExpireFoundDevices(true);
             break;
         }
     }
@@ -1201,18 +1208,18 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
             }
             deviceInfoStr += "AllJoyn device: ";
             deviceInfoStr += addrStr;
-            deviceInfoStr += "   CoD: 0x";
-            deviceInfoStr += U32ToString(cod, 16, 8, '0');
-            deviceInfoStr += "   Icon: ";
-            deviceInfoStr += icon ? icon : "<null>";
-            deviceInfoStr += "   Name: ";
-            deviceInfoStr += name ? name : "<null>";
             if (eirCapable) {
                 deviceInfoStr += "   uuidRev: ";
                 deviceInfoStr += U32ToString(uuidRev, 16, 8, '0');
                 deviceInfoStr += "   foundInfo.uuidRev: ";
                 deviceInfoStr += U32ToString(foundInfo.uuidRev, 16, 8, '0');
             }
+            deviceInfoStr += "   CoD: 0x";
+            deviceInfoStr += U32ToString(cod, 16, 8, '0');
+            deviceInfoStr += "   Icon: ";
+            deviceInfoStr += icon ? icon : "<null>";
+            deviceInfoStr += "   Name: ";
+            deviceInfoStr += name ? name : "<null>";
             QCC_DbgHLPrintf(("%s", deviceInfoStr.c_str()));
 #endif
 
@@ -1270,7 +1277,7 @@ bool BTTransport::BTAccessor::FindAllJoynUUID(const MsgArg* uuids,
 }
 
 
-void BTTransport::BTAccessor::ExpireFoundDevices()
+void BTTransport::BTAccessor::ExpireFoundDevices(bool all)
 {
     deviceLock.Lock();
     Timespec nowts;
@@ -1278,7 +1285,7 @@ void BTTransport::BTAccessor::ExpireFoundDevices()
     uint64_t now = nowts.GetAbsoluteMillis();
     FoundInfoExpireMap::iterator it = foundExpirations.begin();
     while ((it != foundExpirations.end()) &&
-           (it->first < now)) {
+           (all || (it->first < now))) {
 
         FoundInfoMap::iterator fimit = foundDevices.find(it->second);
 

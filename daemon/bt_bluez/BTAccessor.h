@@ -239,7 +239,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     static bool FindAllJoynUUID(const MsgArg* uuids,
                                 size_t listSize,
                                 uint32_t& uuidRev);
-    void ExpireFoundDevices();
+    void ExpireFoundDevices(bool all);
     static QStatus ProcessSDPXML(qcc::XmlParseContext& xmlctx,
                                  uint32_t* uuidRev,
                                  BDAddress* connAddr,
@@ -326,7 +326,8 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
             ADAPTER_REMOVED,
             DEFAULT_ADAPTER_CHANGED,
             DEVICE_FOUND,
-            EXPIRE_DEVICE_FOUND
+            EXPIRE_DEVICE_FOUND,
+            FLUSH_FOUND_EXPIRATIONS
         } DispatchTypes;
         DispatchTypes operation;
 
