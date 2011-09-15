@@ -239,6 +239,16 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
             printf("SessionLost for unknown sessionId %u\n", id);
         }
     }
+
+    void SessionMemberAdded(SessionId id, const char* uniqueName)
+    {
+        printf("%s was added to session %u\n", uniqueName, id);
+    }
+
+    void SessionMemberRemoved(SessionId id, const char* uniqueName)
+    {
+        printf("%s was removed from session %u\n", uniqueName, id);
+    }
 };
 
 class AutoChatThread : public Thread, public ThreadListener {

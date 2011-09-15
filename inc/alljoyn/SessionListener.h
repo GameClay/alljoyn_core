@@ -47,6 +47,22 @@ class SessionListener {
      * @param sessionId     Id of session that was lost.
      */
     virtual void SessionLost(SessionId sessionId) { }
+
+    /**
+     * Called by the bus when a member of a multipoint session is added.
+     *
+     * @param sessionId     Id of session whose member(s) changed.
+     * @param uniqueName    Unique name of member who was added.
+     */
+    virtual void SessionMemberAdded(SessionId sessionId, const char* uniqueName) { }
+
+    /**
+     * Called by the bus when a member of a multipoint session is removed.
+     *
+     * @param sessionId     Id of session whose member(s) changed.
+     * @param uniqueName    Unique name of member who was removed.
+     */
+    virtual void SessionMemberRemoved(SessionId sessionId, const char* uniqueName) { }
 };
 
 }

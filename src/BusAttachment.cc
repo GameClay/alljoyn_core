@@ -281,6 +281,13 @@ QStatus BusAttachment::Connect(const char* connectSpec, RemoteEndpoint** newep)
                                                NULL);
             }
             if (ER_OK == status) {
+                assert(ajIface);
+                status = RegisterSignalHandler(busInternal,
+                                               static_cast<MessageReceiver::SignalHandler>(&BusAttachment::Internal::AllJoynSignalHandler),
+                                               ajIface->GetMember("MPSessionChanged"),
+                                               NULL);
+            }
+            if (ER_OK == status) {
                 Message reply(*this);
                 MsgArg arg("s", "type='signal',interface='org.alljoyn.Bus'");
                 const ProxyBusObject& dbusObj = this->GetDBusProxyObj();
@@ -342,6 +349,12 @@ QStatus BusAttachment::Disconnect(const char* connectSpec)
                 UnregisterSignalHandler(this,
                                         static_cast<MessageReceiver::SignalHandler>(&BusAttachment::Internal::AllJoynSignalHandler),
                                         alljoynIface->GetMember("SessionLost"),
+                                        NULL);
+            }
+            if (alljoynIface) {
+                UnregisterSignalHandler(this,
+                                        static_cast<MessageReceiver::SignalHandler>(&BusAttachment::Internal::AllJoynSignalHandler),
+                                        alljoynIface->GetMember("MPSessionChanged"),
                                         NULL);
             }
         }
@@ -1498,8 +1511,21 @@ void BusAttachment::Internal::AlarmTriggered(const Alarm& alarm, QStatus reason)
                                           (0 < args[2].v_string.len) ? args[2].v_string.str : NULL);
             }
             listenersLock.Unlock();
+        } else if (0 == strcmp("MPSessionChanged", msg->GetMemberName())) {
+            sessionListenersLock.Lock();
+            SessionId id = static_cast<SessionId>(args[0].v_uint32);
+            const char* member = args[1].v_string.str;
+            map<SessionId, SessionListener*>::iterator slit = sessionListeners.find(id);
+            if ((slit != sessionListeners.end()) && slit->second) {
+                if (args[2].v_bool) {
+                    slit->second->SessionMemberAdded(id, member);
+                } else {
+                    slit->second->SessionMemberRemoved(id, member);
+                }
+            }
+            sessionListenersLock.Unlock();
         } else {
-            QCC_LogError(ER_FAIL, ("Unrecognized signal \"%s.%s\" received", msg->GetInterface(), msg->GetMemberName()));
+            QCC_DbgPrintf(("Unrecognized signal \"%s.%s\" received", msg->GetInterface(), msg->GetMemberName()));
         }
     }
     delete &msg;

@@ -345,6 +345,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     const InterfaceDescription::Member* foundNameSignal;   /**< org.alljoyn.Bus.FoundName signal */
     const InterfaceDescription::Member* lostAdvNameSignal; /**< org.alljoyn.Bus.LostAdvertisdName signal */
     const InterfaceDescription::Member* sessionLostSignal; /**< org.alljoyn.Bus.SessionLost signal */
+    const InterfaceDescription::Member* mpSessionChangedSignal;  /**< org.alljoyn.Bus.MPSessionChanged signal */
 
     /** Map of open connectSpecs to local endpoint name(s) that require the connection. */
     std::multimap<qcc::String, qcc::String> connectMap;
@@ -522,6 +523,16 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     void SendSessionLost(const SessionMapEntry& entry);
 
     /**
+     * Utility method used to send MPSessionChanged signal to locally attached endpoint.
+     *
+     * @param   sessionId   The sessionId.
+     * @param   name        Unique name of session member that changed.
+     * @param   isAdd       true iff member added.
+     * @param   dest        Local destination for MPSessionChanged.
+     */
+    void SendMPSessionChanged(SessionId sessionId, const char* name, bool isAdd, const char* dest);
+
+    /**
      * Utility method used to invoke GetSessionInfo remote method.
      *
      * @param       creatorName    Bus name of session creator.
@@ -639,6 +650,20 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      * @param id        Session id.
      */
     void RemoveSessionRefs(BusEndpoint& endpoint, SessionId id);
+
+    /**
+     * Utility function used to clean up the session map when a virtual endpoint with a
+     * given b2b endpoint leaves a session. 
+     * 
+     * This utility is used when the given B2B ep has closed for some reason and we
+     * need to clean any virtual endpoints that might have been using that b2b ep 
+     * from the sessionMap
+     *
+     * @param vep       Virtual that should be cleaned from sessionMap if it routes
+     *                  through b2bEp for a given session.
+     * @param b2bEp     B2B endpoint that vep must route through in order to be cleaned.
+     */
+    void RemoveSessionRefs(const VirtualEndpoint& vep, const RemoteEndpoint& b2bEp);
 };
 
 }

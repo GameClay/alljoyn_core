@@ -505,8 +505,6 @@ void DBusObj::UpdateActivationEnvironment(const InterfaceDescription::Member* me
 
 void DBusObj::ListQueuedOwners(const InterfaceDescription::Member* member, Message& msg)
 {
-    void* context = (void*) &msg;
-
     const MsgArg* nameArg = msg->GetArg(0);
     assert(nameArg && (ALLJOYN_STRING == nameArg->typeId));
 

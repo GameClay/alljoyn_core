@@ -112,9 +112,10 @@ class VirtualEndpoint : public BusEndpoint {
      * Get the BusToBus endpoint associated with this virtual endpoint.
      *
      * @param sessionId   Id of session between src and dest.
+     * @param b2bCount    [OUT] Number of b2bEps that can route for given session. May be NULL.
      * @return The current (top of queue) bus-to-bus endpoint.
      */
-    RemoteEndpoint* GetBusToBusEndpoint(SessionId sessionId = 0) const;
+    RemoteEndpoint* GetBusToBusEndpoint(SessionId sessionId = 0, int* b2bCount = NULL) const;
 
     /**
      * Add an alternate bus-to-bus endpoint that can route for this endpoint.

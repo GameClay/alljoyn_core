@@ -274,24 +274,26 @@ class DaemonRouter : public Router {
     /**
      * Add a session route.
      *
-     * @param  src       Unique name of route source.
-     * @param  id        Session Id.
-     * @param  destEp    BusEndpoint of route destination.
-     * @param  b2bEp     [IN/OUT] If passed in as NULL, attemp to use qosHint to choose b2bEp and return selected b2bEp.
-     * @param  optsHint  Optional session options constraint for selection of b2bEp if not explicitly specified.
+     * @param  id          Session Id.
+     * @param  srcEp       Route source endpoint.
+     * @param  srcB2bEp    Source B2B endpoint. (NULL if srcEp is not virtual).
+     * @param  destEp      BusEndpoint of route destination.
+     * @param  destB2bEp   [IN/OUT] If passed in as NULL, attempt to use qosHint to choose destB2bEp and return selected ep.
+     * @param  optsHint    Optional session options constraint for selection of destB2bEp if not explicitly specified.
      * @return  ER_OK if successful.
      */
-    QStatus AddSessionRoute(const char* src, SessionId id, BusEndpoint& destEp, RemoteEndpoint*& b2bEp, SessionOpts* optsHint = NULL);
+    QStatus AddSessionRoute(SessionId id, BusEndpoint& srcEp, RemoteEndpoint* srcB2bEp, BusEndpoint& destEp,
+                            RemoteEndpoint*& destB2bEp, SessionOpts* optsHint = NULL);
 
     /**
      * Remove a (single) session route.
      *
-     * @param  src     Unique name of route source.
      * @param  id      Session Id.
+     * @param  srcEp   BusEndpoint of route source.
      * @param  destEp  BusEndpoint of route destination.
      * @return  ER_OK if successful.
      */
-    QStatus RemoveSessionRoute(const char* src, SessionId id, BusEndpoint& destEp);
+    QStatus RemoveSessionRoute(SessionId id, BusEndpoint& srcEp, BusEndpoint& destEp);
 
     /**
      * Remove existing session routes.
