@@ -35,10 +35,23 @@
 /** Macro to extract the release from unified version value. */
 #define GetVersionRelease(_ver) ((_ver) & 0xffff)
 
+#ifdef __cplusplus
+
 namespace ajn {
 const char* GetVersion();        /**< Gives the version of AllJoyn Library */
 const char* GetBuildInfo();      /**< Gives build information of AllJoyn Library */
 uint32_t GetNumericVersion();  /**< Gives the version of AllJoyn Library as a single number */
 };
+
+extern "C" {
+#endif
+
+const char* alljoyn_getversion();        /**< Gives the version of AllJoyn Library */
+const char* alljoyn_getbuildinfo();      /**< Gives build information of AllJoyn Library */
+uint32_t alljoyn_getnumericversion();  /**< Gives the version of AllJoyn Library as a single number */
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif

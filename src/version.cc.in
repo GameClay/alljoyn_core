@@ -44,3 +44,19 @@ uint32_t ajn::GetNumericVersion()
 {
     return GenerateVersionValue(architecture, apiLevel, release);
 }
+
+const char* alljoyn_getversion()
+{
+    return ajn::GetVersion();
+}
+
+const char* alljoyn_getbuildinfo()
+{
+    return ajn::GetBuildInfo();
+}
+
+uint32_t alljoyn_getnumericversion()
+{
+    return ajn::GetNumericVersion();
+}
+
