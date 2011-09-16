@@ -194,7 +194,7 @@ BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
         masterUUIDRev = qcc::Rand32();
     }
 
-    const InterfaceDescription* ifc;
+    const InterfaceDescription* ifc = NULL;
     InterfaceDescription* newIfc;
     QStatus status = bus.CreateInterface(bluetoothTopoMgrIfcName, newIfc);
     if (status == ER_OK) {
@@ -212,23 +212,25 @@ BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
         ifc = bus.GetInterface(bluetoothTopoMgrIfcName);
     }
 
-    org.alljoyn.Bus.BTController.interface =           ifc;
-    org.alljoyn.Bus.BTController.SetState =            ifc->GetMember("SetState");
-    org.alljoyn.Bus.BTController.FindName =            ifc->GetMember("FindName");
-    org.alljoyn.Bus.BTController.CancelFindName =      ifc->GetMember("CancelFindName");
-    org.alljoyn.Bus.BTController.AdvertiseName =       ifc->GetMember("AdvertiseName");
-    org.alljoyn.Bus.BTController.CancelAdvertiseName = ifc->GetMember("CancelAdvertiseName");
-    org.alljoyn.Bus.BTController.DelegateAdvertise =   ifc->GetMember("DelegateAdvertise");
-    org.alljoyn.Bus.BTController.DelegateFind =        ifc->GetMember("DelegateFind");
-    org.alljoyn.Bus.BTController.FoundNames =          ifc->GetMember("FoundNames");
-    org.alljoyn.Bus.BTController.LostNames =           ifc->GetMember("LostNames");
-    org.alljoyn.Bus.BTController.FoundDevice =         ifc->GetMember("FoundDevice");
-    org.alljoyn.Bus.BTController.ConnectAddrChanged =  ifc->GetMember("ConnectAddrChanged");
+    if (ifc) {
+        org.alljoyn.Bus.BTController.interface =           ifc;
+        org.alljoyn.Bus.BTController.SetState =            ifc->GetMember("SetState");
+        org.alljoyn.Bus.BTController.FindName =            ifc->GetMember("FindName");
+        org.alljoyn.Bus.BTController.CancelFindName =      ifc->GetMember("CancelFindName");
+        org.alljoyn.Bus.BTController.AdvertiseName =       ifc->GetMember("AdvertiseName");
+        org.alljoyn.Bus.BTController.CancelAdvertiseName = ifc->GetMember("CancelAdvertiseName");
+        org.alljoyn.Bus.BTController.DelegateAdvertise =   ifc->GetMember("DelegateAdvertise");
+        org.alljoyn.Bus.BTController.DelegateFind =        ifc->GetMember("DelegateFind");
+        org.alljoyn.Bus.BTController.FoundNames =          ifc->GetMember("FoundNames");
+        org.alljoyn.Bus.BTController.LostNames =           ifc->GetMember("LostNames");
+        org.alljoyn.Bus.BTController.FoundDevice =         ifc->GetMember("FoundDevice");
+        org.alljoyn.Bus.BTController.ConnectAddrChanged =  ifc->GetMember("ConnectAddrChanged");
 
-    advertise.delegateSignal = org.alljoyn.Bus.BTController.DelegateAdvertise;
-    find.delegateSignal = org.alljoyn.Bus.BTController.DelegateFind;
+        advertise.delegateSignal = org.alljoyn.Bus.BTController.DelegateAdvertise;
+        find.delegateSignal = org.alljoyn.Bus.BTController.DelegateFind;
 
-    static_cast<DaemonRouter&>(bus.GetInternal().GetRouter()).AddBusNameListener(this);
+        static_cast<DaemonRouter&>(bus.GetInternal().GetRouter()).AddBusNameListener(this);
+    }
 
     // Setup the BT node info for ourself.
     self->SetGUID(bus.GetGlobalGUIDString());
@@ -483,7 +485,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                     return;
                 }
 
-                bool autoConnect = !eirCapable && !(knownAdNode && adNode->IsEIRCapable());
+                bool autoConnect = !bt.IsEIRCapable() || (!eirCapable && !(knownAdNode && adNode->IsEIRCapable()));
 
                 if (newAdInfo.FindNode(self->GetBusAddress())->IsValid()) {
                     QCC_DbgPrintf(("Device %s is advertising a set of nodes that include our own BD Address, ignoring it for now.", adBdAddr.ToString().c_str()));
