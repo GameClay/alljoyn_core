@@ -22,9 +22,7 @@
 #ifndef _ALLJOYN_BUSLISTENER_H
 #define _ALLJOYN_BUSLISTENER_H
 
-#ifndef __cplusplus
-#error Only include BusListener.h in C++ code.
-#endif
+#ifdef __cplusplus
 
 #include <alljoyn/TransportMask.h>
 
@@ -101,5 +99,14 @@ class BusListener {
 };
 
 }
+
+extern "C" {
+#endif /* #ifdef __cplusplus */
+
+typedef void* alljoyn_busattachment;
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif

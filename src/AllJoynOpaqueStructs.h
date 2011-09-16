@@ -25,8 +25,4 @@
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/InterfaceDescription.h>
 
-struct _alljoyn_busattachment {
-    ajn::BusAttachment* busAttachment;
-};
-
 #endif

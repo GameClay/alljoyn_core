@@ -24,13 +24,13 @@
 #include <qcc/platform.h>
 #include <Status.h>
 #include <alljoyn/InterfaceDescription.h>
+#include <alljoyn/BusListener.h>
 
 #ifdef __cplusplus
 
 #include <qcc/String.h>
 #include <alljoyn/KeyStoreListener.h>
 #include <alljoyn/AuthListener.h>
-#include <alljoyn/BusListener.h>
 #include <alljoyn/BusObject.h>
 #include <alljoyn/ProxyBusObject.h>
 #include <alljoyn/Session.h>
@@ -901,8 +901,6 @@ class BusAttachment : public MessageReceiver {
 extern "C" {
 #endif /* #ifdef __cplusplus */
 
-typedef struct _alljoyn_busattachment* alljoyn_busattachment; /**< Opaque pointer to BusAttachment */
-
 /**
  * Allocate a BusAttachment.
  *
@@ -916,9 +914,9 @@ alljoyn_busattachment alljoyn_busattachment_create(const char* applicationName, 
 /**
  * Free an allocated BusAttachment.
  *
- * @param busAttachment BusAttachment to free.
+ * @param bus BusAttachment to free.
  */
-void alljoyn_busattachment_destroy(alljoyn_busattachment* busAttachment);
+void alljoyn_busattachment_destroy(alljoyn_busattachment* bus);
 
 /**
  * Stop the message bus.

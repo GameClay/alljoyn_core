@@ -57,7 +57,6 @@
 #include "AllJoynPeerObj.h"
 #include "XmlHelper.h"
 #include "LaunchdTransport.h"
-#include "AlljoynOpaqueStructs.h"
 
 #define QCC_MODULE "ALLJOYN"
 
@@ -1836,29 +1835,21 @@ QStatus BusAttachment::GetKeyExpiration(const qcc::String& guid, uint32_t& timeo
 alljoyn_busattachment alljoyn_busattachment_create(const char* applicationName, QC_BOOL allowRemoteMessages)
 {
     bool allowRemoteMessagesBool = (allowRemoteMessages == QC_TRUE ? true : false);
-    _alljoyn_busattachment* ret = new struct _alljoyn_busattachment;
-    ret->busAttachment = NULL;
-    ret->busAttachment = new ajn::BusAttachment(applicationName, allowRemoteMessagesBool);
-
-    assert(ret->busAttachment != NULL && "Failed to allocate ajn::BusAttachment.");
-    return ret;
+    return ((alljoyn_busattachment)new ajn::BusAttachment(applicationName, allowRemoteMessagesBool));
 }
 
-void alljoyn_busattachment_destroy(alljoyn_busattachment* busAttachment)
+void alljoyn_busattachment_destroy(alljoyn_busattachment* bus)
 {
-    assert(*busAttachment != NULL && "NULL parameter passed to alljoyn_destroy_busattachment.");
-    assert((*busAttachment)->busAttachment != NULL &&
-           "Improperly allocated alljoyn_busattachment passed to alljoyn_destroy_busattachment.");
+    assert(*bus != NULL && "NULL parameter passed to alljoyn_destroy_busattachment.");
 
-    delete (*busAttachment)->busAttachment;
-    delete *busAttachment;
-    busAttachment = NULL;
+    delete ((ajn::BusAttachment*)*bus);
+    *bus = NULL;
 }
 
 QStatus alljoyn_busattachment_stop(alljoyn_busattachment bus, QC_BOOL blockUntilStopped)
 {
     bool blockBool = (blockUntilStopped == QC_TRUE ? true : false);
-    return bus->busAttachment->Stop(blockBool);
+    return ((ajn::BusAttachment*)bus)->Stop(blockBool);
 }
 
 QStatus alljoyn_busattachment_createinterface(alljoyn_busattachment bus,
@@ -1867,7 +1858,7 @@ QStatus alljoyn_busattachment_createinterface(alljoyn_busattachment bus,
 {
     bool secureBool = (secure == QC_TRUE ? true : false);
     ajn::InterfaceDescription* ifaceObj = NULL;
-    QStatus ret = bus->busAttachment->CreateInterface(name, ifaceObj, secureBool);
+    QStatus ret = ((ajn::BusAttachment*)bus)->CreateInterface(name, ifaceObj, secureBool);
     *iface = ifaceObj;
 
     return ret;
