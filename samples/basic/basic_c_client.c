@@ -90,7 +90,30 @@ int main(int argc, char** argv, char** envArg)
         printf("Failed to create interface 'org.alljoyn.Bus.method_sample'\n");
     }
 
+
+    /* Start the msg bus */
+    if (ER_OK == status) {
+        status = alljoyn_busattachment_start(g_msgBus);
+        if (ER_OK != status) {
+            printf("BusAttachment::Start failed\n");
+        } else {
+            printf("BusAttachment started.\n");
+        }
+    }
+
+    /* Connect to the bus */
+    if (ER_OK == status) {
+        status = alljoyn_busattachment_connect(g_msgBus, connectArgs);
+        if (ER_OK != status) {
+            printf("BusAttachment::Connect(\"%s\") failed\n", connectArgs);
+        } else {
+            printf("BusAttchement connected to %s\n", connectArgs);
+        }
+    }
+
+    //
     // TODO: Rest of stuff...
+    //
 
     /* Stop the bus (not strictly necessary since we are going to delete it anyways) */
     if (g_msgBus) {

@@ -1863,3 +1863,14 @@ QStatus alljoyn_busattachment_createinterface(alljoyn_busattachment bus,
 
     return ret;
 }
+
+QStatus alljoyn_busattachment_start(alljoyn_busattachment bus)
+{
+    return ((ajn::BusAttachment*)bus)->Start();
+}
+
+QStatus alljoyn_busattachment_connect(alljoyn_busattachment bus, const char* connectSpec)
+{
+    // Because the second parameter to Connect is only used internally it is not exposed to the C interface.
+    return ((ajn::BusAttachment*)bus)->Connect(connectSpec, NULL);
+}

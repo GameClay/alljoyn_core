@@ -947,6 +947,38 @@ QStatus alljoyn_busattachment_stop(alljoyn_busattachment bus, QC_BOOL blockUntil
  */
 QStatus alljoyn_busattachment_createinterface(alljoyn_busattachment bus, const char* name, alljoyn_interfacedescription* iface, QC_BOOL secure);
 
+/**
+ * Start the message bus.
+ *
+ * This method only begins the process of starting the bus. Sending and receiving messages
+ * cannot begin until the bus is connected.
+ *
+ * There are two ways to determine whether the bus is currently connected:
+ *    -# BusAttachment::IsConnected() returns true
+ *    -# BusObject::ObjectRegistered() is called by the bus
+ *
+ * @param bus The BusAttachment to start.
+ *
+ * @return
+ *      - #ER_OK if successful.
+ *      - #ER_BUS_BUS_ALREADY_STARTED if already started
+ *      - Other error status codes indicating a failure
+ */
+QStatus alljoyn_busattachment_start(alljoyn_busattachment bus);
+
+/**
+ * Connect to a remote bus address.
+ *
+ * @param bus          The BusAttachment to be connected.
+ * @param connectSpec  A transport connection spec string of the form:
+ *                     @c "<transport>:<param1>=<value1>,<param2>=<value2>...[;]"
+ *
+ * @return
+ *      - #ER_OK if successful.
+ *      - An error status otherwise
+ */
+QStatus alljoyn_busattachment_connect(alljoyn_busattachment bus, const char* connectSpec);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
