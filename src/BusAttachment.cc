@@ -57,6 +57,7 @@
 #include "AllJoynPeerObj.h"
 #include "XmlHelper.h"
 #include "LaunchdTransport.h"
+#include "AlljoynOpaqueStructs.h"
 
 #define QCC_MODULE "ALLJOYN"
 
@@ -1831,10 +1832,6 @@ QStatus BusAttachment::GetKeyExpiration(const qcc::String& guid, uint32_t& timeo
 }
 
 }
-
-struct _alljoyn_busattachment {
-    ajn::BusAttachment* busAttachment;
-};
 
 alljoyn_busattachment alljoyn_busattachment_create(const char* applicationName, QC_BOOL allowRemoteMessages)
 {
