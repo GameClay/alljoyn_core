@@ -38,6 +38,11 @@
 /** Static top level message bus object */
 static alljoyn_busattachment g_msgBus = NULL;
 
+/*constants*/
+static const char* INTERFACE_NAME = "org.alljoyn.Bus.method_sample";
+static const char* SERVICE_NAME = "org.alljoyn.Bus.method_sample";
+static const char* SERVICE_PATH = "/method_sample";
+
 /** Signal handler */
 static void SigIntHandler(int sig)
 {
@@ -74,11 +79,22 @@ int main(int argc, char** argv, char** envArg)
     /* Create message bus */
     g_msgBus = alljoyn_busattachment_create("myApp", QC_TRUE);
 
+    /* Add org.alljoyn.Bus.method_sample interface */
+    alljoyn_interfacedescription testIntf = NULL;
+    status = alljoyn_busattachment_createinterface(g_msgBus, INTERFACE_NAME, &testIntf, QC_FALSE);
+    if (status == ER_OK) {
+        printf("Interface Created.\n");
+        alljoyn_interfacedescription_addmethod(testIntf, "cat", "ss",  "s", "inStr1,inStr2,outStr", 0);
+        alljoyn_interfacedescription_activate(testIntf);
+    } else {
+        printf("Failed to create interface 'org.alljoyn.Bus.method_sample'\n");
+    }
+
     // TODO: Rest of stuff...
 
     /* Stop the bus (not strictly necessary since we are going to delete it anyways) */
     if (g_msgBus) {
-        QStatus s = ER_OK; //g_msgBus->Stop();
+        QStatus s = alljoyn_busattachment_stop(g_msgBus, QC_TRUE);
         if (ER_OK != s) {
             printf("BusAttachment::Stop failed\n");
         }

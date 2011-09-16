@@ -1854,3 +1854,21 @@ void alljoyn_busattachment_destroy(alljoyn_busattachment* busAttachment)
     delete *busAttachment;
     busAttachment = NULL;
 }
+
+QStatus alljoyn_busattachment_stop(alljoyn_busattachment bus, QC_BOOL blockUntilStopped)
+{
+    bool blockBool = (blockUntilStopped == QC_TRUE ? true : false);
+    return bus->busAttachment->Stop(blockBool);
+}
+
+QStatus alljoyn_busattachment_createinterface(alljoyn_busattachment bus,
+                                              const char* name,
+                                              alljoyn_interfacedescription* iface, QC_BOOL secure)
+{
+    bool secureBool = (secure == QC_TRUE ? true : false);
+    ajn::InterfaceDescription* ifaceObj = NULL;
+    QStatus ret = bus->busAttachment->CreateInterface(name, ifaceObj, secureBool);
+    *iface = ifaceObj;
+
+    return ret;
+}

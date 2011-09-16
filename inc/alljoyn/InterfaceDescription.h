@@ -22,11 +22,13 @@
  ******************************************************************************/
 
 #include <qcc/platform.h>
+#include <Status.h>
+
+#ifdef __cplusplus
 
 #include <qcc/String.h>
 
 #include <alljoyn/Message.h>
-#include <Status.h>
 
 /// @cond ALLJOYN_DEV
 /*!
@@ -379,6 +381,39 @@ class InterfaceDescription {
 };
 
 }
+
+extern "C" {
+#endif /* #ifdef __cplusplus */
+
+typedef void* alljoyn_interfacedescription;
+
+/**
+ * Add a method call member to the interface.
+ *
+ * @param iface       InterfaceDescription on which to add the member.
+ * @param name        Name of method call member.
+ * @param inputSig    Signature of input parameters or NULL for none.
+ * @param outSig      Signature of output parameters or NULL for none.
+ * @param argNames    Comma separated list of input and then output arg names used in annotation XML.
+ * @param annotation  Annotation flags.
+ *
+ * @return
+ *      - #ER_OK if successful
+ *      - #ER_BUS_MEMBER_ALREADY_EXISTS if member already exists
+ */
+QStatus alljoyn_interfacedescription_addmethod(alljoyn_interfacedescription iface, const char* name, const char* inputSig,
+                                               const char* outSig, const char* argNames, uint8_t annotation);
+/**
+ * Activate this interface. An interface must be activated before it can be used. Activating an
+ * interface locks the interface so that is can no longer be modified.
+ *
+ * @param iface InterfaceDescription to activate.
+ */
+void alljoyn_interfacedescription_activate(alljoyn_interfacedescription iface);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #undef QCC_MODULE
 #endif

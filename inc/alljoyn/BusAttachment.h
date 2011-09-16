@@ -23,6 +23,7 @@
 
 #include <qcc/platform.h>
 #include <Status.h>
+#include <alljoyn/InterfaceDescription.h>
 
 #ifdef __cplusplus
 
@@ -32,7 +33,6 @@
 #include <alljoyn/BusListener.h>
 #include <alljoyn/BusObject.h>
 #include <alljoyn/ProxyBusObject.h>
-#include <alljoyn/InterfaceDescription.h>
 #include <alljoyn/Session.h>
 #include <alljoyn/SessionListener.h>
 #include <alljoyn/SessionPortListener.h>
@@ -919,6 +919,35 @@ alljoyn_busattachment alljoyn_busattachment_create(const char* applicationName, 
  * @param busAttachment BusAttachment to free.
  */
 void alljoyn_busattachment_destroy(alljoyn_busattachment* busAttachment);
+
+/**
+ * Stop the message bus.
+ *
+ * @param bus                 BusAttachment to stop.
+ * @param blockUntilStopped   Block the caller until the bus is stopped
+ *
+ * @return
+ *      - #ER_OK if successful.
+ *      - An error status if unable to stop the message bus
+ */
+QStatus alljoyn_busattachment_stop(alljoyn_busattachment bus, QC_BOOL blockUntilStopped);
+
+/**
+ * Create an interface description with a given name.
+ *
+ * @param bus    The BusAttachment on which to create an interface.
+ * @param name   The requested interface name.
+ * @param[out] iface
+ *      - Interface description
+ *      - NULL if cannot be created.
+ * @param secure If QC_TRUE the interface is secure and method calls and signals will be encrypted.
+ *
+ * @return
+ *      - #ER_OK if creation was successful.
+ *      - #ER_BUS_IFACE_ALREADY_EXISTS if requested interface already exists
+ * @see BusAttachment::CreateInterface
+ */
+QStatus alljoyn_busattachment_createinterface(alljoyn_busattachment bus, const char* name, alljoyn_interfacedescription* iface, QC_BOOL secure);
 
 #ifdef __cplusplus
 } /* extern "C" */

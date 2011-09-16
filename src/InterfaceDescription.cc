@@ -301,3 +301,14 @@ bool InterfaceDescription::HasMember(const char* name, const char* inSig, const 
 
 
 }
+
+QStatus alljoyn_interfacedescription_addmethod(alljoyn_interfacedescription iface, const char* name, const char* inputSig,
+                                               const char* outSig, const char* argNames, uint8_t annotation)
+{
+    return ((ajn::InterfaceDescription*)iface)->AddMethod(name, inputSig, outSig, argNames, annotation);
+}
+
+void alljoyn_interfacedescription_activate(alljoyn_interfacedescription iface)
+{
+    ((ajn::InterfaceDescription*)iface)->Activate();
+}
