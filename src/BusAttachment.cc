@@ -1835,7 +1835,7 @@ QStatus BusAttachment::GetKeyExpiration(const qcc::String& guid, uint32_t& timeo
 alljoyn_busattachment alljoyn_busattachment_create(const char* applicationName, QC_BOOL allowRemoteMessages)
 {
     bool allowRemoteMessagesBool = (allowRemoteMessages == QC_TRUE ? true : false);
-    return ((alljoyn_busattachment)new ajn::BusAttachment(applicationName, allowRemoteMessagesBool));
+    return ((alljoyn_busattachment) new ajn::BusAttachment(applicationName, allowRemoteMessagesBool));
 }
 
 void alljoyn_busattachment_destroy(alljoyn_busattachment* bus)
