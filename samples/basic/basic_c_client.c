@@ -91,6 +91,7 @@ void name_owner_changed(const void* context, const char* busName, const char* pr
 }
 
 /** Main entry point */
+/** TODO: Make this C89 compatible. */
 int main(int argc, char** argv, char** envArg)
 {
     QStatus status = ER_OK;
@@ -187,20 +188,20 @@ int main(int argc, char** argv, char** envArg)
         alljoyn_proxybusobject_addinterface(remoteObj, alljoynTestIntf);
 
         alljoyn_message reply = alljoyn_message_create(g_msgBus);
-#if 0
-        MsgArg inputs[2];
-        inputs[0].Set("s", "Hello ");
-        inputs[1].Set("s", "World!");
-        status = remoteObj.MethodCall(SERVICE_NAME, "cat", inputs, 2, reply, 5000);
+        alljoyn_msgargs inputs = alljoyn_msgargs_create(2);
+        size_t numArgs = 2;
+        alljoyn_msgargs_set(inputs, 0, &numArgs, "s", "Hello ", "World!");
+        status = alljoyn_proxybusobject_methodcall_synch(remoteObj, SERVICE_NAME, "cat", inputs, 2, reply, 5000, 0);
         if (ER_OK == status) {
             printf("%s.%s ( path=%s) returned \"%s\"\n", SERVICE_NAME, "cat",
-                   SERVICE_PATH, reply->GetArg(0)->v_string.str);
+                   SERVICE_PATH, "TODO" /*reply->GetArg(0)->v_string.str*/);
         } else {
             printf("MethodCall on %s.%s failed", SERVICE_NAME, "cat");
         }
-#endif
+
         alljoyn_proxybusobject_destroy(&remoteObj);
         alljoyn_message_destroy(&reply);
+        alljoyn_msgargs_destroy(&inputs);
     }
 
 

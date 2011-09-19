@@ -1596,14 +1596,28 @@ QStatus MsgArg::VParseArgs(const char*& signature, size_t sigLen, const MsgArg* 
 
 }
 
-alljoyn_msgarg alljoyn_msgarg_create()
+alljoyn_msgargs alljoyn_msgargs_create(size_t numArgs)
 {
-    return new ajn::MsgArg();
+    ajn::MsgArg* args = new ajn::MsgArg[numArgs];
+    for (size_t i = 0; i < numArgs; i++) {
+        args[i].Clear();
+    }
+    return args;
 }
 
-void alljoyn_msgarg_destroy(alljoyn_msgarg* arg)
+void alljoyn_msgargs_destroy(alljoyn_msgargs* arg)
 {
     assert(arg != NULL && *arg != NULL && "NULL argument passed to alljoyn_msgarg_destroy.");
-    delete ((ajn::MsgArg*)*arg);
+    delete [] ((ajn::MsgArg*)*arg);
     *arg = NULL;
 }
+
+QStatus alljoyn_msgargs_set(alljoyn_msgargs args, size_t argOffset, size_t* numArgs, const char* signature, ...)
+{
+    va_list argp;
+    va_start(argp, signature);
+    QStatus status = ajn::MsgArgUtils::SetV(((ajn::MsgArg*)args) + argOffset, *numArgs, signature, &argp);
+    va_end(argp);
+    return status;
+}
+

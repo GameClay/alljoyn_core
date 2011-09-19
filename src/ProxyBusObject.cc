@@ -895,3 +895,16 @@ QStatus alljoyn_proxybusobject_addinterface(alljoyn_busattachment bus, alljoyn_i
     return ((ajn::ProxyBusObject*)bus)->AddInterface(*((const ajn::InterfaceDescription*)iface));
 }
 
+QStatus alljoyn_proxybusobject_methodcall_synch(alljoyn_proxybusobject obj,
+                                                const char* ifaceName,
+                                                const char* methodName,
+                                                alljoyn_msgargs args,
+                                                size_t numArgs,
+                                                alljoyn_message replyMsg,
+                                                uint32_t timeout,
+                                                uint8_t flags)
+{
+    ajn::Message* reply = (ajn::Message*)&(*replyMsg);
+    return ((ajn::ProxyBusObject*)obj)->MethodCall(ifaceName, methodName, (const ajn::MsgArg*)args,
+                                                   numArgs, *reply, timeout, flags);
+}

@@ -25,13 +25,12 @@
 #include <alljoyn/Session.h>
 #include <Status.h>
 #include <alljoyn/AllJoynCTypes.h>
+#include <alljoyn/MsgArg.h>
 
 #ifdef __cplusplus
 
 #include <qcc/String.h>
 #include <qcc/ManagedObj.h>
-
-#include <alljoyn/MsgArg.h>
 
 namespace ajn {
 

@@ -665,16 +665,37 @@ extern "C" {
 #endif /* #ifdef __cplusplus */
 
 /**
- * Create a new message argument.
+ * Create a new message argument array.
+ *
+ * @param numArgs Number of arguments to create in the array.
  */
-alljoyn_msgarg alljoyn_msgarg_create();
+alljoyn_msgargs alljoyn_msgargs_create(size_t numArgs);
 
 /**
  * Destroy a message argument.
  *
  * @param arg The message argument to destroy.
  */
-void alljoyn_msgarg_destroy(alljoyn_msgarg* arg);
+void alljoyn_msgargs_destroy(alljoyn_msgargs* arg);
+
+/**
+ * Set an array of MsgArgs by applying the Set() method to each MsgArg in turn.
+ *
+ * @param args        An array of MsgArgs to set.
+ * @param argOffset   Offset from the start of the MsgArg array.
+ * @param numArgs     [in,out] On input the number of args to set. On output the number of MsgArgs
+ *                    that were set. There must be at least enought MsgArgs to completely
+ *                    initialize the signature.
+ *                    there should at least enough.
+ * @param signature   The signature for MsgArg values
+ * @param ...         One or more values to initialize the MsgArg list.
+ *
+ * @return
+ *       - #ER_OK if the MsgArgs were successfully set.
+ *       - #ER_BUS_TRUNCATED if the signature was longer than expected.
+ *       - Other error status codes indicating a failure.
+ */
+QStatus alljoyn_msgargs_set(alljoyn_msgargs args, size_t argOffset, size_t* numArgs, const char* signature, ...);
 
 #ifdef __cplusplus
 } /* extern "C" */
