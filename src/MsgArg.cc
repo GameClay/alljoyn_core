@@ -23,6 +23,7 @@
 #include <qcc/platform.h>
 
 #include <cstdarg>
+#include <assert.h>
 
 #include <qcc/Debug.h>
 #include <qcc/String.h>
@@ -1595,3 +1596,14 @@ QStatus MsgArg::VParseArgs(const char*& signature, size_t sigLen, const MsgArg* 
 
 }
 
+alljoyn_msgarg alljoyn_msgarg_create()
+{
+    return new ajn::MsgArg();
+}
+
+void alljoyn_msgarg_destroy(alljoyn_msgarg* arg)
+{
+    assert(arg != NULL && *arg != NULL && "NULL argument passed to alljoyn_msgarg_destroy.");
+    delete ((ajn::MsgArg*)*arg);
+    *arg = NULL;
+}

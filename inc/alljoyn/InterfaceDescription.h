@@ -23,12 +23,12 @@
 
 #include <qcc/platform.h>
 #include <Status.h>
+#include <alljoyn/AllJoynCTypes.h>
+#include <alljoyn/Message.h>
 
 #ifdef __cplusplus
 
 #include <qcc/String.h>
-
-#include <alljoyn/Message.h>
 
 /// @cond ALLJOYN_DEV
 /*!
@@ -384,8 +384,6 @@ class InterfaceDescription {
 
 extern "C" {
 #endif /* #ifdef __cplusplus */
-
-typedef void* alljoyn_interfacedescription;
 
 /**
  * Add a method call member to the interface.

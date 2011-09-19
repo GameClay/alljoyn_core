@@ -29,6 +29,7 @@
 #include <stdlib.h>
 
 //#include <qcc/String.h>
+#include <string.h>
 
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/version.h>
@@ -42,6 +43,10 @@ static alljoyn_busattachment g_msgBus = NULL;
 static const char* INTERFACE_NAME = "org.alljoyn.Bus.method_sample";
 static const char* SERVICE_NAME = "org.alljoyn.Bus.method_sample";
 static const char* SERVICE_PATH = "/method_sample";
+static const alljoyn_sessionport SERVICE_PORT = 25;
+
+static QC_BOOL s_joinComplete = QC_FALSE;
+static alljoyn_sessionid s_sessionId = 0;
 
 /** Signal handler */
 static void SigIntHandler(int sig)
@@ -55,6 +60,35 @@ static void SigIntHandler(int sig)
     exit(0);
 }
 
+/* FoundAdvertisedName callback */
+void found_advertised_name(const void* context, const char* name, alljoyn_transportmask transport, const char* namePrefix)
+{
+    printf("FoundAdvertisedName(name=%s, prefix=%s)\n", name, namePrefix);
+    if (0 == strcmp(name, SERVICE_NAME)) {
+        /* We found a remote bus that is advertising basic sercice's  well-known name so connect to it */
+#if 0
+        SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+        QStatus status = g_msgBus->JoinSession(name, SERVICE_PORT, this, s_sessionId, opts);
+        if (ER_OK != status) {
+            printf("JoinSession failed (status=%s)\n", QCC_StatusText(status));
+        } else {
+            printf("JoinSession SUCCESS (Session id=%d)\n", s_sessionId);
+        }
+#endif
+    }
+    s_joinComplete = QC_TRUE;
+}
+
+/* NameOwnerChanged callback */
+void name_owner_changed(const void* context, const char* busName, const char* previousOwner, const char* newOwner)
+{
+    if (newOwner && (0 == strcmp(busName, SERVICE_NAME))) {
+        printf("NameOwnerChanged: name=%s, oldOwner=%s, newOwner=%s\n",
+               busName,
+               previousOwner ? previousOwner : "<none>",
+               newOwner ? newOwner : "<none>");
+    }
+}
 
 /** Main entry point */
 int main(int argc, char** argv, char** envArg)
@@ -111,9 +145,64 @@ int main(int argc, char** argv, char** envArg)
         }
     }
 
-    //
-    // TODO: Rest of stuff...
-    //
+    /* Create a bus listener */
+    alljoyn_buslistener_callbacks callbacks = {
+        NULL,
+        NULL,
+        &found_advertised_name,
+        NULL,
+        &name_owner_changed,
+        NULL,
+        NULL
+    };
+    alljoyn_buslistener busListener = alljoyn_buslistener_create(&callbacks, NULL);
+
+    /* Register a bus listener in order to get discovery indications */
+    if (ER_OK == status) {
+        alljoyn_busattachment_registerbuslistener(g_msgBus, busListener);
+        printf("BusListener Registered.\n");
+    }
+
+    /* Begin discovery on the well-known name of the service to be called */
+    if (ER_OK == status) {
+        status = alljoyn_busattachment_findadvertisedname(g_msgBus, SERVICE_NAME);
+        if (status != ER_OK) {
+            printf("org.alljoyn.Bus.FindAdvertisedName failed (%s))\n", QCC_StatusText(status));
+        }
+    }
+
+    /* Wait for join session to complete */
+    while (s_joinComplete == QC_FALSE) {
+#ifdef _WIN32
+        Sleep(10);
+#else
+        sleep(1);
+#endif
+    }
+
+    if (status == ER_OK) {
+        alljoyn_proxybusobject remoteObj = alljoyn_proxybusobject_create(g_msgBus, SERVICE_NAME, SERVICE_PATH, s_sessionId);
+        alljoyn_interfacedescription_const alljoynTestIntf = alljoyn_busattachment_getinterface(g_msgBus, INTERFACE_NAME);
+        assert(alljoynTestIntf);
+        alljoyn_proxybusobject_addinterface(remoteObj, alljoynTestIntf);
+
+        alljoyn_message reply = alljoyn_message_create(g_msgBus);
+#if 0
+        MsgArg inputs[2];
+        inputs[0].Set("s", "Hello ");
+        inputs[1].Set("s", "World!");
+        status = remoteObj.MethodCall(SERVICE_NAME, "cat", inputs, 2, reply, 5000);
+        if (ER_OK == status) {
+            printf("%s.%s ( path=%s) returned \"%s\"\n", SERVICE_NAME, "cat",
+                   SERVICE_PATH, reply->GetArg(0)->v_string.str);
+        } else {
+            printf("MethodCall on %s.%s failed", SERVICE_NAME, "cat");
+        }
+#endif
+        alljoyn_proxybusobject_destroy(&remoteObj);
+        alljoyn_message_destroy(&reply);
+    }
+
 
     /* Stop the bus (not strictly necessary since we are going to delete it anyways) */
     if (g_msgBus) {
@@ -129,6 +218,9 @@ int main(int argc, char** argv, char** envArg)
         g_msgBus = NULL;
         alljoyn_busattachment_destroy(&deleteMe);
     }
+
+    /* Deallocate bus listener */
+    alljoyn_buslistener_destroy(&busListener);
 
     printf("basic client exiting with status %d (%s)\n", status, QCC_StatusText(status));
 

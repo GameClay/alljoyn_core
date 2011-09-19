@@ -875,3 +875,23 @@ QStatus ProxyBusObject::SetB2BEndpoint(const char* b2bEpName)
 }
 
 }
+
+alljoyn_proxybusobject alljoyn_proxybusobject_create(alljoyn_busattachment bus, const char* service,
+                                                     const char* path, alljoyn_sessionid sessionId)
+{
+    ajn::ProxyBusObject* ret = new ajn::ProxyBusObject(*((ajn::BusAttachment*)bus), service, path, sessionId);
+    return ret;
+}
+
+void alljoyn_proxybusobject_destroy(alljoyn_busattachment* bus)
+{
+    assert(bus != NULL && *bus != NULL && "NULL parameter passed to alljoyn_proxybusobject_destroy.");
+    delete ((ajn::ProxyBusObject*)*bus);
+    *bus = NULL;
+}
+
+QStatus alljoyn_proxybusobject_addinterface(alljoyn_busattachment bus, alljoyn_interfacedescription_const iface)
+{
+    return ((ajn::ProxyBusObject*)bus)->AddInterface(*((const ajn::InterfaceDescription*)iface));
+}
+

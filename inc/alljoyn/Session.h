@@ -24,6 +24,8 @@
 #include <qcc/platform.h>
 #include <alljoyn/TransportMask.h>
 
+#ifdef __cplusplus
+
 namespace ajn {
 
 /**
@@ -149,5 +151,15 @@ class SessionOpts {
 
 
 }
+
+#endif /* #ifdef __cplusplus */
+
+typedef uint16_t alljoyn_sessionport;
+
+/** Invalid SessionPort value used to indicate that BindSessionPort should choose any available port */
+const alljoyn_sessionport ALLJOYN_SESSION_PORT_ANY = 0;
+
+/** SessionId uniquely identifies an AllJoyn session instance */
+typedef uint32_t alljoyn_sessionid;
 
 #endif

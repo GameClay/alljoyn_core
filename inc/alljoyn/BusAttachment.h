@@ -25,6 +25,9 @@
 #include <Status.h>
 #include <alljoyn/InterfaceDescription.h>
 #include <alljoyn/BusListener.h>
+#include <alljoyn/Session.h>
+#include <alljoyn/ProxyBusObject.h>
+#include <alljoyn/AllJoynCTypes.h>
 
 #ifdef __cplusplus
 
@@ -32,11 +35,8 @@
 #include <alljoyn/KeyStoreListener.h>
 #include <alljoyn/AuthListener.h>
 #include <alljoyn/BusObject.h>
-#include <alljoyn/ProxyBusObject.h>
-#include <alljoyn/Session.h>
 #include <alljoyn/SessionListener.h>
 #include <alljoyn/SessionPortListener.h>
-
 
 namespace ajn {
 
@@ -978,6 +978,50 @@ QStatus alljoyn_busattachment_start(alljoyn_busattachment bus);
  *      - An error status otherwise
  */
 QStatus alljoyn_busattachment_connect(alljoyn_busattachment bus, const char* connectSpec);
+
+/**
+ * Register an object that will receive bus event notifications.
+ *
+ * @param bus       The BusAttachment on which to attach a BusListener.
+ * @param listener  Object instance that will receive bus event notifications.
+ */
+void alljoyn_busattachment_registerbuslistener(alljoyn_busattachment bus, alljoyn_buslistener listener);
+
+/**
+ * Unregister an object that was previously registered with RegisterBusListener.
+ *
+ * @param bus       The BusAttachment from which to detach a BusListener.
+ * @param listener  Object instance to un-register as a listener.
+ */
+void alljoyn_busattachment_unregisterbuslistener(alljoyn_busattachment bus, alljoyn_buslistener listener);
+
+/**
+ * Register interest in a well-known name prefix for the purpose of discovery.
+ * This method is a shortcut/helper that issues an org.alljoyn.Bus.FindAdvertisedName method call to the local daemon
+ * and interprets the response.
+ *
+ * @param      bus           The BusAttachment on which to register interest in the namePrefix.
+ * @param[in]  namePrefix    Well-known name prefix that application is interested in receiving
+ *                           BusListener::FoundAdvertisedName notifications about.
+ *
+ * @return
+ *      - #ER_OK iff daemon response was received and discovery was successfully started.
+ *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+ *      - Other error status codes indicating a failure.
+ */
+QStatus alljoyn_busattachment_findadvertisedname(alljoyn_busattachment bus, const char* namePrefix);
+
+/**
+ * Retrieve an existing activated InterfaceDescription.
+ *
+ * @param bus        The BusAttachment from which to retrieve the interface.
+ * @param name       Interface name.
+ *
+ * @return
+ *      - A pointer to the registered interface
+ *      - NULL if interface doesn't exist
+ */
+alljoyn_interfacedescription_const alljoyn_busattachment_getinterface(alljoyn_busattachment bus, const char* name);
 
 #ifdef __cplusplus
 } /* extern "C" */

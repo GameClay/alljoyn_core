@@ -460,3 +460,21 @@ void _Message::ClearHeader()
 }
 
 }
+
+struct _alljoyn_message_handle {
+    _alljoyn_message_handle(ajn::BusAttachment& bus) : msg(bus) { }
+    _alljoyn_message_handle(const ajn::_Message& other) : msg(other) { }
+
+    ajn::Message msg;
+};
+
+alljoyn_message alljoyn_message_create(alljoyn_busattachment bus)
+{
+    return new struct _alljoyn_message_handle (*((ajn::BusAttachment*)bus));
+}
+
+void alljoyn_message_destroy(alljoyn_message* message)
+{
+    delete *message;
+    *message = NULL;
+}

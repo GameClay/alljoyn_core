@@ -1874,3 +1874,23 @@ QStatus alljoyn_busattachment_connect(alljoyn_busattachment bus, const char* con
     // Because the second parameter to Connect is only used internally it is not exposed to the C interface.
     return ((ajn::BusAttachment*)bus)->Connect(connectSpec, NULL);
 }
+
+void alljoyn_busattachment_registerbuslistener(alljoyn_busattachment bus, alljoyn_buslistener listener)
+{
+    ((ajn::BusAttachment*)bus)->RegisterBusListener((*(ajn::BusListener*)listener));
+}
+
+void alljoyn_busattachment_unregisterbuslistener(alljoyn_busattachment bus, alljoyn_buslistener listener)
+{
+    ((ajn::BusAttachment*)bus)->UnregisterBusListener((*(ajn::BusListener*)listener));
+}
+
+QStatus alljoyn_busattachment_findadvertisedname(alljoyn_busattachment bus, const char* namePrefix)
+{
+    return ((ajn::BusAttachment*)bus)->FindAdvertisedName(namePrefix);
+}
+
+alljoyn_interfacedescription_const alljoyn_busattachment_getinterface(alljoyn_busattachment bus, const char* name)
+{
+    return ((ajn::BusAttachment*)bus)->GetInterface(name);
+}

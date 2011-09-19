@@ -21,14 +21,14 @@
  *    limitations under the License.
  ******************************************************************************/
 
-#ifndef __cplusplus
-#error Only include MsgArg.h in C++ code.
-#endif
-
 #include <qcc/platform.h>
-#include <qcc/String.h>
 #include <stdarg.h>
 #include <Status.h>
+#include <alljoyn/AllJoynCTypes.h>
+
+#ifdef __cplusplus
+
+#include <qcc/String.h>
 
 namespace ajn {
 
@@ -660,5 +660,24 @@ class MsgArg {
 };
 
 }
+
+extern "C" {
+#endif /* #ifdef __cplusplus */
+
+/**
+ * Create a new message argument.
+ */
+alljoyn_msgarg alljoyn_msgarg_create();
+
+/**
+ * Destroy a message argument.
+ *
+ * @param arg The message argument to destroy.
+ */
+void alljoyn_msgarg_destroy(alljoyn_msgarg* arg);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif

@@ -22,9 +22,10 @@
 #ifndef _ALLJOYN_BUSLISTENER_H
 #define _ALLJOYN_BUSLISTENER_H
 
-#ifdef __cplusplus
-
 #include <alljoyn/TransportMask.h>
+#include <alljoyn/AllJoynCTypes.h>
+
+#ifdef __cplusplus
 
 namespace ajn {
 
@@ -103,7 +104,71 @@ class BusListener {
 extern "C" {
 #endif /* #ifdef __cplusplus */
 
-typedef void* alljoyn_busattachment;
+/**
+ * Type for the ListenerRegistered callback.
+ */
+typedef void (*alljoyn_buslistener_listener_registered_ptr)(const void* context, alljoyn_busattachment bus);
+
+/**
+ * Type for the ListenerUnregistered callback.
+ */
+typedef void (*alljoyn_buslistener_listener_unregistered_ptr)(const void* context);
+
+/**
+ * Type for the FoundAdvertisedName callback.
+ */
+typedef void (*alljoyn_buslistener_found_advertised_name_ptr)(const void* context, const char* name, alljoyn_transportmask transport, const char* namePrefix);
+
+/**
+ * Type for the LostAdvertisedName callback.
+ */
+typedef void (*alljoyn_buslistener_lost_advertised_name_ptr)(const void* context, const char* name, alljoyn_transportmask transport, const char* namePrefix);
+
+/**
+ * Type for the NameOwnerChanged callback.
+ */
+typedef void (*alljoyn_buslistener_name_owner_changed_ptr)(const void* context, const char* busName, const char* previousOwner, const char* newOwner);
+
+
+/**
+ * Type for the BusStopping callback.
+ */
+typedef void (*alljoyn_buslistener_bus_stopping_ptr)(const void* context);
+
+/**
+ * Type for the BusDisconnected callback.
+ */
+typedef void (*alljoyn_buslistener_bus_disconnected_ptr)(const void* context);
+
+/**
+ * Struct containing callbacks used for creation of an alljoyn_buslistener.
+ */
+typedef struct {
+    alljoyn_buslistener_listener_registered_ptr listener_registered;
+    alljoyn_buslistener_listener_unregistered_ptr listener_unregistered;
+    alljoyn_buslistener_found_advertised_name_ptr found_advertised_name;
+    alljoyn_buslistener_lost_advertised_name_ptr lost_advertised_name;
+    alljoyn_buslistener_name_owner_changed_ptr name_owner_changed;
+    alljoyn_buslistener_bus_stopping_ptr bus_stopping;
+    alljoyn_buslistener_bus_disconnected_ptr bus_disconnected;
+} alljoyn_buslistener_callbacks;
+
+/**
+ * Create a BusListener which will trigger the provided callbacks, passing along the provided context.
+ *
+ * @param callbacks Callbacks to trigger for associated events.
+ * @param context   Context to pass to callback functions
+ *
+ * @return Handle to newly allocated BusListener.
+ */
+alljoyn_buslistener alljoyn_buslistener_create(const alljoyn_buslistener_callbacks* callbacks, const void* context);
+
+/**
+ * Destroy a BusListener.
+ *
+ * @param listener BusListener to destroy.
+ */
+void alljoyn_buslistener_destroy(alljoyn_buslistener* listener);
 
 #ifdef __cplusplus
 } /* extern "C" */

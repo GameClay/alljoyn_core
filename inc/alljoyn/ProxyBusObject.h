@@ -24,13 +24,17 @@
  ******************************************************************************/
 
 #include <qcc/platform.h>
-#include <qcc/String.h>
+
 #include <alljoyn/InterfaceDescription.h>
+#include <alljoyn/Session.h>
+#include <Status.h>
+#include <alljoyn/AllJoynCTypes.h>
+
+#ifdef __cplusplus
+
+#include <qcc/String.h>
 #include <alljoyn/MessageReceiver.h>
 #include <alljoyn/MsgArg.h>
-#include <alljoyn/Session.h>
-
-#include <Status.h>
 
 namespace qcc {
 /** @internal Forward references */
@@ -710,5 +714,57 @@ class ProxyBusObject : public MessageReceiver {
 };
 
 }
+
+extern "C" {
+#endif /* #ifdef __cplusplus */
+
+/**
+ * Create an empty proxy object that refers to an object at given remote service name. Note
+ * that the created proxy object does not contain information about the interfaces that the
+ * actual remote object implements with the exception that org.freedesktop.DBus.Peer
+ * interface is special-cased (per the DBus spec) and can always be called on any object. Nor
+ * does it contain information about the child objects that the actual remote object might
+ * contain.
+ *
+ * To fill in this object with the interfaces and child object names that the actual remote
+ * object describes in its introspection data, call IntrospectRemoteObject() or
+ * IntrospectRemoteObjectAsync().
+ *
+ * @param bus        The bus.
+ * @param service    The remote service name (well-known or unique).
+ * @param path       The absolute (non-relative) object path for the remote object.
+ * @param sessionId  The session id the be used for communicating with remote object.
+ */
+alljoyn_proxybusobject alljoyn_proxybusobject_create(alljoyn_busattachment bus, const char* service, const char* path, alljoyn_sessionid sessionId);
+
+/**
+ * Destroy a proxy object created using alljoyn_proxybusobject_create.
+ *
+ * @param bus The bus to destroy.
+ */
+void alljoyn_proxybusobject_destroy(alljoyn_busattachment* bus);
+
+/**
+ * Add an interface to this ProxyBusObject.
+ *
+ * Occasionally, AllJoyn library user may wish to call a method on
+ * a %ProxyBusObject that was not reported during introspection of the remote obejct.
+ * When this happens, the InterfaceDescription will have to be registered with the
+ * Bus manually and the interface will have to be added to the %ProxyBusObject using this method.
+ * @remark
+ * The interface added via this call must have been previously registered with the
+ * Bus. (i.e. it must have come from a call to alljoyn_busattachment_getinterface).
+ *
+ * @param bus      The bus onto which the interface is to be added.
+ * @param iface    The interface to add to this object. Must come from alljoyn_busattachment_getinterface.
+ * @return
+ *      - #ER_OK if successful.
+ *      - An error status otherwise
+ */
+QStatus alljoyn_proxybusobject_addinterface(alljoyn_busattachment bus, alljoyn_interfacedescription_const iface);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif

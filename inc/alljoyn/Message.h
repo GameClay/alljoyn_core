@@ -21,17 +21,17 @@
  *    limitations under the License.
  ******************************************************************************/
 
-#ifndef __cplusplus
-#error Only include Message.h in C++ code.
-#endif
-
 #include <qcc/platform.h>
+#include <alljoyn/Session.h>
+#include <Status.h>
+#include <alljoyn/AllJoynCTypes.h>
+
+#ifdef __cplusplus
+
 #include <qcc/String.h>
 #include <qcc/ManagedObj.h>
 
 #include <alljoyn/MsgArg.h>
-#include <alljoyn/Session.h>
-#include <Status.h>
 
 namespace ajn {
 
@@ -810,5 +810,26 @@ class _Message {
 };
 
 }
+
+extern "C" {
+#endif /* #ifdef __cplusplus */
+
+/**
+ * Create a message object.
+ *
+ * @param bus  The bus that this message is sent or received on.
+ */
+alljoyn_message alljoyn_message_create(alljoyn_busattachment bus);
+
+/**
+ * Destroy a message object.
+ *
+ * @param message The message to destroy
+ */
+void alljoyn_message_destroy(alljoyn_message* message);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif
