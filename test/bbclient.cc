@@ -593,7 +593,11 @@ int main(int argc, char** argv)
             } else if (discoverRemote) {
                 /* Begin discovery on the well-known name of the service to be called */
                 findStartTime = GetTimestamp();
-
+                /*
+                 * Make sure the g_discoverEvent flag has been set to the
+                 * name-not-found state before trying to find the well-known name.
+                 */
+                g_discoverEvent.ResetEvent();
                 status = g_msgBus->FindAdvertisedName(g_wellKnownName.c_str());
                 if (status != ER_OK) {
                     QCC_LogError(status, ("FindAdvertisedName failed"));
