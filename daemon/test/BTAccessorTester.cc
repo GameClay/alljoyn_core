@@ -25,6 +25,7 @@
 #include <list>
 #include <set>
 
+#include <qcc/Crypto.h>
 #include <qcc/GUID.h>
 #include <qcc/Logger.h>
 #include <qcc/Mutex.h>
@@ -39,6 +40,12 @@
 
 using namespace std;
 using namespace qcc;
+
+static const size_t NUM_PRIMARY_NAMES = 100;
+static const size_t NUM_SECONDARY_NAMES = 5;
+static const size_t NUM_SECONDARY_NODES = 100;
+
+static const size_t HASH_SIZE = Crypto_MD5::DIGEST_SIZE;
 
 
 namespace ajn {
@@ -205,10 +212,11 @@ class TestDriver : public BTTransport {
     virtual bool TestCheckIncomingAddress(const BDAddress& addr) const;
     virtual void TestDeviceChange(const BDAddress& bdAddr, uint32_t uuidRev, bool eirCapable);
 
-    void ReportTestDetail(const String& detail) const;
+    void ReportTestDetail(const String& detail, size_t indent = 0) const;
     bool SendBuf(const uint8_t* buf, size_t size);
     bool RecvBuf(uint8_t* buf, size_t size);
-
+    String BuildName(const BTBusAddress& addr, const GUID& guid, size_t entry);
+    void HashName(const BTBusAddress& addr, const GUID& guid, uint32_t serial, const String& name, String& hash);
 
   private:
     list<TestCaseInfo> tcList;
@@ -273,7 +281,6 @@ class ClientTestDriver : public TestDriver {
     map<BDAddress, FoundInfo> foundInfo;
     uint32_t connUUIDRev;
     BTBusAddress connAddr;
-    BTNodeDB connAdInfo;
     BTNodeInfo connNode;
 
     bool ExchangeData(size_t size);
@@ -459,10 +466,10 @@ void TestDriver::OutputLine(String line, size_t indent, bool bullet) const
     }
 }
 
-void TestDriver::ReportTestDetail(const String& detail) const
+void TestDriver::ReportTestDetail(const String& detail, size_t indent) const
 {
     if (opts.reportDetails && !silenceDetails) {
-        OutputLine(detail, detailIndent, true);
+        OutputLine(detail, detailIndent + indent, true);
     }
 }
 
@@ -521,6 +528,38 @@ bool TestDriver::RecvBuf(uint8_t* buf, size_t size)
         size -= received;
     }
     return true;
+}
+
+String TestDriver::BuildName(const BTBusAddress& addr, const GUID& guid, size_t entry)
+{
+    String hash;
+    String baseName = (opts.basename +
+                       ".E" +
+                       U32ToString((uint32_t)entry, 16, 4, '0') +
+                       ".R" +
+                       RandHexString(4) +
+                       ".H");
+    HashName(addr, guid, (uint32_t)entry, baseName, hash);
+    return baseName + hash;
+}
+
+void TestDriver::HashName(const BTBusAddress& addr,
+                          const GUID& guid,
+                          uint32_t serial,
+                          const String& name,
+                          String& hash)
+{
+    Crypto_MD5 md5;
+    uint8_t digest[Crypto_MD5::DIGEST_SIZE];
+    md5.Init();
+
+    md5.Update(addr.ToString());
+    md5.Update(guid.ToString());
+    md5.Update(U32ToString(serial, 16, 8, '0'));
+    md5.Update(name);
+    md5.GetDigest(digest);
+
+    hash = BytesToHexString(digest, HASH_SIZE);
 }
 
 void TestDriver::TestBTDeviceAvailable(bool available)
@@ -927,6 +966,7 @@ bool ClientTestDriver::TC_GetDeviceInfo()
     uint64_t stop;
     Timespec tsNow;
     String detail;
+    BTNodeDB connAdInfo;
 
     GetTimeNow(&tsNow);
     now = tsNow.GetAbsoluteMillis();
@@ -1005,6 +1045,62 @@ bool ClientTestDriver::TC_GetDeviceInfo()
         detail += ".";
         ReportTestDetail(detail);
         connNode = connAdInfo.FindNode(connAddr);
+
+        // Validate the SDP info
+        if (connAdInfo.Size() != (NUM_SECONDARY_NODES + 1)) {
+            tcSuccess = false;
+            detail = "Not enough nodes in advertisement: only ";
+            detail += U32ToString((uint32_t)connAdInfo.Size());
+            detail += " out of ";
+            detail += U32ToString((uint32_t)(NUM_SECONDARY_NODES + 1));
+            ReportTestDetail(detail);
+            goto exit;
+        }
+
+        BTNodeDB::const_iterator it;
+        for (it = connAdInfo.Begin(); it != connAdInfo.End(); ++it) {
+            const size_t expectedNameCount = (*it == connNode) ? NUM_PRIMARY_NAMES : NUM_SECONDARY_NAMES;
+            BTNodeInfo node = *it;
+            NameSet::const_iterator nit;
+            size_t entry;
+
+            if (node->AdvertiseNamesSize() != expectedNameCount) {
+                tcSuccess = false;
+                detail = "Not enough advertised names for ";
+                detail += node->GetBusAddress().ToString();
+                detail += ": only ";
+                detail += U32ToString((uint32_t)node->AdvertiseNamesSize());
+                detail += " out of ";
+                detail += U32ToString((uint32_t)expectedNameCount);
+                ReportTestDetail(detail);
+                goto exit;
+            }
+
+            for (entry = 0, nit = node->GetAdvertiseNamesBegin(); nit != node->GetAdvertiseNamesEnd(); ++entry, ++nit) {
+                const String& fullName = *nit;
+                String hash;
+                String baseName = fullName.substr(0, fullName.size() - (2 * HASH_SIZE));
+                HashName(node->GetBusAddress(), node->GetGUID(), (uint32_t)entry, baseName, hash);
+                if (fullName.compare(fullName.size() - (2 * HASH_SIZE), String::npos, hash) != 0) {
+                    tcSuccess = false;
+                    ReportTestDetail("Check of SDP information failed:");
+                    detail = "addr = ";
+                    detail += node->GetBusAddress().ToString();
+                    ReportTestDetail(detail, 2);
+                    detail = "GUID = ";
+                    detail += node->GetGUID().ToString();
+                    ReportTestDetail(detail, 2);
+                    detail = "name = ";
+                    detail += fullName;
+                    ReportTestDetail(detail, 2);
+                    detail = "exp =  ";
+                    detail += baseName + hash;
+                    ReportTestDetail(detail, 2);
+                    goto exit;
+                }
+            }
+        }
+
     } else {
         ReportTestDetail("Failed to find corresponding device running BTAccessorTester in service mode.");
         tcSuccess = false;
@@ -1256,25 +1352,23 @@ bool ServerTestDriver::TC_SetSDPInfo()
 {
     bool tcSuccess = true;
     QStatus status;
-    String adName = opts.basename + "." + self->GetBusAddress().addr.ToString('_') + ".";
     String detail;
-    int i;
+    size_t i;
 
-    // Advertise 100 names for the local device.
-    for (i = 0; i < 100; ++i) {
-        self->AddAdvertiseName(adName + RandHexString(4));
+    // Advertise primary names for the local device.
+    for (i = 0; i < NUM_PRIMARY_NAMES; ++i) {
+        self->AddAdvertiseName(BuildName(self->GetBusAddress(), self->GetGUID(), i));
     }
 
-    // Advertise names for 100 nodes
-    for (i = 0; i < 100; ++i) {
+    // Advertise names for secondary nodes
+    for (i = 0; i < NUM_SECONDARY_NODES; ++i) {
         BDAddress addr(RandHexString(6));
-        BTBusAddress busAddr(addr, Rand32() % 0xffff);
+        BTBusAddress busAddr(addr, (uint16_t)i + 1);
         BTNodeInfo fakeNode;
-        int j;
+        size_t j;
         fakeNode = BTNodeInfo(busAddr);
-        adName = opts.basename + "." + fakeNode->GetBusAddress().addr.ToString('_') + ".";
-        for (j = 0; j < 5; ++j) {
-            fakeNode->AddAdvertiseName(adName + RandHexString(4));
+        for (j = 0; j < NUM_SECONDARY_NAMES; ++j) {
+            fakeNode->AddAdvertiseName(BuildName(fakeNode->GetBusAddress(), fakeNode->GetGUID(), j));
         }
         nodeDB.AddNode(fakeNode);
     }
