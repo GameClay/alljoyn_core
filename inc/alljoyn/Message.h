@@ -823,9 +823,21 @@ alljoyn_message alljoyn_message_create(alljoyn_busattachment bus);
 /**
  * Destroy a message object.
  *
- * @param message The message to destroy
+ * @param msg The message to destroy
  */
-void alljoyn_message_destroy(alljoyn_message* message);
+void alljoyn_message_destroy(alljoyn_message* msg);
+
+/**
+ * Return a specific argument.
+ *
+ * @param msg   The message from which to extract an argument.
+ * @param argN  The index of the argument to get.
+ *
+ * @return
+ *      - The argument
+ *      - NULL if unmarshal failed or there is not such argument.
+ */
+alljoyn_msgargs_const alljoyn_message_getarg(alljoyn_message msg, size_t argN);
 
 #ifdef __cplusplus
 } /* extern "C" */

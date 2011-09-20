@@ -473,8 +473,13 @@ alljoyn_message alljoyn_message_create(alljoyn_busattachment bus)
     return new struct _alljoyn_message_handle (*((ajn::BusAttachment*)bus));
 }
 
-void alljoyn_message_destroy(alljoyn_message* message)
+void alljoyn_message_destroy(alljoyn_message* msg)
 {
-    delete *message;
-    *message = NULL;
+    delete *msg;
+    *msg = NULL;
+}
+
+alljoyn_msgargs_const alljoyn_message_getarg(alljoyn_message msg, size_t argN)
+{
+    return msg->msg->GetArg(argN);
 }

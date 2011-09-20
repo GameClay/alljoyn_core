@@ -190,13 +190,16 @@ int main(int argc, char** argv, char** envArg)
         alljoyn_message reply = alljoyn_message_create(g_msgBus);
         alljoyn_msgargs inputs = alljoyn_msgargs_create(2);
         size_t numArgs = 2;
-        alljoyn_msgargs_set(inputs, 0, &numArgs, "s", "Hello ", "World!");
+        status = alljoyn_msgargs_set(inputs, 0, &numArgs, "ss", "Hello ", "World!");
+        if (ER_OK != status) {
+            printf("Arg assignment failed: %s\n", QCC_StatusText(status));
+        }
         status = alljoyn_proxybusobject_methodcall_synch(remoteObj, SERVICE_NAME, "cat", inputs, 2, reply, 5000, 0);
         if (ER_OK == status) {
             printf("%s.%s ( path=%s) returned \"%s\"\n", SERVICE_NAME, "cat",
-                   SERVICE_PATH, "TODO" /*reply->GetArg(0)->v_string.str*/);
+                   SERVICE_PATH, alljoyn_msgargs_as_string(alljoyn_message_getarg(reply, 0), 0));
         } else {
-            printf("MethodCall on %s.%s failed", SERVICE_NAME, "cat");
+            printf("MethodCall on %s.%s failed\n", SERVICE_NAME, "cat");
         }
 
         alljoyn_proxybusobject_destroy(&remoteObj);

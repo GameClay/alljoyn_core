@@ -30,5 +30,6 @@ typedef void* alljoyn_interfacedescription;
 typedef const void* alljoyn_interfacedescription_const;
 typedef struct _alljoyn_message_handle* alljoyn_message;
 typedef void* alljoyn_msgargs;
+typedef const void* alljoyn_msgargs_const;
 
 #endif
