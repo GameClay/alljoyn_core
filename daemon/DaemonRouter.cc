@@ -443,7 +443,7 @@ QStatus DaemonRouter::AddSessionRoute(SessionId id, BusEndpoint& srcEp, RemoteEn
                                   id, destB2bEp ? "" : "opts, ", destB2bEp ? destB2bEp->GetUniqueName().c_str() : "NULL"));
         }
     }
-    
+
     if ((status == ER_OK) && srcB2bEp) {
         status = static_cast<VirtualEndpoint&>(srcEp).AddSessionRef(id, *srcB2bEp);
         if (status != ER_OK) {

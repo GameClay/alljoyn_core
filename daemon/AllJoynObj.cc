@@ -617,7 +617,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                     ++nmit;
                 }
                 ajObj.ReleaseLocks();
-                
+
                 /*
                  * Step 1b: If no advertisment (busAddr) and we are connected to the sesionHost, then ask it directly
                  * for the busAddr
@@ -1253,7 +1253,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
                     if (srcB2BEp2 && srcEp && vDestEp && b2bEp) {
                         id = tempId;
                         optsOut = tempOpts;
-                        status = router.AddSessionRoute(id, *vDestEp, b2bEp, *srcEp, srcB2BEp2); 
+                        status = router.AddSessionRoute(id, *vDestEp, b2bEp, *srcEp, srcB2BEp2);
                         if (status != ER_OK) {
                             QCC_LogError(status, ("AddSessionRoute(%u, %s, %s, %s) failed", id, dest, b2bEp->GetUniqueName().c_str(), srcEp->GetUniqueName().c_str(), srcB2BEp2->GetUniqueName().c_str()));
                         }
@@ -1409,7 +1409,7 @@ void AllJoynObj::RemoveSessionRefs(BusEndpoint& endpoint, SessionId id)
 void AllJoynObj::RemoveSessionRefs(const VirtualEndpoint& vep, const RemoteEndpoint& b2bEp)
 {
     QCC_DbgTrace(("AllJoynObj::RemoveSessionRefs(%s, %s)",  vep.GetUniqueName().c_str(), b2bEp.GetUniqueName().c_str()));
-    
+
     AcquireLocks();
     const String& vepName = vep.GetUniqueName();
     vector<pair<String, SessionId> > changedSessionMembers;
@@ -1423,7 +1423,7 @@ void AllJoynObj::RemoveSessionRefs(const VirtualEndpoint& vep, const RemoteEndpo
         }
         /* Examine sessions with ids that are affected by removal of vep through b2bep */
         /* Only sessions that route through a single (matching) b2bEp are affected */
-        if ((vep.GetBusToBusEndpoint(it->first.second, &count) == &b2bEp) && (count == 1))  {
+        if ((vep.GetBusToBusEndpoint(it->first.second, &count) == &b2bEp) && (count == 1)) {
             if (it->first.first == vepName) {
                 /* Key matches can be removed from sessionMap */
                 sessionMap.erase(it++);
@@ -1753,7 +1753,7 @@ void AllJoynObj::DetachSessionSignalHandler(const InterfaceDescription::Member* 
     if (ep) {
         RemoveSessionRefs(*ep, id);
     }
-    
+
     /* Remove session info from router */
     router.RemoveSessionRoutes(src, id);
 }

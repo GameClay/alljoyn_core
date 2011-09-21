@@ -653,10 +653,10 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
 
     /**
      * Utility function used to clean up the session map when a virtual endpoint with a
-     * given b2b endpoint leaves a session. 
-     * 
+     * given b2b endpoint leaves a session.
+     *
      * This utility is used when the given B2B ep has closed for some reason and we
-     * need to clean any virtual endpoints that might have been using that b2b ep 
+     * need to clean any virtual endpoints that might have been using that b2b ep
      * from the sessionMap
      *
      * @param vep       Virtual that should be cleaned from sessionMap if it routes

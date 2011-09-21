@@ -67,7 +67,7 @@ QStatus VirtualEndpoint::PushMessage(Message& msg, SessionId id)
 RemoteEndpoint* VirtualEndpoint::GetBusToBusEndpoint(SessionId sessionId, int* b2bCount) const
 {
     RemoteEndpoint* ret = NULL;
-    if (b2bCount) { 
+    if (b2bCount) {
         *b2bCount = 0;
     }
     m_b2bEndpointsLock.Lock();
