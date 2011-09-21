@@ -964,7 +964,7 @@ void AllJoynObj::LeaveSession(const InterfaceDescription::Member* member, Messag
         map<qcc::StringMapKey, RemoteEndpoint*>::iterator it = b2bEndpoints.begin();
         set<String> sendSet;
         while (it != b2bEndpoints.end()) {
-            String dest = it->second->GetControllerUniqueName();
+            String dest = it->second->GetRemoteName();
             if (sendSet.find(dest) == sendSet.end()) {
                 sendSet.insert(dest);
                 QStatus status = Signal(dest.c_str(), 0, *detachSessionSignal, detachSessionArgs, ArraySize(detachSessionArgs));
