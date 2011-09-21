@@ -15,26 +15,32 @@
     {
         "Entry"
         {
-        "MsmKey" = "8:_17977D5FD46F4EF4A3CEF04A9F3BA742"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_2CE928D57491457F96F83CCDEB628657"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_438ECBFFBDBF44B491EA2CCBCE05DF30"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
+        "MsmKey" = "8:_58434D42C9F840509B2D58F0F847C4E4"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_E52AD38FDF494FF6A88093DE98CD318F"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_F9AB79A6F91342A2B290F6A5B86ADB48"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_2CE928D57491457F96F83CCDEB628657"
+        "OwnerKey" = "8:_58434D42C9F840509B2D58F0F847C4E4"
         "MsmSig" = "8:_UNDEFINED"
         }
     }
@@ -119,59 +125,59 @@
     {
         "CustomAction"
         {
-            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_0FB35CB84D49427AA693294E4066D0B6"
+            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_00191854390B4C2A93CFCB874069CAE1"
             {
             "Name" = "8:AlljoynService.exe"
             "Condition" = "8:"
-            "Object" = "8:_2CE928D57491457F96F83CCDEB628657"
-            "FileType" = "3:2"
-            "InstallAction" = "3:2"
-            "Arguments" = "8:"
-            "EntryPoint" = "8:"
-            "Sequence" = "3:1"
-            "Identifier" = "8:_79FB5CD3_99F3_4D4A_9ACA_54F58996E6E8"
-            "InstallerClass" = "11:TRUE"
-            "CustomActionData" = "8:"
-            }
-            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_10F164229840458EB739FB0A1C06AE0C"
-            {
-            "Name" = "8:AlljoynService.exe"
-            "Condition" = "8:"
-            "Object" = "8:_2CE928D57491457F96F83CCDEB628657"
+            "Object" = "8:_58434D42C9F840509B2D58F0F847C4E4"
             "FileType" = "3:2"
             "InstallAction" = "3:4"
             "Arguments" = "8:"
             "EntryPoint" = "8:"
             "Sequence" = "3:1"
-            "Identifier" = "8:_57AC4017_1CC0_462B_AA57_67FCD32AA6BD"
+            "Identifier" = "8:_2AFB3863_FE26_4156_8EF6_6FA5887425E0"
             "InstallerClass" = "11:TRUE"
             "CustomActionData" = "8:"
             }
-            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_232EB002370C4A3EA9E8F67655F79650"
+            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_C580C6740C704632B7B3F63DBC054CCC"
             {
             "Name" = "8:AlljoynService.exe"
             "Condition" = "8:"
-            "Object" = "8:_2CE928D57491457F96F83CCDEB628657"
+            "Object" = "8:_58434D42C9F840509B2D58F0F847C4E4"
             "FileType" = "3:2"
             "InstallAction" = "3:1"
             "Arguments" = "8:"
             "EntryPoint" = "8:"
             "Sequence" = "3:1"
-            "Identifier" = "8:_0475407E_0417_4E28_B7B4_4FD292FDD229"
+            "Identifier" = "8:_44A9FF82_01F8_4439_9CA5_9BC533A3286E"
             "InstallerClass" = "11:TRUE"
             "CustomActionData" = "8:"
             }
-            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_B4FFDA4B7EEF47CBA8A1B64023B6A3C7"
+            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_DAC6E91C92F94A9B8CFF551DBC4F8492"
             {
             "Name" = "8:AlljoynService.exe"
             "Condition" = "8:"
-            "Object" = "8:_2CE928D57491457F96F83CCDEB628657"
+            "Object" = "8:_58434D42C9F840509B2D58F0F847C4E4"
             "FileType" = "3:2"
             "InstallAction" = "3:3"
             "Arguments" = "8:"
             "EntryPoint" = "8:"
             "Sequence" = "3:1"
-            "Identifier" = "8:_ACF45E31_6EDF_4A5A_BB86_4892DDEE855B"
+            "Identifier" = "8:_077FA095_86D6_41BC_B2D5_662B65626F8B"
+            "InstallerClass" = "11:TRUE"
+            "CustomActionData" = "8:"
+            }
+            "{4AA51A2D-7D85-4A59-BA75-B0809FC8B380}:_F44AA750DC3E4A9A91CC7D93D52CBD1F"
+            {
+            "Name" = "8:AlljoynService.exe"
+            "Condition" = "8:"
+            "Object" = "8:_58434D42C9F840509B2D58F0F847C4E4"
+            "FileType" = "3:2"
+            "InstallAction" = "3:2"
+            "Arguments" = "8:"
+            "EntryPoint" = "8:"
+            "Sequence" = "3:1"
+            "Identifier" = "8:_56319200_A73F_4F2A_B6F7_CA2142124441"
             "InstallerClass" = "11:TRUE"
             "CustomActionData" = "8:"
             }
@@ -198,10 +204,10 @@
         }
         "File"
         {
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_17977D5FD46F4EF4A3CEF04A9F3BA742"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_438ECBFFBDBF44B491EA2CCBCE05DF30"
             {
-            "SourcePath" = "8:..\\..\\..\\..\\..\\build\\windows\\x86\\release\\dist\\bin\\daemonlib.dll"
-            "TargetName" = "8:daemonlib.dll"
+            "SourcePath" = "8:logo.jpg"
+            "TargetName" = "8:logo.jpg"
             "Tag" = "8:"
             "Folder" = "8:_BAA6842F451D41F68AB9772735A4618A"
             "Condition" = "8:"
@@ -214,18 +220,18 @@
             "SharedLegacy" = "11:FALSE"
             "PackageAs" = "3:1"
             "Register" = "3:1"
-            "Exclude" = "11:FALSE"
+            "Exclude" = "11:TRUE"
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_2CE928D57491457F96F83CCDEB628657"
+            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_58434D42C9F840509B2D58F0F847C4E4"
             {
             "AssemblyRegister" = "3:1"
             "AssemblyIsInGAC" = "11:FALSE"
             "AssemblyAsmDisplayName" = "8:AlljoynService, Version=1.0.0.0, Culture=neutral, processorArchitecture=x86"
                 "ScatterAssemblies"
                 {
-                    "_2CE928D57491457F96F83CCDEB628657"
+                    "_58434D42C9F840509B2D58F0F847C4E4"
                     {
                     "Name" = "8:AlljoynService.exe"
                     "Attributes" = "3:512"
@@ -249,10 +255,10 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_438ECBFFBDBF44B491EA2CCBCE05DF30"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E52AD38FDF494FF6A88093DE98CD318F"
             {
-            "SourcePath" = "8:logo.jpg"
-            "TargetName" = "8:logo.jpg"
+            "SourcePath" = "8:..\\AlljoynService\\aj.ico"
+            "TargetName" = "8:aj.ico"
             "Tag" = "8:"
             "Folder" = "8:_BAA6842F451D41F68AB9772735A4618A"
             "Condition" = "8:"
@@ -265,7 +271,27 @@
             "SharedLegacy" = "11:FALSE"
             "PackageAs" = "3:1"
             "Register" = "3:1"
-            "Exclude" = "11:TRUE"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F9AB79A6F91342A2B290F6A5B86ADB48"
+            {
+            "SourcePath" = "8:..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\bin\\daemonlib.dll"
+            "TargetName" = "8:daemonlib.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_BAA6842F451D41F68AB9772735A4618A"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
@@ -312,53 +338,16 @@
         }
         "LaunchCondition"
         {
-            "{836E08B8-0285-4809-BA42-01DB6754A45D}:_2E8438F314B14C9981ADD9D2D68BB74C"
+            "{836E08B8-0285-4809-BA42-01DB6754A45D}:_F42F66F6F39647508885382DBA6AB72B"
             {
             "Name" = "8:Condition1"
-            "Condition" = "8:FILEEXISTS2"
-            "Message" = "8:OpenSSL is not installed. It is required for the Alljoyn Service. "
-            "InstallUrl" = "8:"
-            }
-            "{836E08B8-0285-4809-BA42-01DB6754A45D}:_679246314643444F8D135A54B5A2B6D3"
-            {
-            "Name" = "8:Condition2"
-            "Condition" = "8:FILEEXISTS1"
-            "Message" = "8:OpenSSL is not installed. It is required for the Alljoyn Service. "
+            "Condition" = "8:VersionNT>=600"
+            "Message" = "8:This service can only be installed on Vista or above."
             "InstallUrl" = "8:"
             }
         }
         "Locator"
         {
-            "{39E1837C-0DB9-45A2-89C8-438377A77565}:_4873976EB5454D64950DF3AC450D256C"
-            {
-            "Name" = "8:Search for libeay32.dll"
-            "Folder" = "8:[SystemFolder]"
-            "Depth" = "2:0"
-            "FileName" = "8:libeay32.dll"
-            "MinVesion" = "8:"
-            "MaxVersion" = "8:"
-            "MinSize" = "8:"
-            "MaxSize" = "8:"
-            "MinDate" = "8:"
-            "MaxDate" = "8:"
-            "Languages" = "8:"
-            "Property" = "8:FILEEXISTS1"
-            }
-            "{39E1837C-0DB9-45A2-89C8-438377A77565}:_68394B8748F44B82B9BE3FB95A7E306F"
-            {
-            "Name" = "8:Search for libssl32.dll"
-            "Folder" = "8:[SystemFolder]"
-            "Depth" = "2:1"
-            "FileName" = "8:libssl32.dll"
-            "MinVesion" = "8:"
-            "MaxVersion" = "8:"
-            "MinSize" = "8:"
-            "MaxSize" = "8:"
-            "MinDate" = "8:"
-            "MaxDate" = "8:"
-            "Languages" = "8:"
-            "Property" = "8:FILEEXISTS2"
-            }
         }
         "MsiBootstrapper"
         {
@@ -370,7 +359,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Alljoyn Daemon Service"
         "ProductCode" = "8:{544F7727-C2C0-4765-A1D1-49CB1425C038}"
-        "PackageCode" = "8:{40248C8C-9EF7-48AA-8662-85480D2B5192}"
+        "PackageCode" = "8:{3FAD18FC-0128-4687-A4A5-8800C888D260}"
         "UpgradeCode" = "8:{5F3CB03F-DD62-426E-9126-E5476468BCF3}"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:FALSE"
@@ -386,8 +375,8 @@
         "Keywords" = "8:"
         "ARPCOMMENTS" = "8:Alljoyn peer to peer daemon process"
         "ARPURLINFOABOUT" = "8:"
-        "ARPPRODUCTICON" = "8:_2CE928D57491457F96F83CCDEB628657"
-        "ARPIconIndex" = "3:32512"
+        "ARPPRODUCTICON" = "8:_E52AD38FDF494FF6A88093DE98CD318F"
+        "ARPIconIndex" = "3:0"
         "SearchPath" = "8:"
         "UseSystemSearchPath" = "11:TRUE"
         "TargetPlatform" = "3:0"
