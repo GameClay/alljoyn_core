@@ -816,7 +816,11 @@ static const char* ADDR_DEFAULT = "0.0.0.0";
  * The default port for use in listen specs.  This port is used by the TCP
  * listener to listen for incoming connection requests.
  */
+#ifdef QCC_OS_ANDROID
+static const uint16_t PORT_DEFAULT = 0;
+#else
 static const uint16_t PORT_DEFAULT = 9955;
+#endif
 
 QStatus DaemonTCPTransport::NormalizeListenSpec(const char* inSpec, qcc::String& outSpec, map<qcc::String, qcc::String>& argMap) const
 {
@@ -1241,22 +1245,6 @@ QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
     uint16_t listenPort = StringToU32(argMap["port"]);
 
     /*
-     * The name service is very flexible about what to advertise.  Empty
-     * strings tell the name service to use IP addreses discovered from
-     * addresses returned in socket receive calls.  Providing explicit IPv4
-     * or IPv6 addresses trumps this and allows us to advertise one interface
-     * over a name service running on another.  The name service allows
-     * this, but we don't use the feature.
-     *
-     * N.B. This means that if we listen on a specific IP address and advertise
-     * over other interfaces (which do not have that IP address assigned) by
-     * providing, for example the wildcard interface, we will be advertising
-     * services on addresses do not listen on.
-     */
-    assert(m_ns);
-    m_ns->SetEndpoints("", "", listenPort);
-
-    /*
      * Get the configuration item telling us which network interfaces we
      * should run the name service over.  The item can specify an IP address,
      * in which case the name service waits until that particular address comes
@@ -1339,9 +1327,17 @@ QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
      */
     status = Bind(listenFd, listenAddr, listenPort);
     if (status == ER_OK) {
+        qcc::GetLocalAddress(listenFd, listenAddr, listenPort);
         status = qcc::Listen(listenFd, 0);
         if (status == ER_OK) {
             QCC_DbgPrintf(("DaemonTCPTransport::StartListen(): Listening on %s:%d", argMap["addr"].c_str(), listenPort));
+#if defined(QCC_OS_ANDROID)
+            /* On Android, bundled daemon will not set the TCP port in the listen spec so as to let the kernel to find an
+             * unused port for TCP transport, thus call GetLocalAddress() to get the actual TCP port used after Bind()
+             * and update the connect spec here.
+             */
+            normSpec = "tcp:addr=" + argMap["addr"] + ",port=" + U32ToString(listenPort);
+#endif
             m_listenFds.push_back(pair<qcc::String, SocketFd>(normSpec, listenFd));
         } else {
             QCC_LogError(status, ("DaemonTCPTransport::StartListen(): Listen failed"));
@@ -1360,6 +1356,22 @@ QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
     if (status == ER_OK) {
         Alert();
     }
+
+    /*
+     * The name service is very flexible about what to advertise.  Empty
+     * strings tell the name service to use IP addreses discovered from
+     * addresses returned in socket receive calls.  Providing explicit IPv4
+     * or IPv6 addresses trumps this and allows us to advertise one interface
+     * over a name service running on another.  The name service allows
+     * this, but we don't use the feature.
+     *
+     * N.B. This means that if we listen on a specific IP address and advertise
+     * over other interfaces (which do not have that IP address assigned) by
+     * providing, for example the wildcard interface, we will be advertising
+     * services on addresses do not listen on.
+     */
+    assert(m_ns);
+    m_ns->SetEndpoints("", "", listenPort);
 
     return status;
 }

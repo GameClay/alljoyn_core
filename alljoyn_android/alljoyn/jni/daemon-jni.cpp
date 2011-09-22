@@ -14,19 +14,26 @@
  *    limitations under the License.
  *
  ******************************************************************************/
+#define QCC_OS_GROUP_POSIX
 #include <string.h>
 #include <jni.h>
 #include <android/log.h>
-
+#include <qcc/Log.h>
 #define LOG_TAG "daemon-jni"
 
-//
 // The AllJoyn daemon has an alternate personality in that it is built as a
 // static library, liballjoyn-daemon.a.  In this case, the entry point main() is
 // replaced by a function called DaemonMain.  Calling DaemonMain() here
 // essentially runs the AllJoyn daemon like it had been run on the command line.
 //
+
+namespace ajn {
+extern const char* GetVersion();        /**< Gives the version of AllJoyn Library */
+extern const char* GetBuildInfo();      /**< Gives build information of AllJoyn Library */
+};
+
 extern int DaemonMain(int argc, char** argv, char* serviceConfig);
+
 
 void do_log(const char* format, ...)
 {
@@ -39,24 +46,25 @@ void do_log(const char* format, ...)
     return;
 }
 
-void Java_org_alljoyn_bus_alljoyn_AllJoynApp_runDaemon(JNIEnv* env, jobject thiz, jobjectArray jargv, jstring jconfig)
+extern "C" JNIEXPORT void JNICALL Java_org_alljoyn_bus_alljoyn_AllJoynDaemon_runDaemon(JNIEnv* env, jobject thiz, jobjectArray jargv, jstring jconfig)
 {
     int i;
     jsize argc;
-
+    QCC_UseOSLogging(true);
+    QCC_SetDebugLevel("ALLJOYN", 7);
     do_log("runDaemon()\n");
 
-    argc = (*env)->GetArrayLength(env, jargv);
+    argc = env->GetArrayLength(jargv);
     do_log("runDaemon(): argc = %d\n", argc);
     char const** argv  = (char const**)malloc(argc * sizeof(char*));
 
     for (i = 0; i < argc; ++i) {
-        jstring jstr = (*env)->GetObjectArrayElement(env, jargv, i);
-        argv[i] = (*env)->GetStringUTFChars(env, jstr, 0);
+        jstring jstr = (jstring)env->GetObjectArrayElement(jargv, i);
+        argv[i] = env->GetStringUTFChars(jstr, 0);
         do_log("runDaemon(): argv[%d] = %s\n", i, argv[i]);
     }
 
-    char const* config = (*env)->GetStringUTFChars(env, jconfig, 0);
+    char const* config = env->GetStringUTFChars(jconfig, 0);
     do_log("runDaemon(): config = %s\n", config);
 
     //
@@ -66,4 +74,18 @@ void Java_org_alljoyn_bus_alljoyn_AllJoynApp_runDaemon(JNIEnv* env, jobject thiz
     int rc = DaemonMain(argc, (char**)argv, (char*)config);
 
     free(argv);
+}
+
+extern "C" {
+
+JNIEXPORT jstring JNICALL Java_org_alljoyn_bus_alljoyn_AllJoynDaemon_getDaemonVersion(JNIEnv* env, jobject thiz)
+{
+    return env->NewStringUTF(ajn::GetVersion());
+}
+
+JNIEXPORT jstring JNICALL Java_org_alljoyn_bus_alljoyn_AllJoynDaemon_getDaemonBuildInfo(JNIEnv* env, jobject thiz)
+{
+    return env->NewStringUTF(ajn::GetBuildInfo());
+}
+
 }

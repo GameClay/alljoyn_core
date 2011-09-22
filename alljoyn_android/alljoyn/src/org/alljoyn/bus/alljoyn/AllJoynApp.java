@@ -102,6 +102,7 @@ public class AllJoynApp extends Application {
         mConfig = sharedPreferences.getString("config", 
             "<busconfig>" + 
             "  <type>alljoyn</type>" + 
+            "  <listen>unix:abstract=alljoyn-service</listen>" + 
             "  <listen>unix:abstract=alljoyn</listen>" + 
             "  <listen>tcp:addr=0.0.0.0,port=9955</listen>" +
             "  <policy context=\"default\">" +
@@ -171,12 +172,10 @@ public class AllJoynApp extends Application {
     public void onConfigurationChanged(Configuration newConfig) {
     	super.onConfigurationChanged(newConfig);
     }
-
-    private static native int runDaemon(Object[] argv, String config);
-    
+   
     private boolean mSession = false;
     private boolean mSystem = false;
-    private boolean mInternal = true;
+    private boolean mInternal = false;
     private String mConfig = null;
     private boolean mNoBT = true;
     private boolean mNoTCP = false;
@@ -187,8 +186,10 @@ public class AllJoynApp extends Application {
         public void run()
         {
             Log.i(TAG, "mThread.run()");
+            Log.i(TAG,  AllJoynDaemon.getDaemonBuildInfo());            
             ArrayList<String> argv = new ArrayList<String>();
             argv.add(mName);
+            argv.add("--config-service");          
             argv.add("--nofork");
             argv.add("--verbosity=" + mVerbosity);
                        
@@ -200,10 +201,6 @@ public class AllJoynApp extends Application {
             	argv.add("--session");
             }
             
-            if (mInternal) {
-            	argv.add("--internal");
-            }
-            
             if (mNoBT) {
                 argv.add("--no-bt");            	
             }
@@ -213,7 +210,7 @@ public class AllJoynApp extends Application {
             }
 
             Log.i(TAG, "mThread.run(): calling runDaemon()"); 
-            runDaemon(argv.toArray(), mConfig);
+            AllJoynDaemon.runDaemon(argv.toArray(), mConfig);
             Log.i(TAG, "mThread.run(): returned from runDaemon().  Self-immolating.");
             exit();
         }

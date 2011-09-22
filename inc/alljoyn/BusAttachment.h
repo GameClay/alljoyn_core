@@ -851,6 +851,17 @@ class BusAttachment : public MessageReceiver {
      * JoinSession method_reply handler. (Internal use only)
      */
     void JoinSessionMethodCB(Message& message, void* context);
+#if defined(QCC_OS_ANDROID)
+    /**
+     * For Android, try different daemon options with the precedence of pre-installed Daemon > APK daemon > Bundled Daemon.
+     */
+    QStatus TryAlternativeDaemon(const char* connectSpec, RemoteEndpoint** newep);
+    /**
+     * Try connect to the daemon with the spec.
+     */
+    QStatus TryConnect(const char* connectSpec, RemoteEndpoint** newep);
+#endif
+    qcc::String connectSpec;
 
     bool isStarted;           /**< Indicates if the bus has been started */
     bool isStopping;          /**< Indicates Stop has been called */

@@ -13,7 +13,7 @@ BUS_LIB_DIR := ../../lib/
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := daemon-jni
-LOCAL_SRC_FILES := daemon-jni.c
+LOCAL_SRC_FILES := daemon-jni.cpp
 LOCAL_LDLIBS := -L$(BUS_LIB_DIR) -lalljoyn-daemon -lalljoyn -lcrypto -llog -lgcc
 
 include $(BUILD_SHARED_LIBRARY)
