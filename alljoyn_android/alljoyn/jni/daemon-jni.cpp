@@ -18,7 +18,6 @@
 #include <string.h>
 #include <jni.h>
 #include <android/log.h>
-#include <qcc/Log.h>
 #define LOG_TAG "daemon-jni"
 
 // The AllJoyn daemon has an alternate personality in that it is built as a
@@ -50,8 +49,6 @@ extern "C" JNIEXPORT void JNICALL Java_org_alljoyn_bus_alljoyn_AllJoynDaemon_run
 {
     int i;
     jsize argc;
-    QCC_UseOSLogging(true);
-    QCC_SetDebugLevel("ALLJOYN", 7);
     do_log("runDaemon()\n");
 
     argc = env->GetArrayLength(jargv);
