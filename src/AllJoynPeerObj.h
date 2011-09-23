@@ -147,7 +147,7 @@ class AllJoynPeerObj : public BusObject, public BusListener {
      * @param busName   The bus name of the remote peer we are securing.
      *
      * @return
-     *      - ER_OK if the authentication is successfully begun 
+     *      - ER_OK if the authentication is successfully begun
      *      - An error status otherwise
      */
     QStatus AuthenticatePeerAsync(const qcc::String& busName);

@@ -599,7 +599,7 @@ class ProxyBusObject : public MessageReceiver {
      * method call or signal requiring encryption is sent or received.
      *
      * Notification of success or failure is via the AuthListener passed to EnablePeerSecurity().
-     * 
+     *
      * @param forceAuth  If true, forces an re-authentication even if the peer connection is already
      *                   authenticated.
      *
