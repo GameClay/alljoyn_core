@@ -605,7 +605,7 @@ int daemon(OptParse& opts)
 // called from the Java service code.
 //
 #if defined(DAEMON_LIB)
-extern "C" int DaemonMain(int argc, char** argv, char* serviceConfig)
+int DaemonMain(int argc, char** argv, char* serviceConfig)
 #else
 int main(int argc, char** argv, char** env)
 #endif
