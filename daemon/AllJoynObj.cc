@@ -2230,24 +2230,40 @@ void AllJoynObj::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
 {
     QCC_DbgTrace(("AllJoynObj::RemoveBusToBusEndpoint(%s)", endpoint.GetUniqueName().c_str()));
 
-    /* Remove any virtual endpoints associated with a removed bus-to-bus endpoint */
-
     /* Be careful to lock the name table before locking the virtual endpoints since both locks are needed
      * and doing it in the opposite order invites deadlock
      */
     AcquireLocks();
+
+    /* Get session ids affected by loss of this B2B endpoint */
+    set<SessionId> idSet;
     map<qcc::String, VirtualEndpoint*>::iterator it = virtualEndpoints.begin();
     while (it != virtualEndpoints.end()) {
+        it->second->GetSessionIdsForB2B(endpoint, idSet);
+        ++it;
+    }
 
+    /* Remove any virtual endpoints associated with a removed bus-to-bus endpoint */
+    it = virtualEndpoints.begin();
+    while (it != virtualEndpoints.end()) {
         /* Clean sessionMap and report lost sessions */
 
         /* Remove the sessionMap entries involving endpoint */
         RemoveSessionRefs(*it->second, endpoint);
 
-        /* Remove the B2B endpoint */
-        if (it->second->RemoveBusToBusEndpoint(endpoint)) {
+        /* Try to remove endpoint (b2b) from this vep */
+        bool vepRemoved = it->second->RemoveBusToBusEndpoint(endpoint);
 
-            /* Remove virtual endpoint with no more b2b eps */
+        /* Remove session refs from endpoints that do not use endpoint directly */
+        if (!vepRemoved) {
+            set<SessionId>::const_iterator sit = idSet.begin();
+            while (sit != idSet.end()) {
+                it->second->RemoveSessionRef(*sit++);
+            }
+        }
+
+        /* Remove virtual endpoint with no more b2b eps */
+        if (vepRemoved) {
             String exitingEpName = it->second->GetUniqueName();
             RemoveVirtualEndpoint(*(it++->second));
 

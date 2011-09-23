@@ -28,7 +28,7 @@
 #include <alljoyn/Message.h>
 #include <Status.h>
 
-#define QCC_MODULE "ALLJOYN"
+#define QCC_MODULE "ALLJOYN_OBJ"
 
 using namespace std;
 using namespace qcc;
@@ -106,13 +106,13 @@ bool VirtualEndpoint::AddBusToBusEndpoint(RemoteEndpoint& endpoint)
     return !found;
 }
 
-void VirtualEndpoint::GetSessionIdsForB2B(RemoteEndpoint& endpoint, vector<SessionId>& sessionIds)
+void VirtualEndpoint::GetSessionIdsForB2B(RemoteEndpoint& endpoint, set<SessionId>& sessionIds)
 {
     m_b2bEndpointsLock.Lock();
     multimap<SessionId, RemoteEndpoint*>::iterator it = m_b2bEndpoints.begin();
     while (it != m_b2bEndpoints.end()) {
         if (it->first && (it->second == &endpoint)) {
-            sessionIds.push_back(it->first);
+            sessionIds.insert(it->first);
         }
         ++it;
     }
@@ -144,6 +144,8 @@ bool VirtualEndpoint::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
 QStatus VirtualEndpoint::AddSessionRef(SessionId id, RemoteEndpoint& b2bEp)
 {
     QCC_DbgTrace(("VirtualEndpoint::AddSessionRef(this=%s, id=%u, b2b=%s)", GetUniqueName().c_str(), id, b2bEp.GetUniqueName().c_str()));
+
+    assert(id != 0);
 
     m_b2bEndpointsLock.Lock();
 
@@ -181,8 +183,11 @@ QStatus VirtualEndpoint::AddSessionRef(SessionId id, SessionOpts* opts, RemoteEn
     }
 #else
     /* TODO: Placeholder until we exchange session opts and hop count via ExchangeNames */
-    multimap<SessionId, RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
-    if ((it != m_b2bEndpoints.end()) && (it->first == 0)) {
+    multimap<SessionId, RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.find(id);
+    if (it == m_b2bEndpoints.end()) {
+        it = m_b2bEndpoints.begin();
+    }
+    if ((it != m_b2bEndpoints.end()) && ((it->first == 0) || it->first == id)) {
         bestEp = it->second;
     }
 #endif
@@ -199,6 +204,7 @@ QStatus VirtualEndpoint::AddSessionRef(SessionId id, SessionOpts* opts, RemoteEn
 void VirtualEndpoint::RemoveSessionRef(SessionId id)
 {
     QCC_DbgTrace(("VirtualEndpoint::RemoveSessionRef(this=%s, id=%u)", GetUniqueName().c_str(), id));
+    assert(id != 0);
     m_b2bEndpointsLock.Lock();
     multimap<SessionId, RemoteEndpoint*>::iterator it = m_b2bEndpoints.find(id);
     if (it != m_b2bEndpoints.end()) {
