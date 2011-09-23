@@ -136,7 +136,7 @@ bool VirtualEndpoint::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
             ++it;
         }
     }
-    bool isEmpty = m_b2bEndpoints.empty();
+    bool isEmpty = (m_b2bEndpoints.lower_bound(1) == m_b2bEndpoints.end());
     m_b2bEndpointsLock.Unlock();
     return isEmpty;
 }
