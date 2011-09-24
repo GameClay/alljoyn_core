@@ -136,7 +136,21 @@ class AllJoynPeerObj : public BusObject, public BusListener {
      *      - ER_OK if successful
      *      - An error status otherwise
      */
-    QStatus AuthenticatePeer(const qcc::String& busNam);
+    QStatus AuthenticatePeer(const qcc::String& busName);
+
+    /**
+     * Authenticate the connection to a remote peer asynchronously. Authentication establishes a session key with
+     * a remote peer.
+     *
+     * Notification of success or failure will be via the AuthListener.
+     *
+     * @param busName   The bus name of the remote peer we are securing.
+     *
+     * @return
+     *      - ER_OK if the authentication is successfully begun
+     *      - An error status otherwise
+     */
+    QStatus AuthenticatePeerAsync(const qcc::String& busName);
 
     /**
      * Reports a security failure. This would normally be due to stale or expired keys.
@@ -307,7 +321,8 @@ class AllJoynPeerObj : public BusObject, public BusListener {
         REVERSE_AUTH_PEER,
         AUTH_CHALLENGE,
         EXPAND_HEADER,
-        ACCEPT_SESSION
+        ACCEPT_SESSION,
+        SECURE_CONNECTION
     } RequestType;
 
     /**

@@ -592,6 +592,25 @@ class ProxyBusObject : public MessageReceiver {
     QStatus SecureConnection(bool forceAuth = false);
 
     /**
+     * Aynchronously secure the connection to the remote peer for this proxy object. Peer-to-peer
+     * connections can only be secured if EnablePeerSecurity() was previously called on the bus
+     * attachment for this proxy object. If the peer-to-peer connection is already secure this
+     * function does nothing. Note that peer-to-peer connections are automatically secured when a
+     * method call or signal requiring encryption is sent or received.
+     *
+     * Notification of success or failure is via the AuthListener passed to EnablePeerSecurity().
+     *
+     * @param forceAuth  If true, forces an re-authentication even if the peer connection is already
+     *                   authenticated.
+     *
+     * @return
+     *          - #ER_OK if securing could begin.
+     *          - #ER_BUS_NO_AUTHENTICATION_MECHANISM if BusAttachment::EnablePeerSecurity() has not been called.
+     *          - Other error status codes indicating a failure.
+     */
+    QStatus SecureConnectionAsync(bool forceAuth = false);
+
+    /**
      * Assignment operator.
      *
      * @param other  The object being assigned from

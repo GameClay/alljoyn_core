@@ -174,7 +174,7 @@ class VirtualEndpoint : public BusEndpoint {
      * @param[IN]   b2bEndpoint   B2B endpoint.
      * @param[OUT]  set of sessionIds that route through the given endpoint.
      */
-    void GetSessionIdsForB2B(RemoteEndpoint& endpoint, std::vector<SessionId>& sessionIds);
+    void GetSessionIdsForB2B(RemoteEndpoint& endpoint, std::set<SessionId>& sessionIds);
 
     /**
      * Indicate whether this endpoint is allowed to receive messages from remote devices.
