@@ -252,7 +252,7 @@ QStatus BusAttachment::TryAlternativeDaemon(const char* connectSpec, RemoteEndpo
     /* Maybe the APK daemon is installed but not started yet, so try issue an intent to start it*/
     if (ER_OK != status) {
         system("am start -W -a org.alljoyn.bus.START_DAEMON");
-        int numOfTries = 0;
+        uint32_t numOfTries = 0;
         /* Try connect to the APK daemon again every 100ms*/
         while (numOfTries < MAX_CONNECT_TRIES && status != ER_OK) {
             QCC_DbgPrintf(("Wait %d ms before trying connect", TRY_PERIOD_IN_MS));
@@ -288,9 +288,10 @@ QStatus BusAttachment::TryAlternativeDaemon(const char* connectSpec, RemoteEndpo
         /* To start the BundleDaemonService of the application associated with this process, we should explicitly give the component name of the service.
          * The component name includes the application package name and the service name. Here we read the package name from file /proc/${PID}/cmdline.
          * Android uses package name as process name by default*/
-        char pidStr [32];
+        const uint32_t MAX_PID_STR_SIZE = 32;
+        char pidStr [MAX_PID_STR_SIZE];
         pid_t pid = getpid();
-        sprintf(pidStr, "%d", pid);
+        snprintf(pidStr, MAX_PID_STR_SIZE, "%d", pid);
         qcc::String fileName = "/proc/";
         fileName += pidStr;
         fileName += "/cmdline";
@@ -305,7 +306,7 @@ QStatus BusAttachment::TryAlternativeDaemon(const char* connectSpec, RemoteEndpo
         } else {
             /*It may fail to read from the file /proc/${PID}/cmdline if Android locks the dir /proc in the future, then fallback to use the application name*/
             QCC_DbgHLPrintf(("File %s can be read.", fileName.c_str()));
-            strcpy(packageName, busInternal->application.c_str());
+            strlcpy(packageName, busInternal->application.c_str(), maxLen);
         }
 
         QCC_DbgHLPrintf(("BusAttachment::Try to start bundle daemon: packageName =%s\n", packageName));
@@ -320,7 +321,7 @@ QStatus BusAttachment::TryAlternativeDaemon(const char* connectSpec, RemoteEndpo
 
     /* Try connect to the bundle daemon*/
     if (shouldWaitReady) {
-        int numOfTries = 0;
+        uint32_t numOfTries = 0;
         while (numOfTries < MAX_CONNECT_TRIES && status != ER_OK) {
             QCC_DbgPrintf(("Wait %d ms before trying connect", TRY_PERIOD_IN_MS));
             qcc::Event timerEvent(TRY_PERIOD_IN_MS, 0);
