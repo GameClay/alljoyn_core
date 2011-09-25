@@ -2251,26 +2251,17 @@ void AllJoynObj::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
         /* Remove the sessionMap entries involving endpoint */
         RemoveSessionRefs(*it->second, endpoint);
 
-        /* Try to remove endpoint (b2b) from this vep */
-        bool vepRemoved = it->second->RemoveBusToBusEndpoint(endpoint);
-
-        /* Remove session refs from endpoints that do not use endpoint directly */
-        if (!vepRemoved) {
-            set<SessionId>::const_iterator sit = idSet.begin();
-            while (sit != idSet.end()) {
-                it->second->RemoveSessionRef(*sit++);
-            }
-        }
-
-        /* Remove virtual endpoint with no more b2b eps */
-        if (vepRemoved) {
+        /* Remove endpoint (b2b) reference from this vep */
+        if (it->second->RemoveBusToBusEndpoint(endpoint)) {
+            /* Remove virtual endpoint with no more b2b eps */
             String exitingEpName = it->second->GetUniqueName();
             RemoveVirtualEndpoint(*(it++->second));
 
             /* Let directly connected daemons know that this virtual endpoint is gone. */
             map<qcc::StringMapKey, RemoteEndpoint*>::iterator it2 = b2bEndpoints.begin();
+            const qcc::GUID& otherSideGuid = endpoint.GetRemoteGUID();
             while (it2 != b2bEndpoints.end()) {
-                if (it2->second != &endpoint) {
+                if ((it2->second != &endpoint) && (it2->second->GetRemoteGUID() != otherSideGuid)) {
                     Message sigMsg(bus);
                     MsgArg args[3];
                     args[0].Set("s", exitingEpName.c_str());
