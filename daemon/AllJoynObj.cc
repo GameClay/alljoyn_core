@@ -941,19 +941,21 @@ void AllJoynObj::JoinSessionThread::ThreadExit(Thread* thread)
 {
     ajObj.joinSessionThreadsLock.Lock();
     vector<JoinSessionThread*>::iterator it = ajObj.joinSessionThreads.begin();
-    bool isFound = false;
+    JoinSessionThread* deleteMe = NULL;
     while (it != ajObj.joinSessionThreads.end()) {
         if (*it == thread) {
+            deleteMe = *it;
             ajObj.joinSessionThreads.erase(it);
-            isFound = true;
             break;
         }
         ++it;
     }
-    if (!isFound) {
+    ajObj.joinSessionThreadsLock.Unlock();
+    if (deleteMe) {
+        delete deleteMe;
+    } else {
         QCC_LogError(ER_FAIL, ("Internal error: JoinSessionThread not found on list"));
     }
-    ajObj.joinSessionThreadsLock.Unlock();
 }
 
 void AllJoynObj::JoinSession(const InterfaceDescription::Member* member, Message& msg)
