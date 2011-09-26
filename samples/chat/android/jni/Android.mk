@@ -6,7 +6,7 @@
 LOCAL_PATH := $(call my-dir)
 
 # AllJoyn specifics
-#ALLJOYN_DIST := ../../../build/android/arm/$(APP_OPTIM)/dist
+#ALLJOYN_DIST := ../../../../build/android/arm/$(APP_OPTIM)/dist
 ALLJOYN_DIST := ../../
 
 # The CLEAR_VARS variable is provided by the build system and points to a
