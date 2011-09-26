@@ -1312,6 +1312,8 @@ exit:
     delete[] buf;
     delete[] expBuf;
 
+    Sleep(1000);
+
     return tcSuccess;
 }
 
@@ -1548,6 +1550,8 @@ exit:
     delete[] txBuf;
     delete[] rxBuf;
     delete[] buf;
+
+    Sleep(1000);
 
     return tcSuccess;
 }
