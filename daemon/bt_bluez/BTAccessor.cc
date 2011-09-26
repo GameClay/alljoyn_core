@@ -1000,6 +1000,14 @@ void BTTransport::BTAccessor::AdapterAdded(const char* adapterObjPath)
                                 org.bluez.Adapter.DeviceFound, adapterObjPath);
 
     bzBus.RegisterSignalHandler(this,
+                                SignalHandler(&BTTransport::BTAccessor::DeviceCreatedSignalHandler),
+                                org.bluez.Adapter.DeviceCreated, adapterObjPath);
+
+    bzBus.RegisterSignalHandler(this,
+                                SignalHandler(&BTTransport::BTAccessor::DeviceRemovedSignalHandler),
+                                org.bluez.Adapter.DeviceRemoved, adapterObjPath);
+
+    bzBus.RegisterSignalHandler(this,
                                 SignalHandler(&BTTransport::BTAccessor::AdapterPropertyChangedSignalHandler),
                                 org.bluez.Adapter.PropertyChanged, adapterObjPath);
 
@@ -1023,6 +1031,14 @@ void BTTransport::BTAccessor::AdapterRemoved(const char* adapterObjPath)
     bzBus.UnregisterSignalHandler(this,
                                   SignalHandler(&BTTransport::BTAccessor::DeviceFoundSignalHandler),
                                   org.bluez.Adapter.DeviceFound, adapterObjPath);
+
+    bzBus.UnregisterSignalHandler(this,
+                                  SignalHandler(&BTTransport::BTAccessor::DeviceCreatedSignalHandler),
+                                  org.bluez.Adapter.DeviceCreated, adapterObjPath);
+
+    bzBus.UnregisterSignalHandler(this,
+                                  SignalHandler(&BTTransport::BTAccessor::DeviceRemovedSignalHandler),
+                                  org.bluez.Adapter.DeviceRemoved, adapterObjPath);
 
     bzBus.UnregisterSignalHandler(this,
                                   SignalHandler(&BTTransport::BTAccessor::AdapterPropertyChangedSignalHandler),
@@ -1252,6 +1268,62 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
             }
 
             deviceLock.Unlock();
+        }
+    }
+}
+
+
+void BTTransport::BTAccessor::DeviceCreatedSignalHandler(const InterfaceDescription::Member* member,
+                                                         const char* sourcePath,
+                                                         Message& msg)
+{
+    bzBus.RegisterSignalHandler(this,
+                                SignalHandler(&BTTransport::BTAccessor::DevicePropertyChangedSignalHandler),
+                                org.bluez.Device.PropertyChanged, msg->GetArg(0)->v_objPath.str);
+
+}
+
+
+void BTTransport::BTAccessor::DeviceRemovedSignalHandler(const InterfaceDescription::Member* member,
+                                                         const char* sourcePath,
+                                                         Message& msg)
+{
+    bzBus.UnregisterSignalHandler(this,
+                                  SignalHandler(&BTTransport::BTAccessor::DevicePropertyChangedSignalHandler),
+                                  org.bluez.Device.PropertyChanged, msg->GetArg(0)->v_objPath.str);
+}
+
+
+void BTTransport::BTAccessor::DevicePropertyChangedSignalHandler(const InterfaceDescription::Member* member,
+                                                                 const char* sourcePath,
+                                                                 Message& msg)
+{
+    set<StringMapKey>::iterator it = createdDevices.find(sourcePath);
+    if (it != createdDevices.end()) {
+        const char* property;
+        const MsgArg* value;
+
+        msg->GetArgs("sv", &property, &value);
+
+#ifndef NDEBUG
+        if ((value->typeId != ALLJOYN_ARRAY) && (value->typeId < 256)) {
+            QCC_DbgPrintf(("Device Property Changed: property: %s   value: %s",
+                           property, value->ToString().c_str()));
+        }
+#endif
+
+        if (strcmp(property, "Connected") == 0) {
+            bool connected;
+            value->Get("b", &connected);
+            if (!connected) {
+                MsgArg arg("o", sourcePath);
+                AdapterObject adapter = GetDefaultAdapterObject();
+                if (adapter->IsValid()) {
+                    adapter->MethodCall(*org.bluez.Adapter.RemoveDevice, &arg, 1);
+                }
+
+                createdDevices.erase(it);
+            }
         }
     }
 }
@@ -1666,6 +1738,16 @@ QStatus BTTransport::BTAccessor::GetDeviceObjPath(const BDAddress& bdAddr,
     vector<AdapterObject> adapterList;
     AdapterObject adapter;
 
+    /*
+     * Getting the object path for a device is inherently racy.  The
+     * FindDevice method call will return an error if the device has not been
+     * created and the CreateDevice method call will return an error if the
+     * device already exists.  The problem is that anyone with access to the
+     * BlueZ d-bus service can create and remove devices from the list.  In
+     * theory another process could add or remove a device between the time we
+     * call CreateDevice and FindDevice.
+     */
+
     // Get a copy of all the adapter objects to check.
     adapterList.reserve(adapterMap.size());
     adapterLock.Lock();
@@ -1694,13 +1776,15 @@ QStatus BTTransport::BTAccessor::GetDeviceObjPath(const BDAddress& bdAddr,
         adapter = GetDefaultAdapterObject();
         if (adapter->IsValid()) {
             status = adapter->MethodCall(*org.bluez.Adapter.CreateDevice, &arg, 1, rsp, BT_CREATE_DEV_TO);
+            if (status == ER_OK) {
+                createdDevices.insert(String(rsp->GetArg(0)->v_objPath.str));
 #ifndef NDEBUG
-            if (status != ER_OK) {
+            } else {
                 qcc::String errMsg;
                 const char* errName = rsp->GetErrorName(&errMsg);
                 QCC_DbgPrintf(("GetDeviceObjPath(): CreateDevice method call: %s - %s", errName, errMsg.c_str()));
-            }
 #endif
+            }
         }
     }
 
