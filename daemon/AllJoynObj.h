@@ -335,6 +335,8 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      */
     void BusConnectionLost(const qcc::String& busAddr);
 
+    DaemonRouter& GetDaemonRouter() { return router; }
+
   private:
     Bus& bus;                             /**< The bus */
     DaemonRouter& router;                 /**< The router */
