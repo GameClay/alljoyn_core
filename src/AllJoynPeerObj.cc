@@ -54,10 +54,6 @@ namespace ajn {
 
 static const uint32_t PEER_AUTH_VERSION = 0x00010000;
 
-/*
- * Mutex to serialize all authentications.
- */
-qcc::Mutex AllJoynPeerObj::clientLock;
 
 AllJoynPeerObj::AllJoynPeerObj(BusAttachment& bus) : BusObject(bus, org::alljoyn::Bus::Peer::ObjectPath, false), requestThread(*this)
 {
@@ -502,11 +498,11 @@ void AllJoynPeerObj::ForceAuthentication(const qcc::String& busName)
 {
     PeerStateTable* peerStateTable = bus.GetInternal().GetPeerStateTable();
     if (peerStateTable->IsKnownPeer(busName)) {
-        clientLock.Lock();
+        lock.Lock();
         PeerState peerState = peerStateTable->GetPeerState(busName);
         peerState->ClearKeys();
         bus.ClearKeys(peerState->GetGuid().ToString());
-        clientLock.Unlock();
+        lock.Lock();
     }
 }
 
@@ -586,10 +582,6 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
     QCC_DbgHLPrintf(("ExchangeGuids Local %s", localGuidStr.c_str()));
     QCC_DbgHLPrintf(("ExchangeGuids Remote %s", remoteGuidStr.c_str()));
     /*
-     * Serialize authentication conversations
-     */
-    clientLock.Lock();
-    /*
      * Now we have the unique bus name in the reply try again to find out if we have a session key
      * for this peer. Do this after we have obtained the lock in case another thread has done an
      * authentication since we last checked for the session key above.
@@ -600,7 +592,6 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
      * We can now return if the peer is secured.
      */
     if (peerState->IsSecure()) {
-        clientLock.Unlock();
         return ER_OK;
     }
     /*
@@ -622,7 +613,6 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
         peerState->SetKey(key, PEER_SESSION_KEY);
         /* Record in the peer state that this peer is the local peer */
         peerState->isLocalPeer = true;
-        clientLock.Unlock();
         return ER_OK;
     }
 
@@ -743,10 +733,6 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
      * Report the authentication completion to allow application to clear UI etc.
      */
     peerAuthListener.AuthenticationComplete(mech.c_str(), sender.c_str(), status == ER_OK);
-    /*
-     * All done, release the lock
-     */
-    clientLock.Unlock();
     /*
      * ER_BUS_REPLY_IS_ERROR_MESSAGE has a specific meaning in the public API an should not be
      * propogated to the caller from this context.
