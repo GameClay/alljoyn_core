@@ -409,6 +409,16 @@ QStatus alljoyn_interfacedescription_addmethod(alljoyn_interfacedescription ifac
  */
 void alljoyn_interfacedescription_activate(alljoyn_interfacedescription iface);
 
+typedef struct {
+    alljoyn_interfacedescription_const iface;   /**< Interface that this member belongs to */
+    alljoyn_messagetype memberType;             /**< %Member type */
+    const char* name;                           /**< %Member name */
+    const char* signature;                      /**< Method call IN arguments (NULL for signals) */
+    const char* returnSignature;                /**< Signal or method call OUT arguments */
+    const char* argNames;                       /**< Comma separated list of argument names - can be NULL */
+    uint8_t annotation;                         /**< Exclusive OR of flags MEMBER_ANNOTATE_NO_REPLY and MEMBER_ANNOTATE_DEPRECATED */
+} alljoyn_interfacedescription_member;
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

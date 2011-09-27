@@ -27,6 +27,7 @@
  *    limitations under the License.
  ******************************************************************************/
 
+#ifdef __cplusplus
 namespace ajn {
 
 /**
@@ -71,5 +72,40 @@ class MessageReceiver {
 };
 
 }
+
+extern "C" {
+#endif /* #ifdef __cplusplus */
+
+/**
+ * MethodHandlers are %MessageReceiver methods which are called by AllJoyn library
+ * to forward AllJoyn method_calls to AllJoyn library users.
+ *
+ * @param member    Method interface member entry.
+ * @param message   The received method call message.
+ */
+typedef void (*alljoyn_messagehandler_ptr)(const alljoyn_interfacedescription_member* member, alljoyn_message message);
+
+/**
+ * ReplyHandlers are %MessageReceiver methods which are called by AllJoyn library
+ * to forward AllJoyn method_reply and error responses to AllJoyn library users.
+ *
+ * @param message   The received message.
+ * @param context   User-defined context passed to MethodCall and returned upon reply.
+ */
+typedef void (*alljoyn_replyhandler_ptr)(alljoyn_message message, void* context);
+
+/**
+ * SignalHandlers are %MessageReceiver methods which are called by AllJoyn library
+ * to forward AllJoyn received signals to AllJoyn library users.
+ *
+ * @param member    Method or signal interface member entry.
+ * @param srcPath   Object path of signal emitter.
+ * @param message   The received message.
+ */
+typedef void (*alljoyn_signalhandler_ptr)(const alljoyn_interfacedescription_member* member, const char* srcPath, alljoyn_message message);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif

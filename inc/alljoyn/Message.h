@@ -813,6 +813,15 @@ class _Message {
 extern "C" {
 #endif /* #ifdef __cplusplus */
 
+/** Message types */
+typedef enum {
+    ALLJOYN_MESSAGE_INVALID     = 0, ///< an invalid message type
+    ALLJOYN_MESSAGE_METHOD_CALL = 1, ///< a method call message type
+    ALLJOYN_MESSAGE_METHOD_RET  = 2, ///< a method return message type
+    ALLJOYN_MESSAGE_ERROR       = 3, ///< an error message type
+    ALLJOYN_MESSAGE_SIGNAL      = 4  ///< a signal message type
+} alljoyn_messagetype;
+
 /**
  * Create a message object.
  *

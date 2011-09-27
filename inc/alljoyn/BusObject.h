@@ -28,12 +28,12 @@
 #include <alljoyn/InterfaceDescription.h>
 #include <alljoyn/MsgArg.h>
 #include <alljoyn/Session.h>
+#include <alljoyn/MessageReceiver.h>
 #include <Status.h>
 
 #ifdef __cplusplus
 
 #include <qcc/String.h>
-#include <alljoyn/MessageReceiver.h>
 
 namespace ajn {
 
@@ -430,6 +430,15 @@ typedef struct {
     alljoyn_busobject_object_registration_ptr object_registered;
     alljoyn_busobject_object_registration_ptr object_unregistered;
 } alljoyn_busobject_callbacks;
+
+/**
+ * Type used to add mulitple methods at one time.
+ * @see AddMethodHandlers()
+ */
+typedef struct {
+    const alljoyn_interfacedescription_member* member;  /**< Pointer to method's member */
+    alljoyn_messagehandler_ptr handler;                 /**< Method implementation */
+} alljoyn_busobject_methodentry;
 
 /**
  * Create a %BusObject.
