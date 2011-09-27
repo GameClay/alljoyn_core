@@ -1023,6 +1023,27 @@ QStatus alljoyn_busattachment_findadvertisedname(alljoyn_busattachment bus, cons
  */
 alljoyn_interfacedescription_const alljoyn_busattachment_getinterface(alljoyn_busattachment bus, const char* name);
 
+/**
+ * Join a session.
+ * This method is a shortcut/helper that issues an org.alljoyn.Bus.JoinSession method call to the local daemon
+ * and interprets the response.
+ *
+ * @param[in]  bus              BusAttachment with which to join a session.
+ * @param[in]  sessionHost      Bus name of attachment that is hosting the session to be joined.
+ * @param[in]  sessionPort      SessionPort of sessionHost to be joined.
+ * @param[in]  listener         Optional listener called when session related events occur. May be NULL.
+ * @param[out] sessionId        Unique identifier for session.
+ * @param[in,out] opts          Session options.
+ *
+ * @return
+ *      - #ER_OK iff daemon response was received and the session was successfully joined.
+ *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+ *      - Other error status codes indicating a failure.
+ */
+QStatus alljoyn_busattachment_joinsession(alljoyn_busattachment bus, const char* sessionHost,
+                                          alljoyn_sessionport sessionPort, alljoyn_buslistener listener,
+                                          alljoyn_sessionid* sessionId, alljoyn_sessionopts* opts);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

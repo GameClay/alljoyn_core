@@ -111,3 +111,15 @@ void SetSessionOpts(const SessionOpts& opts, MsgArg& msgArg)
 
 }
 
+alljoyn_sessionopts alljoyn_sessionopts_create(uint8_t traffic, QC_BOOL isMultipoint,
+                                               uint8_t proximity, alljoyn_transportmask transports)
+{
+    return new ajn::SessionOpts((ajn::SessionOpts::TrafficType)traffic, isMultipoint == QC_TRUE ? true : false,
+                                (ajn::SessionOpts::Proximity)proximity, (ajn::TransportMask)transports);
+}
+
+void alljoyn_sessionopts_destroy(alljoyn_sessionopts* opts)
+{
+    delete ((ajn::SessionOpts*)*opts);
+    *opts = NULL;
+}

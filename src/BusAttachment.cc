@@ -1894,3 +1894,12 @@ alljoyn_interfacedescription_const alljoyn_busattachment_getinterface(alljoyn_bu
 {
     return ((ajn::BusAttachment*)bus)->GetInterface(name);
 }
+
+QStatus alljoyn_busattachment_joinsession(alljoyn_busattachment bus, const char* sessionHost,
+                                          alljoyn_sessionport sessionPort, alljoyn_buslistener listener,
+                                          alljoyn_sessionid* sessionId, alljoyn_sessionopts* opts)
+{
+    return ((ajn::BusAttachment*)bus)->JoinSession(sessionHost, (ajn::SessionPort)sessionPort,
+                                                   (ajn::SessionListener*)listener, *((ajn::SessionId*)sessionId),
+                                                   *((ajn::SessionOpts*)opts));
+}

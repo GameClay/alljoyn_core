@@ -27,8 +27,6 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-//#include <qcc/String.h>
 #include <string.h>
 
 #include <alljoyn/BusAttachment.h>
@@ -48,11 +46,14 @@ static const alljoyn_sessionport SERVICE_PORT = 25;
 static QC_BOOL s_joinComplete = QC_FALSE;
 static alljoyn_sessionid s_sessionId = 0;
 
+/* Static BusListener */
+static alljoyn_buslistener g_busListener;
+
 /** Signal handler */
 static void SigIntHandler(int sig)
 {
     if (NULL != g_msgBus) {
-        QStatus status = ER_OK; //g_msgBus->Stop(false);
+        QStatus status = alljoyn_busattachment_stop(g_msgBus, QC_FALSE);
         if (ER_OK != status) {
             printf("BusAttachment::Stop() failed\n");
         }
@@ -63,18 +64,19 @@ static void SigIntHandler(int sig)
 /* FoundAdvertisedName callback */
 void found_advertised_name(const void* context, const char* name, alljoyn_transportmask transport, const char* namePrefix)
 {
+    alljoyn_sessionopts opts = NULL;
     printf("FoundAdvertisedName(name=%s, prefix=%s)\n", name, namePrefix);
     if (0 == strcmp(name, SERVICE_NAME)) {
-        /* We found a remote bus that is advertising basic sercice's  well-known name so connect to it */
-#if 0
-        SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
-        QStatus status = g_msgBus->JoinSession(name, SERVICE_PORT, this, s_sessionId, opts);
+        /* We found a remote bus that is advertising basic service's  well-known name so connect to it */
+        opts = alljoyn_sessionopts_create(ALLJOYN_TRAFFIC_TYPE_MESSAGES, QC_FALSE, ALLJOYN_PROXIMITY_ANY, ALLJOYN_TRANSPORT_ANY);
+        QStatus status = alljoyn_busattachment_joinsession(g_msgBus, name, SERVICE_PORT, g_busListener, &s_sessionId, opts);
+
         if (ER_OK != status) {
             printf("JoinSession failed (status=%s)\n", QCC_StatusText(status));
         } else {
             printf("JoinSession SUCCESS (Session id=%d)\n", s_sessionId);
         }
-#endif
+        alljoyn_sessionopts_destroy(&opts);
     }
     s_joinComplete = QC_TRUE;
 }
@@ -156,11 +158,11 @@ int main(int argc, char** argv, char** envArg)
         NULL,
         NULL
     };
-    alljoyn_buslistener busListener = alljoyn_buslistener_create(&callbacks, NULL);
+    g_busListener = alljoyn_buslistener_create(&callbacks, NULL);
 
     /* Register a bus listener in order to get discovery indications */
     if (ER_OK == status) {
-        alljoyn_busattachment_registerbuslistener(g_msgBus, busListener);
+        alljoyn_busattachment_registerbuslistener(g_msgBus, g_busListener);
         printf("BusListener Registered.\n");
     }
 
@@ -224,7 +226,7 @@ int main(int argc, char** argv, char** envArg)
     }
 
     /* Deallocate bus listener */
-    alljoyn_buslistener_destroy(&busListener);
+    alljoyn_buslistener_destroy(&g_busListener);
 
     printf("basic client exiting with status %d (%s)\n", status, QCC_StatusText(status));
 

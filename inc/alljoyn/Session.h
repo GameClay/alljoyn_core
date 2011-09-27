@@ -23,6 +23,7 @@
 
 #include <qcc/platform.h>
 #include <alljoyn/TransportMask.h>
+#include <alljoyn/AllJoynCTypes.h>
 
 #ifdef __cplusplus
 
@@ -152,6 +153,7 @@ class SessionOpts {
 
 }
 
+extern "C" {
 #endif /* #ifdef __cplusplus */
 
 typedef uint16_t alljoyn_sessionport;
@@ -161,5 +163,35 @@ const alljoyn_sessionport ALLJOYN_SESSION_PORT_ANY = 0;
 
 /** SessionId uniquely identifies an AllJoyn session instance */
 typedef uint32_t alljoyn_sessionid;
+
+#define ALLJOYN_TRAFFIC_TYPE_MESSAGES        0x01   /**< Session carries message traffic */
+#define ALLJOYN_TRAFFIC_TYPE_RAW_UNRELIABLE  0x02   /**< Session carries an unreliable (lossy) byte stream */
+#define ALLJOYN_TRAFFIC_TYPE_RAW_RELIABLE    0x04   /**< Session carries a reliable byte stream */
+
+#define ALLJOYN_PROXIMITY_ANY       0xFF
+#define ALLJOYN_PROXIMITY_PHYSICAL  0x01
+#define ALLJOYN_PROXIMITY_NETWORK   0x02
+
+/**
+ * Construct a SessionOpts with specific parameters.
+ *
+ * @param traffic       Type of traffic.
+ * @param isMultipoint  true iff session supports multipoint (greater than two endpoints).
+ * @param proximity     Proximity constraint bitmask.
+ * @param transports    Allowed transport types bitmask.
+ *
+ */
+alljoyn_sessionopts alljoyn_sessionopts_create(uint8_t traffic, QC_BOOL isMultipoint, uint8_t proximity, alljoyn_transportmask transports);
+
+/**
+ * Destroy a SessionOpts created with alljoyn_sessionopts_create.
+ *
+ * @param opts SessionOpts to destroy
+ */
+void alljoyn_sessionopts_destroy(alljoyn_sessionopts* opts);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif
