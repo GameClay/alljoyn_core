@@ -322,6 +322,11 @@ void AllJoynPeerObj::ExchangeGuids(const InterfaceDescription::Member* member, M
 #define VERIFIER_LEN  12
 #define NONCE_LEN     28
 
+/*
+ * Limit session key lifetime to 2 days.
+ */
+#define SESSION_KEY_EXPIRATION (60 * 60 * 24 * 2)
+
 QStatus AllJoynPeerObj::KeyGen(PeerState& peerState, String seed, qcc::String& verifier, KeyBlob::Role role)
 {
     QStatus status;
@@ -330,6 +335,9 @@ QStatus AllJoynPeerObj::KeyGen(PeerState& peerState, String seed, qcc::String& v
     KeyBlob masterSecret;
 
     status = keyStore.GetKey(peerState->GetGuid(), masterSecret);
+    if ((status == ER_OK) && masterSecret.HasExpired()) {
+        status = ER_BUS_KEY_EXPIRED;
+    }
     if (status == ER_OK) {
         size_t keylen = Crypto_AES::AES128_SIZE + VERIFIER_LEN;
         uint8_t* keymatter = new uint8_t[keylen];
@@ -342,6 +350,7 @@ QStatus AllJoynPeerObj::KeyGen(PeerState& peerState, String seed, qcc::String& v
          * Tag the session key with auth mechanism tag from the master secret
          */
         sessionKey.SetTag(masterSecret.GetTag(), role);
+        sessionKey.SetExpiration(SESSION_KEY_EXPIRATION);
         /*
          * Store session key in the peer state.
          */

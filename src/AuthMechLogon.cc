@@ -54,6 +54,10 @@ QStatus AuthMechLogon::Init(AuthRole authRole, const qcc::String& authPeer)
     AuthMechanism::Init(authRole, authPeer);
     step = 0;
     /*
+     * Default for AuthMechLogon is to immediately expire the master key
+     */
+    expiration = 0;
+    /*
      * msgHash keeps a running hash of all challenges and responses sent and received.
      */
     msgHash.Init();
@@ -77,11 +81,7 @@ void AuthMechLogon::ComputeMS()
      */
     Crypto_PseudorandomFunction(pms, label, clientRandom + serverRandom, keymatter, sizeof(keymatter));
     masterSecret.Set(keymatter, sizeof(keymatter), KeyBlob::GENERIC);
-    /*
-     * This authentication mechanism doesn't persist keys.
-     */
-    Timespec expires(0, TIME_RELATIVE);
-    masterSecret.SetExpiration(expires);
+    masterSecret.SetExpiration(expiration);
 }
 
 /*
@@ -114,6 +114,9 @@ qcc::String AuthMechLogon::InitialResponse(AuthResult& result)
      * Initial response provides the id of the user to authenticate.
      */
     if (listener.RequestCredentials(GetName(), authPeer.c_str(), authCount, "", AuthListener::CRED_PASSWORD | AuthListener::CRED_USER_NAME, creds)) {
+        if (creds.IsSet(AuthListener::CRED_EXPIRATION)) {
+            expiration = creds.GetExpiration();
+        }
         if (creds.IsSet(AuthListener::CRED_USER_NAME) && !creds.GetUserName().empty()) {
             /*
              * Client starts the conversation by sending a random string and user id.

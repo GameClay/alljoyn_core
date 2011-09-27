@@ -47,7 +47,7 @@ class AuthListener {
 
     /**
      * @name Credential indication Bitmasks
-     *  Bitmasks used to indicated what type of credentials are beeing used.
+     *  Bitmasks used to indicated what type of credentials are being used.
      */
     // @{
     static const uint16_t CRED_PASSWORD     = 0x0001; /**< Bit 0 indicates credentials include a password, pincode, or passphrase */
@@ -55,6 +55,7 @@ class AuthListener {
     static const uint16_t CRED_CERT_CHAIN   = 0x0004; /**< Bit 2 indicates credentials include a chain of PEM-encoded X509 certificates */
     static const uint16_t CRED_PRIVATE_KEY  = 0x0008; /**< Bit 3 indicates credentials include a PEM-encoded private key */
     static const uint16_t CRED_LOGON_ENTRY  = 0x0010; /**< Bit 4 indicates credentials include a logon entry that can be used to logon a remote user */
+    static const uint16_t CRED_EXPIRATION   = 0x0020; /**< Bit 5 indicates credentials include an expiration time */
     // @}
     /**
      * @name Credential request values
@@ -120,6 +121,16 @@ class AuthListener {
         void SetLogonEntry(const qcc::String& logonEntry) { this->logonEntry = logonEntry; mask |= CRED_LOGON_ENTRY; }
 
         /**
+         * Sets an expiration time in seconds relative to the current time for the credentials. This value is optional and
+         * can be set on any response to a credentials request. After the specified expiration time has elapsed any secret
+         * keys based on the provided credentials are invalidated and a new authentication exchange will be required. If an
+         * expiration is not set the default expiration time for the requested authentication mechanism is used.
+         *
+         * @param expiration  The expiration time in seconds.
+         */
+        void SetExpiration(uint32_t expiration) { this->expiration = expiration; mask |= CRED_EXPIRATION; }
+
+        /**
          * Gets the password, pincode, or passphrase from this credentials instance.
          *
          * @return A password or an empty string.
@@ -155,6 +166,13 @@ class AuthListener {
         const qcc::String& GetLogonEntry() const { return logonEntry; }
 
         /**
+         * Get the expiration time in seconds if it is set.
+         *
+         * @return The expiration or the max 32 bit unsigned value if it was not set.
+         */
+        uint32_t GetExpiration() { return (mask & CRED_EXPIRATION) ? expiration : 0xFFFFFFFF; }
+
+        /**
          * Clear the credentials.
          */
         void Clear() {
@@ -169,6 +187,7 @@ class AuthListener {
       private:
 
         uint16_t mask;
+        uint32_t expiration;
 
         qcc::String pwd;
         qcc::String userName;

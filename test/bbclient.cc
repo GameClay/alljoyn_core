@@ -72,6 +72,7 @@ static uint32_t findStartTime = 0;
 static uint32_t findEndTime = 0;
 static uint32_t joinStartTime = 0;
 static uint32_t joinEndTime = 0;
+static uint32_t keyExpiration = 0xFFFFFFFF;
 
 /** AllJoynListener receives discovery events from AllJoyn */
 class MyBusListener : public BusListener, public SessionListener {
@@ -163,6 +164,7 @@ static void usage(void)
     printf("   -i                    = Use introspection to discover remote interfaces\n");
     printf("   -e[k] [RSA|SRP]       = Encrypt the test interface using specified auth mechanism, -ek means clear keys\n");
     printf("   -a #                  = Max authentication attempts\n");
+    printf("   -kx #                 = Authentication key expiration (seconds)\n");
     printf("   -r #                  = AllJoyn attachment restart count\n");
     printf("   -l                    = launch bbservice if not already running\n");
     printf("   -la                   = launch bbservice if not already running using auto-launch\n");
@@ -232,6 +234,10 @@ class MyAuthListener : public AuthListener {
         qcc::String guid;
         g_msgBus->GetPeerGUID(authPeer, guid);
         printf("Peer guid %s\n", guid.c_str());
+
+        if (keyExpiration != 0xFFFFFFFF) {
+            creds.SetExpiration(keyExpiration);
+        }
 
         if (strcmp(authMechanism, "ALLJOYN_SRP_KEYX") == 0) {
             if (credMask & AuthListener::CRED_PASSWORD) {
@@ -407,6 +413,15 @@ int main(int argc, char** argv)
                 exit(1);
             } else {
                 keyStore = argv[i];
+            }
+        } else if (0 == strcmp("-kx", argv[i])) {
+            ++i;
+            if (i == argc) {
+                printf("option %s requires a parameter\n", argv[i - 1]);
+                usage();
+                exit(1);
+            } else {
+                keyExpiration = strtoul(argv[i], NULL, 10);
             }
         } else if (0 == strcmp("-a", argv[i])) {
             ++i;
