@@ -190,6 +190,42 @@ alljoyn_sessionopts alljoyn_sessionopts_create(uint8_t traffic, QC_BOOL isMultip
  */
 void alljoyn_sessionopts_destroy(alljoyn_sessionopts* opts);
 
+/**
+ * Accessor for the traffic member of SessionOpts.
+ *
+ * @param opts SessionOpts
+ *
+ * @return Traffic type specified by the specified SessionOpts.
+ */
+uint8_t alljoyn_sessionopts_traffic(alljoyn_sessionopts_const opts);
+
+/**
+ * Accessor for the isMultipoint member of SessionOpts.
+ *
+ * @param opts SessionOpts
+ *
+ * @return Multipoint value specified by the specified SessionOpts.
+ */
+QC_BOOL alljoyn_sessionopts_multipoint(alljoyn_sessionopts_const opts);
+
+/**
+ * Accessor for the proximity member of SessionOpts.
+ *
+ * @param opts SessionOpts
+ *
+ * @return Proximity specified by the specified SessionOpts.
+ */
+uint8_t alljoyn_sessionopts_proximity(alljoyn_sessionopts_const opts);
+
+/**
+ * Accessor for the transports member of SessionOpts.
+ *
+ * @param opts SessionOpts
+ *
+ * @return Transports allowed by the specified SessionOpts.
+ */
+alljoyn_transportmask alljoyn_sessionopts_transports(alljoyn_sessionopts_const opts);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

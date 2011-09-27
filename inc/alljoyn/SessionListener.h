@@ -22,12 +22,9 @@
 #ifndef _ALLJOYN_SESSIONLISTENER_H
 #define _ALLJOYN_SESSIONLISTENER_H
 
-#ifndef __cplusplus
-#error Only include SessionListener.h in C++ code.
-#endif
-
 #include <alljoyn/Session.h>
 
+#ifdef __cplusplus
 namespace ajn {
 
 /**
@@ -66,5 +63,38 @@ class SessionListener {
 };
 
 }
+
+extern "C" {
+#endif /* #ifdef __cplusplus */
+
+/*
+ * Type for the SesionLost callback.
+ */
+typedef void (*alljoyn_sessionlistener_sessionlost_ptr)(const void* context, alljoyn_sessionid sessionId);
+
+typedef struct {
+    alljoyn_sessionlistener_sessionlost_ptr session_lost;
+} alljoyn_sessionlistener_callbacks;
+
+/**
+ * Create a SessionListener which will trigger the provided callbacks, passing along the provided context.
+ *
+ * @param callbacks Callbacks to trigger for associated events.
+ * @param context   Context to pass to callback functions
+ *
+ * @return Handle to newly allocated SessionListener.
+ */
+alljoyn_sessionlistener alljoyn_sessionlistener_create(const alljoyn_sessionlistener_callbacks* callbacks, const void* context);
+
+/**
+ * Destroy a SessionListener.
+ *
+ * @param listener SessionListener to destroy.
+ */
+void alljoyn_sessionlistener_destroy(alljoyn_sessionlistener* listener);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif

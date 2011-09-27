@@ -1621,20 +1621,6 @@ QStatus alljoyn_msgargs_set(alljoyn_msgargs args, size_t argOffset, size_t* numA
     return status;
 }
 
-/*
-int16_t v_int16;
-uint16_t v_uint16;
-uint32_t v_uint32;
-int32_t v_int32;
-int64_t v_int64;
-uint64_t v_uint64;
-double v_double;
-
-uint8_t v_byte;
-bool v_bool;
-AllJoynString v_string;
-*/
-
 #define _IMPLEMENT_MSGARG_TYPE_ACCESSOR(rt, nt, mt) \
     rt alljoyn_msgargs_as_ ## nt(alljoyn_msgargs_const args, size_t idx) \
     { \
@@ -1649,8 +1635,9 @@ _IMPLEMENT_MSGARG_TYPE_ACCESSOR_S(uint32);
 _IMPLEMENT_MSGARG_TYPE_ACCESSOR_S(int64);
 _IMPLEMENT_MSGARG_TYPE_ACCESSOR_S(uint64);
 
-_IMPLEMENT_MSGARG_TYPE_ACCESSOR(double, double, v_double);
+_IMPLEMENT_MSGARG_TYPE_ACCESSOR(uint8_t, uint8_t, v_byte);
 _IMPLEMENT_MSGARG_TYPE_ACCESSOR(QC_BOOL, bool, v_bool);
+_IMPLEMENT_MSGARG_TYPE_ACCESSOR(double, double, v_double);
 
 #undef _IMPLEMENT_MSGARG_TYPE_ACCESSOR
 #undef _IMPLEMENT_MSGARG_TYPE_ACCESSOR_S

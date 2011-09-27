@@ -22,13 +22,10 @@
 #ifndef _ALLJOYN_SESSIONPORTLISTENER_H
 #define _ALLJOYN_SESSIONPORTLISTENER_H
 
-#ifndef __cplusplus
-#error Only include SessionPortListener.h in C++ code.
-#endif
-
 #include <alljoyn/Session.h>
 #include <alljoyn/SessionListener.h>
 
+#ifdef __cplusplus
 namespace ajn {
 
 /**
@@ -70,5 +67,46 @@ class SessionPortListener {
 };
 
 }
+
+extern "C" {
+#endif /* #ifdef __cplusplus */
+
+/*
+ * Type for the AcceptSessionJoiner callback.
+ */
+typedef QC_BOOL (*alljoyn_sessionportlistener_acceptsessionjoiner_ptr)(const void* context, alljoyn_sessionport sessionPort,
+                                                                       const char* joiner,  alljoyn_sessionopts_const opts);
+
+/*
+ * Type for the SessionJoined callback.
+ */
+typedef void (*alljoyn_sessionportlistener_sessionjoined_ptr)(const void* context, alljoyn_sessionport sessionPort,
+                                                              alljoyn_sessionid id, const char* joiner);
+
+typedef struct {
+    alljoyn_sessionportlistener_acceptsessionjoiner_ptr accept_session_joiner;
+    alljoyn_sessionportlistener_sessionjoined_ptr session_joined;
+} alljoyn_sessionportlistener_callbacks;
+
+/**
+ * Create a SessionPortListener which will trigger the provided callbacks, passing along the provided context.
+ *
+ * @param callbacks Callbacks to trigger for associated events.
+ * @param context   Context to pass to callback functions
+ *
+ * @return Handle to newly allocated SessionPortListener.
+ */
+alljoyn_sessionportlistener alljoyn_sessionportlistener_create(const alljoyn_sessionportlistener_callbacks* callbacks, const void* context);
+
+/**
+ * Destroy a SessionPortListener.
+ *
+ * @param listener SessionPortListener to destroy.
+ */
+void alljoyn_sessionportlistener_destroy(alljoyn_sessionportlistener* listener);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif

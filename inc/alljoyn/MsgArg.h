@@ -698,16 +698,16 @@ void alljoyn_msgargs_destroy(alljoyn_msgargs* arg);
 QStatus alljoyn_msgargs_set(alljoyn_msgargs args, size_t argOffset, size_t* numArgs, const char* signature, ...);
 
 /*
-AllJoynString v_objPath;
-AllJoynSignature v_signature;
-AllJoynHandle v_handle;
-AllJoynArray v_array;
-AllJoynStruct v_struct;
-AllJoynDictEntry v_dictEntry;
-AllJoynVariant v_variant;
-AllJoynScalarArray v_scalarArray;
-AllJoynInvalid v_invalid;
-*/
+    AllJoynString v_objPath;
+    AllJoynSignature v_signature;
+    AllJoynHandle v_handle;
+    AllJoynArray v_array;
+    AllJoynStruct v_struct;
+    AllJoynDictEntry v_dictEntry;
+    AllJoynVariant v_variant;
+    AllJoynScalarArray v_scalarArray;
+    AllJoynInvalid v_invalid;
+ */
 
 uint8_t alljoyn_msgargs_as_uint8(alljoyn_msgargs_const args, size_t idx);
 QC_BOOL alljoyn_msgargs_as_bool(alljoyn_msgargs_const args, size_t idx);

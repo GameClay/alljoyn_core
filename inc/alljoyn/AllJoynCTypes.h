@@ -32,5 +32,8 @@ typedef struct _alljoyn_message_handle* alljoyn_message;
 typedef void* alljoyn_msgargs;
 typedef const void* alljoyn_msgargs_const;
 typedef void* alljoyn_sessionopts;
+typedef const void* alljoyn_sessionopts_const;
+typedef void* alljoyn_sessionlistener;
+typedef void* alljoyn_sessionportlistener;
 
 #endif

@@ -123,3 +123,23 @@ void alljoyn_sessionopts_destroy(alljoyn_sessionopts* opts)
     delete ((ajn::SessionOpts*)*opts);
     *opts = NULL;
 }
+
+uint8_t alljoyn_sessionopts_traffic(alljoyn_sessionopts_const opts)
+{
+    return ((const ajn::SessionOpts*)opts)->traffic;
+}
+
+QC_BOOL alljoyn_sessionopts_multipoint(alljoyn_sessionopts_const opts)
+{
+    return (((const ajn::SessionOpts*)opts)->isMultipoint ? QC_TRUE : QC_FALSE);
+}
+
+uint8_t alljoyn_sessionopts_proximity(alljoyn_sessionopts_const opts)
+{
+    return ((const ajn::SessionOpts*)opts)->proximity;
+}
+
+alljoyn_transportmask alljoyn_sessionopts_transports(alljoyn_sessionopts_const opts)
+{
+    return ((const ajn::SessionOpts*)opts)->transports;
+}

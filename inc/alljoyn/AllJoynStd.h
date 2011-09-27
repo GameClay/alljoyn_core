@@ -34,6 +34,7 @@
 /** Daemon-to-daemon protocol version number */
 #define ALLJOYN_PROTOCOL_VERSION  3
 
+#ifdef __cplusplus
 namespace ajn {
 
 
@@ -80,6 +81,8 @@ extern const char* InterfaceName;                 /**< Interface name */
 QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljoyn.* interfaces and sub-interfaces */
 }
 }
+}
+#endif /* #ifdef __cplusplus */
 
 /**
  * @anchor BindSessionPortReplyAnchor
@@ -315,7 +318,6 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
 // @{
 #define ALLJOYN_BTCONTROLLER_SESSION_PORT 0x0001  /**< Session port used by BT topology manager (daemon-to-daemon use only) */
 // @}
-}
 
 #undef QCC_MODULE
 

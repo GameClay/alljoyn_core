@@ -31,7 +31,7 @@
 
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/version.h>
-//#include <alljoyn/AllJoynStd.h>
+#include <alljoyn/AllJoynStd.h>
 #include <Status.h>
 
 /** Static top level message bus object */

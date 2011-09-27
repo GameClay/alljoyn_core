@@ -19,6 +19,7 @@ clientDistDir = '$DISTDIR/samples/basic'
 # Sample Programs
 progs = [
     env.Program('basic_service',  ['basic_service.cc']),
+    env.Program('basic_c_service',  ['basic_c_service.c']),
     env.Program('basic_client',   ['basic_client.cc']),
     env.Program('basic_c_client',   ['basic_c_client.c']),
     env.Program('signal_service', ['signal_service.cc']),
