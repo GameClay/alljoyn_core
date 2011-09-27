@@ -25,12 +25,15 @@
  ******************************************************************************/
 
 #include <qcc/platform.h>
-#include <qcc/String.h>
 #include <alljoyn/InterfaceDescription.h>
 #include <alljoyn/MsgArg.h>
-#include <alljoyn/MessageReceiver.h>
 #include <alljoyn/Session.h>
 #include <Status.h>
+
+#ifdef __cplusplus
+
+#include <qcc/String.h>
+#include <alljoyn/MessageReceiver.h>
 
 namespace ajn {
 
@@ -402,5 +405,51 @@ class BusObject : public MessageReceiver {
 };
 
 }
+
+extern "C" {
+#endif /* #ifdef __cplusplus */
+
+/*
+ * Callback for property get method.
+ */
+typedef QStatus (*alljoyn_busobject_prop_get_ptr)(const void* context, const char* ifcName, const char* propName, alljoyn_msgargs val);
+
+/*
+ * Callback for property set method.
+ */
+typedef QStatus (*alljoyn_busobject_prop_set_ptr)(const void* context, const char* ifcName, const char* propName, alljoyn_msgargs val);
+
+/*
+ * Callback for ObjectRegistered and ObjectUnregistered
+ */
+typedef void (*alljoyn_busobject_object_registration_ptr)(const void* context);
+
+typedef struct {
+    alljoyn_busobject_prop_get_ptr property_get;
+    alljoyn_busobject_prop_set_ptr property_set;
+    alljoyn_busobject_object_registration_ptr object_registered;
+    alljoyn_busobject_object_registration_ptr object_unregistered;
+} alljoyn_busobject_callbacks;
+
+/**
+ * Create a %BusObject.
+ *
+ * @param bus            Bus that this object exists on.
+ * @param path           Object path for object.
+ * @param isPlaceholder  Place-holder objects are created by the bus itself and serve only
+ *                       as parent objects (in the object path sense) to other objects.
+ */
+alljoyn_busobject alljoyn_busobject_create(alljoyn_busattachment bus, const char* path, QC_BOOL isPlaceholder);
+
+/**
+ * Destroy a BusObject
+ *
+ * @param bus Bus to destroy.
+ */
+void alljoyn_busobject_destroy(alljoyn_busattachment bus);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif

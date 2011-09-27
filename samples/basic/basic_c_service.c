@@ -35,7 +35,7 @@
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/DBusStd.h>
 #include <alljoyn/AllJoynStd.h>
-//#include <alljoyn/BusObject.h>
+#include <alljoyn/BusObject.h>
 #include <alljoyn/MsgArg.h>
 #include <alljoyn/version.h>
 

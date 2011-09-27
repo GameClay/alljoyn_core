@@ -35,5 +35,6 @@ typedef void* alljoyn_sessionopts;
 typedef const void* alljoyn_sessionopts_const;
 typedef void* alljoyn_sessionlistener;
 typedef void* alljoyn_sessionportlistener;
+typedef void* alljoyn_busobject;
 
 #endif
