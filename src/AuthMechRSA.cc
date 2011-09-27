@@ -313,9 +313,6 @@ qcc::String AuthMechRSA::Response(const qcc::String& challenge,
             if (!listener.VerifyCredentials(GetName(), authPeer.c_str(), creds)) {
                 status = ER_AUTH_FAIL;
             }
-            if (creds.IsSet(AuthListener::CRED_EXPIRATION)) {
-                expiration = creds.GetExpiration();
-            }
         }
         if (status == ER_OK) {
             /*
@@ -428,9 +425,6 @@ qcc::String AuthMechRSA::Challenge(const qcc::String& response,
             creds.SetCertChain(remote.certChain.c_str());
             if (!listener.VerifyCredentials(GetName(), authPeer.c_str(), creds)) {
                 status = ER_AUTH_FAIL;
-            }
-            if (creds.IsSet(AuthListener::CRED_EXPIRATION)) {
-                expiration = creds.GetExpiration();
             }
         }
         if (status == ER_OK) {
