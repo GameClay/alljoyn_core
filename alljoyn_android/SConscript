@@ -26,4 +26,10 @@ if env['OS'] == 'android':
     env.Install(distDir, Dir('alljoyn/jni').srcnode())
     env.Install(distDir, Dir('alljoyn/src').srcnode())
     env.Install(distDir, Dir('alljoyn/res').srcnode())
- 
+
+    distDir = '$DISTDIR/alljoyn_android/bundle'
+    env.Install(distDir, env.Glob('bundle/AndroidManifest.xml'))
+    env.Install(distDir, env.Glob('bundle/.classpath'))
+    env.Install(distDir, env.Glob('bundle/.project'))
+    env.Install(distDir, env.Glob('bundle/default.properties'))
+    env.Install(distDir, Dir('bundle/src').srcnode())

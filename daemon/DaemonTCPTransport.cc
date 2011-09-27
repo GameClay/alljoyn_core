@@ -1327,17 +1327,16 @@ QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
      */
     status = Bind(listenFd, listenAddr, listenPort);
     if (status == ER_OK) {
+        /* On Android, bundled daemon will not set the TCP port in the listen spec so as to let the kernel to find an
+         * unused port for TCP transport, thus call GetLocalAddress() to get the actual TCP port used after Bind()
+         * and update the connect spec here.
+         */
         qcc::GetLocalAddress(listenFd, listenAddr, listenPort);
+        normSpec = "tcp:addr=" + argMap["addr"] + ",port=" + U32ToString(listenPort);
+
         status = qcc::Listen(listenFd, 0);
         if (status == ER_OK) {
             QCC_DbgPrintf(("DaemonTCPTransport::StartListen(): Listening on %s:%d", argMap["addr"].c_str(), listenPort));
-#if defined(QCC_OS_ANDROID)
-            /* On Android, bundled daemon will not set the TCP port in the listen spec so as to let the kernel to find an
-             * unused port for TCP transport, thus call GetLocalAddress() to get the actual TCP port used after Bind()
-             * and update the connect spec here.
-             */
-            normSpec = "tcp:addr=" + argMap["addr"] + ",port=" + U32ToString(listenPort);
-#endif
             m_listenFds.push_back(pair<qcc::String, SocketFd>(normSpec, listenFd));
         } else {
             QCC_LogError(status, ("DaemonTCPTransport::StartListen(): Listen failed"));
@@ -1345,16 +1344,6 @@ QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
     } else {
         QCC_LogError(status, ("DaemonTCPTransport::StartListen(): Failed to bind to %s:%d", listenAddr.ToString().c_str(),
                               listenPort));
-    }
-
-    m_listenFdsLock.Unlock();
-
-    /*
-     * Signal the (probably) waiting run thread so it will wake up and add this
-     * new socket to its list of sockets it is waiting for connections on.
-     */
-    if (status == ER_OK) {
-        Alert();
     }
 
     /*
@@ -1372,6 +1361,15 @@ QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
      */
     assert(m_ns);
     m_ns->SetEndpoints("", "", listenPort);
+    m_listenFdsLock.Unlock();
+
+    /*
+     * Signal the (probably) waiting run thread so it will wake up and add this
+     * new socket to its list of sockets it is waiting for connections on.
+     */
+    if (status == ER_OK) {
+        Alert();
+    }
 
     return status;
 }

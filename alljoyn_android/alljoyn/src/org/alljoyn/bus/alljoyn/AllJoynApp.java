@@ -91,12 +91,6 @@ public class AllJoynApp extends Application {
         Log.i(TAG, "updatePrefs(): system = " + mSystem);
         
         /*
-         * When calling into the daemon use the --internal flag if true
-         */
-        mInternal = sharedPreferences.getBoolean("internal", true);
-        Log.i(TAG, "updatePrefs(): internal = " + mInternal);
-
-        /*
          * If not --internal, use this configuration
          */
         mConfig = sharedPreferences.getString("config", 
@@ -175,7 +169,6 @@ public class AllJoynApp extends Application {
    
     private boolean mSession = false;
     private boolean mSystem = false;
-    private boolean mInternal = false;
     private String mConfig = null;
     private boolean mNoBT = true;
     private boolean mNoTCP = false;

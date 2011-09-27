@@ -221,15 +221,16 @@ QStatus BusAttachment::Start()
 
 #if defined(QCC_OS_ANDROID)
 static qcc::String bundleConnectSpec;
+static bool isBundleDaemonStarted = false;
 
-/* We only try to load alternate daemon on Android platform with steps:
+/* We only try to load alternate daemons on Android platform with steps:
  * 1) Try to connect to the preinstalled (BT capable daemon) whose connect path is unix:abstract=alljoyn
  * 2) If #1 fails, issue an Intent to start the daemon APK, wait for it to launch and then try to connect
  *    to this daemon. The connect path is unix:abstract=alljoyn-service.
  * 3) If #2 fails, look for a daemon that may have been bundled with the application itself and launch/connect to it if found.
  *    The connect path is unix:abstract=alljoyn-{UUID}
  */
-QStatus BusAttachment::TryAlternativeDaemon(const char* connectSpec, RemoteEndpoint** newep)
+QStatus BusAttachment::TryAlternativeDaemon(RemoteEndpoint** newep)
 {
     QCC_DbgTrace(("BusAttachment::TryAlternativeDaemon()"));
     QStatus status = ER_FAIL;
@@ -237,29 +238,23 @@ QStatus BusAttachment::TryAlternativeDaemon(const char* connectSpec, RemoteEndpo
     const uint32_t TRY_PERIOD_IN_MS = 100;
     const uint32_t MAX_CONNECT_TRIES = 3;
 
-    /* First try preinstalled daemon that has privilege to use Bluetooth */
-    status = TryConnect(connectSpec, newep);
-    this->connectSpec = connectSpec;
-    if (ER_OK == status) {
-        return status;
-    }
-
-    /* Next try Android apk daemon*/
+    /* Try Android apk daemon*/
     qcc::String apkConnSpec = "unix:abstract=alljoyn-service";
     QCC_DbgPrintf(("BusAttachment::TryAlternativeDaemon::try apkConnSpec = %s", apkConnSpec.c_str()));
 
     status = TryConnect(apkConnSpec.c_str(), newep);
     /* Maybe the APK daemon is installed but not started yet, so try issue an intent to start it*/
     if (ER_OK != status) {
-        system("am start -W -a org.alljoyn.bus.START_DAEMON");
-        uint32_t numOfTries = 0;
-        /* Try connect to the APK daemon again every 100ms*/
-        while (numOfTries < MAX_CONNECT_TRIES && status != ER_OK) {
-            QCC_DbgPrintf(("Wait %d ms before trying connect", TRY_PERIOD_IN_MS));
-            qcc::Event timerEvent(TRY_PERIOD_IN_MS, 0);
-            qcc::Event::Wait(timerEvent, TRY_PERIOD_IN_MS);
-            status = TryConnect(apkConnSpec.c_str(), newep);
-            numOfTries++;
+        if (system("am start -W -a org.alljoyn.bus.START_DAEMON") != -1) {
+            uint32_t numOfTries = 0;
+            /* Try connect to the APK daemon again every 100ms*/
+            while (numOfTries < MAX_CONNECT_TRIES && status != ER_OK) {
+                QCC_DbgPrintf(("Wait %d ms before trying connect", TRY_PERIOD_IN_MS));
+                qcc::Event timerEvent(TRY_PERIOD_IN_MS, 0);
+                qcc::Event::Wait(timerEvent, TRY_PERIOD_IN_MS);
+                status = TryConnect(apkConnSpec.c_str(), newep);
+                numOfTries++;
+            }
         }
     }
 
@@ -269,25 +264,21 @@ QStatus BusAttachment::TryAlternativeDaemon(const char* connectSpec, RemoteEndpo
     }
 
     /* Next try the daemon bundled with the application. When we issue an intent to start the BundleDaemonService,
-     * the connect spec is saved in the global variable bundleConnectSpec. If the bundleConnectSpec is not empty,
-     * then it means the daemon is already started. We should use the saved bundleConnectSpec to connect to the
+     * the connect spec is saved in the global variable bundleConnectSpec. We should use the saved bundleConnectSpec to connect to the
      * daemon if daemon is already running.
      */
 
-    bool isDaemonStarted = false;
-    /* If bundle daemon is not started yet, then generate a unique connect spec using UUID*/
-    if (strcmp(bundleConnectSpec.c_str(), "") == 0) {
+    /* If bundle daemon connect spec is not set yet, then generate a unique connect spec using UUID*/
+    if (bundleConnectSpec.empty()) {
         qcc::GUID specGuid;
         bundleConnectSpec = "unix:abstract=alljoyn-" + specGuid.ToString();
-    } else {
-        QCC_DbgHLPrintf(("Bundle Daemon is already started"));
-        isDaemonStarted = true;
     }
 
-    if (!isDaemonStarted) {
+    if (!isBundleDaemonStarted) {
         /* To start the BundleDaemonService of the application associated with this process, we should explicitly give the component name of the service.
          * The component name includes the application package name and the service name. Here we read the package name from file /proc/${PID}/cmdline.
          * Android uses package name as process name by default*/
+        qcc::String packageName;
         const uint32_t MAX_PID_STR_SIZE = 32;
         char pidStr [MAX_PID_STR_SIZE];
         pid_t pid = getpid();
@@ -297,26 +288,38 @@ QStatus BusAttachment::TryAlternativeDaemon(const char* connectSpec, RemoteEndpo
         fileName += "/cmdline";
         QCC_DbgHLPrintf(("Read fileName %s ", fileName.c_str()));
         FileSource source(fileName);
-        uint32_t maxLen = 128;
-        char packageName[maxLen];
+        const uint32_t maxBufferLen = 128;
+        char pkgBuffer[maxBufferLen];
         uint32_t actualRead = 0;
         if (source.IsValid()) {
-            source.PullBytes(packageName, maxLen - 1, actualRead);
-            packageName[actualRead] = '\0';
+            source.PullBytes(pkgBuffer, maxBufferLen - 1, actualRead);
+            pkgBuffer[actualRead] = '\0';
+            packageName += pkgBuffer;
+
+            while (actualRead == (maxBufferLen - 1)) {
+                actualRead = 0;
+                source.PullBytes(pkgBuffer, maxBufferLen - 1, actualRead);
+                pkgBuffer[actualRead] = '\0';
+                packageName += pkgBuffer;
+            }
         } else {
             /*It may fail to read from the file /proc/${PID}/cmdline if Android locks the dir /proc in the future, then fallback to use the application name*/
-            QCC_DbgHLPrintf(("File %s can be read.", fileName.c_str()));
-            strlcpy(packageName, busInternal->application.c_str(), maxLen);
+            QCC_DbgHLPrintf(("Fail to read file %s, use application name instead.", fileName.c_str()));
+            packageName = busInternal->application;
         }
 
-        QCC_DbgHLPrintf(("BusAttachment::Try to start bundle daemon: packageName =%s\n", packageName));
+        QCC_DbgHLPrintf(("BusAttachment::Try to start bundle daemon: packageName =%s\n", packageName.c_str()));
         qcc::String intent = "am startservice -W -n "; /* Using "-W" will wait until the launch finishes*/
         intent += packageName;
         intent += "/org.alljoyn.bus.alljoyn.BundleDaemonService  -d ";
         intent += bundleConnectSpec.c_str(); /*We piggyback the connect spec in the Data Uri of the intent*/
         QCC_DbgHLPrintf(("Send intent = %s to start BundleDaemonService", intent.c_str()));
-        system(intent.c_str());
-        shouldWaitReady = true;
+        if (system(intent.c_str()) == -1) {
+            QCC_LogError(status, ("BusAttachment::Connect fail to start bundle daemon via system() call"));
+        } else {
+            isBundleDaemonStarted = true;
+            shouldWaitReady = true;
+        }
     }
 
     /* Try connect to the bundle daemon*/
@@ -340,6 +343,8 @@ QStatus BusAttachment::TryAlternativeDaemon(const char* connectSpec, RemoteEndpo
     return status;
 }
 
+#endif
+
 QStatus BusAttachment::TryConnect(const char* connectSpec, RemoteEndpoint** newep)
 {
     QCC_DbgTrace(("BusAttachment::TryConnect to %s", connectSpec));
@@ -354,7 +359,6 @@ QStatus BusAttachment::TryConnect(const char* connectSpec, RemoteEndpoint** newe
     }
     return status;
 }
-#endif
 
 QStatus BusAttachment::Connect(const char* connectSpec, RemoteEndpoint** newep)
 {
@@ -369,20 +373,14 @@ QStatus BusAttachment::Connect(const char* connectSpec, RemoteEndpoint** newep)
     } else if (IsConnected() && !isDaemon) {
         status = ER_BUS_ALREADY_CONNECTED;
     } else {
-
-#ifndef QCC_OS_ANDROID
-        /* Get or create transport for connection */
-        Transport* trans = busInternal->transportList.GetTransport(connectSpec);
-        if (trans) {
-            SessionOpts emptyOpts;
-            status = trans->Connect(connectSpec, emptyOpts, newep);
-        } else {
-            status = ER_BUS_TRANSPORT_NOT_AVAILABLE;
-        }
         this->connectSpec = connectSpec;
-#else
-        /* For Android, will try different daemon options with the precedence of preinstalled daemon > APK daemon > bundle daemon */
-        status = TryAlternativeDaemon(connectSpec, newep);
+        status = TryConnect(connectSpec, newep);
+
+#if defined(QCC_OS_ANDROID)
+        /* If the connect sepc is "unix:abstract=alljoyn", then try other daemon options with the precedence of preinstalled daemon > APK daemon > bundle daemon */
+        if (status != ER_OK && !isDaemon && (strcmp(connectSpec, "unix:abstract=alljoyn") == 0)) {
+            status = TryAlternativeDaemon(newep);
+        }
 #endif
         /* If this is a client (non-daemon) bus attachment, then register signal handlers for BusListener */
         if ((ER_OK == status) && !isDaemon) {
@@ -458,7 +456,7 @@ QStatus BusAttachment::Disconnect(const char* connectSpec)
         status = ER_BUS_NOT_CONNECTED;
     } else {
         /* Terminate transport for connection */
-        Transport* trans = busInternal->transportList.GetTransport(connectSpec);
+        Transport* trans = busInternal->transportList.GetTransport(this->connectSpec.c_str());
 
         if (trans) {
             status = trans->Disconnect(this->connectSpec.c_str());
