@@ -98,10 +98,9 @@ alljoyn_buslistener alljoyn_buslistener_create(const alljoyn_buslistener_callbac
     return new ajn::BusListenerCallbackC(callbacks, context);
 }
 
-void alljoyn_buslistener_destroy(alljoyn_buslistener* listener)
+void alljoyn_buslistener_destroy(alljoyn_buslistener listener)
 {
-    assert(listener != NULL && *listener != NULL && "listener parameter must not be NULL");
-    delete ((ajn::BusListenerCallbackC*)*listener);
-    *listener = NULL;
+    assert(listener != NULL && "listener parameter must not be NULL");
+    delete (ajn::BusListenerCallbackC*)listener;
 }
 

@@ -883,11 +883,10 @@ alljoyn_proxybusobject alljoyn_proxybusobject_create(alljoyn_busattachment bus, 
     return ret;
 }
 
-void alljoyn_proxybusobject_destroy(alljoyn_busattachment* bus)
+void alljoyn_proxybusobject_destroy(alljoyn_busattachment bus)
 {
-    assert(bus != NULL && *bus != NULL && "NULL parameter passed to alljoyn_proxybusobject_destroy.");
-    delete ((ajn::ProxyBusObject*)*bus);
-    *bus = NULL;
+    assert(bus != NULL && "NULL parameter passed to alljoyn_proxybusobject_destroy.");
+    delete (ajn::ProxyBusObject*)bus;
 }
 
 QStatus alljoyn_proxybusobject_addinterface(alljoyn_busattachment bus, alljoyn_interfacedescription_const iface)

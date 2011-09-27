@@ -168,7 +168,7 @@ alljoyn_buslistener alljoyn_buslistener_create(const alljoyn_buslistener_callbac
  *
  * @param listener BusListener to destroy.
  */
-void alljoyn_buslistener_destroy(alljoyn_buslistener* listener);
+void alljoyn_buslistener_destroy(alljoyn_buslistener listener);
 
 #ifdef __cplusplus
 } /* extern "C" */

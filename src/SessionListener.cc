@@ -55,9 +55,8 @@ alljoyn_sessionlistener alljoyn_sessionlistener_create(const alljoyn_sessionlist
     return new ajn::SessionListenerCallbackC(callbacks, context);
 }
 
-void alljoyn_sessionlistener_destroy(alljoyn_sessionlistener* listener)
+void alljoyn_sessionlistener_destroy(alljoyn_sessionlistener listener)
 {
-    assert(listener != NULL && *listener != NULL && "listener parameter must not be NULL");
-    delete ((ajn::SessionListenerCallbackC*)*listener);
-    *listener = NULL;
+    assert(listener != NULL && "listener parameter must not be NULL");
+    delete (ajn::SessionListenerCallbackC*)listener;
 }

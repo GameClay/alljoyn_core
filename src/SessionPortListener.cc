@@ -64,9 +64,8 @@ alljoyn_sessionportlistener alljoyn_sessionportlistener_create(const alljoyn_ses
     return new ajn::SessionPortListenerCallbackC(callbacks, context);
 }
 
-void alljoyn_sessionportlistener_destroy(alljoyn_sessionportlistener* listener)
+void alljoyn_sessionportlistener_destroy(alljoyn_sessionportlistener listener)
 {
-    assert(listener != NULL && *listener != NULL && "listener parameter must not be NULL");
-    delete ((ajn::SessionPortListenerCallbackC*)*listener);
-    *listener = NULL;
+    assert(listener != NULL && "listener parameter must not be NULL");
+    delete (ajn::SessionPortListenerCallbackC*)listener;
 }

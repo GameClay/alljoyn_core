@@ -103,7 +103,7 @@ alljoyn_sessionportlistener alljoyn_sessionportlistener_create(const alljoyn_ses
  *
  * @param listener SessionPortListener to destroy.
  */
-void alljoyn_sessionportlistener_destroy(alljoyn_sessionportlistener* listener);
+void alljoyn_sessionportlistener_destroy(alljoyn_sessionportlistener listener);
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -91,7 +91,7 @@ alljoyn_sessionlistener alljoyn_sessionlistener_create(const alljoyn_sessionlist
  *
  * @param listener SessionListener to destroy.
  */
-void alljoyn_sessionlistener_destroy(alljoyn_sessionlistener* listener);
+void alljoyn_sessionlistener_destroy(alljoyn_sessionlistener listener);
 
 #ifdef __cplusplus
 } /* extern "C" */

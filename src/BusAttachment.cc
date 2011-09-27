@@ -1838,12 +1838,11 @@ alljoyn_busattachment alljoyn_busattachment_create(const char* applicationName, 
     return ((alljoyn_busattachment) new ajn::BusAttachment(applicationName, allowRemoteMessagesBool));
 }
 
-void alljoyn_busattachment_destroy(alljoyn_busattachment* bus)
+void alljoyn_busattachment_destroy(alljoyn_busattachment bus)
 {
-    assert(*bus != NULL && "NULL parameter passed to alljoyn_destroy_busattachment.");
+    assert(bus != NULL && "NULL parameter passed to alljoyn_destroy_busattachment.");
 
-    delete ((ajn::BusAttachment*)*bus);
-    *bus = NULL;
+    delete (ajn::BusAttachment*)bus;
 }
 
 QStatus alljoyn_busattachment_stop(alljoyn_busattachment bus, QC_BOOL blockUntilStopped)

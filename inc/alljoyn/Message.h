@@ -825,7 +825,7 @@ alljoyn_message alljoyn_message_create(alljoyn_busattachment bus);
  *
  * @param msg The message to destroy
  */
-void alljoyn_message_destroy(alljoyn_message* msg);
+void alljoyn_message_destroy(alljoyn_message msg);
 
 /**
  * Return a specific argument.

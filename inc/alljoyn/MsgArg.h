@@ -676,7 +676,7 @@ alljoyn_msgargs alljoyn_msgargs_create(size_t numArgs);
  *
  * @param arg The message argument to destroy.
  */
-void alljoyn_msgargs_destroy(alljoyn_msgargs* arg);
+void alljoyn_msgargs_destroy(alljoyn_msgargs arg);
 
 /**
  * Set an array of MsgArgs by applying the Set() method to each MsgArg in turn.

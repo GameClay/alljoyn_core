@@ -118,10 +118,9 @@ alljoyn_sessionopts alljoyn_sessionopts_create(uint8_t traffic, QC_BOOL isMultip
                                 (ajn::SessionOpts::Proximity)proximity, (ajn::TransportMask)transports);
 }
 
-void alljoyn_sessionopts_destroy(alljoyn_sessionopts* opts)
+void alljoyn_sessionopts_destroy(alljoyn_sessionopts opts)
 {
-    delete ((ajn::SessionOpts*)*opts);
-    *opts = NULL;
+    delete (ajn::SessionOpts*)opts;
 }
 
 uint8_t alljoyn_sessionopts_traffic(alljoyn_sessionopts_const opts)

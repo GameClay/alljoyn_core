@@ -76,7 +76,7 @@ void found_advertised_name(const void* context, const char* name, alljoyn_transp
         } else {
             printf("JoinSession SUCCESS (Session id=%d)\n", s_sessionId);
         }
-        alljoyn_sessionopts_destroy(&opts);
+        alljoyn_sessionopts_destroy(opts);
     }
     s_joinComplete = QC_TRUE;
 }
@@ -204,9 +204,9 @@ int main(int argc, char** argv, char** envArg)
             printf("MethodCall on %s.%s failed\n", SERVICE_NAME, "cat");
         }
 
-        alljoyn_proxybusobject_destroy(&remoteObj);
-        alljoyn_message_destroy(&reply);
-        alljoyn_msgargs_destroy(&inputs);
+        alljoyn_proxybusobject_destroy(remoteObj);
+        alljoyn_message_destroy(reply);
+        alljoyn_msgargs_destroy(inputs);
     }
 
 
@@ -222,11 +222,11 @@ int main(int argc, char** argv, char** envArg)
     if (g_msgBus) {
         alljoyn_busattachment deleteMe = g_msgBus;
         g_msgBus = NULL;
-        alljoyn_busattachment_destroy(&deleteMe);
+        alljoyn_busattachment_destroy(deleteMe);
     }
 
     /* Deallocate bus listener */
-    alljoyn_buslistener_destroy(&g_busListener);
+    alljoyn_buslistener_destroy(g_busListener);
 
     printf("basic client exiting with status %d (%s)\n", status, QCC_StatusText(status));
 

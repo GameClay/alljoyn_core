@@ -1605,11 +1605,10 @@ alljoyn_msgargs alljoyn_msgargs_create(size_t numArgs)
     return args;
 }
 
-void alljoyn_msgargs_destroy(alljoyn_msgargs* arg)
+void alljoyn_msgargs_destroy(alljoyn_msgargs arg)
 {
-    assert(arg != NULL && *arg != NULL && "NULL argument passed to alljoyn_msgarg_destroy.");
-    delete [] ((ajn::MsgArg*)*arg);
-    *arg = NULL;
+    assert(arg != NULL && "NULL argument passed to alljoyn_msgarg_destroy.");
+    delete [] (ajn::MsgArg*)arg;
 }
 
 QStatus alljoyn_msgargs_set(alljoyn_msgargs args, size_t argOffset, size_t* numArgs, const char* signature, ...)

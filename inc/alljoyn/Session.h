@@ -188,7 +188,7 @@ alljoyn_sessionopts alljoyn_sessionopts_create(uint8_t traffic, QC_BOOL isMultip
  *
  * @param opts SessionOpts to destroy
  */
-void alljoyn_sessionopts_destroy(alljoyn_sessionopts* opts);
+void alljoyn_sessionopts_destroy(alljoyn_sessionopts opts);
 
 /**
  * Accessor for the traffic member of SessionOpts.

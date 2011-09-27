@@ -742,7 +742,7 @@ alljoyn_proxybusobject alljoyn_proxybusobject_create(alljoyn_busattachment bus, 
  *
  * @param bus The bus to destroy.
  */
-void alljoyn_proxybusobject_destroy(alljoyn_busattachment* bus);
+void alljoyn_proxybusobject_destroy(alljoyn_busattachment bus);
 
 /**
  * Add an interface to this ProxyBusObject.

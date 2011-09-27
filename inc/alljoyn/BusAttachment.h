@@ -916,7 +916,7 @@ alljoyn_busattachment alljoyn_busattachment_create(const char* applicationName, 
  *
  * @param bus BusAttachment to free.
  */
-void alljoyn_busattachment_destroy(alljoyn_busattachment* bus);
+void alljoyn_busattachment_destroy(alljoyn_busattachment bus);
 
 /**
  * Stop the message bus.

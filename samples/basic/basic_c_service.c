@@ -261,12 +261,12 @@ int main(int argc, char** argv, char** envArg)
     if (g_msgBus) {
         alljoyn_busattachment deleteMe = g_msgBus;
         g_msgBus = NULL;
-        alljoyn_busattachment_destroy(&deleteMe);
+        alljoyn_busattachment_destroy(deleteMe);
     }
 
     /* Deallocate bus listener */
     if (g_busListener) {
-        alljoyn_buslistener_destroy(&g_busListener);
+        alljoyn_buslistener_destroy(g_busListener);
     }
 
     return (int) status;
