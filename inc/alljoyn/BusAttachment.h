@@ -855,14 +855,15 @@ class BusAttachment : public MessageReceiver {
     /**
      * For Android, try different daemon options with the precedence of pre-installed Daemon > APK daemon > Bundled Daemon.
      */
-    QStatus TryAlternativeDaemon(const char* connectSpec, RemoteEndpoint** newep);
+    QStatus TryAlternativeDaemon(RemoteEndpoint** newep);
+#endif
+
     /**
      * Try connect to the daemon with the spec.
      */
     QStatus TryConnect(const char* connectSpec, RemoteEndpoint** newep);
-#endif
-    qcc::String connectSpec;
 
+    qcc::String connectSpec;  /**< The connect spec used to connect to the bus */
     bool isStarted;           /**< Indicates if the bus has been started */
     bool isStopping;          /**< Indicates Stop has been called */
     Internal* busInternal;    /**< Internal state information */
