@@ -229,6 +229,15 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     void DeviceFoundSignalHandler(const InterfaceDescription::Member* member,
                                   const char* sourcePath,
                                   Message& msg);
+    void DeviceCreatedSignalHandler(const InterfaceDescription::Member* member,
+                                    const char* sourcePath,
+                                    Message& msg);
+    void DeviceRemovedSignalHandler(const InterfaceDescription::Member* member,
+                                    const char* sourcePath,
+                                    Message& msg);
+    void DevicePropertyChangedSignalHandler(const InterfaceDescription::Member* member,
+                                            const char* sourcePath,
+                                            Message& msg);
 
     /* support */
     QStatus FillAdapterAddress(bluez::AdapterObject& adapter);
@@ -249,9 +258,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
                                                 BTNodeDB& adInfo,
                                                 uint32_t remoteVersion);
     QStatus GetDeviceObjPath(const BDAddress& bdAddr,
-                             qcc::String& devObjPath,
-                             bool& created);
-    void RemoveDeviceObjPath(const qcc::String& devObjPath);
+                             qcc::String& devObjPath);
     QStatus DiscoveryControl(const InterfaceDescription::Member& method);
     QStatus SetDiscoverabilityProperty();
 
@@ -378,6 +385,8 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     FoundInfoExpireMap foundExpirations;
     qcc::Alarm expireAlarm;
     BDAddressSet ignoreAddrs;
+
+    std::set<qcc::StringMapKey> createdDevices;  // Set of devices we created
 
     bool bluetoothAvailable;
     bool discoverable;

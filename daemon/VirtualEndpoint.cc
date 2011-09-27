@@ -37,7 +37,8 @@ namespace ajn {
 
 VirtualEndpoint::VirtualEndpoint(const char* uniqueName, RemoteEndpoint& b2bEp)
     : BusEndpoint(BusEndpoint::ENDPOINT_TYPE_VIRTUAL),
-    m_uniqueName(uniqueName)
+    m_uniqueName(uniqueName),
+    m_isController(::strcmp(uniqueName + ::strlen(uniqueName) - 2, ".1") == 0)
 {
     m_b2bEndpoints.insert(pair<SessionId, RemoteEndpoint*>(0, &b2bEp));
 }
@@ -136,7 +137,23 @@ bool VirtualEndpoint::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
             ++it;
         }
     }
-    bool isEmpty = (m_b2bEndpoints.lower_bound(1) == m_b2bEndpoints.end());
+
+    /*
+     * Virtual endpoints are removed when they no longer route for any sessions.
+     * The exception to this rule is virtual endpoints for the bus controller of remote daemons.
+     * These controller virtual endpoints are not removed until all b2b eps are removed
+     * regardless of session id.
+     */
+    bool isEmpty;
+    if (m_isController) {
+        isEmpty = m_b2bEndpoints.empty();
+    } else {
+        isEmpty = (m_b2bEndpoints.lower_bound(1) == m_b2bEndpoints.end());
+    }
+    it = m_b2bEndpoints.begin();
+    while (it != m_b2bEndpoints.end()) {
+        ++it;
+    }
     m_b2bEndpointsLock.Unlock();
     return isEmpty;
 }

@@ -22,6 +22,7 @@
 
 #include <qcc/platform.h>
 
+#include <assert.h>
 #include <cstdarg>
 #include <string>
 
@@ -386,19 +387,38 @@ typedef struct {
 
 /*
  * Parses a STRUCT, DICT_ENTRY, or ARRAY signature
+ *
+ * Example parameter values:
+ * -For '(xyz)', container is STRUCT, sigPtr is 'xyz)'.
+ * -For '{sv}', container is DICT_ENTRY, sigPtr is 'sv}'.
+ * -For 'as', container is ARRAY, sigPtr is 's'.
  */
 QStatus SignatureUtils::ParseContainerSignature(MsgArg& container, const char*& sigPtr)
 {
+    assert((container.typeId == ALLJOYN_STRUCT) ||
+           (container.typeId == ALLJOYN_DICT_ENTRY) ||
+           (container.typeId == ALLJOYN_ARRAY));
+
     QStatus status = ER_OK;
     ContainerStack containerStack[64];
     ContainerStack* outer = containerStack;
     uint8_t structDepth = 0;
     uint8_t arrayDepth = 0;
 
-#define PushContainer(t)  do { outer++; outer->typeId = (t); outer->members = 0; \
+#define PushContainer(t)  do {                  \
+        assert(outer < &containerStack[64]);        \
+        outer++;                                    \
+        outer->typeId = (t);                        \
+        outer->members = 0;                         \
 } \
     while (0);
-#define PopContainer()   do { outer--; outer->members++; } while (0);
+
+#define PopContainer() do {                     \
+        if (outer > &containerStack[0]) {           \
+            outer--;                                \
+        }                                           \
+        outer->members++;                           \
+} while (0);
 
     memset(containerStack, 0, sizeof(containerStack));
     outer->typeId = container.typeId;
@@ -415,6 +435,9 @@ QStatus SignatureUtils::ParseContainerSignature(MsgArg& container, const char*& 
 
         switch (typeId) {
         case ALLJOYN_INVALID:
+            /*
+             * ALLJOYN_INVALID is 0, so this is the end of sigPtr.
+             */
             if ((structDepth + arrayDepth) > 0) {
                 status = ER_BUS_BAD_SIGNATURE;
             }
@@ -451,9 +474,6 @@ QStatus SignatureUtils::ParseContainerSignature(MsgArg& container, const char*& 
             if (++structDepth > 32) {
                 status = ER_BUS_BAD_SIGNATURE;
             } else {
-                /*
-                 * Dict entries are only allowed as array element types and the key must be a basic type
-                 */
                 if ((outer->typeId == ALLJOYN_ARRAY) && IsBasicType((AllJoynTypeId) * sigPtr++)) {
                     PushContainer(ALLJOYN_DICT_ENTRY);
                     ++outer->members;

@@ -6,7 +6,7 @@
 LOCAL_PATH := $(call my-dir)
 
 # AllJoyn specifics
-#ALLJOYN_DIST := ../../../../build/android/arm/$(APP_OPTIM)/dist
+#ALLJOYN_DIST := ../../../../../build/android/arm/$(APP_OPTIM)/dist
 ALLJOYN_DIST := ../../..
 
 # The CLEAR_VARS variable is provided by the build system and points to a
@@ -46,7 +46,7 @@ LOCAL_C_INCLUDES := \
 #
 # NOTE1: flag "-Wno-psabi" removes warning about GCC 4.4 va_list warning
 # NOTE2: flag "-Wno-write-strings" removes warning about deprecated conversion
-#        from string constant to ‘char*’
+#        from string constant to "char*"
 #
 LOCAL_CFLAGS := -Wno-psabi -Wno-write-strings -DANDROID_NDK -DTARGET_ANDROID -DLINUX -DQCC_OS_GROUP_POSIX -DQCC_OS_ANDROID -DQCC_CPU_ARM -DANDROID
 

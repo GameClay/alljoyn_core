@@ -1,4 +1,4 @@
-AllJoyn Version 2.1.0 Release Notes
+AllJoyn Version 2.2.0 Release Notes
 -----------------------------------
 
 Platform Support
@@ -11,37 +11,18 @@ Platform Support
 Features added in this release
 ------------------------------
 
-1) The Android  bus-daemon-user and bus-daemon-service samples were 
-   replaced with a new "Java launchable daemon" called Alljoyn.apk.
-   This new APK can be used to install and run the AllJoyn daemon on
-   non-rooted Android devices. Note that the Java launchable daemon
-   of the daemon does not support peer connections over bluetooth.
-
-2) AllJoyn operation inside the Android emulator envirnonment is now
-   supported.
-
-3) Added an asynchronous version of BusAttachment::JoinSession.
-
-4) Minor modifications to the security API to allow for shared keystores.
 
 
 Issues Addressed in this Release
 --------------------------------
 
-1) Several Bluetooth related stability issues were addressed in this
-   release.
+1) ALLJOYN-580: The same AllJoyn binaries can now run on both Froyo and
+   Gingerbread.
 
-2) ALLJOYN-341: The Java launchable (wifi-only) daemon for Android was
-   unstable in version 2.0.1. This sample has been updated and renamed
-   to Alljoyn.apk.
+2) ALLJOYN-584: An AllJoyn client and service on the same device can now
+   share the same keystore (new -k option).
 
-3) ALLJOYN-494: AllJoyn java binding calls that return QStatus can return
-   null instead of a valid QStatus in certain error situations.
-
-4) ALLJOYN-519: A ProxyBusObject may trigger a segmentation fault if it is
-   deleted while threads are blocked inside ProxyBusObjec::MethodCall().
-
-5) ALLJOYN-544: Java binding is now thread safe.
+3) ALLJOYN-593: test/sessions sample now handles LostAdvertisedName.
 
 
 Known issues and limitations with this release
@@ -49,14 +30,6 @@ Known issues and limitations with this release
 
 1) ALLJOYN-557: Signals can be delivered twice when eavsdropping mode is
    enabled in the AllJoyn daemon.
-
-2) ALLJOYN-580: AllJoyn currently has separate versions for Froyo and
-   Gingerbread due to dependencies on libcrypto.
-
-3) ALLJOYN-584: An AllJoyn client and service on the same device cannot
-   share the same keystore.
-
-4) ALLJOYN-593: test/sessions sample does not handle LostAdvertisedName.
 
 
 Compatibility
@@ -76,6 +49,8 @@ greater than or equal to 2.1.0.
 
 Change history
 --------------
+2.2.0 - Added AllJoyn.apk for non-rooted devices (but no bluetooth).
+        Shared keystores added to security API. Android emulator support.
 2.1.0 - Added Java thread safety. Security fixes. Minor mods to security API.
 2.0.1 - Bug fixes.
 2.0.0 - Added sessions and topology management.
