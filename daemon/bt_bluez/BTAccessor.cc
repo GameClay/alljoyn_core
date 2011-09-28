@@ -87,7 +87,7 @@ namespace ajn {
 /*
  * Uncomment this line to enable simple pairing debug mode for air sniffing.
  */
-#define ENABLE_AIR_SNIFFING
+//#define ENABLE_AIR_SNIFFING
 
 /*
  * Timeout for various operations
@@ -1307,8 +1307,8 @@ void BTTransport::BTAccessor::DevicePropertyChangedSignalHandler(const Interface
 
 #ifndef NDEBUG
         if ((value->typeId != ALLJOYN_ARRAY) && (value->typeId < 256)) {
-            QCC_DbgPrintf(("Device Property Changed: property: %s   value: %s",
-                           property, value->ToString().c_str()));
+            QCC_DbgPrintf(("Device Property Changed: device: %s   property: %s   value: %s",
+                           sourcePath, property, value->ToString().c_str()));
         }
 #endif
 
