@@ -167,5 +167,5 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
   <status name="ER_ALLJOYN_SETLINKTIMEOUT_REPLY_NOT_SUPPORTED" value="0x90a0" comment="Local daemon does not support SetLinkTimeout"/>
   <status name="ER_ALLJOYN_SETLINKTIMEOUT_REPLY_NO_DEST_SUPPORT" value="0x90a1" comment="SetLinkTimeout not supported by destination"/>
   <status name="ER_ALLJOYN_SETLINKTIMEOUT_REPLY_FAILED" value="0x90a2" comment="SetLinkTimeout failed"/>
-  <status name="ER_ALLJOYN_PERMISSION_ERROR" value="0x90a3" comment="Permission Error of using WIFI/Bluetooth or peer service"/>
+
 </status_block>

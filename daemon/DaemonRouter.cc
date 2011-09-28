@@ -34,7 +34,6 @@
 #include "BusController.h"
 #include "BusEndpoint.h"
 #include "ConfigDB.h"
-#include "PermissionDB.h"
 #include "DaemonRouter.h"
 
 #define QCC_MODULE "ALLJOYN"
@@ -415,7 +414,6 @@ void DaemonRouter::UnregisterEndpoint(BusEndpoint& endpoint)
         /* Remove endpoint from names and rules */
         nameTable.RemoveUniqueName(uniqueName);
         RemoveAllRules(endpoint);
-        GetPermissionDB().RemovePermissionCache(endpoint);
     }
 
     /* Unregister static endpoints */
