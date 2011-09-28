@@ -138,11 +138,17 @@ class _PeerState {
      *
      * @return  - ER_OK if there is a session key set for this peer.
      *          - ER_BUS_KEY_UNAVAILABLE if no session key has been set for this peer.
+     *          - ER_BUS_KEY_EXPIRED if there was a session key but the key has expired.
      */
     QStatus GetKey(qcc::KeyBlob& key, PeerKeyType keyType) {
         if (isSecure) {
             key = keys[keyType];
-            return ER_OK;
+            if (key.HasExpired()) {
+                ClearKeys();
+                return ER_BUS_KEY_EXPIRED;
+            } else {
+                return ER_OK;
+            }
         } else {
             return ER_BUS_KEY_UNAVAILABLE;
         }

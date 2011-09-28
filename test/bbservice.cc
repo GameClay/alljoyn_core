@@ -68,6 +68,7 @@ static BusAttachment* g_msgBus = NULL;
 static String g_wellKnownName = ::org::alljoyn::alljoyn_test::DefaultWellKnownName;
 static bool g_echo_signal = false;
 static bool g_compress = false;
+static uint32_t keyExpiration = 0xFFFFFFFF;
 
 /** Signal handler */
 static void SigIntHandler(int sig)
@@ -151,6 +152,10 @@ class MyAuthListener : public AuthListener {
         qcc::String guid;
         g_msgBus->GetPeerGUID(authPeer, guid);
         printf("Peer guid %s\n", guid.c_str());
+
+        if (keyExpiration != 0xFFFFFFFF) {
+            creds.SetExpiration(keyExpiration);
+        }
 
         if (strcmp(authMechanism, "ALLJOYN_SRP_KEYX") == 0) {
             if (credMask & AuthListener::CRED_PASSWORD) {
@@ -580,6 +585,7 @@ static void usage(void)
     printf("Options:\n");
     printf("   -h                    = Print this help message\n");
     printf("   -k <key store name>   = The key store file name\n");
+    printf("   -kx #                 = Authentication key expiration (seconds)\n");
     printf("   -m                    = Session is a multi-point session\n");
     printf("   -e                    = Echo received signals back to sender\n");
     printf("   -x                    = Compress signals echoed back to sender\n");
@@ -645,6 +651,15 @@ int main(int argc, char** argv)
                 exit(1);
             } else {
                 keyStore = argv[i];
+            }
+        } else if (0 == strcmp("-kx", argv[i])) {
+            ++i;
+            if (i == argc) {
+                printf("option %s requires a parameter\n", argv[i - 1]);
+                usage();
+                exit(1);
+            } else {
+                keyExpiration = strtoul(argv[i], NULL, 10);
             }
         } else if (0 == strcmp("-m", argv[i])) {
             opts.isMultipoint = true;

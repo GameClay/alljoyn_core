@@ -66,6 +66,9 @@ bool AuthMechRSA::GetPassphrase(qcc::String& passphrase, bool toWrite)
     }
     if (ok) {
         passphrase = creds.GetPassword();
+        if (creds.IsSet(AuthListener::CRED_EXPIRATION)) {
+            expiration = creds.GetExpiration();
+        }
     }
     return ok;
 }
@@ -76,7 +79,6 @@ QStatus AuthMechRSA::Init(AuthRole authRole, const qcc::String& authPeer)
     QStatus status = AuthMechanism::Init(authRole, authPeer);
     /* These are the credentials we need */
     uint16_t mask = AuthListener::CRED_CERT_CHAIN | AuthListener::CRED_PRIVATE_KEY | AuthListener::CRED_PASSWORD;
-
     /*
      * GUIDS for storing cert and private key blobs in the key store
      */
@@ -84,6 +86,14 @@ QStatus AuthMechRSA::Init(AuthRole authRole, const qcc::String& authPeer)
     qcc::GUID privGuid(SELF_PRIV_GUID);
     if (!listener.RequestCredentials(GetName(), authPeer.c_str(), authCount, "", mask, creds)) {
         return ER_AUTH_FAIL;
+    }
+    if (creds.IsSet(AuthListener::CRED_EXPIRATION)) {
+        expiration = creds.GetExpiration();
+    } else {
+        /*
+         * Default for AuthMechRSA is to never expire the master key
+         */
+        expiration = 0xFFFFFFFF;
     }
     /*
      * If the listener didn't provide a cert chain see if we have stored credentials.
@@ -216,6 +226,7 @@ void AuthMechRSA::ComputeMS(KeyBlob& pms)
     uint8_t keymatter[48];
     Crypto_PseudorandomFunction(pms, label, seed, keymatter, sizeof(keymatter));
     masterSecret.Set(keymatter, sizeof(keymatter), KeyBlob::GENERIC);
+    masterSecret.SetExpiration(expiration);
 }
 
 /*

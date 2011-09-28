@@ -176,6 +176,11 @@ class AuthMechanism {
     qcc::KeyBlob masterSecret;
 
     /**
+     * Specifies the expiration time for the master secret
+     */
+    uint32_t expiration;
+
+    /**
      * Class instance for interacting with user and/or application to obtain a password and other
      * information.
      */
@@ -184,7 +189,7 @@ class AuthMechanism {
     /**
      * Constructor
      */
-    AuthMechanism(KeyStore& keyStore, ProtectedAuthListener& listener) : listener(listener), keyStore(keyStore), authCount(0) { }
+    AuthMechanism(KeyStore& keyStore, ProtectedAuthListener& listener) : expiration(0xFFFFFFFF), listener(listener), keyStore(keyStore), authCount(0) { }
 
     /**
      * The keyStore

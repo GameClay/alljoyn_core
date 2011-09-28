@@ -54,6 +54,10 @@ QStatus AuthMechSRP::Init(AuthRole authRole, const qcc::String& authPeer)
     AuthMechanism::Init(authRole, authPeer);
     step = 0;
     /*
+     * Default for AuthMechSRP is to never expire the master key
+     */
+    expiration = 0xFFFFFFFF;
+    /*
      * msgHash keeps a running hash of all challenges and responses sent and received.
      */
     msgHash.Init();
@@ -78,6 +82,7 @@ void AuthMechSRP::ComputeMS()
     Crypto_PseudorandomFunction(pms, label, clientRandom + serverRandom, keymatter, sizeof(keymatter));
     masterSecret.Set(keymatter, sizeof(keymatter), KeyBlob::GENERIC);
     QCC_DbgHLPrintf(("MasterSecret:  %s", BytesToHexString(masterSecret.GetData(), masterSecret.GetSize()).c_str()));
+    masterSecret.SetExpiration(expiration);
 }
 
 /*
@@ -153,6 +158,9 @@ qcc::String AuthMechSRP::Response(const qcc::String& challenge,
             break;
         }
         if (listener.RequestCredentials(GetName(), authPeer.c_str(), authCount, "", AuthListener::CRED_PASSWORD, creds)) {
+            if (creds.IsSet(AuthListener::CRED_EXPIRATION)) {
+                expiration = creds.GetExpiration();
+            }
             status = srp.ClientFinish("<anonymous>", creds.GetPassword());
             if (status == ER_OK) {
                 ComputeMS();
@@ -207,6 +215,9 @@ qcc::String AuthMechSRP::Challenge(const qcc::String& response,
          */
         clientRandom = HexStringToByteString(response);
         if (listener.RequestCredentials(GetName(), authPeer.c_str(), authCount, "", AuthListener::CRED_ONE_TIME_PWD, creds)) {
+            if (creds.IsSet(AuthListener::CRED_EXPIRATION)) {
+                expiration = creds.GetExpiration();
+            }
             status = srp.ServerInit("<anonymous>", creds.GetPassword(), challenge);
         } else {
             result = ALLJOYN_AUTH_FAIL;
