@@ -54,7 +54,7 @@ public class Chat extends Activity {
     static final int DIALOG_JOIN_SESSION = 3;
 
     /** Called when activity's onCreate is called */
-    private native int jniOnCreate();
+    private native int jniOnCreate(String packageName);
 
     /** Called when activity's onDestroy is called */
     private native void jniOnDestroy();
@@ -101,7 +101,7 @@ public class Chat extends Activity {
         setConnectedState(false);
 
         // Initialize the native part of the sample
-        int ret = jniOnCreate();
+        int ret = jniOnCreate(getPackageName());
         if (0 != ret) {
             Toast.makeText(this, "jniOnCreate failed with  " + ret, Toast.LENGTH_LONG).show();
             finish();

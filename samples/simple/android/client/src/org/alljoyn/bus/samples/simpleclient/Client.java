@@ -75,7 +75,7 @@ public class Client extends Activity {
     };
 
     /** Called when activity's onCreate is called */
-    private native int simpleOnCreate();
+    private native int simpleOnCreate(String packageName);
 
     /** Called when activity's onDestroy is called */
     private native void simpleOnDestroy();
@@ -104,7 +104,7 @@ public class Client extends Activity {
         listView.requestFocus();
 
         // Initialize the native part of the sample
-        int ret = simpleOnCreate();
+        int ret = simpleOnCreate(getPackageName());
         if (0 != ret) {
             Toast.makeText(this, "simpleOnCreate failed with  " + ret, Toast.LENGTH_LONG).show();
             finish();

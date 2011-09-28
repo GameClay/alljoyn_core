@@ -32,10 +32,10 @@ extern "C" {
 /*
  * Class:     org_alljoyn_bus_samples_simpleclient_Client
  * Method:    simpleOnCreate
- * Signature: ()I
+ * Signature: (Ljava/lang/String;)I
  */
 JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_simpleOnCreate
-    (JNIEnv *, jobject);
+    (JNIEnv *, jobject, jstring);
 
 /*
  * Class:     org_alljoyn_bus_samples_simpleclient_Client

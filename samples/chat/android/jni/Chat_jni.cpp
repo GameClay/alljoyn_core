@@ -216,7 +216,8 @@ extern "C" {
 /**
  * Initialize AllJoyn and connect to local daemon.
  */
-JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_chat_Chat_jniOnCreate(JNIEnv* env, jobject jobj)
+JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_chat_Chat_jniOnCreate(JNIEnv* env, jobject jobj,
+                                                                          jstring packageNameStrObj)
 {
 
 
@@ -224,8 +225,11 @@ JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_chat_Chat_jniOnCreate(JNIEnv
     //QCC_SetLogLevels("ALLJOYN=7;ALL=1");
     QCC_UseOSLogging(true);
 
+    jboolean iscopy;
+    const char* packageNameStr = env->GetStringUTFChars(packageNameStrObj, &iscopy);
     /* Create message bus */
-    s_bus = new BusAttachment("chat", true);
+    s_bus = new BusAttachment(packageNameStr, true);
+
     QStatus status = ER_OK;
     const char* daemonAddr = "unix:abstract=alljoyn";
 
@@ -268,6 +272,7 @@ JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_chat_Chat_jniOnCreate(JNIEnv
         s_bus->RegisterBusListener(*s_busListener);
     }
 
+    env->ReleaseStringUTFChars(packageNameStrObj, packageNameStr);
 
     if (NULL == s_bus) {
         return jboolean(false);

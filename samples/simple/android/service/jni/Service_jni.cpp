@@ -219,7 +219,7 @@ extern "C" {
 /*
  * Class:     org_alljoyn_bus_samples_simpleservice_Service
  * Method:    simpleOnCreate
- * Signature: ()I
+ * Signature: (Ljava/lang/String;)I
  */
 JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_simpleOnCreate(JNIEnv* env, jobject jobj)
 {
@@ -235,9 +235,10 @@ JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_simple
 /*
  * Class:     org_alljoyn_bus_samples_simpleservice_Service
  * Method:    startService
- * Signature: (Ljava/lang/String;)Z
+ * Signature: (Ljava/lang/String;Ljava/lang/String;)Z
  */
-JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_startService(JNIEnv* env, jobject jobj, jstring jServiceName)
+JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_startService(JNIEnv* env, jobject jobj,
+                                                                                           jstring jServiceName, jstring packageNameStrObj)
 {
     QStatus status = ER_OK;
 
@@ -253,6 +254,7 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_st
 
     /* Initialize AllJoyn only once */
     if (!s_bus) {
+        const char* packageNameStr = env->GetStringUTFChars(packageNameStrObj, &iscopy);
         s_bus = new BusAttachment("service", true);
 
         /* Add org.alljoyn.samples.simple interface */
@@ -303,6 +305,7 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_st
                 LOGD("\n Bind Session Port to %d was successful \n", SESSION_PORT);
             }
         }
+        env->ReleaseStringUTFChars(packageNameStrObj, packageNameStr);
     }
 
     /* Request name */
@@ -324,7 +327,7 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_st
             LOGD("\n Name %s was successfully advertised", serviceName.c_str());
         }
     }
-
+    env->ReleaseStringUTFChars(jServiceName, serviceNameStr);
     env->DeleteLocalRef(jServiceName);
     return (jboolean) true;
 }
@@ -357,6 +360,7 @@ JNIEXPORT void JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_stopSe
         LOGE("ReleaseName failed with %s", QCC_StatusText(status));
     }
 
+    env->ReleaseStringUTFChars(jServiceName, serviceNameStr);
     env->DeleteLocalRef(jServiceName);
     return;
 }

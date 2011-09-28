@@ -139,7 +139,8 @@ extern "C" {
  * Initialize AllJoyn and connect to local daemon.
  */
 JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_simpleOnCreate(JNIEnv* env,
-                                                                                       jobject jobj)
+                                                                                       jobject jobj,
+                                                                                       jstring packageNameStrObj)
 {
     QStatus status = ER_OK;
     const char* daemonAddr = "unix:abstract=alljoyn";
@@ -148,8 +149,11 @@ JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_simpleOn
     // QCC_SetLogLevels("ALLJOYN=7;ALL=1");
     QCC_UseOSLogging(true);
 
+    jboolean iscopy;
+    const char* packageNameStr = env->GetStringUTFChars(packageNameStrObj, &iscopy);
+
     /* Create message bus */
-    s_bus = new BusAttachment("client", true);
+    s_bus = new BusAttachment(packageNameStr, true);
 
     /* Add org.alljoyn.bus.samples.simple interface */
     InterfaceDescription* testIntf = NULL;
@@ -193,6 +197,8 @@ JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_simpleOn
     if (ER_OK != status) {
         LOGE("Error while calling FindAdvertisedName \n");
     }
+
+    env->ReleaseStringUTFChars(packageNameStrObj, packageNameStr);
 
     return jint(status);
 }
