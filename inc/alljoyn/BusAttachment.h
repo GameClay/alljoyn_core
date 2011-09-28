@@ -1062,7 +1062,7 @@ QStatus alljoyn_busattachment_canceladvertisename(alljoyn_busattachment bus, con
  *      - A pointer to the registered interface
  *      - NULL if interface doesn't exist
  */
-alljoyn_interfacedescription_const alljoyn_busattachment_getinterface(alljoyn_busattachment bus, const char* name);
+const alljoyn_interfacedescription alljoyn_busattachment_getinterface(alljoyn_busattachment bus, const char* name);
 
 /**
  * Join a session.
@@ -1155,7 +1155,7 @@ QStatus alljoyn_busattachment_requestname(alljoyn_busattachment bus, const char*
  *      - Other error status codes indicating a failure.
  */
 QStatus alljoyn_busattachment_bindsessionport(alljoyn_busattachment bus, alljoyn_sessionport* sessionPort,
-                                              alljoyn_sessionopts_const opts, alljoyn_sessionportlistener listener);
+                                              const alljoyn_sessionopts opts, alljoyn_sessionportlistener listener);
 
 /**
  * Cancel an existing port binding.

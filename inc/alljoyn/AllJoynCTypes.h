@@ -23,19 +23,15 @@
 
 #include <qcc/platform.h>
 
-typedef void* alljoyn_busattachment;
-typedef void* alljoyn_buslistener;
-typedef void* alljoyn_proxybusobject;
-typedef void* alljoyn_interfacedescription;
-typedef const void* alljoyn_interfacedescription_const;
-typedef struct _alljoyn_message_handle* alljoyn_message;
-typedef void* alljoyn_msgargs;
-typedef const void* alljoyn_msgargs_const;
-typedef void* alljoyn_sessionopts;
-typedef const void* alljoyn_sessionopts_const;
-typedef void* alljoyn_sessionlistener;
-typedef void* alljoyn_sessionportlistener;
-typedef void* alljoyn_busobject;
-typedef const void* alljoyn_interfacedescription_member_const;
+typedef struct _alljoyn_busattachment_handle*               alljoyn_busattachment;
+typedef struct _alljoyn_buslistener_handle*                 alljoyn_buslistener;
+typedef struct _alljoyn_proxybusobject_handle*              alljoyn_proxybusobject;
+typedef struct _alljoyn_interfacedescription_handle*        alljoyn_interfacedescription;
+typedef struct _alljoyn_message_handle*                     alljoyn_message;
+typedef struct _alljoyn_msgargs_handle*                     alljoyn_msgargs;
+typedef struct _alljoyn_sessionopts_handle*                 alljoyn_sessionopts;
+typedef struct _alljoyn_sessionlistener_handle*             alljoyn_sessionlistener;
+typedef struct _alljoyn_sessionportlistener_handle*         alljoyn_sessionportlistener;
+typedef struct _alljoyn_busobject_handle*                   alljoyn_busobject;
 
 #endif

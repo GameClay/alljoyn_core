@@ -90,7 +90,7 @@ void name_owner_changed(const void* context, const char* busName, const char* pr
 
 /* AcceptSessionJoiner callback */
 QC_BOOL accept_session_joiner(const void* context, alljoyn_sessionport sessionPort,
-                              const char* joiner,  alljoyn_sessionopts_const opts)
+                              const char* joiner,  const alljoyn_sessionopts opts)
 {
     QC_BOOL ret = QC_FALSE;
     if (sessionPort != SERVICE_PORT) {
@@ -151,8 +151,7 @@ int main(int argc, char** argv, char** envArg)
     alljoyn_interfacedescription testIntf = NULL;
     status = alljoyn_busattachment_createinterface(g_msgBus, INTERFACE_NAME, &testIntf, QC_FALSE);
     if (status == ER_OK) {
-        QStatus status = alljoyn_interfacedescription_addmethod(testIntf, "cat", "ss",  "s", "inStr1,inStr2,outStr", 0);
-        printf("AddMethod status: %s\n", QCC_StatusText(status));
+        alljoyn_interfacedescription_addmethod(testIntf, "cat", "ss",  "s", "inStr1,inStr2,outStr", 0);
         alljoyn_interfacedescription_activate(testIntf);
         printf("Interface Created.\n");
     } else {
@@ -183,12 +182,13 @@ int main(int argc, char** argv, char** envArg)
         NULL
     };
     alljoyn_busobject testObj = alljoyn_busobject_create(g_msgBus, SERVICE_PATH, QC_FALSE, &busObjCbs, NULL);
-    alljoyn_interfacedescription_const exampleIntf = alljoyn_busattachment_getinterface(g_msgBus, INTERFACE_NAME);
+    const alljoyn_interfacedescription exampleIntf = alljoyn_busattachment_getinterface(g_msgBus, INTERFACE_NAME);
     assert(exampleIntf);
     alljoyn_busobject_addinterface(testObj, exampleIntf);
 
     alljoyn_interfacedescription_member cat_member;
-    alljoyn_interfacedescription_getmember(exampleIntf, "cat", &cat_member);
+    QC_BOOL foundMember = alljoyn_interfacedescription_getmember(exampleIntf, "cat", &cat_member);
+    assert(foundMember == QC_TRUE);
 
     alljoyn_busobject_methodentry methodEntries[] = {
         { &cat_member, cat_method },

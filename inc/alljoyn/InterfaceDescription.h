@@ -386,7 +386,7 @@ extern "C" {
 #endif /* #ifdef __cplusplus */
 
 typedef struct {
-    alljoyn_interfacedescription_const iface;   /**< Interface that this member belongs to */
+    alljoyn_interfacedescription iface;         /**< Interface that this member belongs to */
     alljoyn_messagetype memberType;             /**< %Member type */
     const char* name;                           /**< %Member name */
     const char* signature;                      /**< Method call IN arguments (NULL for signals) */
@@ -430,7 +430,7 @@ void alljoyn_interfacedescription_activate(alljoyn_interfacedescription iface);
  *
  * @return QC_FALSE if member does not exist, QC_TRUE otherwise.
  */
-QC_BOOL alljoyn_interfacedescription_getmember(alljoyn_interfacedescription_const iface, const char* name,
+QC_BOOL alljoyn_interfacedescription_getmember(const alljoyn_interfacedescription iface, const char* name,
                                                alljoyn_interfacedescription_member* member);
 
 #ifdef __cplusplus

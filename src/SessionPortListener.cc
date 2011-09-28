@@ -41,7 +41,7 @@ class SessionPortListenerCallbackC : public SessionPortListener {
     {
         QC_BOOL ret = QC_FALSE;
         if (callbacks.accept_session_joiner != NULL) {
-            ret = callbacks.accept_session_joiner(context, sessionPort, joiner, &opts);
+            ret = callbacks.accept_session_joiner(context, sessionPort, joiner, (alljoyn_sessionopts)(&opts));
         }
         return (ret == QC_FALSE ? false : true);
     }
@@ -59,9 +59,13 @@ class SessionPortListenerCallbackC : public SessionPortListener {
 
 }
 
+struct _alljoyn_sessionportlistener_handle {
+    /* Empty by design, this is just to allow the type restrictions to save coders from themselves */
+};
+
 alljoyn_sessionportlistener alljoyn_sessionportlistener_create(const alljoyn_sessionportlistener_callbacks* callbacks, const void* context)
 {
-    return new ajn::SessionPortListenerCallbackC(callbacks, context);
+    return (alljoyn_sessionportlistener) new ajn::SessionPortListenerCallbackC(callbacks, context);
 }
 
 void alljoyn_sessionportlistener_destroy(alljoyn_sessionportlistener listener)

@@ -40,7 +40,7 @@ class BusListenerCallbackC : BusListener {
     void ListenerRegistered(BusAttachment* bus)
     {
         if (callbacks.listener_registered != NULL) {
-            (callbacks.listener_registered)(context, bus);
+            (callbacks.listener_registered)(context, (alljoyn_busattachment)bus);
         }
     }
 
@@ -93,9 +93,13 @@ class BusListenerCallbackC : BusListener {
 
 }
 
+struct _alljoyn_buslistener_handle {
+    /* Empty by design, this is just to allow the type restrictions to save coders from themselves */
+};
+
 alljoyn_buslistener alljoyn_buslistener_create(const alljoyn_buslistener_callbacks* callbacks, const void* context)
 {
-    return new ajn::BusListenerCallbackC(callbacks, context);
+    return (alljoyn_buslistener) new ajn::BusListenerCallbackC(callbacks, context);
 }
 
 void alljoyn_buslistener_destroy(alljoyn_buslistener listener)

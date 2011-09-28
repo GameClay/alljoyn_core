@@ -50,9 +50,13 @@ class SessionListenerCallbackC : SessionListener {
 
 }
 
+struct _alljoyn_sessionlistener_handle {
+    /* Empty by design, this is just to allow the type restrictions to save coders from themselves */
+};
+
 alljoyn_sessionlistener alljoyn_sessionlistener_create(const alljoyn_sessionlistener_callbacks* callbacks, const void* context)
 {
-    return new ajn::SessionListenerCallbackC(callbacks, context);
+    return (alljoyn_sessionlistener) new ajn::SessionListenerCallbackC(callbacks, context);
 }
 
 void alljoyn_sessionlistener_destroy(alljoyn_sessionlistener listener)

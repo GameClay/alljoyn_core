@@ -299,8 +299,11 @@ bool InterfaceDescription::HasMember(const char* name, const char* inSig, const 
     }
 }
 
-
 }
+
+struct _alljoyn_interfacedescription_handle {
+    /* Empty by design, this is just to allow the type restrictions to save coders from themselves */
+};
 
 QStatus alljoyn_interfacedescription_addmethod(alljoyn_interfacedescription iface, const char* name, const char* inputSig,
                                                const char* outSig, const char* argNames, uint8_t annotation)
@@ -313,12 +316,12 @@ void alljoyn_interfacedescription_activate(alljoyn_interfacedescription iface)
     ((ajn::InterfaceDescription*)iface)->Activate();
 }
 
-QC_BOOL alljoyn_interfacedescription_getmember(alljoyn_interfacedescription_const iface, const char* name,
+QC_BOOL alljoyn_interfacedescription_getmember(const alljoyn_interfacedescription iface, const char* name,
                                                alljoyn_interfacedescription_member* member)
 {
     const ajn::InterfaceDescription::Member* found_member = ((const ajn::InterfaceDescription*)iface)->GetMember(name);
     if (found_member != NULL) {
-        member->iface = found_member->iface;
+        member->iface = (alljoyn_interfacedescription)found_member->iface;
         member->memberType = (alljoyn_messagetype)found_member->memberType;
         member->name = found_member->name.c_str();
         member->signature = found_member->signature.c_str();

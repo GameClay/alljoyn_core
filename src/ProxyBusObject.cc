@@ -876,11 +876,15 @@ QStatus ProxyBusObject::SetB2BEndpoint(const char* b2bEpName)
 
 }
 
+struct _alljoyn_proxybusobject_handle {
+    /* Empty by design, this is just to allow the type restrictions to save coders from themselves */
+};
+
 alljoyn_proxybusobject alljoyn_proxybusobject_create(alljoyn_busattachment bus, const char* service,
                                                      const char* path, alljoyn_sessionid sessionId)
 {
     ajn::ProxyBusObject* ret = new ajn::ProxyBusObject(*((ajn::BusAttachment*)bus), service, path, sessionId);
-    return ret;
+    return (alljoyn_proxybusobject)ret;
 }
 
 void alljoyn_proxybusobject_destroy(alljoyn_busattachment bus)
@@ -889,7 +893,7 @@ void alljoyn_proxybusobject_destroy(alljoyn_busattachment bus)
     delete (ajn::ProxyBusObject*)bus;
 }
 
-QStatus alljoyn_proxybusobject_addinterface(alljoyn_busattachment bus, alljoyn_interfacedescription_const iface)
+QStatus alljoyn_proxybusobject_addinterface(alljoyn_busattachment bus, const alljoyn_interfacedescription iface)
 {
     return ((ajn::ProxyBusObject*)bus)->AddInterface(*((const ajn::InterfaceDescription*)iface));
 }

@@ -37,7 +37,7 @@ class BusObjectC : public BusObject {
         memcpy(&callbacks, callbacks_in, sizeof(alljoyn_busobject_callbacks));
     }
 
-    QStatus MethodReplyC(alljoyn_message msg, alljoyn_msgargs_const args, size_t numArgs)
+    QStatus MethodReplyC(alljoyn_message msg, const alljoyn_msgargs args, size_t numArgs)
     {
         return MethodReply(*((Message*)msg), (const MsgArg*)args, numArgs);
     }
@@ -55,7 +55,7 @@ class BusObjectC : public BusObject {
     QStatus SignalC(const char* destination,
                     alljoyn_sessionid sessionId,
                     const InterfaceDescription::Member& signal,
-                    alljoyn_msgargs_const args,
+                    const alljoyn_msgargs args,
                     size_t numArgs,
                     uint16_t timeToLive,
                     uint8_t flags)
@@ -63,7 +63,7 @@ class BusObjectC : public BusObject {
 
     }
 #endif
-    QStatus AddInterfaceC(alljoyn_interfacedescription_const iface)
+    QStatus AddInterfaceC(const alljoyn_interfacedescription iface)
     {
         return AddInterface(*(const InterfaceDescription*)iface);
     }
@@ -120,10 +120,14 @@ class BusObjectC : public BusObject {
 };
 }
 
+struct _alljoyn_busobject_handle {
+    /* Empty by design, this is just to allow the type restrictions to save coders from themselves */
+};
+
 alljoyn_busobject alljoyn_busobject_create(alljoyn_busattachment bus, const char* path, QC_BOOL isPlaceholder,
                                            const alljoyn_busobject_callbacks* callbacks_in, const void* context_in)
 {
-    return new ajn::BusObjectC(bus, path, isPlaceholder, callbacks_in, context_in);
+    return (alljoyn_busobject) new ajn::BusObjectC(bus, path, isPlaceholder, callbacks_in, context_in);
 }
 
 void alljoyn_busobject_destroy(alljoyn_busattachment bus)
@@ -131,7 +135,7 @@ void alljoyn_busobject_destroy(alljoyn_busattachment bus)
     delete (ajn::BusObjectC*)bus;
 }
 
-QStatus alljoyn_busobject_addinterface(alljoyn_busattachment bus, alljoyn_interfacedescription_const iface)
+QStatus alljoyn_busobject_addinterface(alljoyn_busattachment bus, const alljoyn_interfacedescription iface)
 {
     return ((ajn::BusObjectC*)bus)->AddInterfaceC(iface);
 }

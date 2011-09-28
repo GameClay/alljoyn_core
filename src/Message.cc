@@ -478,7 +478,7 @@ void alljoyn_message_destroy(alljoyn_message msg)
     delete msg;
 }
 
-alljoyn_msgargs_const alljoyn_message_getarg(alljoyn_message msg, size_t argN)
+const alljoyn_msgargs alljoyn_message_getarg(alljoyn_message msg, size_t argN)
 {
-    return msg->msg->GetArg(argN);
+    return (alljoyn_msgargs)msg->msg->GetArg(argN);
 }

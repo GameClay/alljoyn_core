@@ -846,7 +846,7 @@ void alljoyn_message_destroy(alljoyn_message msg);
  *      - The argument
  *      - NULL if unmarshal failed or there is not such argument.
  */
-alljoyn_msgargs_const alljoyn_message_getarg(alljoyn_message msg, size_t argN);
+const alljoyn_msgargs alljoyn_message_getarg(alljoyn_message msg, size_t argN);
 
 #ifdef __cplusplus
 } /* extern "C" */

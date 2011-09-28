@@ -1596,13 +1596,17 @@ QStatus MsgArg::VParseArgs(const char*& signature, size_t sigLen, const MsgArg* 
 
 }
 
+struct _alljoyn_msgargs_handle {
+    /* Empty by design, this is just to allow the type restrictions to save coders from themselves */
+};
+
 alljoyn_msgargs alljoyn_msgargs_create(size_t numArgs)
 {
     ajn::MsgArg* args = new ajn::MsgArg[numArgs];
     for (size_t i = 0; i < numArgs; i++) {
         args[i].Clear();
     }
-    return args;
+    return (alljoyn_msgargs)args;
 }
 
 void alljoyn_msgargs_destroy(alljoyn_msgargs arg)
@@ -1621,7 +1625,7 @@ QStatus alljoyn_msgargs_set(alljoyn_msgargs args, size_t argOffset, size_t* numA
 }
 
 #define _IMPLEMENT_MSGARG_TYPE_ACCESSOR(rt, nt, mt) \
-    rt alljoyn_msgargs_as_ ## nt(alljoyn_msgargs_const args, size_t idx) \
+    rt alljoyn_msgargs_as_ ## nt(const alljoyn_msgargs args, size_t idx) \
     { \
         return ((ajn::MsgArg*)args)[idx].mt; \
     }
@@ -1641,7 +1645,7 @@ _IMPLEMENT_MSGARG_TYPE_ACCESSOR(double, double, v_double);
 #undef _IMPLEMENT_MSGARG_TYPE_ACCESSOR
 #undef _IMPLEMENT_MSGARG_TYPE_ACCESSOR_S
 
-const char* alljoyn_msgargs_as_string(alljoyn_msgargs_const args, size_t idx)
+const char* alljoyn_msgargs_as_string(const alljoyn_msgargs args, size_t idx)
 {
     return ((ajn::MsgArg*)args)[idx].v_string.str;
 }

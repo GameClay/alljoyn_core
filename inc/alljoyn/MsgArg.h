@@ -709,16 +709,16 @@ QStatus alljoyn_msgargs_set(alljoyn_msgargs args, size_t argOffset, size_t* numA
     AllJoynInvalid v_invalid;
  */
 
-uint8_t alljoyn_msgargs_as_uint8(alljoyn_msgargs_const args, size_t idx);
-QC_BOOL alljoyn_msgargs_as_bool(alljoyn_msgargs_const args, size_t idx);
-int16_t alljoyn_msgargs_as_int16(alljoyn_msgargs_const args, size_t idx);
-uint16_t alljoyn_msgargs_as_uint16(alljoyn_msgargs_const args, size_t idx);
-int32_t alljoyn_msgargs_as_int32(alljoyn_msgargs_const args, size_t idx);
-uint32_t alljoyn_msgargs_as_uint32(alljoyn_msgargs_const args, size_t idx);
-int64_t alljoyn_msgargs_as_int64(alljoyn_msgargs_const args, size_t idx);
-uint64_t alljoyn_msgargs_as_uint64(alljoyn_msgargs_const args, size_t idx);
-double alljoyn_msgargs_as_double(alljoyn_msgargs_const args, size_t idx);
-const char* alljoyn_msgargs_as_string(alljoyn_msgargs_const args, size_t idx);
+uint8_t alljoyn_msgargs_as_uint8(const alljoyn_msgargs args, size_t idx);
+QC_BOOL alljoyn_msgargs_as_bool(const alljoyn_msgargs args, size_t idx);
+int16_t alljoyn_msgargs_as_int16(const alljoyn_msgargs args, size_t idx);
+uint16_t alljoyn_msgargs_as_uint16(const alljoyn_msgargs args, size_t idx);
+int32_t alljoyn_msgargs_as_int32(const alljoyn_msgargs args, size_t idx);
+uint32_t alljoyn_msgargs_as_uint32(const alljoyn_msgargs args, size_t idx);
+int64_t alljoyn_msgargs_as_int64(const alljoyn_msgargs args, size_t idx);
+uint64_t alljoyn_msgargs_as_uint64(const alljoyn_msgargs args, size_t idx);
+double alljoyn_msgargs_as_double(const alljoyn_msgargs args, size_t idx);
+const char* alljoyn_msgargs_as_string(const alljoyn_msgargs args, size_t idx);
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -761,7 +761,7 @@ void alljoyn_proxybusobject_destroy(alljoyn_busattachment bus);
  *      - #ER_OK if successful.
  *      - An error status otherwise
  */
-QStatus alljoyn_proxybusobject_addinterface(alljoyn_busattachment bus, alljoyn_interfacedescription_const iface);
+QStatus alljoyn_proxybusobject_addinterface(alljoyn_busattachment bus, const alljoyn_interfacedescription iface);
 
 /**
  * Make a synchronous method call

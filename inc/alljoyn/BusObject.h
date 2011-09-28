@@ -476,7 +476,7 @@ void alljoyn_busobject_destroy(alljoyn_busattachment bus);
  *      - #ER_BUS_IFACE_ALREADY_EXISTS if the interface already exists.
  *      - An error status otherwise
  */
-QStatus alljoyn_busobject_addinterface(alljoyn_busattachment bus, alljoyn_interfacedescription_const iface);
+QStatus alljoyn_busobject_addinterface(alljoyn_busattachment bus, const alljoyn_interfacedescription iface);
 
 /**
  * Add a set of method handers at once.

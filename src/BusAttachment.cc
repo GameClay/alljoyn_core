@@ -1832,6 +1832,10 @@ QStatus BusAttachment::GetKeyExpiration(const qcc::String& guid, uint32_t& timeo
 
 }
 
+struct _alljoyn_busattachment_handle {
+    /* Empty by design, this is just to allow the type restrictions to save coders from themselves */
+};
+
 alljoyn_busattachment alljoyn_busattachment_create(const char* applicationName, QC_BOOL allowRemoteMessages)
 {
     bool allowRemoteMessagesBool = (allowRemoteMessages == QC_TRUE ? true : false);
@@ -1858,7 +1862,7 @@ QStatus alljoyn_busattachment_createinterface(alljoyn_busattachment bus,
     bool secureBool = (secure == QC_TRUE ? true : false);
     ajn::InterfaceDescription* ifaceObj = NULL;
     QStatus ret = ((ajn::BusAttachment*)bus)->CreateInterface(name, ifaceObj, secureBool);
-    *iface = ifaceObj;
+    *iface = (alljoyn_interfacedescription)ifaceObj;
 
     return ret;
 }
@@ -1889,9 +1893,9 @@ QStatus alljoyn_busattachment_findadvertisedname(alljoyn_busattachment bus, cons
     return ((ajn::BusAttachment*)bus)->FindAdvertisedName(namePrefix);
 }
 
-alljoyn_interfacedescription_const alljoyn_busattachment_getinterface(alljoyn_busattachment bus, const char* name)
+const alljoyn_interfacedescription alljoyn_busattachment_getinterface(alljoyn_busattachment bus, const char* name)
 {
-    return ((ajn::BusAttachment*)bus)->GetInterface(name);
+    return (alljoyn_interfacedescription)((ajn::BusAttachment*)bus)->GetInterface(name);
 }
 
 QStatus alljoyn_busattachment_joinsession(alljoyn_busattachment bus, const char* sessionHost,
@@ -1924,7 +1928,7 @@ QStatus alljoyn_busattachment_requestname(alljoyn_busattachment bus, const char*
 }
 
 QStatus alljoyn_busattachment_bindsessionport(alljoyn_busattachment bus, alljoyn_sessionport* sessionPort,
-                                              alljoyn_sessionopts_const opts, alljoyn_sessionportlistener listener)
+                                              const alljoyn_sessionopts opts, alljoyn_sessionportlistener listener)
 {
     return ((ajn::BusAttachment*)bus)->BindSessionPort(*((ajn::SessionPort*)sessionPort),
                                                        *((const ajn::SessionOpts*)opts),

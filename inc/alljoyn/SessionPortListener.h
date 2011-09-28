@@ -75,7 +75,7 @@ extern "C" {
  * Type for the AcceptSessionJoiner callback.
  */
 typedef QC_BOOL (*alljoyn_sessionportlistener_acceptsessionjoiner_ptr)(const void* context, alljoyn_sessionport sessionPort,
-                                                                       const char* joiner,  alljoyn_sessionopts_const opts);
+                                                                       const char* joiner,  const alljoyn_sessionopts opts);
 
 /*
  * Type for the SessionJoined callback.

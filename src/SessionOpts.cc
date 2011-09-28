@@ -111,11 +111,15 @@ void SetSessionOpts(const SessionOpts& opts, MsgArg& msgArg)
 
 }
 
+struct _alljoyn_sessionopts_handle {
+    /* Empty by design, this is just to allow the type restrictions to save coders from themselves */
+};
+
 alljoyn_sessionopts alljoyn_sessionopts_create(uint8_t traffic, QC_BOOL isMultipoint,
                                                uint8_t proximity, alljoyn_transportmask transports)
 {
-    return new ajn::SessionOpts((ajn::SessionOpts::TrafficType)traffic, isMultipoint == QC_TRUE ? true : false,
-                                (ajn::SessionOpts::Proximity)proximity, (ajn::TransportMask)transports);
+    return (alljoyn_sessionopts) new ajn::SessionOpts((ajn::SessionOpts::TrafficType)traffic, isMultipoint == QC_TRUE ? true : false,
+                                                      (ajn::SessionOpts::Proximity)proximity, (ajn::TransportMask)transports);
 }
 
 void alljoyn_sessionopts_destroy(alljoyn_sessionopts opts)
@@ -123,22 +127,22 @@ void alljoyn_sessionopts_destroy(alljoyn_sessionopts opts)
     delete (ajn::SessionOpts*)opts;
 }
 
-uint8_t alljoyn_sessionopts_traffic(alljoyn_sessionopts_const opts)
+uint8_t alljoyn_sessionopts_traffic(const alljoyn_sessionopts opts)
 {
     return ((const ajn::SessionOpts*)opts)->traffic;
 }
 
-QC_BOOL alljoyn_sessionopts_multipoint(alljoyn_sessionopts_const opts)
+QC_BOOL alljoyn_sessionopts_multipoint(const alljoyn_sessionopts opts)
 {
     return (((const ajn::SessionOpts*)opts)->isMultipoint ? QC_TRUE : QC_FALSE);
 }
 
-uint8_t alljoyn_sessionopts_proximity(alljoyn_sessionopts_const opts)
+uint8_t alljoyn_sessionopts_proximity(const alljoyn_sessionopts opts)
 {
     return ((const ajn::SessionOpts*)opts)->proximity;
 }
 
-alljoyn_transportmask alljoyn_sessionopts_transports(alljoyn_sessionopts_const opts)
+alljoyn_transportmask alljoyn_sessionopts_transports(const alljoyn_sessionopts opts)
 {
     return ((const ajn::SessionOpts*)opts)->transports;
 }

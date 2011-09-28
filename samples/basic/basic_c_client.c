@@ -184,7 +184,7 @@ int main(int argc, char** argv, char** envArg)
 
     if (status == ER_OK) {
         alljoyn_proxybusobject remoteObj = alljoyn_proxybusobject_create(g_msgBus, SERVICE_NAME, SERVICE_PATH, s_sessionId);
-        alljoyn_interfacedescription_const alljoynTestIntf = alljoyn_busattachment_getinterface(g_msgBus, INTERFACE_NAME);
+        const alljoyn_interfacedescription alljoynTestIntf = alljoyn_busattachment_getinterface(g_msgBus, INTERFACE_NAME);
         assert(alljoynTestIntf);
         alljoyn_proxybusobject_addinterface(remoteObj, alljoynTestIntf);
 
