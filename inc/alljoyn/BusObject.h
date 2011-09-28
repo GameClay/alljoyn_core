@@ -448,7 +448,8 @@ typedef struct {
  * @param isPlaceholder  Place-holder objects are created by the bus itself and serve only
  *                       as parent objects (in the object path sense) to other objects.
  */
-alljoyn_busobject alljoyn_busobject_create(alljoyn_busattachment bus, const char* path, QC_BOOL isPlaceholder);
+alljoyn_busobject alljoyn_busobject_create(alljoyn_busattachment bus, const char* path, QC_BOOL isPlaceholder,
+                                           const alljoyn_busobject_callbacks* callbacks_in, const void* context_in);
 
 /**
  * Destroy a BusObject
@@ -456,6 +457,39 @@ alljoyn_busobject alljoyn_busobject_create(alljoyn_busattachment bus, const char
  * @param bus Bus to destroy.
  */
 void alljoyn_busobject_destroy(alljoyn_busattachment bus);
+
+/**
+ * Add an interface to this object. If the interface has properties this will also add the
+ * standard property access interface. An interface must be added before its method handlers can be
+ * added. Note that the Peer interface (org.freedesktop.DBus.peer) is implicit on all objects and
+ * cannot be explicitly added, and the Properties interface (org.freedesktop,DBus.Properties) is
+ * automatically added when needed and cannot be explicitly added.
+ *
+ * Once an object is registered, it should not add any additional interfaces. Doing so would
+ * confuse remote objects that may have already introspected this object.
+ *
+ * @param bus    The bus on which to add the interface
+ * @param iface  The interface to add
+ *
+ * @return
+ *      - #ER_OK if the interface was successfully added.
+ *      - #ER_BUS_IFACE_ALREADY_EXISTS if the interface already exists.
+ *      - An error status otherwise
+ */
+QStatus alljoyn_busobject_addinterface(alljoyn_busattachment bus, alljoyn_interfacedescription_const iface);
+
+/**
+ * Add a set of method handers at once.
+ *
+ * @param bus          The bus on which to add method handlers.
+ * @param entries      Array of alljoyn_busobject_methodentry.
+ * @param numEntries   Number of entries in array.
+ *
+ * @return
+ *      - #ER_OK if all the methods were added
+ *      - #ER_BUS_NO_SUCH_INTERFACE is method can not be added because interface does not exist.
+ */
+QStatus alljoyn_busobject_addmethodhandlers(alljoyn_busattachment bus, const alljoyn_busobject_methodentry* entries, size_t numEntries);
 
 #ifdef __cplusplus
 } /* extern "C" */

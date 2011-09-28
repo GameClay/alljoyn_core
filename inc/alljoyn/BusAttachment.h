@@ -28,15 +28,15 @@
 #include <alljoyn/Session.h>
 #include <alljoyn/ProxyBusObject.h>
 #include <alljoyn/AllJoynCTypes.h>
+#include <alljoyn/BusObject.h>
+#include <alljoyn/SessionListener.h>
+#include <alljoyn/SessionPortListener.h>
 
 #ifdef __cplusplus
 
 #include <qcc/String.h>
 #include <alljoyn/KeyStoreListener.h>
 #include <alljoyn/AuthListener.h>
-#include <alljoyn/BusObject.h>
-#include <alljoyn/SessionListener.h>
-#include <alljoyn/SessionPortListener.h>
 
 namespace ajn {
 
@@ -931,6 +931,14 @@ void alljoyn_busattachment_destroy(alljoyn_busattachment bus);
 QStatus alljoyn_busattachment_stop(alljoyn_busattachment bus, QC_BOOL blockUntilStopped);
 
 /**
+ * Wait for the message bus to be stopped. This method blocks the calling thread until another thread
+ * calls the Stop() method. Return immediately if the message bus has not been started.
+ *
+ * @param bus The bus to wait on stopping.
+ */
+void alljoyn_busattachment_waitstop(alljoyn_busattachment bus);
+
+/**
  * Create an interface description with a given name.
  *
  * @param bus    The BusAttachment on which to create an interface.
@@ -1012,6 +1020,39 @@ void alljoyn_busattachment_unregisterbuslistener(alljoyn_busattachment bus, allj
 QStatus alljoyn_busattachment_findadvertisedname(alljoyn_busattachment bus, const char* namePrefix);
 
 /**
+ * Advertise the existence of a well-known name to other (possibly disconnected) AllJoyn daemons.
+ *
+ * This method is a shortcut/helper that issues an org.alljoyn.Bus.AdvertisedName method call to the local daemon
+ * and interprets the response.
+ *
+ * @param[in]  bus           The bus on which to advertise the name.
+ * @param[in]  name          the well-known name to advertise. (Must be owned by the caller via RequestName).
+ * @param[in]  transports    Set of transports to use for sending advertisment.
+ *
+ * @return
+ *      - #ER_OK iff daemon response was received and advertise was successful.
+ *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+ *      - Other error status codes indicating a failure.
+ */
+QStatus alljoyn_busattachment_advertisename(alljoyn_busattachment bus, const char* name, alljoyn_transportmask transports);
+
+/**
+ * Stop advertising the existence of a well-known name to other AllJoyn daemons.
+ *
+ * This method is a shortcut/helper that issues an org.alljoyn.Bus.CancelAdvertiseName method call to the local daemon
+ * and interprets the response.
+ *
+ * @param[in]  name          A well-known name that was previously advertised via AdvertiseName.
+ * @param[in]  transports    Set of transports whose name advertisment will be cancelled.
+ *
+ * @return
+ *      - #ER_OK iff daemon response was received and advertisements were sucessfully stopped.
+ *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+ *      - Other error status codes indicating a failure.
+ */
+QStatus alljoyn_busattachment_canceladvertisename(alljoyn_busattachment bus, const char* name, alljoyn_transportmask transports);
+
+/**
  * Retrieve an existing activated InterfaceDescription.
  *
  * @param bus        The BusAttachment from which to retrieve the interface.
@@ -1043,6 +1084,91 @@ alljoyn_interfacedescription_const alljoyn_busattachment_getinterface(alljoyn_bu
 QStatus alljoyn_busattachment_joinsession(alljoyn_busattachment bus, const char* sessionHost,
                                           alljoyn_sessionport sessionPort, alljoyn_buslistener listener,
                                           alljoyn_sessionid* sessionId, alljoyn_sessionopts* opts);
+
+/**
+ * Register a BusObject
+ *
+ * @param bus      The bus on which to register the object.
+ * @param obj      BusObject to register.
+ *
+ * @return
+ *      - #ER_OK if successful.
+ *      - #ER_BUS_BAD_OBJ_PATH for a bad object path
+ */
+QStatus alljoyn_busattachment_registerbusobject(alljoyn_busattachment bus, alljoyn_busobject obj);
+
+/**
+ * Unregister a BusObject
+ *
+ * @param bus     The bus from which to unregister the object.
+ * @param object  Object to be unregistered.
+ */
+void alljoyn_busattachment_unregisterbusobject(alljoyn_busattachment bus, alljoyn_busobject object);
+
+/**
+ * Request a well-known name.
+ * This method is a shortcut/helper that issues an org.freedesktop.DBus.RequestName method call to the local daemon
+ * and interprets the response.
+ *
+ * @param[in]  bus            The bus on which to request the specified name.
+ * @param[in]  requestedName  Well-known name being requested.
+ * @param[in]  flags          Bitmask of DBUS_NAME_FLAG_* defines (see DBusStd.h)
+ *
+ * @return
+ *      - #ER_OK iff daemon response was received and request was successful.
+ *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+ *      - Other error status codes indicating a failure.
+ */
+QStatus alljoyn_busattachment_requestname(alljoyn_busattachment bus, const char* requestedName, uint32_t flags);
+
+/**
+ * Make a SessionPort available for external BusAttachments to join.
+ *
+ * Each BusAttachment binds its own set of SessionPorts. Session joiners use the bound session
+ * port along with the name of the attachement to create a persistent logical connection (called
+ * a Session) with the original BusAttachment.
+ *
+ * A SessionPort and bus name form a unique identifier that BusAttachments use when joining a
+ * session.
+ *
+ * SessionPort values can be pre-arranged between AllJoyn services and their clients (well-known
+ * SessionPorts).
+ *
+ * Once a session is joined using one of the service's well-known SessionPorts, the service may
+ * bind additional SessionPorts (dyanamically) and share these SessionPorts with the joiner over
+ * the original session. The joiner can then create additional sessions with the service by
+ * calling JoinSession with these dynamic SessionPort ids.
+ *
+ * @param[in]     bus              The bus on which to make the session port available.
+ * @param[in,out] sessionPort      SessionPort value to bind or SESSION_PORT_ANY to allow this method
+ *                                 to choose an available port. On successful return, this value
+ *                                 contains the chosen SessionPort.
+ *
+ * @param[in]     opts             Session options that joiners must agree to in order to
+ *                                 successfully join the session.
+ *
+ * @param[in]     listener  Called by the bus when session related events occur.
+ *
+ * @return
+ *      - #ER_OK iff daemon response was received and the bind operation was successful.
+ *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+ *      - Other error status codes indicating a failure.
+ */
+QStatus alljoyn_busattachment_bindsessionport(alljoyn_busattachment bus, alljoyn_sessionport* sessionPort,
+                                              alljoyn_sessionopts_const opts, alljoyn_sessionportlistener listener);
+
+/**
+ * Cancel an existing port binding.
+ *
+ * @param[in]   bus            The bus on which to cancel the port binding.
+ * @param[in]   sessionPort    Existing session port to be un-bound.
+ *
+ * @return
+ *      - #ER_OK iff daemon response was received and the bind operation was successful.
+ *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+ *      - Other error status codes indicating a failure.
+ */
+QStatus alljoyn_busattachment_unbindsessionport(alljoyn_busattachment bus, alljoyn_sessionport sessionPort);
 
 #ifdef __cplusplus
 } /* extern "C" */

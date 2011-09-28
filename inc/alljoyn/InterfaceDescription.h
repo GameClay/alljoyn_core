@@ -385,6 +385,18 @@ class InterfaceDescription {
 extern "C" {
 #endif /* #ifdef __cplusplus */
 
+typedef struct {
+    alljoyn_interfacedescription_const iface;   /**< Interface that this member belongs to */
+    alljoyn_messagetype memberType;             /**< %Member type */
+    const char* name;                           /**< %Member name */
+    const char* signature;                      /**< Method call IN arguments (NULL for signals) */
+    const char* returnSignature;                /**< Signal or method call OUT arguments */
+    const char* argNames;                       /**< Comma separated list of argument names - can be NULL */
+    uint8_t annotation;                         /**< Exclusive OR of flags MEMBER_ANNOTATE_NO_REPLY and MEMBER_ANNOTATE_DEPRECATED */
+
+    const void* internal_member;                /**< For internal use only */
+} alljoyn_interfacedescription_member;
+
 /**
  * Add a method call member to the interface.
  *
@@ -409,15 +421,17 @@ QStatus alljoyn_interfacedescription_addmethod(alljoyn_interfacedescription ifac
  */
 void alljoyn_interfacedescription_activate(alljoyn_interfacedescription iface);
 
-typedef struct {
-    alljoyn_interfacedescription_const iface;   /**< Interface that this member belongs to */
-    alljoyn_messagetype memberType;             /**< %Member type */
-    const char* name;                           /**< %Member name */
-    const char* signature;                      /**< Method call IN arguments (NULL for signals) */
-    const char* returnSignature;                /**< Signal or method call OUT arguments */
-    const char* argNames;                       /**< Comma separated list of argument names - can be NULL */
-    uint8_t annotation;                         /**< Exclusive OR of flags MEMBER_ANNOTATE_NO_REPLY and MEMBER_ANNOTATE_DEPRECATED */
-} alljoyn_interfacedescription_member;
+/**
+ * Lookup a member description by name
+ *
+ * @param       iface   Interface on which to lookup the member
+ * @param       name    Name of the member to lookup
+ * @param[out]  member  The description of the member
+ *
+ * @return QC_FALSE if member does not exist, QC_TRUE otherwise.
+ */
+QC_BOOL alljoyn_interfacedescription_getmember(alljoyn_interfacedescription_const iface, const char* name,
+                                               alljoyn_interfacedescription_member* member);
 
 #ifdef __cplusplus
 } /* extern "C" */

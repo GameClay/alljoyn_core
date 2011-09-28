@@ -1902,3 +1902,46 @@ QStatus alljoyn_busattachment_joinsession(alljoyn_busattachment bus, const char*
                                                    (ajn::SessionListener*)listener, *((ajn::SessionId*)sessionId),
                                                    *((ajn::SessionOpts*)opts));
 }
+
+QStatus alljoyn_busattachment_registerbusobject(alljoyn_busattachment bus, alljoyn_busobject obj)
+{
+    return ((ajn::BusAttachment*)bus)->RegisterBusObject(*((ajn::BusObject*)obj));
+}
+
+void alljoyn_busattachment_unregisterbusobject(alljoyn_busattachment bus, alljoyn_busobject object)
+{
+    ((ajn::BusAttachment*)bus)->UnregisterBusObject(*((ajn::BusObject*)object));
+}
+
+void alljoyn_busattachment_waitstop(alljoyn_busattachment bus)
+{
+    ((ajn::BusAttachment*)bus)->WaitStop();
+}
+
+QStatus alljoyn_busattachment_requestname(alljoyn_busattachment bus, const char* requestedName, uint32_t flags)
+{
+    return ((ajn::BusAttachment*)bus)->RequestName(requestedName, flags);
+}
+
+QStatus alljoyn_busattachment_bindsessionport(alljoyn_busattachment bus, alljoyn_sessionport* sessionPort,
+                                              alljoyn_sessionopts_const opts, alljoyn_sessionportlistener listener)
+{
+    return ((ajn::BusAttachment*)bus)->BindSessionPort(*((ajn::SessionPort*)sessionPort),
+                                                       *((const ajn::SessionOpts*)opts),
+                                                       *((ajn::SessionPortListener*)listener));
+}
+
+QStatus alljoyn_busattachment_unbindsessionport(alljoyn_busattachment bus, alljoyn_sessionport sessionPort)
+{
+    return ((ajn::BusAttachment*)bus)->UnbindSessionPort(sessionPort);
+}
+
+QStatus alljoyn_busattachment_advertisename(alljoyn_busattachment bus, const char* name, alljoyn_transportmask transports)
+{
+    return ((ajn::BusAttachment*)bus)->AdvertiseName(name, transports);
+}
+
+QStatus alljoyn_busattachment_canceladvertisedname(alljoyn_busattachment bus, const char* name, alljoyn_transportmask transports)
+{
+    return ((ajn::BusAttachment*)bus)->CancelAdvertiseName(name, transports);
+}

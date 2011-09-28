@@ -29,6 +29,14 @@ namespace ajn {
 
 class BusObjectC : public BusObject {
   public:
+    BusObjectC(alljoyn_busattachment bus, const char* path, QC_BOOL isPlaceholder, \
+               const alljoyn_busobject_callbacks* callbacks_in, const void* context_in) :
+        BusObject(*((BusAttachment*)bus), path, isPlaceholder == QC_TRUE ? true : false)
+    {
+        context = context_in;
+        memcpy(&callbacks, callbacks_in, sizeof(alljoyn_busobject_callbacks));
+    }
+
     QStatus MethodReplyC(alljoyn_message msg, alljoyn_msgargs_const args, size_t numArgs)
     {
         return MethodReply(*((Message*)msg), (const MsgArg*)args, numArgs);
@@ -59,17 +67,12 @@ class BusObjectC : public BusObject {
     {
         return AddInterface(*(const InterfaceDescription*)iface);
     }
-#if 0
-    QStatus AddMethodHandler(const InterfaceDescription::Member* member, MessageReceiver::MethodHandler handler)
-    {
 
+    QStatus AddMethodHandlersC(const alljoyn_busobject_methodentry* entries, size_t numEntries)
+    {
+        return AddMethodHandlers((const MethodEntry*)entries, numEntries);
     }
 
-    QStatus AddMethodHandlers(const MethodEntry* entries, size_t numEntries)
-    {
-
-    }
-#endif
 
   protected:
     virtual QStatus Get(const char* ifcName, const char* propName, MsgArg& val)
@@ -117,12 +120,23 @@ class BusObjectC : public BusObject {
 };
 }
 
-alljoyn_busobject alljoyn_busobject_create(alljoyn_busattachment bus, const char* path, QC_BOOL isPlaceholder)
+alljoyn_busobject alljoyn_busobject_create(alljoyn_busattachment bus, const char* path, QC_BOOL isPlaceholder,
+                                           const alljoyn_busobject_callbacks* callbacks_in, const void* context_in)
 {
-    return NULL; //new ajn::BusObject
+    return new ajn::BusObjectC(bus, path, isPlaceholder, callbacks_in, context_in);
 }
 
 void alljoyn_busobject_destroy(alljoyn_busattachment bus)
 {
+    delete (ajn::BusObjectC*)bus;
+}
 
+QStatus alljoyn_busobject_addinterface(alljoyn_busattachment bus, alljoyn_interfacedescription_const iface)
+{
+    return ((ajn::BusObjectC*)bus)->AddInterfaceC(iface);
+}
+
+QStatus alljoyn_busobject_addmethodhandlers(alljoyn_busattachment bus, const alljoyn_busobject_methodentry* entries, size_t numEntries)
+{
+    return ((ajn::BusObjectC*)bus)->AddMethodHandlersC(entries, numEntries);
 }

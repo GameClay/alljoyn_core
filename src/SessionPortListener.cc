@@ -29,7 +29,7 @@ namespace ajn {
  * Abstract base class implemented by AllJoyn users and called by AllJoyn to inform
  * users of session port related events.
  */
-class SessionPortListenerCallbackC : SessionPortListener {
+class SessionPortListenerCallbackC : public SessionPortListener {
   public:
     SessionPortListenerCallbackC(const alljoyn_sessionportlistener_callbacks* in_callbacks, const void* in_context)
     {
@@ -37,7 +37,7 @@ class SessionPortListenerCallbackC : SessionPortListener {
         context = in_context;
     }
 
-    bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
+    virtual bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
     {
         QC_BOOL ret = QC_FALSE;
         if (callbacks.accept_session_joiner != NULL) {
@@ -46,7 +46,7 @@ class SessionPortListenerCallbackC : SessionPortListener {
         return (ret == QC_FALSE ? false : true);
     }
 
-    void SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner)
+    virtual void SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner)
     {
         if (callbacks.session_joined != NULL) {
             callbacks.session_joined(context, sessionPort, id, joiner);

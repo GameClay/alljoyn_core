@@ -64,11 +64,10 @@ static void SigIntHandler(int sig)
 /* FoundAdvertisedName callback */
 void found_advertised_name(const void* context, const char* name, alljoyn_transportmask transport, const char* namePrefix)
 {
-    alljoyn_sessionopts opts = NULL;
     printf("FoundAdvertisedName(name=%s, prefix=%s)\n", name, namePrefix);
     if (0 == strcmp(name, SERVICE_NAME)) {
         /* We found a remote bus that is advertising basic service's  well-known name so connect to it */
-        opts = alljoyn_sessionopts_create(ALLJOYN_TRAFFIC_TYPE_MESSAGES, QC_FALSE, ALLJOYN_PROXIMITY_ANY, ALLJOYN_TRANSPORT_ANY);
+        alljoyn_sessionopts opts = alljoyn_sessionopts_create(ALLJOYN_TRAFFIC_TYPE_MESSAGES, QC_FALSE, ALLJOYN_PROXIMITY_ANY, ALLJOYN_TRANSPORT_ANY);
         QStatus status = alljoyn_busattachment_joinsession(g_msgBus, name, SERVICE_PORT, g_busListener, &s_sessionId, opts);
 
         if (ER_OK != status) {

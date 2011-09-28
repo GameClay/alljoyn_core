@@ -312,3 +312,20 @@ void alljoyn_interfacedescription_activate(alljoyn_interfacedescription iface)
 {
     ((ajn::InterfaceDescription*)iface)->Activate();
 }
+
+QC_BOOL alljoyn_interfacedescription_getmember(alljoyn_interfacedescription_const iface, const char* name,
+                                               alljoyn_interfacedescription_member* member)
+{
+    const ajn::InterfaceDescription::Member* found_member = ((const ajn::InterfaceDescription*)iface)->GetMember(name);
+    if (found_member != NULL) {
+        member->iface = found_member->iface;
+        member->memberType = (alljoyn_messagetype)found_member->memberType;
+        member->name = found_member->name.c_str();
+        member->signature = found_member->signature.c_str();
+        member->returnSignature = found_member->returnSignature.c_str();
+        member->argNames = found_member->argNames.c_str();
+        member->annotation = found_member->annotation;
+        member->internal_member = member;
+    }
+    return (found_member == NULL ? QC_FALSE : QC_TRUE);
+}

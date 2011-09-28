@@ -44,7 +44,7 @@
 /** Static top level message bus object */
 static alljoyn_busattachment g_msgBus = NULL;
 
-static alljoyn_buslistener s_busListener = NULL;
+/* Static SessionPortListener */
 static alljoyn_sessionportlistener s_sessionPortListener = NULL;
 
 /* Static BusListener */
@@ -70,48 +70,12 @@ static void SigIntHandler(int sig)
         }
     }
 }
-#if 0
-class BasicSampleObject : public BusObject {
-  public:
-    BasicSampleObject(BusAttachment & bus, const char* path) : BusObject(bus, path)
-    {
-        /** Add the test interface to this object */
-        const InterfaceDescription* exampleIntf = bus.GetInterface(INTERFACE_NAME);
-        assert(exampleIntf);
-        AddInterface(*exampleIntf);
 
-        /** Register the method handlers with the object */
-        const MethodEntry methodEntries[] = {
-            { exampleIntf->GetMember("cat"), static_cast<MessageReceiver::MethodHandler>(&BasicSampleObject::Cat) }
-        };
-        QStatus status = AddMethodHandlers(methodEntries, sizeof(methodEntries) / sizeof(methodEntries[0]));
-        if (ER_OK != status) {
-            printf("Failed to register method handlers for BasicSampleObject");
-        }
-    }
-
-    void ObjectRegistered()
-    {
-        BusObject::ObjectRegistered();
-        printf("ObjectRegistered has been called\n");
-    }
-
-
-    void Cat(const InterfaceDescription::Member* member, Message& msg)
-    {
-        /* Concatenate the two input strings and reply with the result. */
-        qcc::String inStr1 = msg->GetArg(0)->v_string.str;
-        qcc::String inStr2 = msg->GetArg(1)->v_string.str;
-        qcc::String outStr = inStr1 + inStr2;
-
-        MsgArg outArg("s", outStr.c_str());
-        QStatus status = MethodReply(msg, &outArg, 1);
-        if (ER_OK != status) {
-            printf("Ping: Error sending reply\n");
-        }
-    }
-};
-#endif
+/* ObjectRegistered callback */
+void busobject_object_registered(const void* context)
+{
+    printf("ObjectRegistered has been called\n");
+}
 
 /* NameOwnerChanged callback */
 void name_owner_changed(const void* context, const char* busName, const char* previousOwner, const char* newOwner)
@@ -137,6 +101,27 @@ QC_BOOL accept_session_joiner(const void* context, alljoyn_sessionport sessionPo
         ret = QC_TRUE;
     }
     return ret;
+}
+
+/* Exposed concatinate method */
+void cat_method(const alljoyn_interfacedescription_member* member, alljoyn_message msg)
+{
+    /* Concatenate the two input strings and reply with the result. */
+    char result[256];
+    strncat(result, alljoyn_msgargs_as_string(alljoyn_message_getarg(msg, 0), 0), sizeof(result));
+    strncat(result, alljoyn_msgargs_as_string(alljoyn_message_getarg(msg, 1), 0), sizeof(result));
+    printf("Result: %s\n", result);
+#if 0
+    qcc::String inStr1 = msg->GetArg(0)->v_string.str;
+    qcc::String inStr2 = msg->GetArg(1)->v_string.str;
+    qcc::String outStr = inStr1 + inStr2;
+
+    MsgArg outArg("s", outStr.c_str());
+    QStatus status = MethodReply(msg, &outArg, 1);
+    if (ER_OK != status) {
+        printf("Ping: Error sending reply\n");
+    }
+#endif
 }
 
 /** Main entry point */
@@ -166,9 +151,10 @@ int main(int argc, char** argv, char** envArg)
     alljoyn_interfacedescription testIntf = NULL;
     status = alljoyn_busattachment_createinterface(g_msgBus, INTERFACE_NAME, &testIntf, QC_FALSE);
     if (status == ER_OK) {
-        printf("Interface Created.\n");
-        alljoyn_interfacedescription_addmethod(testIntf, "cat", "ss",  "s", "inStr1,inStr2,outStr", 0);
+        QStatus status = alljoyn_interfacedescription_addmethod(testIntf, "cat", "ss",  "s", "inStr1,inStr2,outStr", 0);
+        printf("AddMethod status: %s\n", QCC_StatusText(status));
         alljoyn_interfacedescription_activate(testIntf);
+        printf("Interface Created.\n");
     } else {
         printf("Failed to create interface 'org.alljoyn.Bus.method_sample'\n");
     }
@@ -190,21 +176,37 @@ int main(int argc, char** argv, char** envArg)
     }
 
     /* Set up bus object */
+    alljoyn_busobject_callbacks busObjCbs = {
+        NULL,
+        NULL,
+        busobject_object_registered,
+        NULL
+    };
+    alljoyn_busobject testObj = alljoyn_busobject_create(g_msgBus, SERVICE_PATH, QC_FALSE, &busObjCbs, NULL);
     alljoyn_interfacedescription_const exampleIntf = alljoyn_busattachment_getinterface(g_msgBus, INTERFACE_NAME);
     assert(exampleIntf);
+    alljoyn_busobject_addinterface(testObj, exampleIntf);
 
-#if 0
-    BasicSampleObject testObj(*g_msgBus, SERVICE_PATH);
+    alljoyn_interfacedescription_member cat_member;
+    alljoyn_interfacedescription_getmember(exampleIntf, "cat", &cat_member);
+
+    alljoyn_busobject_methodentry methodEntries[] = {
+        { &cat_member, cat_method },
+    };
+    status = alljoyn_busobject_addmethodhandlers(testObj, methodEntries, sizeof(methodEntries) / sizeof(methodEntries[0]));
+    if (ER_OK != status) {
+        printf("Failed to register method handlers for BasicSampleObject");
+    }
 
     /* Start the msg bus */
-    status = g_msgBus->Start();
+    status = alljoyn_busattachment_start(g_msgBus);
     if (ER_OK == status) {
         printf("BusAttachement started.\n");
         /* Register  local objects and connect to the daemon */
-        g_msgBus->RegisterBusObject(testObj);
+        alljoyn_busattachment_registerbusobject(g_msgBus, testObj);
 
         /* Create the client-side endpoint */
-        status = g_msgBus->Connect(connectArgs);
+        status = alljoyn_busattachment_connect(g_msgBus, connectArgs);
         if (ER_OK != status) {
             printf("Failed to connect to \"%s\"\n", connectArgs);
             exit(1);
@@ -226,17 +228,24 @@ int main(int argc, char** argv, char** envArg)
     /* Request name */
     if (ER_OK == status) {
         uint32_t flags = DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_DO_NOT_QUEUE;
-        QStatus status = g_msgBus->RequestName(SERVICE_NAME, flags);
+        QStatus status = alljoyn_busattachment_requestname(g_msgBus, SERVICE_NAME, flags);
         if (ER_OK != status) {
             printf("RequestName(%s) failed (status=%s)\n", SERVICE_NAME, QCC_StatusText(status));
         }
     }
 
+    /* Create session port listener */
+    alljoyn_sessionportlistener_callbacks spl_cbs = {
+        accept_session_joiner,
+        NULL
+    };
+    s_sessionPortListener = alljoyn_sessionportlistener_create(&spl_cbs, NULL);
+
     /* Create session */
-    SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, false, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+    alljoyn_sessionopts opts = alljoyn_sessionopts_create(ALLJOYN_TRAFFIC_TYPE_MESSAGES, QC_FALSE, ALLJOYN_PROXIMITY_ANY, ALLJOYN_TRANSPORT_ANY);
     if (ER_OK == status) {
-        SessionPort sp = SERVICE_PORT;
-        status = g_msgBus->BindSessionPort(sp, opts, *s_busListener);
+        alljoyn_sessionport sp = SERVICE_PORT;
+        status = alljoyn_busattachment_bindsessionport(g_msgBus, &sp, opts, s_sessionPortListener);
         if (ER_OK != status) {
             printf("BindSessionPort failed (%s)\n", QCC_StatusText(status));
         }
@@ -244,7 +253,7 @@ int main(int argc, char** argv, char** envArg)
 
     /* Advertise name */
     if (ER_OK == status) {
-        status = g_msgBus->AdvertiseName(SERVICE_NAME, opts.transports);
+        status = alljoyn_busattachment_advertisename(g_msgBus, SERVICE_NAME, alljoyn_sessionopts_transports(opts));
         if (status != ER_OK) {
             printf("Failed to advertise name %s (%s)\n", SERVICE_NAME, QCC_StatusText(status));
         }
@@ -254,9 +263,9 @@ int main(int argc, char** argv, char** envArg)
         /*
          * Wait until bus is stopped
          */
-        g_msgBus->WaitStop();
+        alljoyn_busattachment_waitstop(g_msgBus);
     }
-#endif
+
     /* Deallocate bus */
     if (g_msgBus) {
         alljoyn_busattachment deleteMe = g_msgBus;
@@ -267,6 +276,11 @@ int main(int argc, char** argv, char** envArg)
     /* Deallocate bus listener */
     if (g_busListener) {
         alljoyn_buslistener_destroy(g_busListener);
+    }
+
+    /* Deallocate session port listener */
+    if (s_sessionPortListener) {
+        alljoyn_sessionportlistener_destroy(s_sessionPortListener);
     }
 
     return (int) status;
