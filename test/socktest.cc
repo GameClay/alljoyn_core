@@ -251,7 +251,7 @@ int main(int argc, char** argv)
     BusAttachment bus("sock_test");
     bool client = false;
     bool server = false;
-    size_t iterations = 1;
+    uint32_t iterations = 1;
     Environ* env;
 
     printf("AllJoyn Library version: %s\n", ajn::GetVersion());
@@ -326,8 +326,8 @@ int main(int argc, char** argv)
             QCC_LogError(status, ("Failed to parse XML"));
             goto Exit;
         }
-        for (size_t i = 0; i < iterations; ++i) {
-            printf("Iteration %d: ", i + 1);
+        for (uint32_t i = 0; i < iterations; ++i) {
+            printf("Iteration %u: ", i + 1);
             /* Create a connected pair if sockets */
             status = SocketPair(handles, 9900 + i);
             if (status != ER_OK) {
