@@ -511,7 +511,7 @@ void AllJoynPeerObj::ForceAuthentication(const qcc::String& busName)
         PeerState peerState = peerStateTable->GetPeerState(busName);
         peerState->ClearKeys();
         bus.ClearKeys(peerState->GetGuid().ToString());
-        lock.Lock();
+        lock.Unlock();
     }
 }
 
