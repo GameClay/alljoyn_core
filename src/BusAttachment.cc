@@ -1805,7 +1805,7 @@ QStatus BusAttachment::GetKeyExpiration(const qcc::String& guid, uint32_t& timeo
         Timespec expiration;
         QStatus status = busInternal->keyStore.GetKeyExpiration(g, expiration);
         if (status == ER_OK) {
-            int64_t deltaMillis = expiration - Timespec(0);
+            int64_t deltaMillis = expiration - Timespec(0, TIME_RELATIVE);
             if (deltaMillis < 0) {
                 timeout = 0;
             } else if (deltaMillis > (0xFFFFFFFFll * 1000)) {
