@@ -36,6 +36,7 @@
 #include <qcc/Mutex.h>
 #include <qcc/Stream.h>
 #include <qcc/Event.h>
+#include <qcc/time.h>
 
 #include <alljoyn/KeyStoreListener.h>
 
@@ -117,6 +118,24 @@ class KeyStore {
      * return ER_OK
      */
     QStatus DelKey(const qcc::GUID& guid);
+
+    /**
+     * Set expiration time on a key blob from the key store
+     *
+     * @param guid        The unique identifier for the key
+     * @param expiration  Time to expire the key
+     * return ER_OK
+     */
+    QStatus SetKeyExpiration(const qcc::GUID& guid, const qcc::Timespec& expiration);
+
+    /**
+     * Get expiration time on a key blob from the key store
+     *
+     * @param guid        The unique identifier for the key
+     * @param expiration  Time the key will expire
+     * return ER_OK
+     */
+    QStatus GetKeyExpiration(const qcc::GUID& guid, qcc::Timespec& expiration);
 
     /**
      * Test is there is a requested key blob in the key store

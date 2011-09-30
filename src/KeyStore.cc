@@ -640,5 +640,47 @@ QStatus KeyStore::DelKey(const qcc::GUID& guid)
     return ER_OK;
 }
 
+QStatus KeyStore::SetKeyExpiration(const qcc::GUID& guid, const Timespec& expiration)
+{
+    if (storeState == UNAVAILABLE) {
+        return ER_BUS_KEYSTORE_NOT_LOADED;
+    }
+    QStatus status = ER_OK;
+    lock.Lock();
+    QCC_DbgPrintf(("KeyStore::SetExpiration %s", guid.ToString().c_str()));
+    if (keys->count(guid) != 0) {
+        (*keys)[guid].key.SetExpiration(expiration);
+        storeState = MODIFIED;
+    } else {
+        status = ER_BUS_KEY_UNAVAILABLE;
+    }
+    lock.Unlock();
+    if (status == ER_OK) {
+        listener->StoreRequest(*this);
+    }
+    return status;
+}
+
+QStatus KeyStore::GetKeyExpiration(const qcc::GUID& guid, Timespec& expiration)
+{
+    if (storeState == UNAVAILABLE) {
+        return ER_BUS_KEYSTORE_NOT_LOADED;
+    }
+    /*
+     * For shared key stores we may need to do a reload before checking for key expiration.
+     */
+    QStatus status = Reload();
+    if (status == ER_OK) {
+        lock.Lock();
+        QCC_DbgPrintf(("KeyStore::GetExpiration %s", guid.ToString().c_str()));
+        if (keys->count(guid) != 0) {
+            (*keys)[guid].key.GetExpiration(expiration);
+        } else {
+            status = ER_BUS_KEY_UNAVAILABLE;
+        }
+        lock.Unlock();
+    }
+    return status;
+}
 
 }

@@ -1781,4 +1781,41 @@ QStatus BusAttachment::ClearKeys(const qcc::String& guid)
     }
 }
 
+QStatus BusAttachment::SetKeyExpiration(const qcc::String& guid, uint32_t timeout)
+{
+    if (timeout == 0) {
+        return ClearKeys(guid);
+    }
+    if (!qcc::GUID::IsGUID(guid)) {
+        return ER_INVALID_GUID;
+    } else {
+        qcc::GUID g(guid);
+        uint64_t millis = 1000ull * timeout;
+        Timespec expiration(millis, TIME_RELATIVE);
+        return busInternal->keyStore.SetKeyExpiration(g, expiration);
+    }
+}
+
+QStatus BusAttachment::GetKeyExpiration(const qcc::String& guid, uint32_t& timeout)
+{
+    if (!qcc::GUID::IsGUID(guid)) {
+        return ER_INVALID_GUID;
+    } else {
+        qcc::GUID g(guid);
+        Timespec expiration;
+        QStatus status = busInternal->keyStore.GetKeyExpiration(g, expiration);
+        if (status == ER_OK) {
+            int64_t deltaMillis = expiration - Timespec(0);
+            if (deltaMillis < 0) {
+                timeout = 0;
+            } else if (deltaMillis > (0xFFFFFFFFll * 1000)) {
+                timeout = 0xFFFFFFFF;
+            } else {
+                timeout = (uint32_t)((deltaMillis + 500ull) / 1000ull);
+            }
+        }
+        return status;
+    }
+}
+
 }

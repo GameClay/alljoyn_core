@@ -424,15 +424,44 @@ class BusAttachment : public MessageReceiver {
     void ClearKeyStore();
 
     /**
-     * Clear the keys associated with a specific peer identified by its GUID.
+     * Clear the keys associated with aa specific remote peer as identified by its peer GUID. The
+     * peer GUID associated with a bus name can be obtained by calling GetPeerGUID().
      *
      * @param guid  The guid of a remote authenticated peer.
      *
-     * @return  - ER_OK if the key was cleared
+     * @return  - ER_OK if the keys were cleared
      *          - ER_UNKNOWN_GUID if there is no peer with the specified GUID
      *          - Other errors
      */
     QStatus ClearKeys(const qcc::String& guid);
+
+    /**
+     * Set the expiration time on keys associated with a specific remote peer as identified by its
+     * peer GUID. The peer GUID associated with a bus name can be obtained by calling GetPeerGUID().
+     * If the timeout is 0 this is equivalent to calling ClearKeys().
+     *
+     * @param guid     The GUID of a remote authenticated peer.
+     * @param timeout  The time in seconds relative to the current time to expire the keys.
+     *
+     * @return  - ER_OK if the expiration time was succesfully set.
+     *          - ER_UNKNOWN_GUID if there is no authenticated peer with the specified GUID
+     *          - Other errors
+     */
+    QStatus SetKeyExpiration(const qcc::String& guid, uint32_t timeout);
+
+    /**
+     * Get the expiration time on keys associated with a specific authenticated remote peer as
+     * identified by its peer GUID. The peer GUID associated with a bus name can be obtained by
+     * calling GetPeerGUID().
+     *
+     * @param guid     The GUID of a remote authenticated peer.
+     * @param timeout  The time in seconds relative to the current time when the keys will expire.
+     *
+     * @return  - ER_OK if the expiration time was succesfully set.
+     *          - ER_UNKNOWN_GUID if there is no authenticated peer with the specified GUID
+     *          - Other errors
+     */
+    QStatus GetKeyExpiration(const qcc::String& guid, uint32_t& timeout);
 
     /**
      * Adds a logon entry string for the requested authentication mechanism to the key store. This
@@ -740,11 +769,14 @@ class BusAttachment : public MessageReceiver {
     QStatus NameHasOwner(const char* name, bool& hasOwner);
 
     /**
-     * Get the peer GUID for this peer or an authenticated remote peer. Peer GUIDs are used by the
+     * Get the peer GUID for this peer of the local peer or an authenticated remote peer. The bus
+     * names of a remote peer can change over time, specifically the unique name is different each
+     * time the peer connects to the bus and a peer may use different well-known-names at different
+     * times. The peer GUID is the only persistent identity for a peer. Peer GUIDs are used by the
      * authentication mechanisms to uniquely and identify a remote application instance. The peer
      * GUID for a remote peer is only available if the remote peer has been authenticated.
      *
-     * @param name  Name of a remote peer or NULL to get the local (our) peer GUID.
+     * @param name  Name of a remote peer or NULL to get the local (this application's) peer GUID.
      * @param guid  Returns the guid for the local or remote peer depending on the value of name.
      *
      * @return
