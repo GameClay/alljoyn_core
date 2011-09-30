@@ -268,9 +268,11 @@ void AllJoynPeerObj::ExchangeGroupKeys(const InterfaceDescription::Member* membe
         status = key.Load(src);
         if (status == ER_OK) {
             /*
-             * Tag the group key with the auth mechanism used by ExchangeGroupKeys then store it.
+             * Tag the group key with the auth mechanism used by ExchangeGroupKeys. Group keys
+             * are inherently directional - only initiator encrypts with the group key. We set
+             * the role to NO_ROLE otherwise senders can't decrypt their own broadcast messages.
              */
-            key.SetTag(msg->GetAuthMechanism(), KeyBlob::RESPONDER);
+            key.SetTag(msg->GetAuthMechanism(), KeyBlob::NO_ROLE);
             peerStateTable->GetPeerState(msg->GetSender())->SetKey(key, PEER_GROUP_KEY);
             /*
              * Return the local group key.
