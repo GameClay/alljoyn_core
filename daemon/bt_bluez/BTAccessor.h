@@ -259,7 +259,8 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
                                                 uint32_t remoteVersion);
     QStatus GetDeviceObjPath(const BDAddress& bdAddr,
                              qcc::String& devObjPath);
-    QStatus DiscoveryControl(const InterfaceDescription::Member& method);
+    QStatus DiscoveryControl(bool start);
+    QStatus DiscoveryControl(const InterfaceDescription::Member* method);
     QStatus SetDiscoverabilityProperty();
 
     bluez::AdapterObject GetAdapterObject(const qcc::String& adapterObjPath) const
@@ -392,7 +393,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
 
     bool bluetoothAvailable;
     bool discoverable;
-    bool discoveryActive;
+    int32_t discoveryCtrl;
 
     qcc::SocketFd l2capLFd;
     qcc::Event* l2capEvent;

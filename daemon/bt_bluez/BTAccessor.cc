@@ -172,7 +172,7 @@ BTTransport::BTAccessor::BTAccessor(BTTransport* transport,
     timer("BT-Dispatcher"),
     bluetoothAvailable(false),
     discoverable(false),
-    discoveryActive(false),
+    discoveryCtrl(0),
     l2capLFd(-1),
     l2capEvent(NULL)
 {
@@ -431,19 +431,19 @@ QStatus BTTransport::BTAccessor::StartDiscovery(const BDAddressSet& ignoreAddrs,
     }
     deviceLock.Unlock();
 
-    QStatus status = DiscoveryControl(*org.bluez.Adapter.StartDiscovery);
+    QCC_DbgPrintf(("Start Discovery"));
+    QStatus status = DiscoveryControl(true);
     if (duration > 0) {
         DispatchOperation(new DispatchInfo(DispatchInfo::STOP_DISCOVERY),  duration * 1000);
     }
-    discoveryActive = true;
     return status;
 }
 
 
 QStatus BTTransport::BTAccessor::StopDiscovery()
 {
-    QStatus status = DiscoveryControl(*org.bluez.Adapter.StopDiscovery);
-    discoveryActive = false;
+    QCC_DbgPrintf(("Stop Discovery"));
+    QStatus status = DiscoveryControl(false);
 
     DispatchOperation(new DispatchInfo(DispatchInfo::FLUSH_FOUND_EXPIRATIONS));
 
@@ -810,16 +810,12 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
     int sockFd(-1);
     BT_SOCKADDR skaddr;
     QStatus status = ER_OK;
-    bool resumeDiscovery = false;
     bool connected = false;
     uint8_t nul = 0;
     size_t sent;
 
-    if (discoveryActive) {
-        resumeDiscovery = true;
-        QCC_DbgPrintf(("Pausing discovery"));
-        DiscoveryControl(*org.bluez.Adapter.StopDiscovery);
-    }
+    QCC_DbgPrintf(("Pause Discovery"));
+    DiscoveryControl(false);
 
     memset(&skaddr, 0, sizeof(skaddr));
 
@@ -921,10 +917,8 @@ exit:
         }
     }
 
-    if (resumeDiscovery) {
-        QCC_DbgPrintf(("Resuming discovery"));
-        DiscoveryControl(*org.bluez.Adapter.StartDiscovery);
-    }
+    QCC_DbgPrintf(("Resume Discovery"));
+    DiscoveryControl(true);
 
     return conn;
 }
@@ -1089,6 +1083,10 @@ void BTTransport::BTAccessor::DefaultAdapterChanged(const char* adapterObjPath)
         transport->BTDeviceAvailable(true);
     }
     adapterLock.Unlock();
+
+    if (discoveryCtrl == 1) {
+        DiscoveryControl(org.bluez.Adapter.StartDiscovery);
+    }
 }
 
 
@@ -1407,13 +1405,9 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
     QCC_DbgTrace(("BTTransport::BTAccessor::GetDeviceInfo(addr = %s, ...)", addr.ToString().c_str()));
     QStatus status;
     qcc::String devObjPath;
-    bool resumeDiscovery = false;
 
-    if (discoveryActive) {
-        resumeDiscovery = true;
-        QCC_DbgPrintf(("Pausing discovery"));
-        DiscoveryControl(*org.bluez.Adapter.StopDiscovery);
-    }
+    QCC_DbgPrintf(("Pause Discovery"));
+    DiscoveryControl(false);
 
     status = GetDeviceObjPath(addr, devObjPath);
     if (status == ER_OK) {
@@ -1459,10 +1453,8 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
         }
     }
 
-    if (resumeDiscovery) {
-        QCC_DbgPrintf(("Resuming discovery"));
-        DiscoveryControl(*org.bluez.Adapter.StartDiscovery);
-    }
+    QCC_DbgPrintf(("Resume Discovery"));
+    DiscoveryControl(true);
 
     return status;
 }
@@ -1820,22 +1812,59 @@ QStatus BTTransport::BTAccessor::GetDeviceObjPath(const BDAddress& bdAddr,
 }
 
 
-QStatus BTTransport::BTAccessor::DiscoveryControl(const InterfaceDescription::Member& method)
+QStatus BTTransport::BTAccessor::DiscoveryControl(bool start)
 {
-    QCC_DbgTrace(("BTTransport::BTAccessor::DiscoveryControl(method = %s)", method.name.c_str()));
-    QStatus status = ER_FAIL;
+    const InterfaceDescription::Member* method = NULL;
+    QStatus status = ER_OK;
 
+    int32_t ctrl;
+
+    // The discovery control value can range between -2 and +1 where -2, -1
+    // and 0 mean discovery should be off and +1 means discovery should be on.
+    // The initial value is 0 and is incremented to +1 when BTController
+    // starts discovery.  Connect and GetDeviceInfo both try to pause
+    // discovery thus decrementing the count to 0, -1, or possibly (but not
+    // likely) -2.  The count should never exceed +1 nor be less than -2.
+    // (The only way to reach -2 would be if we were trying to get device
+    // information while connecting to another device, and BTController
+    // decided to stop discovery.  When the get device information and connect
+    // operations complete, the count will return to 0).
+    if (start) {
+        ctrl = IncrementAndFetch(&discoveryCtrl);
+        if (ctrl == 1) {
+            method = org.bluez.Adapter.StartDiscovery;
+        }
+    } else {
+        ctrl = DecrementAndFetch(&discoveryCtrl);
+        if (ctrl == 0) {
+            method = org.bluez.Adapter.StopDiscovery;
+        }
+    }
+
+    QCC_DbgPrintf(("discovery control: %d", ctrl));
+    assert((ctrl >= -2) && (ctrl <= 1));
+
+    if (method) {
+        status = DiscoveryControl(method);
+    }
+    return status;
+}
+
+
+QStatus BTTransport::BTAccessor::DiscoveryControl(const InterfaceDescription::Member* method)
+{
+    QStatus status = ER_FAIL;
     AdapterObject adapter = GetDefaultAdapterObject();
+    bool start = method == org.bluez.Adapter.StartDiscovery;
 
     if (adapter->IsValid()) {
         Message rsp(bzBus);
 
-        status = adapter->MethodCall(method, NULL, 0, rsp, BT_DEFAULT_TO);
+        status = adapter->MethodCall(*method, NULL, 0, rsp, BT_DEFAULT_TO);
         if (status == ER_OK) {
-            bool started = &method == org.bluez.Adapter.StartDiscovery;
-            QCC_DbgHLPrintf(("%s discovery", started ? "Started" : "Stopped"));
+            QCC_DbgHLPrintf(("%s discovery", start ? "Started" : "Stopped"));
 #if 0
-            if (started) {
+            if (start) {
                 static const uint16_t MIN_PERIOD = 6;
                 static const uint16_t MAX_PERIOD = 10;
                 static const uint8_t LENGTH = 2;
@@ -1848,7 +1877,7 @@ QStatus BTTransport::BTAccessor::DiscoveryControl(const InterfaceDescription::Me
             qcc::String errMsg;
             const char* errName = rsp->GetErrorName(&errMsg);
             QCC_LogError(status, ("Call to org.bluez.Adapter.%s failed %s - %s",
-                                  method.name.c_str(),
+                                  method->name.c_str(),
                                   errName, errMsg.c_str()));
         }
     }
@@ -1922,6 +1951,13 @@ void BTTransport::BTAccessor::AdapterPropertyChangedSignalHandler(const Interfac
 
                 adapter->MethodCall(*org.bluez.Adapter.SetProperty, dargs, ArraySize(dargs));
             }
+        } else if (strcmp(property, "Discovering") == 0) {
+            bool disc;
+            value->Get("b", &disc);
+            QCC_DbgPrintf(("Adapter %s is %s.", adapter->address.ToString().c_str(),
+                           disc ? "discovering" : "NOT discovering"));
+
+            adapter->bluezDiscovering = disc;
         }
     }
 }
