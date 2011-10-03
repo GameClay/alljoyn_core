@@ -34,6 +34,7 @@
 #include "Router.h"
 #include "NameTable.h"
 #include "RuleTable.h"
+#include "PermissionDB.h"
 
 namespace ajn {
 
@@ -305,11 +306,13 @@ class DaemonRouter : public Router {
      */
     void RemoveSessionRoutes(const char* uniqueName, SessionId id);
 
+    PermissionDB& GetPermissionDB() { return permDb; }
   private:
     LocalEndpoint* localEndpoint;   /**< The local endpoint */
     RuleTable ruleTable;            /**< Routing rule table */
     NameTable nameTable;            /**< BusName to transport lookupl table */
     BusController* busController;   /**< The bus controller used with this router */
+    PermissionDB permDb;            /**< Permission security information cache */
 
     std::vector<RemoteEndpoint*> m_b2bEndpoints;  /**< Collection of Bus-to-bus endpoints */
     qcc::Mutex m_b2bEndpointsLock;       /**< Lock that protects m_b2bEndpoints */

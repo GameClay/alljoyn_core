@@ -335,6 +335,18 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
      */
     void BusConnectionLost(const qcc::String& busAddr);
 
+    /**
+     * Get reference to the daemon router object
+     */
+    DaemonRouter& GetDaemonRouter() { return router; }
+
+    /**
+     * Called to check whether have enough permissions to use designated transports.
+     * @param   sender        The sender's well-known name string
+     * @param   transports    The transport mask
+     * @param   callerName    The caller that invokes this check
+     */
+    QStatus CheckTransportsPermission(qcc::String& sender, TransportMask& transports, const char*);
   private:
     Bus& bus;                             /**< The bus */
     DaemonRouter& router;                 /**< The router */

@@ -30,6 +30,7 @@
 #include <errno.h>
 
 #include <qcc/Debug.h>
+#include <qcc/Logger.h>
 #include <qcc/ManagedObj.h>
 #include <qcc/String.h>
 #include <qcc/Thread.h>
@@ -261,6 +262,35 @@ void AllJoynObj::ObjectRegistered(void)
     }
 }
 
+QStatus AllJoynObj::CheckTransportsPermission(qcc::String& sender, TransportMask& transports, const char* callerName)
+{
+    QStatus status = ER_OK;
+    BusEndpoint* srcEp = router.FindEndpoint(sender);
+    if (srcEp != NULL) {
+        if (transports & TRANSPORT_BLUETOOTH) {
+            bool allowed = router.GetPermissionDB().IsBluetoothAllowed(*srcEp);
+            if (!allowed) {
+                transports ^= TRANSPORT_BLUETOOTH;
+                QCC_LogError(ER_ALLJOYN_ACCESS_PERMISSION_WARNING, ("AllJoynObj::%s() WARNING: No permission to use Bluetooth", (callerName == NULL) ? "" : callerName));
+            }
+        }
+        if (transports & TRANSPORT_WLAN) {
+            bool allowed = router.GetPermissionDB().IsWifiAllowed(*srcEp);
+            if (!allowed) {
+                transports ^= TRANSPORT_WLAN;
+                QCC_LogError(ER_ALLJOYN_ACCESS_PERMISSION_WARNING, ("AllJoynObj::%s() WARNING: No permission to use Wifi", ((callerName == NULL) ? "" : callerName)));
+            }
+        }
+        if (transports == 0) {
+            status = ER_BUS_NO_TRANSPORTS;
+        }
+    } else {
+        status = ER_BUS_NO_ENDPOINT;
+        QCC_LogError(ER_BUS_NO_ENDPOINT, ("AllJoynObj::CheckTransportsPermission No Bus Endpoint found for Sender %s", sender.c_str()));
+    }
+    return status;
+}
+
 void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Message& msg)
 {
     uint32_t replyCode = ALLJOYN_BINDSESSIONPORT_REPLY_SUCCESS;
@@ -274,6 +304,10 @@ void AllJoynObj::BindSessionPort(const InterfaceDescription::Member* member, Mes
 
     /* Get the sender */
     String sender = msg->GetSender();
+
+    if (status == ER_OK) {
+        status = CheckTransportsPermission(sender, opts.transports, "BindSessionPort");
+    }
 
     if (status != ER_OK) {
         QCC_DbgTrace(("AllJoynObj::BindSessionPort(<bad args>) from %s", sender.c_str()));
@@ -407,6 +441,10 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
 
     if (status == ER_OK) {
         status = GetSessionOpts(args[2], optsIn);
+    }
+
+    if (status == ER_OK) {
+        status = ajObj.CheckTransportsPermission(sender, optsIn.transports, "JoinSessionThread.Run");
     }
 
     if (status != ER_OK) {
@@ -1896,6 +1934,10 @@ void AllJoynObj::AdvertiseName(const InterfaceDescription::Member* member, Messa
     /* Get the sender name */
     qcc::String sender = msg->GetSender();
 
+    if (status == ER_OK) {
+        status = CheckTransportsPermission(sender, transports, "AdvertiseName");
+    }
+
     /* Check to see if the advertise name is valid and well formed */
     if (IsLegalBusName(advertiseName)) {
 
@@ -2078,6 +2120,7 @@ void AllJoynObj::FindAdvertisedName(const InterfaceDescription::Member* member, 
 
     /* Check to see if this endpoint is already discovering this prefix */
     qcc::String sender = msg->GetSender();
+    BusEndpoint* srcEp = router.FindEndpoint(sender);
     replyCode = ALLJOYN_FINDADVERTISEDNAME_REPLY_SUCCESS;
     AcquireLocks();
     multimap<qcc::String, qcc::String>::const_iterator it = discoverMap.find(namePrefix);
@@ -2100,7 +2143,15 @@ void AllJoynObj::FindAdvertisedName(const InterfaceDescription::Member* member, 
             TransportList& transList = bus.GetInternal().GetTransportList();
             for (size_t i = 0; i < transList.GetNumTransports(); ++i) {
                 Transport* trans = transList.GetTransport(i);
-                if (trans) {
+                if (trans && (srcEp != NULL)) {
+                    if (trans->GetTransportMask() & TRANSPORT_BLUETOOTH && !router.GetPermissionDB().IsBluetoothAllowed(*srcEp)) {
+                        QCC_LogError(ER_ALLJOYN_ACCESS_PERMISSION_WARNING, ("AllJoynObj::FindAdvertisedName WARNING: No permission to use Bluetooth"));
+                        continue;
+                    }
+                    if (trans->GetTransportMask() & TRANSPORT_WLAN && !router.GetPermissionDB().IsWifiAllowed(*srcEp)) {
+                        QCC_LogError(ER_ALLJOYN_ACCESS_PERMISSION_WARNING, ("AllJoynObj::FindAdvertisedName WARNING: No permission to use Wifi"));
+                        continue;
+                    }
                     trans->EnableDiscovery(namePrefix.c_str());
                 } else {
                     QCC_LogError(ER_BUS_TRANSPORT_NOT_AVAILABLE, ("NULL transport pointer found in transportList"));
