@@ -1334,7 +1334,7 @@ QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
         qcc::GetLocalAddress(listenFd, listenAddr, listenPort);
         normSpec = "tcp:addr=" + argMap["addr"] + ",port=" + U32ToString(listenPort);
 
-        status = qcc::Listen(listenFd, 0);
+        status = qcc::Listen(listenFd, SOMAXCONN);
         if (status == ER_OK) {
             QCC_DbgPrintf(("DaemonTCPTransport::StartListen(): Listening on %s:%d", argMap["addr"].c_str(), listenPort));
             m_listenFds.push_back(pair<qcc::String, SocketFd>(normSpec, listenFd));
