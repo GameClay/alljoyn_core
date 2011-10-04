@@ -249,4 +249,20 @@ bool VirtualEndpoint::CanUseRoute(const RemoteEndpoint& b2bEndpoint) const
     return isFound;
 }
 
+bool VirtualEndpoint::CanRouteWithout(const qcc::GUID& guid) const
+{
+    bool canRoute = false;
+    m_b2bEndpointsLock.Lock();
+    multimap<SessionId, RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
+    while (it != m_b2bEndpoints.end()) {
+        if (guid != it->second->GetRemoteGUID()) {
+            canRoute = true;
+            break;
+        }
+        ++it;
+    }
+    m_b2bEndpointsLock.Unlock();
+    return canRoute;
+}
+
 }

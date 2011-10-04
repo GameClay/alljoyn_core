@@ -169,6 +169,15 @@ class VirtualEndpoint : public BusEndpoint {
     bool CanUseRoute(const RemoteEndpoint& b2bEndpoint) const;
 
     /**
+     * Return true iff the virtual endpoint can route to destination without the aid of the
+     * daemon identified by guid.
+     *
+     * @param guid     GUID of daemon that should be ignored when determing whether vep can route to dest.
+     * @return true iff the vep can route to its dest without the aid of daemon identified by guid.
+     */
+    bool CanRouteWithout(const qcc::GUID& guid) const;
+
+    /**
      * Get the set of sessionIds that route through a given bus-to-bus endpoint.
      *
      * @param[IN]   b2bEndpoint   B2B endpoint.

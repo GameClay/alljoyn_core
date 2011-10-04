@@ -2356,8 +2356,6 @@ QStatus AllJoynObj::ExchangeNames(RemoteEndpoint& endpoint)
 
     vector<pair<qcc::String, vector<qcc::String> > > names;
     QStatus status;
-    const qcc::String& shortGuidStr = endpoint.GetRemoteGUID().ToShortString();
-    const size_t shortGuidLen = shortGuidStr.size();
 
     /* Send local name table info to remote bus controller */
     AcquireLocks();
@@ -2370,7 +2368,9 @@ QStatus AllJoynObj::ExchangeNames(RemoteEndpoint& endpoint)
 
     /* Send all endpoint info except for endpoints related to destination */
     while (it != names.end()) {
-        if ((it->first.size() <= shortGuidLen) || (0 != it->first.compare(1, shortGuidLen, shortGuidStr))) {
+        BusEndpoint* ep = router.FindEndpoint(it->first);
+        VirtualEndpoint* vep = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
+        if (ep && (!vep || vep->CanRouteWithout(endpoint.GetRemoteGUID()))) {
             MsgArg* aliasNames = new MsgArg[it->second.size()];
             vector<qcc::String>::const_iterator ait = it->second.begin();
             size_t numAliases = 0;
