@@ -401,10 +401,11 @@ void DaemonRouter::UnregisterEndpoint(BusEndpoint& endpoint)
         sessionCastSetLock.Lock();
         set<SessionCastEntry>::iterator sit = sessionCastSet.begin();
         while (sit != sessionCastSet.end()) {
-            if (sit->b2bEp == &endpoint) {
-                sessionCastSet.erase(sit);
-            }
+            set<SessionCastEntry>::iterator doomed = sit;
             ++sit;
+            if (doomed->b2bEp == &endpoint) {
+                sessionCastSet.erase(doomed);
+            }
         }
         sessionCastSetLock.Unlock();
     } else {
