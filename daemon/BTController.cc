@@ -449,6 +449,10 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
             uint32_t newUUIDRev;
             BTBusAddress connAddr;
 
+            if (!knownAdNode && !eirCapable && (blacklist->find(adBdAddr) != blacklist->end())) {
+                return; // blacklisted - ignore it
+            }
+
             QCC_DbgPrintf(("Getting device info from %s (adNode: %s in foundNodeDB, adNode %s EIR capable, received %s EIR capable, adNode UUIDRev: %08x, received UUIDRev: %08x)",
                            adBdAddr.ToString().c_str(),
                            knownAdNode ? "is" : "is not",
@@ -467,9 +471,12 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
             if (IsMaster()) {
                 if ((status != ER_OK) || !connAddr.IsValid()) {
                     if (!eirCapable) {
-                        QCC_DbgPrintf(("Blacklisting %s", adBdAddr.ToString().c_str()));
+                        uint32_t blacklistTime = BLACKLIST_TIME + (Rand32() % BLACKLIST_TIME);
+                        QCC_DbgPrintf(("Blacklisting %s for %d.%03ds",
+                                       adBdAddr.ToString().c_str(),
+                                       blacklistTime / 1000, blacklistTime % 1000));
                         blacklist->insert(adBdAddr);
-                        DispatchOperation(new ExpireBlacklistedDevDispatchInfo(adBdAddr), BLACKLIST_TIME);
+                        DispatchOperation(new ExpireBlacklistedDevDispatchInfo(adBdAddr), blacklistTime);
 
                         // Gotta add the new blacklist entry to ignore addresses set.
                         find.dirty = true;
