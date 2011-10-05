@@ -245,7 +245,7 @@ QStatus BusAttachment::TryAlternativeDaemon(RemoteEndpoint** newep)
     status = TryConnect(apkConnSpec.c_str(), newep);
     /* Maybe the APK daemon is installed but not started yet, so try issue an intent to start it*/
     if (ER_OK != status) {
-        if (system("am start -W -a org.alljoyn.bus.START_DAEMON") != -1) {
+        if (system("am startservice -W -a org.alljoyn.bus.START_DAEMON") != -1) {
             uint32_t numOfTries = 0;
             /* Try connect to the APK daemon again every 100ms*/
             while (numOfTries < MAX_CONNECT_TRIES && status != ER_OK) {

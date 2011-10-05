@@ -21,16 +21,16 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="org.alljoyn.bus.START_DAEMON" />            
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>            
+            </intent-filter>    
         </activity>
         
         <service
             android:name="AllJoynService">
-        </service>service>
+            <intent-filter>
+                <action android:name="org.alljoyn.bus.START_DAEMON" />            
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>                    
+        </service>
 
     </application>
 </manifest> 
