@@ -454,8 +454,9 @@ QStatus BTTransport::BTAccessor::StartDiscoverability(uint32_t duration)
     discoverable = true;
     if (bluetoothAvailable) {
         status = SetDiscoverabilityProperty();
+        bzBus.GetInternal().GetDispatcher().RemoveAlarm(stopAdAlarm);
         if (duration > 0) {
-            DispatchOperation(new DispatchInfo(DispatchInfo::STOP_DISCOVERABILITY),  duration * 1000);
+            stopAdAlarm = DispatchOperation(new DispatchInfo(DispatchInfo::STOP_DISCOVERABILITY),  duration * 1000);
         }
     }
     return status;

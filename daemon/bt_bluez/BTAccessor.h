@@ -384,6 +384,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     FoundInfoMap foundDevices;  // Map of found AllJoyn devices w/ UUID-Rev and expire time.
     FoundInfoExpireMap foundExpirations;
     qcc::Alarm expireAlarm;
+    qcc::Alarm stopAdAlarm;
     BDAddressSet ignoreAddrs;
 
     std::set<qcc::StringMapKey> createdDevices;  // Set of devices we created
