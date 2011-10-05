@@ -141,10 +141,12 @@ class RemoteEndpoint : public BusEndpoint, public qcc::ThreadListener {
     /**
      * Request endpoint to stop AFTER the endpoint's txqueue empties out.
      *
+     * @param maxWaitMS    Max number of ms to wait before stopping or 0 for wait indefinitely.
+     *
      * @return
      *     - ER_OK if successful.
      */
-    QStatus StopAfterTxEmpty();
+    QStatus StopAfterTxEmpty(uint32_t maxWaitMs = 0);
 
     /**
      * Request endpoint to pause receiving (wihtout stopping) AFTER next METHOD_REPLY is received.

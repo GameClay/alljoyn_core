@@ -65,7 +65,7 @@ class BusAttachment : public MessageReceiver {
          * @param opts         Session options.
          * @param context      User defined context which will be passed as-is to callback.
          */
-        virtual void JoinSessionCB(QStatus status, SessionId sessionId, SessionOpts opts, void* context) = 0;
+        virtual void JoinSessionCB(QStatus status, SessionId sessionId, const SessionOpts& opts, void* context) = 0;
     };
 
     /**
@@ -879,10 +879,6 @@ class BusAttachment : public MessageReceiver {
      */
     BusAttachment(const BusAttachment& other) { }
 
-    /**
-     * JoinSession method_reply handler. (Internal use only)
-     */
-    void JoinSessionMethodCB(Message& message, void* context);
 #if defined(QCC_OS_ANDROID)
     /**
      * For Android, try different daemon options with the precedence of pre-installed Daemon > APK daemon > Bundled Daemon.

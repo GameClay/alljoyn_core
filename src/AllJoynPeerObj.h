@@ -29,7 +29,7 @@
 
 #include <qcc/GUID.h>
 #include <qcc/String.h>
-#include <qcc/Thread.h>
+#include <qcc/Timer.h>
 #include <qcc/KeyBlob.h>
 
 #include <alljoyn/BusObject.h>
@@ -53,7 +53,7 @@ class BusAttachment;
  *
  * %AllJoynPeerObj inherits from BusObject
  */
-class AllJoynPeerObj : public BusObject, public BusListener {
+class AllJoynPeerObj : public BusObject, public BusListener, public qcc::AlarmListener {
   public:
 
     /**
@@ -191,11 +191,36 @@ class AllJoynPeerObj : public BusObject, public BusListener {
     QStatus Join();
 
     /**
+     * Dispatcher callback.
+     * (For internal use only)
+     */
+    void AlarmTriggered(const qcc::Alarm& alarm, QStatus reason);
+
+    /**
      * Destructor
      */
     ~AllJoynPeerObj();
 
   private:
+
+    /**
+     * Types of request that can be queued.
+     */
+    typedef enum {
+        AUTHENTICATE_PEER,
+        AUTH_CHALLENGE,
+        EXPAND_HEADER,
+        ACCEPT_SESSION,
+        SECURE_CONNECTION
+    } RequestType;
+
+    /* Dispatcher context */
+    struct Request {
+        Message msg;
+        RequestType reqType;
+        const qcc::String data;
+        Request(const Message& msg, RequestType type, const qcc::String& data) : msg(msg), reqType(type), data(data) { }
+    };
 
     /**
      * Header decompression method'
@@ -281,12 +306,21 @@ class AllJoynPeerObj : public BusObject, public BusListener {
     void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner);
 
     /**
-     * AcceptSession method handler called when the local daemon asks permission to accpet a JoinSession request.
+     * AcceptSession method handler called when the local daemon asks permission to accept a JoinSession request.
      *
      * @param member  The member that was called
      * @param msg     The method call message
      */
     void AcceptSession(const InterfaceDescription::Member* member, Message& msg);
+
+    /**
+     * Add a Request to the peer object's dispatcher
+     *
+     * @param msg       Message to be dispatched.
+     * @param reqType   Type of AllJoynPeerObj request.
+     * @param data      Optional reqType specific data.
+     */
+    QStatus DispatchRequest(Message& msg, AllJoynPeerObj::RequestType reqType, const qcc::String data = "");
 
     /**
      * The peer-to-peer authentication mechanisms available to this object
@@ -303,54 +337,16 @@ class AllJoynPeerObj : public BusObject, public BusListener {
      */
     std::map<qcc::String, SASLEngine*> conversations;
 
-    /**
-     * Short term lock to protect the peer object.
-     */
+    /** Short term lock to protect the peer object. */
     qcc::Mutex lock;
 
     /**
-     * Long term lock held while securing a connection. This serializes all client initiated authentications.
+     * Event map to prevent simultaneous authentications to the same remote peer.
      */
-    static qcc::Mutex clientLock;
+    std::map<qcc::String, qcc::Event*> authWait;
 
-    /**
-     * Types of request that can be queued.
-     */
-    typedef enum {
-        AUTHENTICATE_PEER,
-        REVERSE_AUTH_PEER,
-        AUTH_CHALLENGE,
-        EXPAND_HEADER,
-        ACCEPT_SESSION,
-        SECURE_CONNECTION
-    } RequestType;
-
-    /**
-     * Class for handling deferred peer requests.
-     */
-    class RequestThread : public qcc::Thread {
-      public:
-        RequestThread(AllJoynPeerObj& peerObj) : qcc::Thread("RequestThread"), peerObj(peerObj) { }
-
-        QStatus QueueRequest(Message& msg, RequestType reqType, const qcc::String data = "");
-
-      private:
-        qcc::ThreadReturn STDCALL Run(void* args);
-
-        struct Request {
-            Message msg;
-            RequestType reqType;
-            const qcc::String data;
-        };
-
-        qcc::Mutex lock;
-        AllJoynPeerObj& peerObj;
-        std::queue<Request> queue;
-
-    };
-
-    RequestThread requestThread;
-
+    /** Dispatcher for handling peer object requests */
+    qcc::Timer dispatcher;
 };
 
 }

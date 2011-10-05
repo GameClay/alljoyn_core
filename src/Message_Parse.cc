@@ -1149,7 +1149,7 @@ ExitUnmarshal:
         delete [] msgBuf;
         msgBuf = NULL;
         ClearHeader();
-        QCC_LogError(status, ("Failed to unmarshal message"));
+        QCC_LogError(status, ("Failed to unmarshal message received on %s", endpoint.GetUniqueName().c_str()));
     }
     return status;
 }

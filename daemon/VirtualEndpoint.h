@@ -205,7 +205,7 @@ class VirtualEndpoint : public BusEndpoint {
         uint32_t hops;        /**< Currently unused hop count from local daemon to final destination */
     };
     mutable qcc::Mutex m_b2bEndpointsLock;      /**< Lock that protects m_b2bEndpoints */
-    bool m_isController;                        /**< true iff vep refers to a remote daemon's bus controller */
+    bool m_hadRefs;                             /**< true iff vep has had session references since its creation */
 };
 
 }

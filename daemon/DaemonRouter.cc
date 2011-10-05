@@ -513,6 +513,7 @@ void DaemonRouter::RemoveSessionRoutes(const char* src, SessionId id)
     BusEndpoint* ep = FindEndpoint(srcStr);
     if (!ep) {
         QCC_LogError(ER_BUS_NO_ENDPOINT, ("Cannot find %s", src));
+        return;
     }
 
     sessionCastSetLock.Lock();

@@ -34,6 +34,9 @@
 
 namespace ajn {
 
+/** Forward Declaration */
+class BusController;
+
 /**
  * BusObject responsible for implementing the standard DBus methods (org.freedesktop.DBus.*)
  * for messages directed to the bus.
@@ -44,10 +47,11 @@ class DBusObj : public BusObject, public NameListener {
     /**
      * Constructor
      *
-     * @param bus        The bus instance
-     * @param router     The DaemonRouter associated with the bus.
+     * @param bus             The bus instance
+     * @param router          The DaemonRouter associated with the bus.
+     * @param busController   Controller that created this object.
      */
-    DBusObj(Bus& bus);
+    DBusObj(Bus& bus, BusController* busController);
 
     /**
      * Destructor
@@ -214,10 +218,11 @@ class DBusObj : public BusObject, public NameListener {
 
   private:
 
-    Bus& bus;               /**< The bus */
-    DaemonRouter& router;   /**< The daemon-side router associated with the bus */
+    Bus& bus;                              /**< The bus */
+    DaemonRouter& router;                  /**< The daemon-side router associated with the bus */
+    const InterfaceDescription* dbusIntf;  /**< org.freedesktop.DBus interface */
+    BusController* busController;          /**< The BusController that created this object */
 
-    const InterfaceDescription* dbusIntf;
 
     /**
      * Called upon completion of NameTable::AddAlias operation. This callback is called

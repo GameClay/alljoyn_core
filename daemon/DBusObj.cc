@@ -41,6 +41,7 @@
 #include "ConfigDB.h"
 #include "DBusObj.h"
 #include "NameTable.h"
+#include "BusController.h"
 
 #define QCC_MODULE "ALLJOYN"
 
@@ -91,11 +92,12 @@ void ServiceStartHandler::ServiceStarted(const qcc::String& serviceName, QStatus
 
 
 
-DBusObj::DBusObj(Bus& bus) :
+DBusObj::DBusObj(Bus& bus, BusController* busController) :
     BusObject(bus, org::freedesktop::DBus::ObjectPath, false),
     bus(bus),
     router(reinterpret_cast<DaemonRouter&>(bus.GetInternal().GetRouter())),
-    dbusIntf(NULL)
+    dbusIntf(NULL),
+    busController(busController)
 {
 }
 
@@ -162,8 +164,6 @@ QStatus DBusObj::Init()
 
 void DBusObj::ObjectRegistered()
 {
-    BusObject::ObjectRegistered();
-
     /* Acquire org.freedesktop.DBus name (locally) */
     uint32_t disposition = DBUS_REQUEST_NAME_REPLY_EXISTS;
     QStatus status = router.AddAlias(org::freedesktop::DBus::WellKnownName,
@@ -175,6 +175,11 @@ void DBusObj::ObjectRegistered()
     if ((ER_OK != status) || (DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER != disposition)) {
         status = (ER_OK == status) ? ER_FAIL : status;
         QCC_LogError(status, ("Failed to register well-known name \"%s\" (disposition=%d)", org::freedesktop::DBus::WellKnownName, disposition));
+    }
+
+    if (status == ER_OK) {
+        BusObject::ObjectRegistered();
+        busController->ObjectRegistered(this);
     }
 }
 

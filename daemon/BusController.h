@@ -61,6 +61,13 @@ class BusController {
      */
     AllJoynObj& GetAllJoynObj() { return alljoynObj; }
 
+    /**
+     * ObjectRegistered callback.
+     *
+     * @param obj   BusObject that has been registered
+     */
+    void ObjectRegistered(BusObject* obj);
+
   private:
 
 #ifndef NDEBUG
@@ -73,7 +80,6 @@ class BusController {
 
     /** BusObject responsible for org.alljoyn.Bus */
     AllJoynObj alljoynObj;
-
 };
 
 }

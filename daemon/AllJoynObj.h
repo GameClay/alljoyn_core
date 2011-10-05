@@ -40,8 +40,10 @@
 #include "Transport.h"
 #include "VirtualEndpoint.h"
 
-
 namespace ajn {
+
+/** Forward Declaration */
+class BusController;
 
 /**
  * BusObject responsible for implementing the standard AllJoyn methods at org.alljoyn.Bus
@@ -54,10 +56,11 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     /**
      * Constructor
      *
-     * @param bus        Bus to associate with org.freedesktop.DBus message handler.
-     * @param router     The DaemonRouter associated with the bus.
+     * @param bus            Bus to associate with org.freedesktop.DBus message handler.
+     * @param router         The DaemonRouter associated with the bus.
+     * @param busController  Controller that created this object.
      */
-    AllJoynObj(Bus& bus);
+    AllJoynObj(Bus& bus, BusController* busController);
 
     /**
      * Destructor
@@ -411,12 +414,14 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
         qcc::SocketFd fd;
         RemoteEndpoint* streamingEp;
         std::vector<qcc::String> memberNames;
+        bool isInitializing;
         SessionMapEntry() :
             id(0),
             sessionPort(0),
             opts(),
             fd(-1),
-            streamingEp(NULL) { }
+            streamingEp(NULL),
+            isInitializing(false) { }
     };
     std::multimap<std::pair<qcc::String, SessionId>, SessionMapEntry> sessionMap;  /**< Map (endpointName,sessionId) to session info */
 
@@ -445,7 +450,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     /** JoinSessionThread handles a JoinSession request from a local client on a separate thread */
     class JoinSessionThread : public qcc::Thread, public qcc::ThreadListener {
       public:
-        JoinSessionThread(AllJoynObj& ajObj, const Message& msg) : Thread("JoinSessionThread"), ajObj(ajObj), msg(msg) { }
+        JoinSessionThread(AllJoynObj& ajObj, const Message& msg, bool isJoin) : Thread("JoinSessionThread"), ajObj(ajObj), msg(msg), isJoin(isJoin) { }
 
         void ThreadExit(Thread* thread);
 
@@ -453,13 +458,18 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
         qcc::ThreadReturn STDCALL Run(void* arg);
 
       private:
+        qcc::ThreadReturn STDCALL RunJoin();
+        qcc::ThreadReturn STDCALL RunAttach();
+
         AllJoynObj& ajObj;
         Message msg;
+        bool isJoin;
     };
 
     std::vector<JoinSessionThread*> joinSessionThreads;  /**< List of outstanding join session requests */
     qcc::Mutex joinSessionThreadsLock;                   /**< Lock that protects joinSessionThreads */
     bool isStopping;                                     /**< True while waiting for threads to exit */
+    BusController* busController;                        /**< BusController that created this BusObject */
 
     /**
      * Acquire AllJoynObj locks.

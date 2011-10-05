@@ -38,7 +38,7 @@ namespace ajn {
 VirtualEndpoint::VirtualEndpoint(const char* uniqueName, RemoteEndpoint& b2bEp)
     : BusEndpoint(BusEndpoint::ENDPOINT_TYPE_VIRTUAL),
     m_uniqueName(uniqueName),
-    m_isController(::strcmp(uniqueName + ::strlen(uniqueName) - 2, ".1") == 0)
+    m_hadRefs(false)
 {
     m_b2bEndpoints.insert(pair<SessionId, RemoteEndpoint*>(0, &b2bEp));
 }
@@ -145,10 +145,10 @@ bool VirtualEndpoint::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
      * regardless of session id.
      */
     bool isEmpty;
-    if (m_isController) {
-        isEmpty = m_b2bEndpoints.empty();
-    } else {
+    if (m_hadRefs) {
         isEmpty = (m_b2bEndpoints.lower_bound(1) == m_b2bEndpoints.end());
+    } else {
+        isEmpty = m_b2bEndpoints.empty();
     }
     it = m_b2bEndpoints.begin();
     while (it != m_b2bEndpoints.end()) {
@@ -173,6 +173,7 @@ QStatus VirtualEndpoint::AddSessionRef(SessionId id, RemoteEndpoint& b2bEp)
         b2bEp.IncrementRef();
         /* Map sessionId to b2bEp */
         m_b2bEndpoints.insert(pair<SessionId, RemoteEndpoint*>(id, &b2bEp));
+        m_hadRefs = true;
     }
     m_b2bEndpointsLock.Unlock();
     return canUse ? ER_OK : ER_FAIL;

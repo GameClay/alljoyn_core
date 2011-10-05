@@ -49,7 +49,7 @@
 
 namespace ajn {
 
-class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListener, public qcc::ThreadListener {
+class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListener {
     friend class BusAttachment;
 
   public:
@@ -216,9 +216,10 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
      *
      * @param listener  The alarm listener to receive the message.
      * @param msg       The message to queue
+     * @param context   User defined context.
      * @param delay     Time to delay before delivering the message.
      */
-    QStatus DispatchMessage(AlarmListener& listener, Message& msg, uint32_t delay = 0);
+    QStatus DispatchMessage(AlarmListener& listener, Message& msg, void* context, uint32_t delay = 0);
 
     /**
      * This function puts a caller specified context on the dispatch thread and deliver it to the specified alarm listener.
@@ -230,9 +231,27 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
     QStatus Dispatch(AlarmListener& listener, void* context, uint32_t delay = 0);
 
     /**
+     * Remove all dispatcher references to a given AlarmListner.
+     *
+     * @param listener   AlarmListener whose refs will be removed.
+     */
+    void RemoveDispatchListener(AlarmListener& listener);
+
+    /**
      * Called if the bus attachment become disconnected from the bus.
      */
     void LocalEndpointDisconnected();
+
+    /**
+     * JoinSession method_reply handler.
+     */
+    void JoinSessionMethodCB(Message& message, void* context);
+
+    /**
+     * Dispatched joinSession method_reply handler.
+     */
+    void DoJoinSessionMethodCB(Message& message, void* context);
+
 
   private:
 
@@ -251,8 +270,6 @@ class BusAttachment::Internal : public MessageReceiver, public qcc::AlarmListene
      * @param other   RHS of assignment.
      */
     Internal& operator=(const BusAttachment::Internal& other);
-
-    void ThreadExit(qcc::Thread* thread);
 
     qcc::String application;              /* Name of the that owns the BusAttachment application */
     BusAttachment& bus;                   /* Reference back to the bus attachment that owns this state */

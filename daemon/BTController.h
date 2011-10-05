@@ -379,7 +379,7 @@ class BTController :
      * @param opts         Session options.
      * @param context      User defined context which will be passed as-is to callback.
      */
-    void JoinSessionCB(QStatus status, SessionId sessionId, SessionOpts opts, void* context);
+    void JoinSessionCB(QStatus status, SessionId sessionId, const SessionOpts& opts, void* context);
 
 
   private:

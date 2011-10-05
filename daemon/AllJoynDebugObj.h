@@ -196,7 +196,6 @@ class AllJoynDebugObj : public BusObject {
         properties.insert(std::pair<qcc::StringMapKey, Properties*>(ifaceNameStr, &ifaceProperties));
 
     exit:
-        bus.RegisterBusObject(*this);
         if (methodEntries) delete[] methodEntries;
         return status;
     }

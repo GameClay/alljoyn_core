@@ -858,7 +858,7 @@ void BTController::SessionLost(SessionId id)
 }
 
 
-void BTController::JoinSessionCB(QStatus status, SessionId sessionID, SessionOpts opts, void* context)
+void BTController::JoinSessionCB(QStatus status, SessionId sessionID, const SessionOpts& opts, void* context)
 {
     QCC_DbgTrace(("BTController::JoinSessionCB(status = %s, sessionID = %x, opts = <>, context = %p",
                   QCC_StatusText(status), sessionID, context));

@@ -180,14 +180,17 @@ QStatus RemoteEndpoint::Stop(void)
     return rxThread.Stop();
 }
 
-QStatus RemoteEndpoint::StopAfterTxEmpty()
+QStatus RemoteEndpoint::StopAfterTxEmpty(uint32_t maxWaitMs)
 {
     QStatus status;
+
+    /* Init wait time */
+    uint32_t startTime = maxWaitMs ? GetTimestamp() : 0;
 
     /* Wait for txqueue to empty before triggering stop */
     txQueueLock.Lock();
     while (true) {
-        if (txQueue.empty()) {
+        if (txQueue.empty() || (maxWaitMs && (qcc::GetTimestamp() > (startTime + maxWaitMs)))) {
             status = Stop();
             break;
         } else {
@@ -546,7 +549,7 @@ void RemoteEndpoint::DecrementRef()
 {
     int refs = DecrementAndFetch(&refCount);
     if (refs <= 0) {
-        Stop();
+        StopAfterTxEmpty(20000);
     }
 }
 
