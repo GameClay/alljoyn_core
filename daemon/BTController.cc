@@ -529,7 +529,6 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                 BTNodeDB::const_iterator nodeit;
                 for (nodeit = newAdInfo.Begin(); nodeit != newAdInfo.End(); ++nodeit) {
                     BTNodeInfo node = *nodeit;
-                    node->SetUUIDRev(newUUIDRev);
                     node->SetConnectNode(connNode);
                     if (node->GetBusAddress().addr == adBdAddr) {
                         node->SetEIRCapable(eirCapable);
@@ -538,25 +537,11 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
 
                 oldAdInfo.Diff(newAdInfo, &added, &removed);
 
-                if (knownAdNode &&
-                    (added.Size() == 0) &&
-                    (removed.Size() == 0) &&
-                    (eirCapable && (adNode->GetUUIDRev() != uuidRev))) {
-                    // Somehow the cached UUIDRev for the advertising node is stale.
-                    BTNodeDB tmpdb;
-                    foundNodeDB.GetNodesFromConnectNode(connNode, tmpdb);
-                    for (nodeit = tmpdb.Begin(); nodeit != tmpdb.End(); ++nodeit) {
-                        BTNodeInfo node = *nodeit;
-                        node->SetUUIDRev(newUUIDRev);
-                    }
-                    foundNodeDB.RefreshExpiration(adNode->GetConnectNode(), LOST_DEVICE_TIMEOUT);
-
-                } else {
-                    foundNodeDB.DumpTable("foundNodeDB - Before update");
-                    foundNodeDB.UpdateDB(&added, &removed);
-                    foundNodeDB.RefreshExpiration(adNode->GetConnectNode(), LOST_DEVICE_TIMEOUT);
-                    foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices due to remote device advertisement change");
-                }
+                foundNodeDB.DumpTable("foundNodeDB - Before update");
+                foundNodeDB.UpdateDB(&added, &removed);
+                connNode->SetUUIDRev(newUUIDRev);
+                foundNodeDB.RefreshExpiration(connNode, LOST_DEVICE_TIMEOUT);
+                foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices due to remote device advertisement change");
 
                 foundNodeDB.Unlock();
 
