@@ -26,6 +26,7 @@
 
 #include <qcc/platform.h>
 #include <qcc/String.h>
+#include <qcc/Mutex.h>
 #include <alljoyn/InterfaceDescription.h>
 #include <alljoyn/MsgArg.h>
 #include <alljoyn/MessageReceiver.h>
@@ -369,6 +370,20 @@ class BusObject : public MessageReceiver {
      */
     QStatus RemoveChild(BusObject& obj);
 
+    /**
+     * Indicate that this BusObject is being used by an alternate thread.
+     * This BusObject should not be deleted till the remote thread has completed
+     * using this object.
+     * This will incrament a counter for each thread that calls this method
+     */
+    void InUseIncrement();
+
+    /**
+     * Indicate that this BusObject is no longer being used by an alternate thread.
+     * It is safe to delete the object when the inUse counter has reached zero.
+     */
+    void InUseDecrement();
+
     struct Components;
     Components* components; /**< Internal components of this object */
 
@@ -383,6 +398,12 @@ class BusObject : public MessageReceiver {
 
     /** true if object is a placeholder (i.e. only exists to be the parent of a more meaningful object instance) */
     bool isPlaceholder;
+
+    /** lock to prevent inUseCounter from being modified by two threads at the same time.*/
+    qcc::Mutex counterLock;
+
+    /** counter to prevent this BusObject being deleted if it is being used by another thread. */
+    int32_t inUseCounter;
 };
 
 }

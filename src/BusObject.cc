@@ -543,13 +543,26 @@ void BusObject::Replace(BusObject& object)
     components->children.clear();
 }
 
+void BusObject::InUseIncrement() {
+    counterLock.Lock();
+    qcc::IncrementAndFetch(&inUseCounter);
+    counterLock.Unlock();
+}
+
+void BusObject::InUseDecrement() {
+    counterLock.Lock();
+    qcc::DecrementAndFetch(&inUseCounter);
+    counterLock.Unlock();
+}
+
 BusObject::BusObject(BusAttachment& bus, const char* path, bool isPlaceholder) :
     bus(bus),
     components(new Components),
     path(path),
     parent(NULL),
     isRegistered(false),
-    isPlaceholder(isPlaceholder)
+    isPlaceholder(isPlaceholder),
+    inUseCounter(0)
 {
 }
 

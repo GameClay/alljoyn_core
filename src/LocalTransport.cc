@@ -586,9 +586,11 @@ void LocalEndpoint::AlarmTriggered(const Alarm& alarm, QStatus reason)
             if (!iter->second->isRegistered) {
                 BusObject* bo = iter->second;
                 bo->isRegistered = true;
+                bo->InUseIncrement();
                 objectsLock.Unlock();
                 bo->ObjectRegistered();
                 objectsLock.Lock();
+                bo->InUseDecrement();
                 iter = localObjects.begin();
             } else {
                 ++iter;
