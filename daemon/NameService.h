@@ -877,6 +877,12 @@ class NameService : public qcc::Thread {
     std::list<Header> m_outbound;
 
     /**
+     * @internal @brief A socket to hold to keep winsock initialized
+     * as long as the name service is alive.
+     */
+    qcc::SocketFd m_refSockFd;
+
+    /**
      * @internal
      * @brief Tear down all live interfaces and remove them from the
      * corresponding list.
