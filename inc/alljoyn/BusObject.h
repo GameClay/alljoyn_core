@@ -26,7 +26,6 @@
 
 #include <qcc/platform.h>
 #include <qcc/String.h>
-#include <qcc/Mutex.h>
 #include <alljoyn/InterfaceDescription.h>
 #include <alljoyn/MsgArg.h>
 #include <alljoyn/MessageReceiver.h>
@@ -399,11 +398,7 @@ class BusObject : public MessageReceiver {
     /** true if object is a placeholder (i.e. only exists to be the parent of a more meaningful object instance) */
     bool isPlaceholder;
 
-    /** lock to prevent inUseCounter from being modified by two threads at the same time.*/
-    qcc::Mutex counterLock;
 
-    /** counter to prevent this BusObject being deleted if it is being used by another thread. */
-    int32_t inUseCounter;
 };
 
 }

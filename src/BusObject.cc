@@ -30,6 +30,7 @@
 #include <qcc/Debug.h>
 #include <qcc/Util.h>
 #include <qcc/String.h>
+#include <qcc/Mutex.h>
 #include <alljoyn/DBusStd.h>
 #include <alljoyn/AllJoynStd.h>
 #include <alljoyn/BusObject.h>
@@ -63,6 +64,12 @@ struct BusObject::Components {
     vector<MethodContext> methodContexts;
     /** Child objects of this object */
     vector<BusObject*> children;
+
+    /** lock to prevent inUseCounter from being modified by two threads at the same time.*/
+    qcc::Mutex counterLock;
+
+    /** counter to prevent this BusObject being deleted if it is being used by another thread. */
+    int32_t inUseCounter;
 };
 
 /*
@@ -544,15 +551,15 @@ void BusObject::Replace(BusObject& object)
 }
 
 void BusObject::InUseIncrement() {
-    counterLock.Lock();
-    qcc::IncrementAndFetch(&inUseCounter);
-    counterLock.Unlock();
+    components->counterLock.Lock();
+    qcc::IncrementAndFetch(&(components->inUseCounter));
+    components->counterLock.Unlock();
 }
 
 void BusObject::InUseDecrement() {
-    counterLock.Lock();
-    qcc::DecrementAndFetch(&inUseCounter);
-    counterLock.Unlock();
+    components->counterLock.Lock();
+    qcc::DecrementAndFetch(&(components->inUseCounter));
+    components->counterLock.Unlock();
 }
 
 BusObject::BusObject(BusAttachment& bus, const char* path, bool isPlaceholder) :
@@ -561,13 +568,21 @@ BusObject::BusObject(BusAttachment& bus, const char* path, bool isPlaceholder) :
     path(path),
     parent(NULL),
     isRegistered(false),
-    isPlaceholder(isPlaceholder),
-    inUseCounter(0)
+    isPlaceholder(isPlaceholder)
 {
+    components->inUseCounter = 0;
 }
 
 BusObject::~BusObject()
 {
+    components->counterLock.Lock();
+    while (components->inUseCounter != 0) {
+        components->counterLock.Unlock();
+        qcc::Sleep(5);
+        components->counterLock.Lock();
+    }
+    components->counterLock.Unlock();
+
     QCC_DbgPrintf(("BusObject destructor for object with path = \"%s\"", GetPath()));
     /*
      * If this object has a parent it has not been unregistered so do so now.
