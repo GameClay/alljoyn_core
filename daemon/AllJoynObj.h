@@ -368,6 +368,9 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     /** Map of active discovery names to requesting local endpoint name(s) */
     std::multimap<qcc::String, qcc::String> discoverMap;
 
+    /** Map of discovery names to forbidden transports (due to lack of permissions) of local endpoint */
+    std::multimap<qcc::String, std::pair<TransportMask, qcc::String> > transForbidMap;
+
     /** Map of discovered bus names (protected by discoverMapLock) */
     struct NameMapEntry {
         qcc::String busAddr;

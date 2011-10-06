@@ -2110,7 +2110,7 @@ void AllJoynObj::FindAdvertisedName(const InterfaceDescription::Member* member, 
     uint32_t replyCode;
     size_t numArgs;
     const MsgArg* args;
-
+    TransportMask transForbidden = 0;
     /* Get the name prefix */
     msg->GetArgs(numArgs, args);
     assert((numArgs == 1) && (args[0].typeId == ALLJOYN_STRING));
@@ -2146,10 +2146,12 @@ void AllJoynObj::FindAdvertisedName(const InterfaceDescription::Member* member, 
                 if (trans && (srcEp != NULL)) {
                     if (trans->GetTransportMask() & TRANSPORT_BLUETOOTH && !router.GetPermissionDB().IsBluetoothAllowed(*srcEp)) {
                         QCC_LogError(ER_ALLJOYN_ACCESS_PERMISSION_WARNING, ("AllJoynObj::FindAdvertisedName WARNING: No permission to use Bluetooth"));
+                        transForbidden |= TRANSPORT_BLUETOOTH;
                         continue;
                     }
                     if (trans->GetTransportMask() & TRANSPORT_WLAN && !router.GetPermissionDB().IsWifiAllowed(*srcEp)) {
                         QCC_LogError(ER_ALLJOYN_ACCESS_PERMISSION_WARNING, ("AllJoynObj::FindAdvertisedName WARNING: No permission to use Wifi"));
+                        transForbidden |= TRANSPORT_WLAN;
                         continue;
                     }
                     trans->EnableDiscovery(namePrefix.c_str());
@@ -2157,6 +2159,11 @@ void AllJoynObj::FindAdvertisedName(const InterfaceDescription::Member* member, 
                     QCC_LogError(ER_BUS_TRANSPORT_NOT_AVAILABLE, ("NULL transport pointer found in transportList"));
                 }
             }
+        }
+
+        /* Add entry to denote that the sender is not allowed to discover the service over the forbidden transports*/
+        if (transForbidden) {
+            transForbidMap.insert(pair<qcc::String, pair<TransportMask, qcc::String> >(namePrefix, pair<TransportMask, String>(transForbidden, sender)));
         }
     }
 
@@ -2175,6 +2182,13 @@ void AllJoynObj::FindAdvertisedName(const InterfaceDescription::Member* member, 
         multimap<String, NameMapEntry>::iterator it = nameMap.lower_bound(namePrefix);
         set<pair<String, TransportMask> > sentSet;
         while ((it != nameMap.end()) && (0 == strncmp(it->first.c_str(), namePrefix.c_str(), namePrefix.size()))) {
+            /* If this transport is forbidden to use, then skip the advertised name */
+            if ((it->second.transport & transForbidden) != 0) {
+                QCC_DbgPrintf(("AllJoynObj::FindAdvertisedName(%s): Forbit to send existing advertised name %s over transport %d to %s due to lack of permission",
+                               namePrefix.c_str(), it->first.c_str(), it->second.transport, sender.c_str()));
+                ++it;
+                continue;
+            }
             pair<String, TransportMask> sentSetEntry(it->first, it->second.transport);
             if (sentSet.find(sentSetEntry) == sentSet.end()) {
                 String foundName = it->first;
@@ -2236,6 +2250,16 @@ QStatus AllJoynObj::ProcCancelFindName(const qcc::String& sender, const qcc::Str
             break;
         }
         ++it;
+    }
+
+    /* Check and delete the transport restriction info on this sender and prefix*/
+    multimap<String, std::pair<TransportMask, String> >::iterator forbitIt = transForbidMap.lower_bound(namePrefix);
+    while ((forbitIt != transForbidMap.end()) && (forbitIt->first == namePrefix)) {
+        if (forbitIt->second.second == sender) {
+            transForbidMap.erase(forbitIt);
+            break;
+        }
+        ++forbitIt;
     }
 
     /* Disable discovery if we removed the last discoverMap entry with a given prefix */
@@ -2896,8 +2920,24 @@ void AllJoynObj::FoundNames(const qcc::String& busAddr,
                     if (0 < discoverMap.size()) {
                         multimap<String, String>::const_iterator dit = discoverMap.lower_bound((*nit)[0]);
                         while ((dit != discoverMap.end()) && (dit->first.compare(*nit) <= 0)) {
+
                             if (nit->compare(0, dit->first.size(), dit->first) == 0) {
-                                foundNameSet.insert(FoundNameEntry(*nit, dit->first, dit->second));
+                                /* Check whether the discoverer is allowed to use the transport over which the advertised name if found*/
+                                bool forbidden = false;
+                                multimap<String, std::pair<TransportMask, String> >::const_iterator forbitIt = transForbidMap.lower_bound((*nit)[0]);
+                                while ((forbitIt != transForbidMap.end()) && (forbitIt->first.compare(*nit) <= 0)) {
+                                    if (nit->compare(0, forbitIt->first.size(), forbitIt->first) == 0 &&
+                                        forbitIt->second.second.compare(dit->second) == 0 &&
+                                        (forbitIt->second.first & transport) != 0) {
+                                        forbidden = true;
+                                        QCC_DbgPrintf(("FoundNames: Forbit to send advertised name %s over transport %d to %s due to lack of permission", (*nit).c_str(), transport, forbitIt->second.second.c_str()));
+                                        break;
+                                    }
+                                    ++forbitIt;
+                                }
+                                if (!forbidden) {
+                                    foundNameSet.insert(FoundNameEntry(*nit, dit->first, dit->second));
+                                }
                             }
                             ++dit;
                         }
