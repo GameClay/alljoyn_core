@@ -21,6 +21,7 @@
  ******************************************************************************/
 
 #include <alljoyn/BusObject.h>
+#include <map>
 
 using namespace qcc;
 using namespace std;
@@ -70,7 +71,18 @@ class BusObjectC : public BusObject {
 
     QStatus AddMethodHandlersC(const alljoyn_busobject_methodentry* entries, size_t numEntries)
     {
-        return AddMethodHandlers((const MethodEntry*)entries, numEntries);
+        MethodEntry* proper_entries = new MethodEntry[numEntries];
+
+        for (size_t i = 0; i < numEntries; i++) {
+            proper_entries[i].member = (const ajn::InterfaceDescription::Member*)entries[i].member->internal_member;
+            callbackMap.insert(pair<const ajn::InterfaceDescription::Member*, alljoyn_messagehandler_ptr>(
+                                   (const ajn::InterfaceDescription::Member*)entries[i].member->internal_member,
+                                   entries[i].handler));
+            proper_entries[i].handler = static_cast<MessageReceiver::MethodHandler>(&BusObjectC::MethodHandlerRemap);
+        }
+        QStatus ret = AddMethodHandlers(proper_entries, numEntries);
+        delete [] proper_entries;
+        return ret;
     }
 
 
@@ -115,6 +127,26 @@ class BusObjectC : public BusObject {
     // TODO: Need to do GetProp, SetProp, GetAllProps, Introspect?
 
   private:
+    void MethodHandlerRemap(const InterfaceDescription::Member* member, Message& message)
+    {
+        /* Populate a C member description for use in the callback */
+        alljoyn_interfacedescription_member c_member;
+
+        c_member.iface = (alljoyn_interfacedescription)member->iface;
+        c_member.memberType = (alljoyn_messagetype)member->memberType;
+        c_member.name = member->name.c_str();
+        c_member.signature = member->signature.c_str();
+        c_member.returnSignature = member->returnSignature.c_str();
+        c_member.argNames = member->argNames.c_str();
+        c_member.annotation = member->annotation;
+        c_member.internal_member = member;
+
+        /* Look up the C callback via map and invoke */
+        alljoyn_messagehandler_ptr remappedHandler = callbackMap[member];
+        remappedHandler((alljoyn_busobject) this, &c_member, (alljoyn_message)(&message));
+    }
+
+    map<const ajn::InterfaceDescription::Member*, alljoyn_messagehandler_ptr> callbackMap;
     alljoyn_busobject_callbacks callbacks;
     const void* context;
 };
