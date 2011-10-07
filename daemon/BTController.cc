@@ -2690,6 +2690,8 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
             QCC_DbgPrintf(("    Expiring blacklisted device"));
             lock.Lock();
             blacklist->erase(static_cast<ExpireBlacklistedDevDispatchInfo*>(op)->addr);
+            find.dirty = true;
+            UpdateDelegations(find);
             lock.Unlock();
             break;
         }
