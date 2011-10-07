@@ -675,12 +675,17 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::Run(void* arg)
                         TransportList& transList = ajObj.bus.GetInternal().GetTransportList();
                         Transport* trans = transList.GetTransport(busAddrs[i]);
                         if (trans != NULL) {
+                            if ((optsIn.transports & trans->GetTransportMask()) == 0) {
+                                QCC_DbgPrintf(("AllJoynObj:JoinSessionThread() skip unpermitted transport(%s)", trans->GetTransportName()));
+                                continue;
+                            }
                             status = trans->Connect(busAddrs[i].c_str(), optsIn, &b2bEp);
                             if (status == ER_OK) {
                                 b2bEp->IncrementRef();
                                 b2bEpName = b2bEp->GetUniqueName();
                                 busAddr = busAddrs[i];
                                 replyCode = ALLJOYN_JOINSESSION_REPLY_SUCCESS;
+                                optsIn.transports  = trans->GetTransportMask();
                                 break;
                             } else {
                                 QCC_LogError(status, ("trans->Connect(%s) failed", busAddrs[i].c_str()));
