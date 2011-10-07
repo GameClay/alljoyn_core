@@ -887,13 +887,13 @@ alljoyn_proxybusobject alljoyn_proxybusobject_create(alljoyn_busattachment bus, 
     return (alljoyn_proxybusobject)ret;
 }
 
-void alljoyn_proxybusobject_destroy(alljoyn_busattachment bus)
+void alljoyn_proxybusobject_destroy(alljoyn_proxybusobject bus)
 {
     assert(bus != NULL && "NULL parameter passed to alljoyn_proxybusobject_destroy.");
     delete (ajn::ProxyBusObject*)bus;
 }
 
-QStatus alljoyn_proxybusobject_addinterface(alljoyn_busattachment bus, const alljoyn_interfacedescription iface)
+QStatus alljoyn_proxybusobject_addinterface(alljoyn_proxybusobject bus, const alljoyn_interfacedescription iface)
 {
     return ((ajn::ProxyBusObject*)bus)->AddInterface(*((const ajn::InterfaceDescription*)iface));
 }

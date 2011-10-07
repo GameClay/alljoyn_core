@@ -456,7 +456,7 @@ alljoyn_busobject alljoyn_busobject_create(alljoyn_busattachment bus, const char
  *
  * @param bus Bus to destroy.
  */
-void alljoyn_busobject_destroy(alljoyn_busattachment bus);
+void alljoyn_busobject_destroy(alljoyn_busobject bus);
 
 /**
  * Add an interface to this object. If the interface has properties this will also add the
@@ -476,7 +476,7 @@ void alljoyn_busobject_destroy(alljoyn_busattachment bus);
  *      - #ER_BUS_IFACE_ALREADY_EXISTS if the interface already exists.
  *      - An error status otherwise
  */
-QStatus alljoyn_busobject_addinterface(alljoyn_busattachment bus, const alljoyn_interfacedescription iface);
+QStatus alljoyn_busobject_addinterface(alljoyn_busobject bus, const alljoyn_interfacedescription iface);
 
 /**
  * Add a set of method handers at once.
@@ -489,7 +489,8 @@ QStatus alljoyn_busobject_addinterface(alljoyn_busattachment bus, const alljoyn_
  *      - #ER_OK if all the methods were added
  *      - #ER_BUS_NO_SUCH_INTERFACE is method can not be added because interface does not exist.
  */
-QStatus alljoyn_busobject_addmethodhandlers(alljoyn_busattachment bus, const alljoyn_busobject_methodentry* entries, size_t numEntries);
+QStatus alljoyn_busobject_addmethodhandlers(alljoyn_busobject bus, const alljoyn_busobject_methodentry* entries, size_t numEntries);
+
 
 #ifdef __cplusplus
 } /* extern "C" */

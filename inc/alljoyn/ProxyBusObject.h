@@ -740,9 +740,9 @@ alljoyn_proxybusobject alljoyn_proxybusobject_create(alljoyn_busattachment bus, 
 /**
  * Destroy a proxy object created using alljoyn_proxybusobject_create.
  *
- * @param bus The bus to destroy.
+ * @param bus The bus object to destroy.
  */
-void alljoyn_proxybusobject_destroy(alljoyn_busattachment bus);
+void alljoyn_proxybusobject_destroy(alljoyn_proxybusobject bus);
 
 /**
  * Add an interface to this ProxyBusObject.
@@ -755,13 +755,13 @@ void alljoyn_proxybusobject_destroy(alljoyn_busattachment bus);
  * The interface added via this call must have been previously registered with the
  * Bus. (i.e. it must have come from a call to alljoyn_busattachment_getinterface).
  *
- * @param bus      The bus onto which the interface is to be added.
+ * @param bus      The bus object onto which the interface is to be added.
  * @param iface    The interface to add to this object. Must come from alljoyn_busattachment_getinterface.
  * @return
  *      - #ER_OK if successful.
  *      - An error status otherwise
  */
-QStatus alljoyn_proxybusobject_addinterface(alljoyn_busattachment bus, const alljoyn_interfacedescription iface);
+QStatus alljoyn_proxybusobject_addinterface(alljoyn_proxybusobject bus, const alljoyn_interfacedescription iface);
 
 /**
  * Make a synchronous method call

@@ -130,17 +130,17 @@ alljoyn_busobject alljoyn_busobject_create(alljoyn_busattachment bus, const char
     return (alljoyn_busobject) new ajn::BusObjectC(bus, path, isPlaceholder, callbacks_in, context_in);
 }
 
-void alljoyn_busobject_destroy(alljoyn_busattachment bus)
+void alljoyn_busobject_destroy(alljoyn_busobject bus)
 {
     delete (ajn::BusObjectC*)bus;
 }
 
-QStatus alljoyn_busobject_addinterface(alljoyn_busattachment bus, const alljoyn_interfacedescription iface)
+QStatus alljoyn_busobject_addinterface(alljoyn_busobject bus, const alljoyn_interfacedescription iface)
 {
     return ((ajn::BusObjectC*)bus)->AddInterfaceC(iface);
 }
 
-QStatus alljoyn_busobject_addmethodhandlers(alljoyn_busattachment bus, const alljoyn_busobject_methodentry* entries, size_t numEntries)
+QStatus alljoyn_busobject_addmethodhandlers(alljoyn_busobject bus, const alljoyn_busobject_methodentry* entries, size_t numEntries)
 {
     return ((ajn::BusObjectC*)bus)->AddMethodHandlersC(entries, numEntries);
 }
