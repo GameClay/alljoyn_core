@@ -144,3 +144,21 @@ QStatus alljoyn_busobject_addmethodhandlers(alljoyn_busobject bus, const alljoyn
 {
     return ((ajn::BusObjectC*)bus)->AddMethodHandlersC(entries, numEntries);
 }
+
+QStatus alljoyn_busobject_methodreply_args(alljoyn_busobject bus, alljoyn_message msg,
+                                           const alljoyn_msgargs args, size_t numArgs)
+{
+    return ((ajn::BusObjectC*)bus)->MethodReplyC(msg, args, numArgs);
+}
+
+QStatus alljoyn_busobject_methodreply_err(alljoyn_busobject bus, alljoyn_message msg,
+                                          const char* error, const char* errorMessage)
+{
+    return ((ajn::BusObjectC*)bus)->MethodReplyC(msg, error, errorMessage);
+}
+
+QStatus alljoyn_busobject_methodreply_status(alljoyn_busobject bus, alljoyn_message msg, QStatus status)
+{
+    return ((ajn::BusObjectC*)bus)->MethodReplyC(msg, status);
+}
+

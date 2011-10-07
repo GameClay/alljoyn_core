@@ -491,6 +491,43 @@ QStatus alljoyn_busobject_addinterface(alljoyn_busobject bus, const alljoyn_inte
  */
 QStatus alljoyn_busobject_addmethodhandlers(alljoyn_busobject bus, const alljoyn_busobject_methodentry* entries, size_t numEntries);
 
+/**
+ * Reply to a method call
+ *
+ * @param bus      The bus on which to reply.
+ * @param msg      The method call message
+ * @param args     The reply arguments (can be NULL)
+ * @param numArgs  The number of arguments
+ * @return
+ *      - #ER_OK if successful
+ *      - An error status otherwise
+ */
+QStatus alljoyn_busobject_methodreply_args(alljoyn_busobject bus, alljoyn_message msg,
+                                           const alljoyn_msgargs args, size_t numArgs);
+/**
+ * Reply to a method call with an error message
+ *
+ * @param bus              The bus on which to reply.
+ * @param msg              The method call message
+ * @param error            The name of the error
+ * @param errorMessage     An error message string
+ * @return
+ *      - #ER_OK if successful
+ *      - An error status otherwise
+ */
+QStatus alljoyn_busobject_methodreply_err(alljoyn_busobject bus, alljoyn_message msg,
+                                          const char* error, const char* errorMessage);
+/**
+ * Reply to a method call with an error message
+ *
+ * @param bus        The bus on which to reply.
+ * @param msg        The method call message
+ * @param status     The status code for the error
+ * @return
+ *      - #ER_OK if successful
+ *      - An error status otherwise
+ */
+QStatus alljoyn_busobject_methodreply_status(alljoyn_busobject bus, alljoyn_message msg, QStatus status);
 
 #ifdef __cplusplus
 } /* extern "C" */
