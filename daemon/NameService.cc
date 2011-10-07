@@ -231,6 +231,20 @@ NameService::NameService()
     m_any(false), m_wakeEvent(), m_forceLazyUpdate(false)
 {
     QCC_DbgPrintf(("NameService::NameService()\n"));
+
+    //
+    // Without commenting on the wisdom of this hidden jewel, it turns
+    // out that there is a reference counted call to WSAStartup in our
+    // sockets abstraction.  If you don't have a socket initialized in
+    // the Windows version, you don't have an initialized winsock.
+    // This is a problem for NameService::IfConfig() because it
+    // doesn't use a socket and it makes calls to getnameinfo() which
+    // requires that winsock be initialized.
+    //
+    // Rather than trying to undo all of that reference counting, we
+    // just hold onto a socket while we are alive.
+    //
+    qcc::Socket(qcc::QCC_AF_INET, qcc::QCC_SOCK_DGRAM, m_refSockFd);
 }
 
 //
@@ -725,11 +739,15 @@ QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
             entry.m_name = qcc::String(pinfo->AdapterName);
 
             char buffer[NI_MAXHOST];
+            memset(buffer, 0, NI_MAXHOST);
 
             if (pinfo->FirstUnicastAddress) {
-                getnameinfo(pinfo->FirstUnicastAddress->Address.lpSockaddr,
+                int result = getnameinfo(pinfo->FirstUnicastAddress->Address.lpSockaddr,
                             pinfo->FirstUnicastAddress->Address.iSockaddrLength,
                             buffer, sizeof(buffer), NULL, 0, NI_NUMERICHOST);
+                if (result != 0) {
+                    QCC_LogError(ER_FAIL, ("NameService::IfConfig(): getnameinfo error %d", result));
+                }
                 entry.m_addr = buffer;
             } else {
                 entry.m_addr = "";
@@ -884,6 +902,12 @@ NameService::~NameService()
     // All shut down and ready for bed.
     //
     m_state = IMPL_SHUTDOWN;
+
+    //
+    // Release our hold on the winsock reference count.  See the constructor
+    // for the gory details.
+    //
+    qcc::Close(m_refSockFd);
 }
 
 //
@@ -2197,11 +2221,19 @@ void NameService::SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIPv4, H
     //
     size_t sent;
     if (sockFdIsIPv4) {
+        QCC_DbgPrintf(("NameService::SendProtocolMessage():  Sending to IPv4\n"));
         qcc::IPAddress ipv4(IPV4_MULTICAST_GROUP);
-        qcc::SendTo(sockFd, ipv4, MULTICAST_PORT, buffer, size, sent);
+        QStatus status = qcc::SendTo(sockFd, ipv4, MULTICAST_PORT, buffer, size, sent);
+        if (status != ER_OK) {
+            QCC_LogError(ER_FAIL, ("NameService::SendProtocolMessage():  Error sending to IPv4\n"));
+        }
     } else {
+        QCC_DbgPrintf(("NameService::SendProtocolMessage():  Sending to IPv6\n"));
         qcc::IPAddress ipv6(IPV6_MULTICAST_GROUP);
-        qcc::SendTo(sockFd, ipv6, MULTICAST_PORT, buffer, size, sent);
+        QStatus status = qcc::SendTo(sockFd, ipv6, MULTICAST_PORT, buffer, size, sent);
+        if (status != ER_OK) {
+            QCC_LogError(ER_FAIL, ("NameService::SendProtocolMessage():  Error sending to IPv6\n"));
+        }
     }
 
     delete [] buffer;

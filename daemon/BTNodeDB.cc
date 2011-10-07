@@ -458,6 +458,7 @@ void BTNodeDB::RefreshExpiration(const BTNodeInfo& connNode, uint32_t expireDelt
         assert(cmit->first == cmit->second->GetConnectNode());
         expireSet.erase(cmit->second);
         cmit->second->SetExpireTime(expireTime);
+        cmit->second->SetUUIDRev(connNode->GetUUIDRev());
         expireSet.insert(cmit->second);
         ++cmit;
     }

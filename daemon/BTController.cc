@@ -449,6 +449,10 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
             uint32_t newUUIDRev;
             BTBusAddress connAddr;
 
+            if (!knownAdNode && !eirCapable && (blacklist->find(adBdAddr) != blacklist->end())) {
+                return; // blacklisted - ignore it
+            }
+
             QCC_DbgPrintf(("Getting device info from %s (adNode: %s in foundNodeDB, adNode %s EIR capable, received %s EIR capable, adNode UUIDRev: %08x, received UUIDRev: %08x)",
                            adBdAddr.ToString().c_str(),
                            knownAdNode ? "is" : "is not",
@@ -467,9 +471,12 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
             if (IsMaster()) {
                 if ((status != ER_OK) || !connAddr.IsValid()) {
                     if (!eirCapable) {
-                        QCC_DbgPrintf(("Blacklisting %s", adBdAddr.ToString().c_str()));
+                        uint32_t blacklistTime = BLACKLIST_TIME + (Rand32() % BLACKLIST_TIME);
+                        QCC_DbgPrintf(("Blacklisting %s for %d.%03ds",
+                                       adBdAddr.ToString().c_str(),
+                                       blacklistTime / 1000, blacklistTime % 1000));
                         blacklist->insert(adBdAddr);
-                        DispatchOperation(new ExpireBlacklistedDevDispatchInfo(adBdAddr), BLACKLIST_TIME);
+                        DispatchOperation(new ExpireBlacklistedDevDispatchInfo(adBdAddr), blacklistTime);
 
                         // Gotta add the new blacklist entry to ignore addresses set.
                         find.dirty = true;
@@ -529,7 +536,6 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                 BTNodeDB::const_iterator nodeit;
                 for (nodeit = newAdInfo.Begin(); nodeit != newAdInfo.End(); ++nodeit) {
                     BTNodeInfo node = *nodeit;
-                    node->SetUUIDRev(newUUIDRev);
                     node->SetConnectNode(connNode);
                     if (node->GetBusAddress().addr == adBdAddr) {
                         node->SetEIRCapable(eirCapable);
@@ -538,25 +544,11 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
 
                 oldAdInfo.Diff(newAdInfo, &added, &removed);
 
-                if (knownAdNode &&
-                    (added.Size() == 0) &&
-                    (removed.Size() == 0) &&
-                    (eirCapable && (adNode->GetUUIDRev() != uuidRev))) {
-                    // Somehow the cached UUIDRev for the advertising node is stale.
-                    BTNodeDB tmpdb;
-                    foundNodeDB.GetNodesFromConnectNode(connNode, tmpdb);
-                    for (nodeit = tmpdb.Begin(); nodeit != tmpdb.End(); ++nodeit) {
-                        BTNodeInfo node = *nodeit;
-                        node->SetUUIDRev(newUUIDRev);
-                    }
-                    foundNodeDB.RefreshExpiration(adNode->GetConnectNode(), LOST_DEVICE_TIMEOUT);
-
-                } else {
-                    foundNodeDB.DumpTable("foundNodeDB - Before update");
-                    foundNodeDB.UpdateDB(&added, &removed);
-                    foundNodeDB.RefreshExpiration(adNode->GetConnectNode(), LOST_DEVICE_TIMEOUT);
-                    foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices due to remote device advertisement change");
-                }
+                foundNodeDB.DumpTable("foundNodeDB - Before update");
+                foundNodeDB.UpdateDB(&added, &removed);
+                connNode->SetUUIDRev(newUUIDRev);
+                foundNodeDB.RefreshExpiration(connNode, LOST_DEVICE_TIMEOUT);
+                foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices due to remote device advertisement change");
 
                 foundNodeDB.Unlock();
 
