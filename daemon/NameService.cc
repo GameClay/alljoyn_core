@@ -743,8 +743,8 @@ QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
 
             if (pinfo->FirstUnicastAddress) {
                 int result = getnameinfo(pinfo->FirstUnicastAddress->Address.lpSockaddr,
-                            pinfo->FirstUnicastAddress->Address.iSockaddrLength,
-                            buffer, sizeof(buffer), NULL, 0, NI_NUMERICHOST);
+                                         pinfo->FirstUnicastAddress->Address.iSockaddrLength,
+                                         buffer, sizeof(buffer), NULL, 0, NI_NUMERICHOST);
                 if (result != 0) {
                     QCC_LogError(ER_FAIL, ("NameService::IfConfig(): getnameinfo error %d", result));
                 }
