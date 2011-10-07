@@ -104,24 +104,20 @@ QC_BOOL accept_session_joiner(const void* context, alljoyn_sessionport sessionPo
 }
 
 /* Exposed concatinate method */
-void cat_method(const alljoyn_interfacedescription_member* member, alljoyn_message msg)
+void cat_method(alljoyn_busobject bus, const alljoyn_interfacedescription_member* member, alljoyn_message msg)
 {
     /* Concatenate the two input strings and reply with the result. */
-    char result[256];
+    char result[256] = { 0 };
     strncat(result, alljoyn_msgargs_as_string(alljoyn_message_getarg(msg, 0), 0), sizeof(result));
     strncat(result, alljoyn_msgargs_as_string(alljoyn_message_getarg(msg, 1), 0), sizeof(result));
-    printf("Result: %s\n", result);
-#if 0
-    qcc::String inStr1 = msg->GetArg(0)->v_string.str;
-    qcc::String inStr2 = msg->GetArg(1)->v_string.str;
-    qcc::String outStr = inStr1 + inStr2;
 
-    MsgArg outArg("s", outStr.c_str());
-    QStatus status = MethodReply(msg, &outArg, 1);
+    alljoyn_msgargs outArg = alljoyn_msgargs_create(1);
+    size_t numArgs = 1;
+    alljoyn_msgargs_set(outArg, 0, &numArgs, "s", result);
+    QStatus status = alljoyn_busobject_methodreply_args(bus, msg, outArg, 1);
     if (ER_OK != status) {
         printf("Ping: Error sending reply\n");
     }
-#endif
 }
 
 /** Main entry point */
