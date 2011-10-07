@@ -328,7 +328,7 @@ QC_BOOL alljoyn_interfacedescription_getmember(const alljoyn_interfacedescriptio
         member->returnSignature = found_member->returnSignature.c_str();
         member->argNames = found_member->argNames.c_str();
         member->annotation = found_member->annotation;
-        member->internal_member = member;
+        member->internal_member = found_member;
     }
     return (found_member == NULL ? QC_FALSE : QC_TRUE);
 }
