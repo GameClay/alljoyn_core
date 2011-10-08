@@ -75,12 +75,12 @@ class AuthListenerCallbackC : AuthListener {
   private:
     alljoyn_authlistener_callbacks callbacks;
     const void* context;
-    
+
 };
 
 }
 
-struct _alljoyn_buslistener_handle {
+struct _alljoyn_authlistener_handle {
     /* Empty by design, this is just to allow the type restrictions to save coders from themselves */
 };
 
