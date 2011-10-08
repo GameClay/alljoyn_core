@@ -83,6 +83,9 @@ typedef QC_BOOL (*alljoyn_sessionportlistener_acceptsessionjoiner_ptr)(const voi
 typedef void (*alljoyn_sessionportlistener_sessionjoined_ptr)(const void* context, alljoyn_sessionport sessionPort,
                                                               alljoyn_sessionid id, const char* joiner);
 
+/**
+ * Structure used during alljoyn_sessionportlistener_create to provide callbacks into C.
+ */
 typedef struct {
     alljoyn_sessionportlistener_acceptsessionjoiner_ptr accept_session_joiner;
     alljoyn_sessionportlistener_sessionjoined_ptr session_joined;

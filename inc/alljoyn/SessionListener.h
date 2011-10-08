@@ -72,6 +72,9 @@ extern "C" {
  */
 typedef void (*alljoyn_sessionlistener_sessionlost_ptr)(const void* context, alljoyn_sessionid sessionId);
 
+/**
+ * Structure used during alljoyn_sessionlistener_create to provide callbacks into C.
+ */
 typedef struct {
     alljoyn_sessionlistener_sessionlost_ptr session_lost;
 } alljoyn_sessionlistener_callbacks;
