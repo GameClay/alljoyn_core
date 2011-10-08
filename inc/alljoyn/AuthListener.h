@@ -22,16 +22,13 @@
  *    limitations under the License.
  ******************************************************************************/
 
-#ifndef __cplusplus
-#error Only include AuthListener.h in C++ code.
-#endif
-
 #include <qcc/platform.h>
-#include <qcc/String.h>
-
 #include <alljoyn/Message.h>
-
 #include <Status.h>
+
+#ifdef __cplusplus
+
+#include <qcc/String.h>
 
 namespace ajn {
 
@@ -259,5 +256,192 @@ class AuthListener {
 };
 
 }
+
+extern "C" {
+#endif /* #ifdef __cplusplus */
+
+/**
+ * Type for the RequestCredentials callback.
+ */
+typedef QC_BOOL (*alljoyn_authlistener_requestcredentials_ptr)(const void* context, const char* authMechanism, const char* peerName, uint16_t authCount,
+                                                               const char* userName, uint16_t credMask, alljoyn_credentials credentials);
+/**
+ * Type for the VerifyCredentials callback.
+ */
+typedef QC_BOOL (*alljoyn_authlistener_verifycredentials_ptr)(const void* context, const char* authMechanism, const char* peerName,
+                                                              const alljoyn_credentials credentials);
+/**
+ * Type for the SecurityViolation callback.
+ */
+typedef void (*alljoyn_authlistener_securityviolation_ptr)(const void* context, QStatus status, const alljoyn_message msg);
+
+/**
+ * Type for the AuthenticationComplete callback.
+ */
+typedef void (*alljoyn_authlistener_authenticationcomplete_ptr)(const void* context, const char* authMechanism, const char* peerName, QC_BOOL success);
+
+/**
+ * Structure used during alljoyn_authlistener_create to provide callbacks into C.
+ */
+typedef struct {
+    alljoyn_authlistener_requestcredentials_ptr request_credentials;
+    alljoyn_authlistener_verifycredentials_ptr verify_credentials;
+    alljoyn_authlistener_securityviolation_ptr security_violation;
+    alljoyn_authlistener_authenticationcomplete_ptr authentication_complete;
+} alljoyn_authlistener_callbacks;
+
+/**
+ * Create a AuthListener which will trigger the provided callbacks, passing along the provided context.
+ *
+ * @param callbacks Callbacks to trigger for associated events.
+ * @param context   Context to pass to callback functions
+ *
+ * @return Handle to newly allocated AuthListener.
+ */
+alljoyn_authlistener alljoyn_authlistener_create(const alljoyn_authlistener_callbacks* callbacks, const void* context);
+
+/**
+ * Destroy a AuthListener.
+ *
+ * @param listener AuthListener to destroy.
+ */
+void alljoyn_authlistener_destroy(alljoyn_authlistener listener);
+
+/**
+ * Create credentials
+ *
+ * @return Newly created credentials.
+ */
+alljoyn_credentials alljoyn_credentials_create();
+
+/**
+ * Destroy credentials
+ *
+ * @param cred Credentials to destroy.
+ */
+void alljoyn_credentials_destroy(alljoyn_credentials cred);
+
+/**
+ * Tests if one or more credentials are set.
+ *
+ * @param cred   The credentials to test.
+ * @param creds  A logical or of the credential bit values.
+ * @return true if the credentials are set.
+ */
+QC_BOOL alljoyn_credentials_isset(const alljoyn_credentials cred, uint16_t creds);
+
+/**
+ * Sets a requested password, pincode, or passphrase.
+ *
+ * @param cred The credentials to set.
+ * @param pwd  The password to set.
+ */
+void alljoyn_credentials_setpassword(alljoyn_credentials cred, const char* pwd);
+
+/**
+ * Sets a requested user name.
+ *
+ * @param cred      The credentials to set.
+ * @param userName  The user name to set.
+ */
+void alljoyn_credentials_setusername(alljoyn_credentials cred, const char* userName);
+
+/**
+ * Sets a requested public key certificate chain. The certificates must be PEM encoded.
+ *
+ * @param cred       The credentials to set.
+ * @param certChain  The certificate chain to set.
+ */
+void alljoyn_credentials_setcertchain(alljoyn_credentials cred, const char* certChain);
+
+/**
+ * Sets a requested private key. The private key must be PEM encoded and may be encrypted. If
+ * the private key is encrypted the passphrase required to decrypt it must also be supplied.
+ *
+ * @param cred The credentials to set.
+ * @param pk   The private key to set.
+ */
+void alljoyn_credentials_setprivatekey(alljoyn_credentials cred, const char* pk);
+
+/**
+ * Sets a logon entry. For example for the Secure Remote Password protocol in RFC 5054, a
+ * logon entry encodes the N,g, s and v parameters. An SRP logon entry string has the form
+ * N:g:s:v where N,g,s, and v are ASCII encoded hexadecimal strings and are separated by
+ * colons.
+ *
+ * @param cred        The credentials to set.
+ * @param logonEntry  The logon entry to set.
+ */
+void alljoyn_credentials_setlogonentry(alljoyn_credentials cred, const char* logonEntry);
+
+/**
+ * Sets an expiration time in seconds relative to the current time for the credentials. This value is optional and
+ * can be set on any response to a credentials request. After the specified expiration time has elapsed any secret
+ * keys based on the provided credentials are invalidated and a new authentication exchange will be required. If an
+ * expiration is not set the default expiration time for the requested authentication mechanism is used.
+ *
+ * @param cred        The credentials to set.
+ * @param expiration  The expiration time in seconds.
+ */
+void alljoyn_credentials_setexpiration(alljoyn_credentials cred, uint32_t expiration);
+
+/**
+ * Gets the password, pincode, or passphrase from this credentials instance.
+ *
+ * @param cred The credentials to query.
+ * @return A password or an empty string.
+ */
+const char* alljoyn_credentials_getpassword(const alljoyn_credentials cred);
+
+/**
+ * Gets the user name from this credentials instance.
+ *
+ * @param cred The credentials to query.
+ * @return A user name or an empty string.
+ */
+const char* alljoyn_credentials_getusername(const alljoyn_credentials cred);
+
+/**
+ * Gets the PEM encoded X509 certificate chain from this credentials instance.
+ *
+ * @param cred The credentials to query.
+ * @return An X509 certificate chain or an empty string.
+ */
+const char* alljoyn_credentials_getcertchain(const alljoyn_credentials cred);
+
+/**
+ * Gets the PEM encode private key from this credentials instance.
+ *
+ * @param cred The credentials to query.
+ * @return An PEM encode private key or an empty string.
+ */
+const char* alljoyn_credentials_getprivateKey(const alljoyn_credentials cred);
+
+/**
+ * Gets a logon entry.
+ *
+ * @param cred The credentials to query.
+ * @return An encoded logon entry or an empty string.
+ */
+const char* alljoyn_credentials_getlogonentry(const alljoyn_credentials cred);
+
+/**
+ * Get the expiration time in seconds if it is set.
+ *
+ * @param cred The credentials to query.
+ * @return The expiration or the max 32 bit unsigned value if it was not set.
+ */
+uint32_t alljoyn_credentials_getexpiration(const alljoyn_credentials cred);
+
+/**
+ * Clear the credentials.
+ *
+ * @param cred The credentials to clear.
+ */
+void alljoyn_credentials_clear(alljoyn_credentials cred);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif
