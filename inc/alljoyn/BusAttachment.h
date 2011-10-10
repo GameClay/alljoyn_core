@@ -31,12 +31,12 @@
 #include <alljoyn/BusObject.h>
 #include <alljoyn/SessionListener.h>
 #include <alljoyn/SessionPortListener.h>
+#include <alljoyn/AuthListener.h>
 
 #ifdef __cplusplus
 
 #include <qcc/String.h>
 #include <alljoyn/KeyStoreListener.h>
-#include <alljoyn/AuthListener.h>
 
 namespace ajn {
 

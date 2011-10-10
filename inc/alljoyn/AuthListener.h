@@ -261,6 +261,27 @@ extern "C" {
 #endif /* #ifdef __cplusplus */
 
 /**
+ * @name Credential indication Bitmasks
+ *  Bitmasks used to indicated what type of credentials are being used.
+ */
+// @{
+static const uint16_t ALLJOYN_CRED_PASSWORD     = 0x0001; /**< Bit 0 indicates credentials include a password, pincode, or passphrase */
+static const uint16_t ALLJOYN_CRED_USER_NAME    = 0x0002; /**< Bit 1 indicates credentials include a user name */
+static const uint16_t ALLJOYN_CRED_CERT_CHAIN   = 0x0004; /**< Bit 2 indicates credentials include a chain of PEM-encoded X509 certificates */
+static const uint16_t ALLJOYN_CRED_PRIVATE_KEY  = 0x0008; /**< Bit 3 indicates credentials include a PEM-encoded private key */
+static const uint16_t ALLJOYN_CRED_LOGON_ENTRY  = 0x0010; /**< Bit 4 indicates credentials include a logon entry that can be used to logon a remote user */
+static const uint16_t ALLJOYN_CRED_EXPIRATION   = 0x0020; /**< Bit 5 indicates credentials include an expiration time */
+// @}
+/**
+ * @name Credential request values
+ * These values are only used in a credential request
+ */
+// @{
+static const uint16_t ALLJOYN_CRED_NEW_PASSWORD = 0x1001; /**< Indicates the credential request is for a newly created password */
+static const uint16_t ALLJOYN_CRED_ONE_TIME_PWD = 0x2001; /**< Indicates the credential request is for a one time use password */
+// @}
+
+/**
  * Type for the RequestCredentials callback.
  */
 typedef QC_BOOL (*alljoyn_authlistener_requestcredentials_ptr)(const void* context, const char* authMechanism, const char* peerName, uint16_t authCount,
