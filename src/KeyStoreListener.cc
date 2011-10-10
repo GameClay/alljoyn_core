@@ -77,7 +77,7 @@ void alljoyn_keystorelistener_destroy(alljoyn_keystorelistener listener)
 QStatus alljoyn_keystorelistener_putkeys(alljoyn_keystorelistener listener, alljoyn_keystore keyStore,
                                          const char* source, const char* password)
 {
-    ajn::KeyStore &ks = *((ajn::KeyStore*)keyStore);
+    ajn::KeyStore& ks = *((ajn::KeyStore*)keyStore);
     return ((ajn::KeyStoreListener*)listener)->PutKeys(ks, source, password);
 }
 
@@ -85,7 +85,7 @@ QStatus alljoyn_keystorelistener_getkeys(alljoyn_keystorelistener listener, allj
                                          char* sink, size_t sink_sz)
 {
     qcc::String sinkStr;
-    ajn::KeyStore &ks = *((ajn::KeyStore*)keyStore);
+    ajn::KeyStore& ks = *((ajn::KeyStore*)keyStore);
     QStatus ret = ((ajn::KeyStoreListener*)listener)->GetKeys(ks, sinkStr);
     strncpy(sink, sinkStr.c_str(), sink_sz);
     return ret;

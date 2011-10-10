@@ -120,8 +120,8 @@ typedef QStatus (*alljoyn_keystorelistener_storerequest_ptr)(const void* context
  * Structure used during alljoyn_keystorelistener_create to provide callbacks into C.
  */
 typedef struct {
-   alljoyn_keystorelistener_loadrequest_ptr load_request;
-   alljoyn_keystorelistener_storerequest_ptr store_request;
+    alljoyn_keystorelistener_loadrequest_ptr load_request;
+    alljoyn_keystorelistener_storerequest_ptr store_request;
 } alljoyn_keystorelistener_callbacks;
 
 /**
