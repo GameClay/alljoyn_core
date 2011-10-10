@@ -31,11 +31,11 @@ namespace ajn {
  * Abstract base class implemented by AllJoyn users and called by AllJoyn to inform
  * users of bus related events.
  */
-class AuthListenerCallbackC : AuthListener {
+class AuthListenerCallbackC : public AuthListener {
   public:
-    AuthListenerCallbackC(const alljoyn_authlistener_callbacks* callbacks, const void* context_in)
+    AuthListenerCallbackC(const alljoyn_authlistener_callbacks* callbacks_in, const void* context_in)
     {
-        memcpy(&callbacks, callbacks, sizeof(alljoyn_authlistener_callbacks));
+        memcpy(&callbacks, callbacks_in, sizeof(alljoyn_authlistener_callbacks));
         context = context_in;
     }
 
