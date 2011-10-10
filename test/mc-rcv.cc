@@ -141,7 +141,7 @@ int main(int argc, char** argv)
     socklen_t addrlen = sizeof(addr);
 
     memset(&addr, 0, sizeof(addr));
-    addr.sin6_family = AF_INET;
+    addr.sin6_family = AF_INET6;
     addr.sin6_addr = in6addr_any;
     addr.sin6_port = htons(HELLO_PORT);
 

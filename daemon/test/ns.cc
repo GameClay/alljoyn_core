@@ -171,12 +171,15 @@ int main(int argc, char** argv)
     uint16_t port = 0;
 
     bool advertise = false;
+    bool useEth0 = false;
     bool runtests = false;
     bool wildcard = false;
 
     for (int i = 1; i < argc; ++i) {
         if (strcmp("-a", argv[i]) == 0) {
             advertise = true;
+        } else if (strcmp("-e", argv[i]) == 0) {
+            useEth0 = true;
         } else if (strcmp("-t", argv[i]) == 0) {
             runtests = true;
         } else if (strcmp("-w", argv[i]) == 0) {
@@ -217,6 +220,12 @@ int main(int argc, char** argv)
     printf("Checking out interfaces ...\n");
     qcc::String overrideInterface;
     for (uint32_t i = 0; i < entries.size(); ++i) {
+        if (!useEth0) {
+            if (entries[i].m_name == "eth0") {
+                printf("******** Ignoring eth0, use \"-e\" to enable \n");
+                continue;
+            }
+        }
         printf("    %s: ", entries[i].m_name.c_str());
         printf("0x%x = ", entries[i].m_flags);
         PrintFlags(entries[i].m_flags);
@@ -242,9 +251,14 @@ int main(int argc, char** argv)
     }
 
     srand(time(0));
+
+    //
+    // Pick a random port to advertise.  This is what would normally be the
+    // daemon TCP well-known endpoint (9955) but we just make one up.  N.B. this
+    // is not the name service multicast port.
+    //
     port = rand();
     printf("Picked random port %d\n", port);
-
     status = ns.SetEndpoints("", "", port);
 
     if (status != ER_OK) {
