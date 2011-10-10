@@ -459,6 +459,25 @@ alljoyn_busobject alljoyn_busobject_create(alljoyn_busattachment bus, const char
 void alljoyn_busobject_destroy(alljoyn_busobject bus);
 
 /**
+ * Return the path for the object
+ *
+ * @param bus BusObject on which to get the path.
+ * @return Object path
+ */
+const char* alljoyn_busobject_getpath(alljoyn_busobject bus);
+
+/**
+ * Get the name of this object.
+ * The name is the last component of the path.
+ *
+ * @param bus       BusObject on which to get the name.
+ * @param buffer    A buffer into which to copy the name.
+ * @param bufferSz  The size of the buffer provided.
+ * @return The size of the name string, if the returned value is > bufferSz, the entire name was not copied into buffer.
+ */
+size_t alljoyn_busobject_getname(alljoyn_busobject bus, char* buffer, size_t bufferSz);
+
+/**
  * Add an interface to this object. If the interface has properties this will also add the
  * standard property access interface. An interface must be added before its method handlers can be
  * added. Note that the Peer interface (org.freedesktop.DBus.peer) is implicit on all objects and

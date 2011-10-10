@@ -167,6 +167,19 @@ void alljoyn_busobject_destroy(alljoyn_busobject bus)
     delete (ajn::BusObjectC*)bus;
 }
 
+const char* alljoyn_busobject_getpath(alljoyn_busobject bus)
+{
+    return ((ajn::BusObjectC*)bus)->GetPath();
+}
+
+size_t alljoyn_busobject_getname(alljoyn_busobject bus, char* buffer, size_t bufferSz)
+{
+    qcc::String name = ((ajn::BusObjectC*)bus)->GetName();
+    buffer[bufferSz - 1] = '\0';
+    strncpy(buffer, name.c_str(), bufferSz - 1);
+    return name.length();
+}
+
 QStatus alljoyn_busobject_addinterface(alljoyn_busobject bus, const alljoyn_interfacedescription iface)
 {
     return ((ajn::BusObjectC*)bus)->AddInterfaceC(iface);
