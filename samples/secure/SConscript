@@ -19,7 +19,8 @@ clientDistDir = '$DISTDIR/samples/basic'
 # Sample Programs
 progs = [
     env.Program('DeskTopSharedKSClientA',  ['DeskTopSharedKSClientA.cc']),
-    env.Program('DeskTopSharedKSClientB',   ['DeskTopSharedKSClientB.cc']),
+    env.Program('DeskTopSharedKSClientB',  ['DeskTopSharedKSClientB.cc']),
+    env.Program('DeskTopSharedKSClientC',  ['DeskTopSharedKSClientC.c']),
     env.Program('DeskTopSharedKSServiceA', ['DeskTopSharedKSServiceA.cc'])
     ]
 
