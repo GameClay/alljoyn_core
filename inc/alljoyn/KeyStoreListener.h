@@ -21,14 +21,13 @@
 #ifndef _ALLJOYN_KEYSTORE_LISTENER_H
 #define _ALLJOYN_KEYSTORE_LISTENER_H
 
-#ifndef __cplusplus
-#error Only include KeyStoreListener.h in C++ code.
-#endif
-
 #include <qcc/platform.h>
-#include <qcc/String.h>
+#include <alljoyn/AllJoynCTypes.h>
 #include <Status.h>
 
+#ifdef __cplusplus
+
+#include <qcc/String.h>
 
 namespace ajn {
 
@@ -103,5 +102,73 @@ class KeyStoreListener {
 };
 
 }
+
+extern "C" {
+#endif /* #ifdef __cplusplus */
+
+/**
+ * Type for the LoadRequest callback.
+ */
+typedef QStatus (*alljoyn_keystorelistener_loadrequest_ptr)(const void* context, alljoyn_keystore keyStore);
+
+/**
+ * Type for the StoreRequest callback.
+ */
+typedef QStatus (*alljoyn_keystorelistener_storerequest_ptr)(const void* context, alljoyn_keystore keyStore);
+
+/**
+ * Structure used during alljoyn_keystorelistener_create to provide callbacks into C.
+ */
+typedef struct {
+   alljoyn_keystorelistener_loadrequest_ptr load_request;
+   alljoyn_keystorelistener_storerequest_ptr store_request;
+} alljoyn_keystorelistener_callbacks;
+
+/**
+ * Create a KeyStoreListener
+ *
+ * @param callbacks  Callbacks to trigger for associated events.
+ * @param context    Context to pass along to callback functions.
+ */
+alljoyn_keystorelistener alljoyn_keystorelistener_create(const alljoyn_keystorelistener_callbacks* callbacks, const void* context);
+
+/**
+ * Destroy a KeyStoreListener
+ *
+ * @param listener The KeyStoreListener to destroy.
+ */
+void alljoyn_keystorelistener_destroy(alljoyn_keystorelistener listener);
+
+/**
+ * Put keys into the key store from an encrypted byte string.
+ *
+ * @param listener  The KeyStoreListener into which to put the keys.
+ * @param keyStore  The keyStore to put to. This is the keystore indicated in the LoadRequest call.
+ * @param source    The byte string containing the encrypted key store contents.
+ * @param password  The password required to decrypt the key data
+ *
+ * @return
+ *      - #ER_OK if successful
+ *      - An error status otherwise
+ *
+ */
+QStatus alljoyn_keystorelistener_putkeys(alljoyn_keystorelistener listener, alljoyn_keystore keyStore, const char* source, const char* password);
+
+/**
+ * Get the current keys from the key store as an encrypted byte string.
+ *
+ * @param listener  The KeyStoreListener from which to get the keys.
+ * @param keyStore  The keyStore to get from. This is the keystore indicated in the StoreRequest call.
+ * @param sink      The byte string to write the keys to.
+ * @param sink_sz   The size of the byte string provided.
+ * @return
+ *      - #ER_OK if successful
+ *      - An error status otherwise
+ */
+QStatus alljoyn_keystorelistener_getkeys(alljoyn_keystorelistener listener, alljoyn_keystore keyStore, char* sink, size_t sink_sz);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif

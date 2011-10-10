@@ -35,5 +35,7 @@ typedef struct _alljoyn_sessionportlistener_handle*         alljoyn_sessionportl
 typedef struct _alljoyn_busobject_handle*                   alljoyn_busobject;
 typedef struct _alljoyn_authlistener_handle*                alljoyn_authlistener;
 typedef struct _alljoyn_credentials_handle*                 alljoyn_credentials;
+typedef struct _alljoyn_keystore_handle*                    alljoyn_keystore;
+typedef struct _alljoyn_keystorelistener_handle*            alljoyn_keystorelistener;
 
 #endif

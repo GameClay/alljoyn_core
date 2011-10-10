@@ -32,11 +32,11 @@
 #include <alljoyn/SessionListener.h>
 #include <alljoyn/SessionPortListener.h>
 #include <alljoyn/AuthListener.h>
+#include <alljoyn/KeyStoreListener.h>
 
 #ifdef __cplusplus
 
 #include <qcc/String.h>
-#include <alljoyn/KeyStoreListener.h>
 
 namespace ajn {
 
