@@ -1949,3 +1949,16 @@ QStatus alljoyn_busattachment_canceladvertisedname(alljoyn_busattachment bus, co
 {
     return ((ajn::BusAttachment*)bus)->CancelAdvertiseName(name, transports);
 }
+
+QStatus alljoyn_busattachment_enablepeersecurity(alljoyn_busattachment bus, const char* authMechanisms,
+                                                 alljoyn_authlistener listener, const char* keyStoreFileName,
+                                                 QC_BOOL isShared)
+{
+    return ((ajn::BusAttachment*)bus)->EnablePeerSecurity(authMechanisms, (ajn::AuthListener*)listener, keyStoreFileName,
+                                                          (isShared == QC_TRUE ? true : false));
+}
+
+QC_BOOL alljoyn_busattachment_ispeersecurityenabled(alljoyn_busattachment bus)
+{
+    return (((ajn::BusAttachment*)bus)->IsPeerSecurityEnabled() == true ? QC_TRUE : QC_FALSE);
+}

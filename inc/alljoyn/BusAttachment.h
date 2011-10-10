@@ -1170,6 +1170,46 @@ QStatus alljoyn_busattachment_bindsessionport(alljoyn_busattachment bus, alljoyn
  */
 QStatus alljoyn_busattachment_unbindsessionport(alljoyn_busattachment bus, alljoyn_sessionport sessionPort);
 
+/**
+ * Enable peer-to-peer security. This function must be called by applications that want to use
+ * authentication and encryption . The bus must have been started by calling
+ * BusAttachment::Start() before this function is called. If the application is providing its
+ * own key store implementation it must have already called RegisterKeyStoreListener() before
+ * calling this function.
+ *
+ * @param bus              The bus on which to enable security.
+ * @param authMechanisms   The authentication mechanism(s) to use for peer-to-peer authentication.
+ *                         If this parameter is NULL peer-to-peer authentication is disabled.
+ *
+ * @param listener         Passes password and other authentication related requests to the application.
+ *
+ * @param keyStoreFileName Optional parameter to specify the filename of the default key store. The
+ *                         default value is the applicationName parameter of BusAttachment().
+ *                         Note that this parameter is only meaningful when using the default
+ *                         key store implementation.
+ *
+ * @param isShared         optional parameter that indicates if the key store is shared between multiple
+ *                         applications. It is generally harmless to set this to true even when the
+ *                         key store is not shared but it adds some unnecessary calls to the key store
+ *                         listener to load and store the key store in this case.
+ *
+ * @return
+ *      - #ER_OK if peer security was enabled.
+ *      - #ER_BUS_BUS_NOT_STARTED BusAttachment::Start has not be called
+ */
+QStatus alljoyn_busattachment_enablepeersecurity(alljoyn_busattachment bus, const char* authMechanisms,
+                                                 alljoyn_authlistener listener, const char* keyStoreFileName,
+                                                 QC_BOOL isShared);
+
+/**
+ * Check is peer security has been enabled for this bus attachment.
+ *
+ * @param bus The bus on which to query if peer security is enabled.
+ *
+ * @return   Returns QC_TRUE if peer security has been enabled, QC_FALSE otherwise.
+ */
+QC_BOOL alljoyn_busattachment_ispeersecurityenabled(alljoyn_busattachment bus);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
