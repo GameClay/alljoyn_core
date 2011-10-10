@@ -67,16 +67,30 @@ class SessionListener {
 extern "C" {
 #endif /* #ifdef __cplusplus */
 
-/*
+/**
  * Type for the SesionLost callback.
  */
 typedef void (*alljoyn_sessionlistener_sessionlost_ptr)(const void* context, alljoyn_sessionid sessionId);
+
+/**
+ * Type for the SessionMemberAdded callback.
+ */
+typedef void (*alljoyn_sessionlistener_sessionmemberadded_ptr)(const void* context, alljoyn_sessionid sessionId,
+                                                               const char* uniqueName);
+
+/**
+ * Type for the SessionMemberRemoved callback.
+ */
+typedef void (*alljoyn_sessionlistener_sessionmemberremoved_ptr)(const void* context, alljoyn_sessionid sessionId,
+                                                                 const char* uniqueName);
 
 /**
  * Structure used during alljoyn_sessionlistener_create to provide callbacks into C.
  */
 typedef struct {
     alljoyn_sessionlistener_sessionlost_ptr session_lost;
+    alljoyn_sessionlistener_sessionmemberadded_ptr session_member_added;
+    alljoyn_sessionlistener_sessionmemberremoved_ptr session_member_removed;
 } alljoyn_sessionlistener_callbacks;
 
 /**

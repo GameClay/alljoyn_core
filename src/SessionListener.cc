@@ -29,7 +29,7 @@ namespace ajn {
  * Abstract base class implemented by AllJoyn users and called by AllJoyn to inform
  * users of session related events.
  */
-class SessionListenerCallbackC : SessionListener {
+class SessionListenerCallbackC : public SessionListener {
   public:
     SessionListenerCallbackC(const alljoyn_sessionlistener_callbacks* in_callbacks, const void* in_context)
     {
@@ -37,10 +37,24 @@ class SessionListenerCallbackC : SessionListener {
         context = in_context;
     }
 
-    void SessionLost(SessionId sessionId)
+    virtual void SessionLost(SessionId sessionId)
     {
         if (callbacks.session_lost != NULL) {
             callbacks.session_lost(context, sessionId);
+        }
+    }
+
+    virtual void SessionMemberAdded(SessionId sessionId, const char* uniqueName)
+    {
+        if (callbacks.session_member_added != NULL) {
+            callbacks.session_member_added(context, sessionId, uniqueName);
+        }
+    }
+
+    virtual void SessionMemberRemoved(SessionId sessionId, const char* uniqueName)
+    {
+        if (callbacks.session_member_removed != NULL) {
+            callbacks.session_member_removed(context, sessionId, uniqueName);
         }
     }
   protected:
