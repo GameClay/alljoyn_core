@@ -226,6 +226,26 @@ uint8_t alljoyn_sessionopts_proximity(const alljoyn_sessionopts opts);
  */
 alljoyn_transportmask alljoyn_sessionopts_transports(const alljoyn_sessionopts opts);
 
+/**
+ * Determine whether one SessionOpts is compatible with the SessionOpts offered by other
+ *
+ * @param one    Options to be compared against other.
+ * @param other  Options to be compared against one.
+ * @return QC_TRUE iff this SessionOpts can use the option set offered by other.
+ */
+QC_BOOL alljoyn_sessionopts_iscompatible(const alljoyn_sessionopts one, const alljoyn_sessionopts other);
+
+/**
+ * Compare two SessionOpts.
+ *
+ * @param one    Options to be compared against other.
+ * @param other  Options to be compared against one.
+ * @return 0 if the SessionOpts are equal, 1 if one > other, -1 if one < other.
+ * @see ajn::SessionOpts::operator<
+ * @see ajn::SessionOpts::operator==
+ */
+int32_t alljoyn_sessionopts_cmp(const alljoyn_sessionopts one, const alljoyn_sessionopts other);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

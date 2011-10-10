@@ -146,3 +146,16 @@ alljoyn_transportmask alljoyn_sessionopts_transports(const alljoyn_sessionopts o
 {
     return ((const ajn::SessionOpts*)opts)->transports;
 }
+
+QC_BOOL alljoyn_sessionopts_iscompatible(const alljoyn_sessionopts one, const alljoyn_sessionopts other)
+{
+    return (((const ajn::SessionOpts*)one)->IsCompatible(*((const ajn::SessionOpts*)other)) == true ? QC_TRUE : QC_FALSE);
+}
+
+int32_t alljoyn_sessionopts_cmp(const alljoyn_sessionopts one, const alljoyn_sessionopts other)
+{
+    const ajn::SessionOpts& _one = *((const ajn::SessionOpts*)one);
+    const ajn::SessionOpts& _other = *((const ajn::SessionOpts*)other);
+
+    return (_one == _other ? 0 : (_other < _one ? 1 : -1));
+}
