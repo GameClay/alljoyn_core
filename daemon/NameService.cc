@@ -106,6 +106,21 @@ const char* NameService::INTERFACES_WILDCARD = "*";
 const char* NameService::IPV4_MULTICAST_GROUP = "239.255.37.41";
 const uint16_t NameService::MULTICAST_PORT = 9956;
 
+#if NS_BROADCAST
+//
+// Define a broadcast address to allow Access Points in SEA to fall back onto
+// broadcast in case multicast is turned of.  If we are going to control which
+// interfaces ensuing broadcasts should be sent out on, we will need to do a
+// subnet directed broadcast, e.g. 192.168.1.255, but since most OSes will
+// convert the global broadcast address to a subnet directed broadcast using
+// default routes, we define the global broadcast address in case we need it.
+//
+// Note that there is no corresponding IPv6 broadcast address.
+//
+const char* NameService::IPV4_GLOBAL_BROADCAST_ADDR = "255.255.255.255";
+const uint16_t NameService::BROADCAST_PORT = NameService::MULTICAST_PORT;
+#endif
+
 //
 // IPv6 multicast groups are composed of a prefix containing 0xff and then
 // flags (4 bits) followed by the IPv6 Scope (4 bits) and finally the IPv4
@@ -232,6 +247,7 @@ NameService::NameService()
 {
     QCC_DbgPrintf(("NameService::NameService()\n"));
 
+#if defined(QCC_OS_WINDOWS)
     //
     // Without commenting on the wisdom of this hidden jewel, it turns
     // out that there is a reference counted call to WSAStartup in our
@@ -245,6 +261,7 @@ NameService::NameService()
     // just hold onto a socket while we are alive.
     //
     qcc::Socket(qcc::QCC_AF_INET, qcc::QCC_SOCK_DGRAM, m_refSockFd);
+#endif
 }
 
 //
@@ -618,6 +635,7 @@ QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
                 entry.m_index = (*i).m_index;
 
                 entry.m_addr = (*j).m_addr.c_str();
+                entry.m_prefixlen = (*j).m_prefixlen;
                 entry.m_family = (*j).m_family;
 
                 entries.push_back(entry);
@@ -637,6 +655,7 @@ QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
                 entry.m_index = (*i).m_index;
 
                 entry.m_addr = (*j).m_addr.c_str();
+                entry.m_prefixlen = (*j).m_prefixlen;
                 entry.m_family = (*j).m_family;
 
                 entries.push_back(entry);
@@ -801,6 +820,9 @@ void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& 
 
                 entry.m_addr = buffer;
 
+#if NS_BROADCAST
+                entry.m_prefixlen = paddr->OnLinkPrefixLength;
+#endif
                 entries.push_back(entry);
             }
         }
@@ -949,11 +971,13 @@ NameService::~NameService()
     //
     m_state = IMPL_SHUTDOWN;
 
+#if defined(QCC_OS_WINDOWS)
     //
     // Release our hold on the winsock reference count.  See the constructor
     // for the gory details.
     //
     qcc::Close(m_refSockFd);
+#endif
 }
 
 //
@@ -1499,7 +1523,6 @@ void NameService::LazyUpdateInterfaces(void)
             continue;
         }
 
-
         //
         // The current real interface entry is a candidate for use.  We need to
         // decide if we are actually going to use it either based on the
@@ -1563,6 +1586,20 @@ void NameService::LazyUpdateInterfaces(void)
                 QCC_LogError(status, ("LazyUpdateInterfaces: qcc::Socket(AF_INET) failed: %d - %s", errno, strerror(errno)));
                 continue;
             }
+
+#if NS_BROADCAST
+            //
+            // If we're going to send broadcasts, we have to ask for
+            // permission.  Note that we must be running as root to do
+            // this.
+            //
+            int broadcast = 1;
+            if (setsockopt(sockFd, SOL_SOCKET, SO_BROADCAST, (char*)&broadcast, sizeof broadcast) == -1) {
+                QCC_LogError(status, ("LazyUpdateInterfaces: setsockopt(SO_BROADCAST) failed: %d - %s", errno,
+                    strerror(errno)));
+                continue;
+            }
+#endif
         } else if (entries[i].m_family == AF_INET6) {
             QStatus status = qcc::Socket(qcc::QCC_AF_INET6, qcc::QCC_SOCK_DGRAM, sockFd);
             if (status != ER_OK) {
@@ -1725,6 +1762,11 @@ void NameService::LazyUpdateInterfaces(void)
         LiveInterface live;
         live.m_interfaceName = entries[i].m_name;
         live.m_interfaceAddr = entries[i].m_addr;
+
+#if NS_BROADCAST
+        live.m_prefixlen = entries[i].m_prefixlen;
+#endif
+
         live.m_address = address;
         live.m_mtu = entries[i].m_mtu;
         live.m_index = entries[i].m_index;
@@ -2226,7 +2268,16 @@ bool Wander(void)
 
 #endif
 
+#if NS_BROADCAST
+void NameService::SendProtocolMessage(
+    qcc::SocketFd sockFd, 
+    qcc::IPAddress interfaceAddress, 
+    uint32_t interfaceAddressPrefixLen, 
+    bool sockFdIsIPv4, 
+    Header& header)
+#else 
 void NameService::SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIPv4, Header& header)
+#endif
 {
     QCC_DbgHLPrintf(("NameService::SendProtocolMessage()\n"));
 
@@ -2268,11 +2319,47 @@ void NameService::SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIPv4, H
     size_t sent;
     if (sockFdIsIPv4) {
         QCC_DbgPrintf(("NameService::SendProtocolMessage():  Sending to IPv4\n"));
-        qcc::IPAddress ipv4(IPV4_MULTICAST_GROUP);
-        QStatus status = qcc::SendTo(sockFd, ipv4, MULTICAST_PORT, buffer, size, sent);
+        qcc::IPAddress ipv4Multicast(IPV4_MULTICAST_GROUP);
+        QStatus status = qcc::SendTo(sockFd, ipv4Multicast, MULTICAST_PORT, buffer, size, sent);
         if (status != ER_OK) {
-            QCC_LogError(ER_FAIL, ("NameService::SendProtocolMessage():  Error sending to IPv4\n"));
+            QCC_LogError(ER_FAIL, ("NameService::SendProtocolMessage():  Error sending to IPv4 (multicast)\n"));
         }
+
+#if NS_BROADCAST
+        //
+        // In order to ensure that our broadcast goes to the correct
+        // interface and is not just sent out some default way, we
+        // have to form a subnet directed broadcast.  To do this we need
+        // the IP address and netmask.
+        //
+        QCC_DbgPrintf(("NameService::SendProtocolMessage():  InterfaceAddress %s, prefix %d\n",
+            interfaceAddress.ToString().c_str(), interfaceAddressPrefixLen));
+
+        //
+        // Create a netmask with a one in the leading bits for each position
+        // implied by the prefix length.
+        //
+        uint32_t mask = 0;
+        for (uint32_t i = 0; i < interfaceAddressPrefixLen; ++i) {
+            mask >>= 1;
+            mask |= 0x80000000;
+        }
+
+        //
+        // The subnet directed broadcast address is the address part of the
+        // interface address (defined by the mask) with the rest of the bits
+        // set to one.
+        //
+        uint32_t addr = (interfaceAddress.GetIPv4AddressCPUOrder() & mask) | ~mask ;
+        qcc::IPAddress ipv4Broadcast(addr);
+        QCC_DbgPrintf(("NameService::SendProtocolMessage():  Sending to subnet directed broadcast address %s\n",
+            ipv4Broadcast.ToString().c_str()));
+
+        status = qcc::SendTo(sockFd, ipv4Broadcast, BROADCAST_PORT, buffer, size, sent);
+        if (status != ER_OK) {
+            QCC_LogError(ER_FAIL, ("NameService::SendProtocolMessage():  Error sending to IPv4 (broadcast)\n"));
+        }
+#endif
     } else {
         QCC_DbgPrintf(("NameService::SendProtocolMessage():  Sending to IPv6\n"));
         qcc::IPAddress ipv6(IPV6_MULTICAST_GROUP);
@@ -2396,6 +2483,10 @@ void* NameService::Run(void* arg)
             //
             for (uint32_t i = 0; i < m_liveInterfaces.size(); ++i) {
                 qcc::SocketFd sockFd = m_liveInterfaces[i].m_sockFd;
+#if NS_BROADCAST
+                qcc::IPAddress interfaceAddress = m_liveInterfaces[i].m_address;
+                uint32_t interfaceAddressPrefixLen = m_liveInterfaces[i].m_prefixlen;
+#endif
                 if (sockFd != -1) {
                     bool isIPv4 = m_liveInterfaces[i].m_address.IsIPv4();
                     bool isIPv6 = !isIPv4;
@@ -2459,7 +2550,11 @@ void* NameService::Run(void* arg)
                     // Send the possibly modified message out the current
                     // interface.
                     //
+#if NS_BROADCAST
+                    SendProtocolMessage(sockFd, interfaceAddress, interfaceAddressPrefixLen, isIPv4, header);
+#else
                     SendProtocolMessage(sockFd, isIPv4, header);
+#endif
                 }
             }
             //
