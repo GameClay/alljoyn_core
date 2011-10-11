@@ -436,8 +436,8 @@ typedef struct {
  * @see AddMethodHandlers()
  */
 typedef struct {
-    const alljoyn_interfacedescription_member* member;  /**< Pointer to method's member */
-    alljoyn_messagehandler_ptr handler;                 /**< Method implementation */
+    const alljoyn_interfacedescription_member* member;          /**< Pointer to method's member */
+    alljoyn_messagereceiver_methodhandler_ptr method_handler;   /**< Method implementation */
 } alljoyn_busobject_methodentry;
 
 /**

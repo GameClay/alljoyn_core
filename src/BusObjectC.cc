@@ -75,9 +75,9 @@ class BusObjectC : public BusObject {
 
         for (size_t i = 0; i < numEntries; i++) {
             proper_entries[i].member = (const ajn::InterfaceDescription::Member*)entries[i].member->internal_member;
-            callbackMap.insert(pair<const ajn::InterfaceDescription::Member*, alljoyn_messagehandler_ptr>(
+            callbackMap.insert(pair<const ajn::InterfaceDescription::Member*, alljoyn_messagereceiver_methodhandler_ptr>(
                                    (const ajn::InterfaceDescription::Member*)entries[i].member->internal_member,
-                                   entries[i].handler));
+                                   entries[i].method_handler));
             proper_entries[i].handler = static_cast<MessageReceiver::MethodHandler>(&BusObjectC::MethodHandlerRemap);
         }
         QStatus ret = AddMethodHandlers(proper_entries, numEntries);
@@ -142,11 +142,11 @@ class BusObjectC : public BusObject {
         c_member.internal_member = member;
 
         /* Look up the C callback via map and invoke */
-        alljoyn_messagehandler_ptr remappedHandler = callbackMap[member];
+        alljoyn_messagereceiver_methodhandler_ptr remappedHandler = callbackMap[member];
         remappedHandler((alljoyn_busobject) this, &c_member, (alljoyn_message)(&message));
     }
 
-    map<const ajn::InterfaceDescription::Member*, alljoyn_messagehandler_ptr> callbackMap;
+    map<const ajn::InterfaceDescription::Member*, alljoyn_messagereceiver_methodhandler_ptr> callbackMap;
     alljoyn_busobject_callbacks callbacks;
     const void* context;
 };
