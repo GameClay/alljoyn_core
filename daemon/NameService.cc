@@ -633,9 +633,10 @@ QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
                 entry.m_flags = TranslateFlags((*i).m_flags);
                 entry.m_mtu = (*i).m_mtu;
                 entry.m_index = (*i).m_index;
-
                 entry.m_addr = (*j).m_addr.c_str();
+#if NS_BROADCAST
                 entry.m_prefixlen = (*j).m_prefixlen;
+#endif
                 entry.m_family = (*j).m_family;
 
                 entries.push_back(entry);
@@ -653,9 +654,10 @@ QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
                 entry.m_flags = TranslateFlags((*i).m_flags);
                 entry.m_mtu = (*i).m_mtu;
                 entry.m_index = (*i).m_index;
-
                 entry.m_addr = (*j).m_addr.c_str();
+#if NS_BROADCAST
                 entry.m_prefixlen = (*j).m_prefixlen;
+#endif
                 entry.m_family = (*j).m_family;
 
                 entries.push_back(entry);
