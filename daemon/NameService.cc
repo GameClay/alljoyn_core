@@ -740,8 +740,8 @@ void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& 
     // more than we provide.
     //
     GetAdaptersAddresses(family,
-      GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER,
-      0, &info, &infoLen);
+                         GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER,
+                         0, &info, &infoLen);
 
     //
     // Allocate enough memory to hold the adapter information array.
@@ -752,8 +752,8 @@ void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& 
     // Now, get the interesting information about the net devices with IPv4 addresses
     //
     if (GetAdaptersAddresses(family,
-            GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER,
-            0, pinfo, &infoLen) == NO_ERROR) {
+                             GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER,
+                             0, pinfo, &infoLen) == NO_ERROR) {
 
         //
         // pinfo is a linked list of adapter information records
@@ -1596,7 +1596,7 @@ void NameService::LazyUpdateInterfaces(void)
             int broadcast = 1;
             if (setsockopt(sockFd, SOL_SOCKET, SO_BROADCAST, (char*)&broadcast, sizeof broadcast) == -1) {
                 QCC_LogError(status, ("LazyUpdateInterfaces: setsockopt(SO_BROADCAST) failed: %d - %s", errno,
-                    strerror(errno)));
+                                      strerror(errno)));
                 continue;
             }
 #endif
@@ -2270,12 +2270,12 @@ bool Wander(void)
 
 #if NS_BROADCAST
 void NameService::SendProtocolMessage(
-    qcc::SocketFd sockFd, 
-    qcc::IPAddress interfaceAddress, 
-    uint32_t interfaceAddressPrefixLen, 
-    bool sockFdIsIPv4, 
+    qcc::SocketFd sockFd,
+    qcc::IPAddress interfaceAddress,
+    uint32_t interfaceAddressPrefixLen,
+    bool sockFdIsIPv4,
     Header& header)
-#else 
+#else
 void NameService::SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIPv4, Header& header)
 #endif
 {
@@ -2333,7 +2333,7 @@ void NameService::SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIPv4, H
         // the IP address and netmask.
         //
         QCC_DbgPrintf(("NameService::SendProtocolMessage():  InterfaceAddress %s, prefix %d\n",
-            interfaceAddress.ToString().c_str(), interfaceAddressPrefixLen));
+                       interfaceAddress.ToString().c_str(), interfaceAddressPrefixLen));
 
         //
         // Create a netmask with a one in the leading bits for each position
@@ -2350,10 +2350,10 @@ void NameService::SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIPv4, H
         // interface address (defined by the mask) with the rest of the bits
         // set to one.
         //
-        uint32_t addr = (interfaceAddress.GetIPv4AddressCPUOrder() & mask) | ~mask ;
+        uint32_t addr = (interfaceAddress.GetIPv4AddressCPUOrder() & mask) | ~mask;
         qcc::IPAddress ipv4Broadcast(addr);
         QCC_DbgPrintf(("NameService::SendProtocolMessage():  Sending to subnet directed broadcast address %s\n",
-            ipv4Broadcast.ToString().c_str()));
+                       ipv4Broadcast.ToString().c_str()));
 
         status = qcc::SendTo(sockFd, ipv4Broadcast, BROADCAST_PORT, buffer, size, sent);
         if (status != ER_OK) {

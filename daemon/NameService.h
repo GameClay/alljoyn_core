@@ -676,7 +676,7 @@ class NameService : public qcc::Thread {
      * Typically the same port as the multicast case, but can be made
      * different (with a litle work).
      */
-   static const uint16_t BROADCAST_PORT;
+    static const uint16_t BROADCAST_PORT;
 #endif
 
     /**
@@ -759,13 +759,13 @@ class NameService : public qcc::Thread {
      * @brief Send a protocol message out on the multicast group.
      */
 #if NS_BROADCAST
-void NameService::SendProtocolMessage(
-    qcc::SocketFd sockFd, 
-    qcc::IPAddress interfaceAddress, 
-    uint32_t interfaceAddressPrefixLen, 
-    bool sockFdIsIPv4, 
-    Header& header);
-#else 
+    void SendProtocolMessage(
+        qcc::SocketFd sockFd,
+        qcc::IPAddress interfaceAddress,
+        uint32_t interfaceAddressPrefixLen,
+        bool sockFdIsIPv4,
+        Header& header);
+#else
     void SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIpv4, Header& header);
 #endif
 
