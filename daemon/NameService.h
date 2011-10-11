@@ -39,6 +39,19 @@
 
 #include "NsProtocol.h"
 
+/*
+ * @brief Experimental Feature to allow broadcast of Name Service packets
+ *
+ * Some Access Points, notably those in South East Asia are configured to
+ * throw away multicast packets by default.  These APs consider support of
+ * broadcast mandatory to support legacy protocols (ARP).  Because of this
+ * we allow the NameService to broadcast its packets since it would otherwise
+ * be worthless.
+ *
+ * To enable this feature define NS_BROADCAST to be non-zero.
+ */
+#define NS_BROADCAST 0
+
 namespace ajn {
 
 /**
@@ -203,6 +216,9 @@ class NameService : public qcc::Thread {
       public:
         qcc::String m_name;
         qcc::String m_addr;
+#if NS_BROADCAST
+        uint32_t m_prefixlen;
+#endif
         uint32_t m_family;
 
         static const uint32_t UP = 1;
@@ -648,6 +664,21 @@ class NameService : public qcc::Thread {
      */
     static const uint16_t MULTICAST_PORT;
 
+#if NS_BROADCAST
+    /**
+     * @brief The IPv4 broadcast address for the fallback case when Access
+     * Points disable multicast.
+     */
+    static const char* IPV4_GLOBAL_BROADCAST_ADDR;
+
+    /**
+     * @brief The port number for the broadcast name service packets.
+     * Typically the same port as the multicast case, but can be made
+     * different (with a litle work).
+     */
+    static const uint16_t BROADCAST_PORT;
+#endif
+
     /**
      * @brief
      * Private notion of what state the implementation object is in.
@@ -675,6 +706,9 @@ class NameService : public qcc::Thread {
     class LiveInterface : public InterfaceSpecifier {
       public:
         qcc::IPAddress m_address;           /**< The address of the interface we are talking to */
+#if NS_BROADCAST
+        uint32_t m_prefixlen;               /**< The address prefix (cf netmask) of the interface we are talking to */
+#endif
         qcc::SocketFd m_sockFd;             /**< The socket we are using to talk over */
         uint32_t m_mtu;                     /**< The MTU of the protocol/device we are using */
         uint32_t m_index;                   /**< The interface index of the protocol/device we are using if IPv6 */
@@ -724,7 +758,16 @@ class NameService : public qcc::Thread {
      * @internal
      * @brief Send a protocol message out on the multicast group.
      */
+#if NS_BROADCAST
+    void SendProtocolMessage(
+        qcc::SocketFd sockFd,
+        qcc::IPAddress interfaceAddress,
+        uint32_t interfaceAddressPrefixLen,
+        bool sockFdIsIPv4,
+        Header& header);
+#else
     void SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIpv4, Header& header);
+#endif
 
     /**
      * @internal
@@ -876,11 +919,13 @@ class NameService : public qcc::Thread {
      */
     std::list<Header> m_outbound;
 
+#if defined(QCC_OS_WINDOWS)
     /**
      * @internal @brief A socket to hold to keep winsock initialized
      * as long as the name service is alive.
      */
     qcc::SocketFd m_refSockFd;
+#endif
 
     /**
      * @internal
