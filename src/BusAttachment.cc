@@ -1893,6 +1893,11 @@ QStatus alljoyn_busattachment_findadvertisedname(alljoyn_busattachment bus, cons
     return ((ajn::BusAttachment*)bus)->FindAdvertisedName(namePrefix);
 }
 
+QStatus alljoyn_busattachment_cancelfindadvertisedname(alljoyn_busattachment bus, const char* namePrefix)
+{
+    return ((ajn::BusAttachment*)bus)->CancelFindAdvertisedName(namePrefix);
+}
+
 const alljoyn_interfacedescription alljoyn_busattachment_getinterface(alljoyn_busattachment bus, const char* name)
 {
     return (alljoyn_interfacedescription)((ajn::BusAttachment*)bus)->GetInterface(name);
@@ -1961,4 +1966,158 @@ QStatus alljoyn_busattachment_enablepeersecurity(alljoyn_busattachment bus, cons
 QC_BOOL alljoyn_busattachment_ispeersecurityenabled(alljoyn_busattachment bus)
 {
     return (((ajn::BusAttachment*)bus)->IsPeerSecurityEnabled() == true ? QC_TRUE : QC_FALSE);
+}
+
+QStatus alljoyn_busattachment_createinterfacesfromxml(alljoyn_busattachment bus, const char* xml)
+{
+    return ((ajn::BusAttachment*)bus)->CreateInterfacesFromXml(xml);
+}
+
+size_t alljoyn_busattachment_getinterfaces(const alljoyn_busattachment bus, 
+                                           const alljoyn_interfacedescription* ifaces, size_t numIfaces)
+{
+    return ((ajn::BusAttachment*)bus)->GetInterfaces((const ajn::InterfaceDescription**)ifaces, numIfaces);
+}
+
+QStatus alljoyn_busattachment_deleteinterface(alljoyn_busattachment bus, alljoyn_interfacedescription iface)
+{
+    return ((ajn::BusAttachment*)bus)->DeleteInterface(*((ajn::InterfaceDescription*)iface));
+}
+
+QC_BOOL alljoyn_busattachment_isstarted(alljoyn_busattachment bus)
+{
+    return (((ajn::BusAttachment*)bus)->IsStarted() == true ? QC_TRUE : QC_FALSE);
+}
+
+QC_BOOL alljoyn_busattachment_isstopping(alljoyn_busattachment bus)
+{
+    return (((ajn::BusAttachment*)bus)->IsStopping() == true ? QC_TRUE : QC_FALSE);
+}
+
+QC_BOOL alljoyn_busattachment_isconnected(const alljoyn_busattachment bus)
+{
+    return (((const ajn::BusAttachment*)bus)->IsConnected() == true ? QC_TRUE : QC_FALSE);
+}
+
+QStatus alljoyn_busattachment_disconnect(alljoyn_busattachment bus, const char* connectSpec)
+{
+    return ((ajn::BusAttachment*)bus)->Disconnect(connectSpec);
+}
+
+const alljoyn_proxybusobject alljoyn_busattachment_getdbusproxyobj(alljoyn_busattachment bus)
+{
+    return (const alljoyn_proxybusobject)(&((ajn::BusAttachment*)bus)->GetDBusProxyObj());
+}
+
+const alljoyn_proxybusobject alljoyn_busattachment_getalljoynproxyobj(alljoyn_busattachment bus)
+{
+    return (const alljoyn_proxybusobject)(&((ajn::BusAttachment*)bus)->GetAllJoynProxyObj());
+}
+
+const alljoyn_proxybusobject alljoyn_busattachment_getalljoyndebugobj(alljoyn_busattachment bus)
+{
+    return (const alljoyn_proxybusobject)(&((ajn::BusAttachment*)bus)->GetAllJoynDebugObj());
+}
+
+const char* alljoyn_busattachment_getuniquename(const alljoyn_busattachment bus)
+{
+    return ((const ajn::BusAttachment*)bus)->GetUniqueName().c_str();
+}
+
+const char* alljoyn_busattachment_getglobalguidstring(const alljoyn_busattachment bus)
+{
+    return ((const ajn::BusAttachment*)bus)->GetGlobalGUIDString().c_str();
+}
+
+QStatus alljoyn_busattachment_registerkeystorelistener(alljoyn_busattachment bus, alljoyn_keystorelistener listener)
+{
+    return ((ajn::BusAttachment*)bus)->RegisterKeyStoreListener(*((ajn::KeyStoreListener*)listener));
+}
+
+QStatus alljoyn_busattachment_reloadkeystore(alljoyn_busattachment bus)
+{
+    return ((ajn::BusAttachment*)bus)->ReloadKeyStore();
+}
+
+void alljoyn_busattachment_clearkeystore(alljoyn_busattachment bus)
+{
+    ((ajn::BusAttachment*)bus)->ClearKeyStore();
+}
+
+QStatus alljoyn_busattachment_clearkeys(alljoyn_busattachment bus, const char* guid)
+{
+    return ((ajn::BusAttachment*)bus)->ClearKeys(guid);
+}
+
+QStatus alljoyn_busattachment_setkeyexpiration(alljoyn_busattachment bus, const char* guid, uint32_t timeout)
+{
+    return ((ajn::BusAttachment*)bus)->SetKeyExpiration(guid, timeout);
+}
+
+QStatus alljoyn_busattachment_getkeyexpiration(alljoyn_busattachment bus, const char* guid, uint32_t& timeout)
+{
+    return ((ajn::BusAttachment*)bus)->GetKeyExpiration(guid, timeout);
+}
+
+QStatus alljoyn_busattachment_addlogonentry(alljoyn_busattachment bus, const char* authMechanism,
+                                            const char* userName, const char* password)
+{
+    return ((ajn::BusAttachment*)bus)->AddLogonEntry(authMechanism, userName, password);
+}
+
+QStatus alljoyn_busattachment_releasename(alljoyn_busattachment bus, const char* name)
+{
+    return ((ajn::BusAttachment*)bus)->ReleaseName(name);
+}
+
+QStatus alljoyn_busattachment_addmatch(alljoyn_busattachment bus, const char* rule)
+{
+    return ((ajn::BusAttachment*)bus)->AddMatch(rule);
+}
+
+QStatus alljoyn_busattachment_removematch(alljoyn_busattachment bus, const char* rule)
+{
+    return ((ajn::BusAttachment*)bus)->RemoveMatch(rule);
+}
+
+QStatus alljoyn_busattachment_setsessionlistener(alljoyn_busattachment bus, alljoyn_sessionid sessionId,
+                                                 alljoyn_sessionlistener listener)
+{
+    return ((ajn::BusAttachment*)bus)->SetSessionListener(sessionId, (ajn::SessionListener*)listener);
+}
+
+QStatus alljoyn_busattachment_leavesession(alljoyn_busattachment bus, alljoyn_sessionid sessionId)
+{
+    return ((ajn::BusAttachment*)bus)->LeaveSession(sessionId);
+}
+
+QStatus alljoyn_busattachment_setlinktimeout(alljoyn_busattachment bus, alljoyn_sessionid sessionid, uint32_t* linkTimeout)
+{
+    return ((ajn::BusAttachment*)bus)->SetLinkTimeout(sessionid, *linkTimeout);
+}
+
+QStatus alljoyn_busattachment_namehasowner(alljoyn_busattachment bus, const char* name, QC_BOOL* hasOwner)
+{
+    bool result;
+    QStatus ret = ((ajn::BusAttachment*)bus)->NameHasOwner(name, result);
+    *hasOwner = (result == true ? QC_TRUE : QC_FALSE);
+    return ret;
+}
+
+QStatus alljoyn_busattachment_getpeerguid(alljoyn_busattachment bus, const char* name, char* guid, size_t guidSz)
+{
+    qcc::String guidStr;
+    QStatus ret = ((ajn::BusAttachment*)bus)->GetPeerGUID(name, guidStr);
+    strncpy(guid, guidStr.c_str(), guidSz);
+    return ret;
+}
+
+QStatus alljoyn_busattachment_setdaemondebug(alljoyn_busattachment bus, const char* module, uint32_t level)
+{
+    return ((ajn::BusAttachment*)bus)->SetDaemonDebug(module, level);
+}
+
+uint32_t alljoyn_busattachment_gettimestamp()
+{
+    return ajn::BusAttachment::GetTimestamp();
 }

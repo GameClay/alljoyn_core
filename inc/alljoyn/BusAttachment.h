@@ -1020,6 +1020,23 @@ void alljoyn_busattachment_unregisterbuslistener(alljoyn_busattachment bus, allj
 QStatus alljoyn_busattachment_findadvertisedname(alljoyn_busattachment bus, const char* namePrefix);
 
 /**
+ * Cancel interest in a well-known name prefix that was previously
+ * registered with FindAdvertisedName.  This method is a shortcut/helper
+ * that issues an org.alljoyn.Bus.CancelFindAdvertisedName method
+ * call to the local daemon and interprets the response.
+ *
+ * @param      bus           The BusAttachment from which to remove interest in the namePrefix.
+ * @param[in]  namePrefix    Well-known name prefix that application is no longer interested in receiving
+ *                           BusListener::FoundAdvertisedName notifications about.
+ *
+ * @return
+ *      - #ER_OK iff daemon response was received and cancel was successfully completed.
+ *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+ *      - Other error status codes indicating a failure.
+ */
+QStatus alljoyn_busattachment_cancelfindadvertisedname(alljoyn_busattachment bus, const char* namePrefix);
+
+/**
  * Advertise the existence of a well-known name to other (possibly disconnected) AllJoyn daemons.
  *
  * This method is a shortcut/helper that issues an org.alljoyn.Bus.AdvertisedName method call to the local daemon
@@ -1122,6 +1139,21 @@ void alljoyn_busattachment_unregisterbusobject(alljoyn_busattachment bus, alljoy
 QStatus alljoyn_busattachment_requestname(alljoyn_busattachment bus, const char* requestedName, uint32_t flags);
 
 /**
+ * Release a previously requeted well-known name.
+ * This method is a shortcut/helper that issues an org.freedesktop.DBus.ReleaseName method call to the local daemon
+ * and interprets the response.
+ *
+ * @parma[in]  bus           The bus from which to release the name.
+ * @param[in]  name          Well-known name being released.
+ *
+ * @return
+ *      - #ER_OK iff daemon response was received amd the name was successfully released.
+ *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+ *      - Other error status codes indicating a failure.
+ */
+QStatus alljoyn_busattachment_releasename(alljoyn_busattachment bus, const char* name);
+
+/**
  * Make a SessionPort available for external BusAttachments to join.
  *
  * Each BusAttachment binds its own set of SessionPorts. Session joiners use the bound session
@@ -1209,6 +1241,427 @@ QStatus alljoyn_busattachment_enablepeersecurity(alljoyn_busattachment bus, cons
  * @return   Returns QC_TRUE if peer security has been enabled, QC_FALSE otherwise.
  */
 QC_BOOL alljoyn_busattachment_ispeersecurityenabled(alljoyn_busattachment bus);
+
+/**
+ * Initialize one more interface descriptions from an XML string in DBus introspection format.
+ * The root tag of the XML can be a \<node\> or a standalone \<interface\> tag. To initialize more
+ * than one interface the interfaces need to be nested in a \<node\> tag.
+ *
+ * Note that when this method fails during parsing, the return code will be set accordingly.
+ * However, any interfaces which were successfully parsed prior to the failure may be registered
+ * with the bus.
+ *
+ * @param bus     The bus on which to create interfaces.
+ * @param xml     An XML string in DBus introspection format.
+ *
+ * @return
+ *      - #ER_OK if parsing is completely successful.
+ *      - An error status otherwise.
+ */
+QStatus alljoyn_busattachment_createinterfacesfromxml(alljoyn_busattachment bus, const char* xml);
+
+/**
+ * Returns the existing activated InterfaceDescriptions.
+ *
+ * @param ifaces     A pointer to an InterfaceDescription array to receive the interfaces. Can be NULL in
+ *                   which case no interfaces are returned and the return value gives the number
+ *                   of interface available.
+ * @param numIfaces  The size of the InterfaceDescription array. If this value is smaller than the total
+ *                   number of interfaces only numIfaces will be returned.
+ *
+ * @return  The number of interfaces returned or the total number of interfaces if ifaces is NULL.
+ */
+size_t alljoyn_busattachment_getinterfaces(const alljoyn_busattachment bus, 
+                                           const alljoyn_interfacedescription* ifaces, size_t numIfaces);
+
+/**
+ * Delete an interface description with a given name.
+ *
+ * Deleting an interface is only allowed if that interface has never been activated.
+ *
+ * @param bus    The bus from which to delete the interface.
+ * @param iface  The un-activated interface to be deleted.
+ *
+ * @return
+ *      - #ER_OK if deletion was successful
+ *      - #ER_BUS_NO_SUCH_INTERFACE if interface was not found
+ */
+QStatus alljoyn_busattachment_deleteinterface(alljoyn_busattachment bus, alljoyn_interfacedescription iface);
+/**
+ * Returns QC_TRUE if the mesage bus has been started.
+ *
+ * @param bus The bus to query.
+ */
+QC_BOOL alljoyn_busattachment_isstarted(alljoyn_busattachment bus);
+
+/**
+ * Returns QC_TRUE if the mesage bus has been requested to stop.
+ *
+ * @param bus The bus to query.
+ */
+QC_BOOL alljoyn_busattachment_isstopping(alljoyn_busattachment bus);
+
+/**
+ * Indicate whether bus is currently connected.
+ *
+ * Messages can only be sent or received when the bus is connected.
+ *
+ * @param bus The bus to query.
+ * @return true if the bus is connected.
+ */
+QC_BOOL alljoyn_busattachment_isconnected(const alljoyn_busattachment bus);
+
+/**
+ * Disconnect a remote bus address connection.
+ *
+ * @param bus          The bus to disconnect.
+ * @param connectSpec  The transport connection spec used to connect.
+ *
+ * @return
+ *          - #ER_OK if successful
+ *          - #ER_BUS_BUS_NOT_STARTED if the bus is not started
+ *          - #ER_BUS_NOT_CONNECTED if the %BusAttachment is not connected to the bus
+ *          - Other error status codes indicating a failure
+ */
+QStatus alljoyn_busattachment_disconnect(alljoyn_busattachment bus, const char* connectSpec);
+
+/**
+ * Get the org.freedesktop.DBus proxy object.
+ *
+ * @param bus The bus from which to get the object.
+ *
+ * @return org.freedesktop.DBus proxy object
+ */
+const alljoyn_proxybusobject alljoyn_busattachment_getdbusproxyobj(alljoyn_busattachment bus);
+
+/**
+ * Get the org.alljoyn.Bus proxy object.
+ *
+ * @param bus The bus from which to get the object.
+ *
+ * @return org.alljoyn.Bus proxy object
+ */
+const alljoyn_proxybusobject alljoyn_busattachment_getalljoynproxyobj(alljoyn_busattachment bus);
+
+/**
+ * Get the org.alljoyn.Debug proxy object.
+ *
+ * @param bus The bus from which to get the object.
+ *
+ * @return org.alljoyn.Debug proxy object
+ */
+const alljoyn_proxybusobject alljoyn_busattachment_getalljoyndebugobj(alljoyn_busattachment bus);
+
+/**
+ * Get the unique name of this BusAttachment.
+ *
+ * @param bus The bus to query.
+ *
+ * @return The unique name of this BusAttachment.
+ */
+const char* alljoyn_busattachment_getuniquename(const alljoyn_busattachment bus);
+
+/**
+ * Get the guid of the local daemon as a string
+ *
+ * @param bus The bus to query.
+ *
+ * @return GUID of local AllJoyn daemon as a string.
+ */
+const char* alljoyn_busattachment_getglobalguidstring(const alljoyn_busattachment bus);
+
+/**
+ * Set a key store listener to listen for key store load and store requests.
+ * This overrides the internal key store listener.
+ *
+ * @param bus       The bus on which to register the key store listener.
+ * @param listener  The key store listener to set.
+ *
+ * @return
+ *      - #ER_OK if the key store listener was set
+ *      - #ER_BUS_LISTENER_ALREADY_SET if a listener has been set by this function or because
+ *         EnablePeerSecurity has been called.
+ */
+QStatus alljoyn_busattachment_registerkeystorelistener(alljoyn_busattachment bus, alljoyn_keystorelistener listener);
+
+/**
+ * Reloads the key store for this bus attachment. This function would normally only be called in
+ * the case where a single key store is shared between multiple bus attachments, possibly by different
+ * applications. It is up to the applications to coordinate how and when the shared key store is
+ * modified.
+ *
+ * @param bus The bus on which to reload the key store.
+ *
+ * @return - ER_OK if the key store was succesfully reloaded
+ *         - An error status indicating that the key store reload failed.
+ */
+QStatus alljoyn_busattachment_reloadkeystore(alljoyn_busattachment bus);
+
+/**
+ * Clears all stored keys from the key store. All store keys and authentication information is
+ * deleted and cannot be recovered. Any passwords or other credentials will need to be reentered
+ * when establishing secure peer connections.
+ *
+ * @param bus The bus on which to clear the key store.
+ */
+void alljoyn_busattachment_clearkeystore(alljoyn_busattachment bus);
+
+/**
+ * Clear the keys associated with aa specific remote peer as identified by its peer GUID. The
+ * peer GUID associated with a bus name can be obtained by calling GetPeerGUID().
+ *
+ * @param bus   The bus from which to clear specific keys.
+ * @param guid  The guid of a remote authenticated peer.
+ *
+ * @return  - ER_OK if the keys were cleared
+ *          - ER_UNKNOWN_GUID if there is no peer with the specified GUID
+ *          - Other errors
+ */
+QStatus alljoyn_busattachment_clearkeys(alljoyn_busattachment bus, const char* guid);
+
+/**
+ * Set the expiration time on keys associated with a specific remote peer as identified by its
+ * peer GUID. The peer GUID associated with a bus name can be obtained by calling GetPeerGUID().
+ * If the timeout is 0 this is equivalent to calling ClearKeys().
+ *
+ * @param bus      The bus on which to set a key expiration.
+ * @param guid     The GUID of a remote authenticated peer.
+ * @param timeout  The time in seconds relative to the current time to expire the keys.
+ *
+ * @return  - ER_OK if the expiration time was succesfully set.
+ *          - ER_UNKNOWN_GUID if there is no authenticated peer with the specified GUID
+ *          - Other errors
+ */
+QStatus alljoyn_busattachment_setkeyexpiration(alljoyn_busattachment bus, const char* guid, uint32_t timeout);
+
+/**
+ * Get the expiration time on keys associated with a specific authenticated remote peer as
+ * identified by its peer GUID. The peer GUID associated with a bus name can be obtained by
+ * calling GetPeerGUID().
+ *
+ * @param bus      The bus to query.
+ * @param guid     The GUID of a remote authenticated peer.
+ * @param timeout  The time in seconds relative to the current time when the keys will expire.
+ *
+ * @return  - ER_OK if the expiration time was succesfully set.
+ *          - ER_UNKNOWN_GUID if there is no authenticated peer with the specified GUID
+ *          - Other errors
+ */
+QStatus alljoyn_busattachment_getkeyexpiration(alljoyn_busattachment bus, const char* guid, uint32_t& timeout);
+
+/**
+ * Adds a logon entry string for the requested authentication mechanism to the key store. This
+ * allows an authenticating server to generate offline authentication credentials for securely
+ * logging on a remote peer using a user-name and password credentials pair. This only applies
+ * to authentication mechanisms that support a user name + password logon functionality.
+ *
+ * @param bus           The bus on which to add a logon entry.
+ * @param authMechanism The authentication mechanism.
+ * @param userName      The user name to use for generating the logon entry.
+ * @param password      The password to use for generating the logon entry. If the password is
+ *                      NULL the logon entry is deleted from the key store.
+ *
+ * @return
+ *      - #ER_OK if the logon entry was generated.
+ *      - #ER_BUS_INVALID_AUTH_MECHANISM if the authentication mechanism does not support
+ *                                       logon functionality.
+ *      - #ER_BAD_ARG_2 indicates a null string was used as the user name.
+ *      - #ER_BAD_ARG_3 indicates a null string was used as the password.
+ *      - Other error status codes indicating a failure
+ */
+QStatus alljoyn_busattachment_addlogonentry(alljoyn_busattachment bus, const char* authMechanism,
+                                            const char* userName, const char* password);
+
+/**
+ * Add a DBus match rule.
+ * This method is a shortcut/helper that issues an org.freedesktop.DBus.AddMatch method call to the local daemon.
+ *
+ * @parma[in]  bus   The bus on which to add the match rule.
+ * @param[in]  rule  Match rule to be added (see DBus specification for format of this string).
+ *
+ * @return
+ *      - #ER_OK if the AddMatch request was successful.
+ *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+ *      - Other error status codes indicating a failure.
+ */
+QStatus alljoyn_busattachment_addmatch(alljoyn_busattachment bus, const char* rule);
+
+/**
+ * Remove a DBus match rule.
+ * This method is a shortcut/helper that issues an org.freedesktop.DBus.RemoveMatch method call to the local daemon.
+ *
+ * @parma[in]  bus   The bus from which to remove the match rule.
+ * @param[in]  rule  Match rule to be removed (see DBus specification for format of this string).
+ *
+ * @return
+ *      - #ER_OK if the RemoveMatch request was successful.
+ *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+ *      - Other error status codes indicating a failure.
+ */
+QStatus alljoyn_busattachment_removematch(alljoyn_busattachment bus, const char* rule);
+
+/**
+ * Set the SessionListener for an existing sessionId.
+ * Calling this method will override the listener set by a previoius call to SetSessionListener or any
+ * listener specified in JoinSession.
+ *
+ * @param bus          The bus on which to assign the SessionListener.
+ * @param sessionId    The session id of an existing session.
+ * @param listener     The SessionListener to associate with the session. May be NULL to clear previous listener.
+ * @return  ER_OK if successful.
+ */
+QStatus alljoyn_busattachment_setsessionlistener(alljoyn_busattachment bus, alljoyn_sessionid sessionId,
+                                                 alljoyn_sessionlistener listener);
+
+/**
+ * Leave an existing session.
+ * This method is a shortcut/helper that issues an org.alljoyn.Bus.LeaveSession method call to the local daemon
+ * and interprets the response.
+ *
+ * @param[in]  bus           The bus on which to leave the session.
+ * @param[in]  sessionId     Session id.
+ *
+ * @return
+ *      - #ER_OK iff daemon response was received and the leave operation was successfully completed.
+ *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
+ *      - Other error status codes indicating a failure.
+ */
+QStatus alljoyn_busattachment_leavesession(alljoyn_busattachment bus, alljoyn_sessionid sessionId);
+
+/**
+ * Set the link timeout for a session.
+ *
+ * Link timeout is the maximum number of seconds that an unresponsive daemon-to-daemon connection
+ * will be monitored before declaring the session lost (via SessionLost callback). Link timeout
+ * defaults to 0 which indicates that AllJoyn link monitoring is disabled.
+ *
+ * Each transport type defines a lower bound on link timeout to avoid defeating transport
+ * specific power management algorithms.
+ *
+ * @param bus           The bus containing the link to modify.
+ * @param sessionid     Id of session whose link timeout will be modified.
+ * @param linkTimeout   [IN/OUT] Max number of seconds that a link can be unresponsive before being
+ *                      declared lost. 0 indicates that AllJoyn link monitoring will be disabled. On
+ *                      return, this value will be the resulting (possibly upward) adjusted linkTimeout
+ *                      value that acceptable to the underlying transport.
+ *
+ * @return
+ *      - #ER_OK if successful
+ *      - #ER_ALLJOYN_SETLINKTIMEOUT_REPLY_NOT_SUPPORTED if local daemon does not support SetLinkTimeout
+ *      - #ER_ALLJOYN_SETLINKTIMEOUT_REPLY_NO_DEST_SUPPORT if SetLinkTimeout not supported by destination
+ *      - #ER_BUS_NO_SESSION if the Session id is not valid
+ *      - #ER_ALLJOYN_SETLINKTIMEOUT_REPLY_FAILED if SetLinkTimeout failed
+ *      - #ER_BUS_NOT_CONNECTED if the BusAttachment is not connected to the daemon
+ */
+QStatus alljoyn_busattachment_setlinktimeout(alljoyn_busattachment bus, alljoyn_sessionid sessionid, uint32_t* linkTimeout);
+
+/**
+ * Determine whether a given well-known name exists on the bus.
+ * This method is a shortcut/helper that issues an org.freedesktop.DBus.NameHasOwner method call to the daemon
+ * and interprets the response.
+ *
+ * @param[in]  bus        The bus to query.
+ * @param[in]  name       The well known name that the caller is inquiring about.
+ * @param[out] hasOwner   If return is ER_OK, indicates whether name exists on the bus.
+ *                        If return is not ER_OK, param is not modified.
+ * @return
+ *      - #ER_OK if name ownership was able to be determined.
+ *      - An error status otherwise
+ */
+QStatus alljoyn_busattachment_namehasowner(alljoyn_busattachment bus, const char* name, QC_BOOL* hasOwner);
+
+/**
+ * Get the peer GUID for this peer of the local peer or an authenticated remote peer. The bus
+ * names of a remote peer can change over time, specifically the unique name is different each
+ * time the peer connects to the bus and a peer may use different well-known-names at different
+ * times. The peer GUID is the only persistent identity for a peer. Peer GUIDs are used by the
+ * authentication mechanisms to uniquely and identify a remote application instance. The peer
+ * GUID for a remote peer is only available if the remote peer has been authenticated.
+ *
+ * @param bus    The bus on which to get the peer GUID.
+ * @param name   Name of a remote peer or NULL to get the local (this application's) peer GUID.
+ * @param guid   Returns the guid for the local or remote peer depending on the value of name.
+ * @param guidSz Size of the guid buffer.
+ *
+ * @return
+ *      - #ER_OK if the requested GUID was obtained.
+ *      - An error status otherwise.
+ */
+QStatus alljoyn_busattachment_getpeerguid(alljoyn_busattachment bus, const char* name, char* guid, size_t guidSz);
+
+/**
+ * This sets the debug level of the local AllJoyn daemon if that daemon
+ * was built in debug mode.
+ *
+ * The debug level can be set for individual subsystems or for "ALL"
+ * subsystems.  Common subsystems are "ALLJOYN" for core AllJoyn code,
+ * "ALLJOYN_OBJ" for the sessions management code, "ALLJOYN_BT" for the
+ * Bluetooth subsystem, "ALLJOYN_BTC" for the Bluetooth topology manager,
+ * and "ALLJOYN_NS" for the TCP name services.  Debug levels for specific
+ * subsystems override the setting for "ALL" subsystems.  For example if
+ * "ALL" is set to 7, but "ALLJOYN_OBJ" is set to 1, then detailed debug
+ * output will be generated for all subsystems expcept for "ALLJOYN_OBJ"
+ * which will only generate high level debug output.  "ALL" defaults to 0
+ * which is off, or no debug output.
+ *
+ * The debug output levels are actually a bit field that controls what
+ * output is generated.  Those bit fields are described below:
+ *
+ *     - 0x1: High level debug prints (these debug printfs are not common)
+ *     - 0x2: Normal debug prints (these debug printfs are common)
+ *     - 0x4: Function call tracing (these debug printfs are used
+ *            sporadically)
+ *     - 0x8: Data dump (really only used in the "SOCKET" module - can
+ *            generate a *lot* of output)
+ *
+ * Typically, when enabling debug for a subsystem, the level would be set
+ * to 7 which enables High level debug, normal debug, and function call
+ * tracing.  Setting the level 0, forces debug output to be off for the
+ * specified subsystem.
+ *
+ * @param bus       bus on which to set debugging.
+ * @param module    name of the module to generate debug output
+ * @param level     debug level to set for the module
+ *
+ * @return
+ *     - #ER_OK if debug request was successfully sent to the AllJoyn
+ *       daemon.
+ *     - #ER_BUS_NO_SUCH_OBJECT if daemon was not built in debug mode.
+ */
+QStatus alljoyn_busattachment_setdaemondebug(alljoyn_busattachment bus, const char* module, uint32_t level);
+
+/**
+ * Returns the current non-absolute real-time clock used internally by AllJoyn. This value can be
+ * compared with the timestamps on messages to calculate the time since a timestamped message
+ * was sent.
+ *
+ * @return  The current timestamp in milliseconds.
+ */
+uint32_t alljoyn_busattachment_gettimestamp();
+
+#if 0
+/* TODO? */
+QStatus RegisterSignalHandler(MessageReceiver* receiver,
+                               MessageReceiver::SignalHandler signalHandler,
+                               const InterfaceDescription::Member* member,
+                               const char* srcPath);
+QStatus UnregisterSignalHandler(MessageReceiver* receiver,
+                               MessageReceiver::SignalHandler signalHandler,
+                               const InterfaceDescription::Member* member,
+                               const char* srcPath);
+QStatus UnregisterAllHandlers(MessageReceiver* receiver);
+
+
+QStatus JoinSessionAsync(const char* sessionHost,
+                         SessionPort sessionPort,
+                         SessionListener* listener,
+                         const SessionOpts& opts,
+                         BusAttachment::JoinSessionAsyncCB* callback,
+                         void* context = NULL);
+
+
+QStatus GetSessionFd(SessionId sessionId, qcc::SocketFd& sockFd);
+#endif
 
 #ifdef __cplusplus
 } /* extern "C" */
