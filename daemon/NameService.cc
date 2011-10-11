@@ -705,11 +705,9 @@ std::vector<qcc::String> GetInterfaces(void)
     return ifs;
 }
 
-QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
+void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& entries)
 {
-    QCC_DbgPrintf(("NameService::IfConfig(): The Windows way\n"));
-
-    vector<qcc::String> ifs = GetInterfaces();
+    QCC_DbgPrintf(("IfConfigIpv4()\n"));
 
     //
     // Windows is from another planet, but we can't blame multiple calls to get
@@ -722,7 +720,9 @@ QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
     // Call into Windows and it will tell us how much memory it needs, if
     // more than we provide.
     //
-    GetAdaptersAddresses(AF_INET, 0, 0, &info, &infoLen);
+    GetAdaptersAddresses(family,
+      GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER,
+      0, &info, &infoLen);
 
     //
     // Allocate enough memory to hold the adapter information array.
@@ -730,44 +730,90 @@ QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
     parray = pinfo = reinterpret_cast<IP_ADAPTER_ADDRESSES*>(new uint8_t[infoLen]);
 
     //
-    // Now, get the interesting information about the net devices
+    // Now, get the interesting information about the net devices with IPv4 addresses
     //
-    if (GetAdaptersAddresses(AF_INET, 0, 0, pinfo, &infoLen) == NO_ERROR) {
-        while (pinfo) {
-            IfConfigEntry entry;
+    if (GetAdaptersAddresses(family,
+            GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER,
+            0, pinfo, &infoLen) == NO_ERROR) {
 
-            entry.m_name = qcc::String(pinfo->AdapterName);
+        //
+        // pinfo is a linked list of adapter information records
+        //
+        for (; pinfo; pinfo = pinfo->Next) {
 
-            char buffer[NI_MAXHOST];
-            memset(buffer, 0, NI_MAXHOST);
+            //
+            // Since there can be multiple IP addresses associated with an
+            // adapter, we have to loop through them as well.  Each IP address
+            // corresponds to a name service IfConfigEntry.
+            //
+            for (IP_ADAPTER_UNICAST_ADDRESS* paddr = pinfo->FirstUnicastAddress; paddr; paddr = paddr->Next) {
 
-            if (pinfo->FirstUnicastAddress) {
-                int result = getnameinfo(pinfo->FirstUnicastAddress->Address.lpSockaddr,
-                                         pinfo->FirstUnicastAddress->Address.iSockaddrLength,
+                NameService::IfConfigEntry entry;
+
+                //
+                // Get the adapter name.  This will be a GUID, but the
+                // friendly name which would look something like
+                // "Wireless Network Connection 3" in an English
+                // localization can also be Unicode Chinese characters
+                // which AllJoyn may not deal with well.  We choose
+                // the better part of valor and just go with the GUID.
+                //
+                entry.m_name = qcc::String(pinfo->AdapterName);
+
+                //
+                // Fill in the rest of the entry, translating the Windows constants into our
+                // more platform-independent constants.
+                //
+                entry.m_flags = pinfo->OperStatus == IfOperStatusUp ? NameService::IfConfigEntry::UP : 0;
+                entry.m_flags |= pinfo->Flags & IP_ADAPTER_NO_MULTICAST ? 0 : NameService::IfConfigEntry::MULTICAST;
+                entry.m_flags |= pinfo->IfType == IF_TYPE_SOFTWARE_LOOPBACK ? NameService::IfConfigEntry::LOOPBACK : 0;
+                entry.m_family = family;
+                entry.m_mtu = pinfo->Mtu;
+
+                if (family == AF_INET) {
+                    entry.m_index = pinfo->IfIndex;
+                } else {
+                    entry.m_index = pinfo->Ipv6IfIndex;
+                }
+
+                //
+                // Get the IP address in presentation form.
+                //
+                char buffer[NI_MAXHOST];
+                memset(buffer, 0, NI_MAXHOST);
+
+                int result = getnameinfo(paddr->Address.lpSockaddr, paddr->Address.iSockaddrLength,
                                          buffer, sizeof(buffer), NULL, 0, NI_NUMERICHOST);
                 if (result != 0) {
-                    QCC_LogError(ER_FAIL, ("NameService::IfConfig(): getnameinfo error %d", result));
+                    QCC_LogError(ER_FAIL, ("IfConfigByFamily(): getnameinfo error %d", result));
                 }
+
+                //
+                // Windows appends the IPv6 link scope (after a
+                // percent character) to the end of the IPv6 address
+                // which we can't deal with.  We chop it off if it
+                // is there.
+                //
+                char* p = strchr(buffer, '%');
+                if (p) {
+                    *p = '\0';
+                }
+
                 entry.m_addr = buffer;
-            } else {
-                entry.m_addr = "";
+
+                entries.push_back(entry);
             }
-
-            entry.m_flags = pinfo->OperStatus == IfOperStatusUp ? IfConfigEntry::UP : 0;
-            entry.m_flags |= pinfo->Flags & IP_ADAPTER_NO_MULTICAST ? 0 : IfConfigEntry::MULTICAST;
-            entry.m_flags |= pinfo->IfType == IF_TYPE_SOFTWARE_LOOPBACK ? IfConfigEntry::LOOPBACK : 0;
-
-            entry.m_family = AF_INET;
-            entry.m_mtu = pinfo->Mtu;
-
-            entries.push_back(entry);
-
-            pinfo = pinfo->Next;
         }
     }
 
     delete [] parray;
+}
 
+QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
+{
+    QCC_DbgPrintf(("NameService::IfConfig(): The Windows way\n"));
+    IfConfigByFamily(AF_INET, entries);
+    IfConfigByFamily(AF_INET6, entries);
     return ER_OK;
 }
 
