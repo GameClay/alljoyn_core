@@ -104,7 +104,7 @@ bool PermissionDB::IsBluetoothAllowed(BusEndpoint& endpoint)
     bool allowed = true;
 
 #if defined(QCC_OS_ANDROID)
-    uint32_t userId = endpoint.GetUserId();
+    uint32_t userId = NormalizeUserID(endpoint.GetUserId());
     std::set<qcc::String> permsReq;
     // For Android app, permissions "android.permission.BLUETOOTH" and "android.permission.BLUETOOTH_ADMIN" are required for usage of bluetooth
     permsReq.insert("android.permission.BLUETOOTH");
@@ -122,7 +122,7 @@ bool PermissionDB::IsWifiAllowed(BusEndpoint& endpoint)
 
 #if defined(QCC_OS_ANDROID)
     // For Android app, permissions "android.permission.INTERNET" and "android.permission.CHANGE_WIFI_MULTICAST_STATE" are required for usage of wifi.
-    uint32_t userId = endpoint.GetUserId();
+    uint32_t userId = NormalizeUserID(endpoint.GetUserId());
     std::set<qcc::String> permsReq;
     permsReq.insert("android.permission.INTERNET");
     permsReq.insert("android.permission.CHANGE_WIFI_MULTICAST_STATE");
@@ -132,12 +132,45 @@ bool PermissionDB::IsWifiAllowed(BusEndpoint& endpoint)
     return allowed;
 }
 
+QStatus PermissionDB::AddAliasUnixUser(uint32_t origUID, uint32_t aliasUID)
+{
+    QCC_DbgTrace(("PermissionDB::AddAliasUnixUser(origUID = %d -> aliasUID = %d)", origUID, aliasUID));
+    QStatus status = ER_OK;
+#if defined(QCC_OS_ANDROID)
+    /* It is not allowed to use user id 0 (root user), BLUETOOTH_UID (bluetooth user), 1000 (system user) as alias*/
+    if (aliasUID == 0 || aliasUID == BLUETOOTH_UID || aliasUID == 1000) {
+        status = ER_FAIL;
+    }
+#endif
+    /* If the same, then do nothing*/
+    if (status == ER_OK && NormalizeUserID(origUID) != aliasUID) {
+        permissionDbLock.Lock();
+        uidPermsMap.erase(NormalizeUserID(origUID));
+        uidAliasMap[origUID] = aliasUID;
+        permissionDbLock.Unlock();
+    }
+    return status;
+}
+
+uint32_t PermissionDB::NormalizeUserID(uint32_t origUID)
+{
+    uint32_t uid = origUID;
+    permissionDbLock.Lock();
+    std::map<uint32_t, uint32_t>::const_iterator it = uidAliasMap.find(origUID);
+    if (it != uidAliasMap.end()) {
+        uid = uidAliasMap[origUID];
+    }
+    permissionDbLock.Unlock();
+    return uid;
+}
+
 QStatus PermissionDB::RemovePermissionCache(BusEndpoint& endpoint)
 {
     QCC_DbgTrace(("PermissionDB::RemovePermissionCache(endpoint = %s)", endpoint.GetUniqueName().c_str()));
-    uint32_t userId = endpoint.GetUserId();
     permissionDbLock.Lock();
-    uidPermsMap.erase(userId);
+    uint32_t userId = endpoint.GetUserId();
+    uidAliasMap.erase(userId);
+    uidPermsMap.erase(NormalizeUserID(userId));
     permissionDbLock.Unlock();
     return ER_OK;
 }

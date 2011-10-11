@@ -139,7 +139,8 @@ QStatus AllJoynObj::Init()
         { alljoynIntf->GetMember("JoinSession"),              static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::JoinSession) },
         { alljoynIntf->GetMember("LeaveSession"),             static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::LeaveSession) },
         { alljoynIntf->GetMember("GetSessionFd"),             static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::GetSessionFd) },
-        { alljoynIntf->GetMember("SetLinkTimeout"),           static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::SetLinkTimeout) }
+        { alljoynIntf->GetMember("SetLinkTimeout"),           static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::SetLinkTimeout) },
+        { alljoynIntf->GetMember("AliasUnixUser"),            static_cast<MessageReceiver::MethodHandler>(&AllJoynObj::AliasUnixUser) }
     };
 
     AddInterface(*alljoynIntf);
@@ -1920,6 +1921,48 @@ void AllJoynObj::SetLinkTimeout(const InterfaceDescription::Member* member, Mess
     }
     QCC_DbgTrace(("AllJoynObj::SetLinkTimeout(0x%x, %d) (status=%s, disp=%d, lto=%d)", id, reqLinkTimeout,
                   QCC_StatusText(status), disposition, actLinkTimeout));
+}
+
+void AllJoynObj::AliasUnixUser(const InterfaceDescription::Member* member, Message& msg)
+{
+    uint32_t replyCode = ALLJOYN_ALIASUNIXUSER_REPLY_SUCCESS;
+    QStatus status = ER_OK;
+    /* Parse args */
+    size_t numArgs;
+    const MsgArg* args;
+    msg->GetArgs(numArgs, args);
+    uint32_t aliasUID = args[0].v_uint32;
+
+#if defined(QCC_OS_ANDROID)
+    uint32_t origUID = 0;
+    qcc::String sender = msg->GetSender();
+    BusEndpoint* srcEp = router.FindEndpoint(sender);
+
+    if (!srcEp) {
+        status = ER_BUS_NO_ENDPOINT;
+        QCC_LogError(status, ("AliasUnixUser Failed to find endpoint for sender=%s", sender.c_str()));
+        replyCode = ALLJOYN_ALIASUNIXUSER_REPLY_FAILED;
+    } else {
+        origUID = srcEp->GetUserId();
+        if (origUID == (uint32_t)-1 || aliasUID == (uint32_t)-1) {
+            QCC_LogError(ER_FAIL, ("AliasUnixUser Invalid user id origUID=%d aliasUID=%d", origUID, aliasUID));
+            replyCode = ALLJOYN_ALIASUNIXUSER_REPLY_FAILED;
+        }
+    }
+
+    if (replyCode == ALLJOYN_ALIASUNIXUSER_REPLY_SUCCESS) {
+        if (router.GetPermissionDB().AddAliasUnixUser(origUID, aliasUID) != ER_OK) {
+            replyCode = ALLJOYN_ALIASUNIXUSER_REPLY_FAILED;
+        }
+    }
+#else
+    replyCode = ALLJOYN_ALIASUNIXUSER_REPLY_NO_SUPPORT;
+#endif
+    /* Send response */
+    MsgArg replyArg;
+    replyArg.Set("u", replyCode);
+    status = MethodReply(msg, &replyArg, 1);
+    QCC_DbgPrintf(("AllJoynObj::AliasUnixUser(%d) returned %d (status=%s)", aliasUID, replyCode, QCC_StatusText(status)));
 }
 
 void AllJoynObj::AdvertiseName(const InterfaceDescription::Member* member, Message& msg)

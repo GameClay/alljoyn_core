@@ -51,6 +51,14 @@ class PermissionDB {
      */
     QStatus RemovePermissionCache(BusEndpoint& endpoint);
 
+    /**
+     * Add an alias ID to a UnixEndpoint User ID
+     * @Param origUID   The actual User ID
+     * @Param aliasUID  The alias User ID
+     * @Return ER_OK if successfully
+     */
+    QStatus AddAliasUnixUser(uint32_t origUID, uint32_t aliasUID);
+
   private:
     /**
      * Check whether the uid owns the required permissions on Android
@@ -59,8 +67,17 @@ class PermissionDB {
      * @Return true if the uid meets the permission requirement
      */
     bool VerifyPermsOnAndroid(const uint32_t uid, const std::set<qcc::String>& permsReq);
+
+    /**
+     * Normalize the user ID to be used for the permission verification
+     * @Param origUID      The actual user ID of the endpoint
+     * @Return the alias user ID if it exists or origUID
+     */
+    uint32_t NormalizeUserID(uint32_t origUID);
+
     qcc::Mutex permissionDbLock;
     std::map<uint32_t, std::set<qcc::String> > uidPermsMap;          /**< cache the permissions owned by an endpoint identified by user id */
+    std::map<uint32_t, uint32_t> uidAliasMap;                        /**< map of UnixEndpoint user id to its alias. */
 };
 
 }

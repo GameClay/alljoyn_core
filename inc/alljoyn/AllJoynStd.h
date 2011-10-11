@@ -290,6 +290,26 @@ QStatus CreateInterfaces(BusAttachment& bus);          /**< Create the org.alljo
 // @}
 
 /**
+ * @name org.alljoyn.Bus.AliasUnixUser
+ *  Interface: org.alljoyn.Bus
+ *  Method: AliasUnixUser(uint32_t aliasUID)
+ *
+ *  Input params:
+ *     aliasUID - The alias user id.
+ *
+ *  Output params:
+ *     disposition - One of the ALLJOYN_ALIASUNIXUSER_* dispositions listed below
+ *
+ */
+// @{
+/* org.alljoyn.Bus.AliasUnixUser */
+#define ALLJOYN_ALIASUNIXUSER_REPLY_SUCCESS          1   /**< AliasUnixUser reply: Success */
+#define ALLJOYN_ALIASUNIXUSER_REPLY_FAILED           2   /**< AliasUnixUser reply: Failed*/
+#define ALLJOYN_ALIASUNIXUSER_REPLY_NO_SUPPORT       3   /**< AliasUnixUser reply: Failed*/
+// @}
+
+
+/**
  * Collection of Session Port numbers defined for org.alljoyn endpoint.
  */
 // @{

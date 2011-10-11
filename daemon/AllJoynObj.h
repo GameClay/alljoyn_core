@@ -227,6 +227,19 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     void SetLinkTimeout(const InterfaceDescription::Member* member, Message& msg);
 
     /**
+     * Add an alias to a Unix User ID
+     * The input Message (METHOD_CALL) is expected to contain the following parameter
+     *   aliasUID      uint32    The alias ID
+     *
+     * The output Message (METHOD_REPLY) contains the following parameters:
+     *   resultCode    uint32    ALLJOYN_ALIASUNIXUSER_REPLY_* value.
+     *
+     * @param member  Member.
+     * @param msg     The incoming message.
+     */
+    void AliasUnixUser(const InterfaceDescription::Member* member, Message& msg);
+
+    /**
      * Add a new Bus-to-bus endpoint.
      *
      * @param endpoint  Bus-to-bus endpoint to add.
