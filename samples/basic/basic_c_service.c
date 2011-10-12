@@ -147,7 +147,7 @@ int main(int argc, char** argv, char** envArg)
     alljoyn_interfacedescription testIntf = NULL;
     status = alljoyn_busattachment_createinterface(g_msgBus, INTERFACE_NAME, &testIntf, QC_FALSE);
     if (status == ER_OK) {
-        alljoyn_interfacedescription_addmethod(testIntf, "cat", "ss",  "s", "inStr1,inStr2,outStr", 0);
+        alljoyn_interfacedescription_addmember(testIntf, ALLJOYN_MESSAGE_METHOD_CALL, "cat", "ss",  "s", "inStr1,inStr2,outStr", 0);
         alljoyn_interfacedescription_activate(testIntf);
         printf("Interface Created.\n");
     } else {

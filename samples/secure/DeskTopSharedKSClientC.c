@@ -187,7 +187,7 @@ int main(int argc, char** argv, char** envArg)
     alljoyn_interfacedescription testIntf = NULL;
     status = alljoyn_busattachment_createinterface(g_msgBus, INTERFACE_NAME, &testIntf, QC_TRUE);
     if (status == ER_OK) {
-        alljoyn_interfacedescription_addmethod(testIntf, "Ping", "s",  "s", "inStr1,outStr", 0);
+        alljoyn_interfacedescription_addmember(testIntf, ALLJOYN_MESSAGE_METHOD_CALL, "Ping", "s",  "s", "inStr1,outStr", 0);
         alljoyn_interfacedescription_activate(testIntf);
     } else {
         printf("Failed to create interface %s\n", INTERFACE_NAME);
