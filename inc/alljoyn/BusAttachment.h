@@ -1643,13 +1643,13 @@ extern AJ_API uint32_t alljoyn_busattachment_gettimestamp();
 #if 0
 /* TODO? */
 QStatus RegisterSignalHandler(MessageReceiver* receiver,
-                               MessageReceiver::SignalHandler signalHandler,
-                               const InterfaceDescription::Member* member,
-                               const char* srcPath);
+                              MessageReceiver::SignalHandler signalHandler,
+                              const InterfaceDescription::Member* member,
+                              const char* srcPath);
 QStatus UnregisterSignalHandler(MessageReceiver* receiver,
-                               MessageReceiver::SignalHandler signalHandler,
-                               const InterfaceDescription::Member* member,
-                               const char* srcPath);
+                                MessageReceiver::SignalHandler signalHandler,
+                                const InterfaceDescription::Member* member,
+                                const char* srcPath);
 QStatus UnregisterAllHandlers(MessageReceiver* receiver);
 
 
