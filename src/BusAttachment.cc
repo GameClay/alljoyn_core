@@ -1973,7 +1973,7 @@ QStatus alljoyn_busattachment_createinterfacesfromxml(alljoyn_busattachment bus,
     return ((ajn::BusAttachment*)bus)->CreateInterfacesFromXml(xml);
 }
 
-size_t alljoyn_busattachment_getinterfaces(const alljoyn_busattachment bus, 
+size_t alljoyn_busattachment_getinterfaces(const alljoyn_busattachment bus,
                                            const alljoyn_interfacedescription* ifaces, size_t numIfaces)
 {
     return ((ajn::BusAttachment*)bus)->GetInterfaces((const ajn::InterfaceDescription**)ifaces, numIfaces);
