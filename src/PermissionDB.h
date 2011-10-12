@@ -45,6 +45,14 @@ class PermissionDB {
     bool IsWifiAllowed(BusEndpoint& endpoint);
 
     /**
+     * Check whether the endpoint owns the required permissions
+     * @Param uid      The user id of the endpoint to be verified
+     * @Param permsReq The list of permissions to be verified
+     * @Return true if the endpoint passes the verification
+     */
+    bool VerifyPeerPermissions(const uint32_t uid, const std::set<qcc::String>& permsReq);
+
+    /**
      * Remove the permission information cache of an enpoint before it exits.
      * @Param endponit The endpoint that will exits
      * @Return ER_OK if successful
@@ -53,7 +61,7 @@ class PermissionDB {
 
     /**
      * Add an alias ID to a UnixEndpoint User ID
-     * @Param origUID   The actual User ID
+     * @Param origUID   The unique User ID
      * @Param aliasUID  The alias User ID
      * @Return ER_OK if successfully
      */
@@ -69,15 +77,15 @@ class PermissionDB {
     bool VerifyPermsOnAndroid(const uint32_t uid, const std::set<qcc::String>& permsReq);
 
     /**
-     * Normalize the user ID to be used for the permission verification
-     * @Param origUID      The actual user ID of the endpoint
-     * @Return the alias user ID if it exists or origUID
+     * Get the unique user ID of an alias user ID
+     * @Param userID      The user ID of the endpoint
+     * @Return the unique user ID if it exists otherwise keep unchanged
      */
-    uint32_t NormalizeUserID(uint32_t origUID);
+    uint32_t UniqueUserID(uint32_t userID);
 
     qcc::Mutex permissionDbLock;
     std::map<uint32_t, std::set<qcc::String> > uidPermsMap;          /**< cache the permissions owned by an endpoint identified by user id */
-    std::map<uint32_t, uint32_t> uidAliasMap;                        /**< map of UnixEndpoint user id to its alias. */
+    std::map<uint32_t, uint32_t> uidAliasMap;                        /**< map of alias user id to the unique user id. */
 };
 
 }
