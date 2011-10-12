@@ -2054,9 +2054,9 @@ QStatus alljoyn_busattachment_setkeyexpiration(alljoyn_busattachment bus, const 
     return ((ajn::BusAttachment*)bus)->SetKeyExpiration(guid, timeout);
 }
 
-QStatus alljoyn_busattachment_getkeyexpiration(alljoyn_busattachment bus, const char* guid, uint32_t& timeout)
+QStatus alljoyn_busattachment_getkeyexpiration(alljoyn_busattachment bus, const char* guid, uint32_t* timeout)
 {
-    return ((ajn::BusAttachment*)bus)->GetKeyExpiration(guid, timeout);
+    return ((ajn::BusAttachment*)bus)->GetKeyExpiration(guid, *timeout);
 }
 
 QStatus alljoyn_busattachment_addlogonentry(alljoyn_busattachment bus, const char* authMechanism,

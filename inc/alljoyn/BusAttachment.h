@@ -1447,7 +1447,7 @@ QStatus alljoyn_busattachment_setkeyexpiration(alljoyn_busattachment bus, const 
  *          - ER_UNKNOWN_GUID if there is no authenticated peer with the specified GUID
  *          - Other errors
  */
-QStatus alljoyn_busattachment_getkeyexpiration(alljoyn_busattachment bus, const char* guid, uint32_t& timeout);
+QStatus alljoyn_busattachment_getkeyexpiration(alljoyn_busattachment bus, const char* guid, uint32_t* timeout);
 
 /**
  * Adds a logon entry string for the requested authentication mechanism to the key store. This
