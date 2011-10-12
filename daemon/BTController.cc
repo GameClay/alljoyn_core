@@ -450,6 +450,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
             BTBusAddress connAddr;
 
             if (!knownAdNode && !eirCapable && (blacklist->find(adBdAddr) != blacklist->end())) {
+                lock.Unlock();
                 return; // blacklisted - ignore it
             }
 
