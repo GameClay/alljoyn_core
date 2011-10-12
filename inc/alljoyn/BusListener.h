@@ -161,14 +161,14 @@ typedef struct {
  *
  * @return Handle to newly allocated BusListener.
  */
-alljoyn_buslistener alljoyn_buslistener_create(const alljoyn_buslistener_callbacks* callbacks, const void* context);
+extern AJ_API alljoyn_buslistener alljoyn_buslistener_create(const alljoyn_buslistener_callbacks* callbacks, const void* context);
 
 /**
  * Destroy a BusListener.
  *
  * @param listener BusListener to destroy.
  */
-void alljoyn_buslistener_destroy(alljoyn_buslistener listener);
+extern AJ_API void alljoyn_buslistener_destroy(alljoyn_buslistener listener);
 
 #ifdef __cplusplus
 } /* extern "C" */

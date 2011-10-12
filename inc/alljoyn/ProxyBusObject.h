@@ -735,14 +735,15 @@ extern "C" {
  * @param path       The absolute (non-relative) object path for the remote object.
  * @param sessionId  The session id the be used for communicating with remote object.
  */
-alljoyn_proxybusobject alljoyn_proxybusobject_create(alljoyn_busattachment bus, const char* service, const char* path, alljoyn_sessionid sessionId);
+extern AJ_API alljoyn_proxybusobject alljoyn_proxybusobject_create(alljoyn_busattachment bus, const char* service,
+                                                                   const char* path, alljoyn_sessionid sessionId);
 
 /**
  * Destroy a proxy object created using alljoyn_proxybusobject_create.
  *
  * @param bus The bus object to destroy.
  */
-void alljoyn_proxybusobject_destroy(alljoyn_proxybusobject bus);
+extern AJ_API void alljoyn_proxybusobject_destroy(alljoyn_proxybusobject bus);
 
 /**
  * Add an interface to this ProxyBusObject.
@@ -761,7 +762,7 @@ void alljoyn_proxybusobject_destroy(alljoyn_proxybusobject bus);
  *      - #ER_OK if successful.
  *      - An error status otherwise
  */
-QStatus alljoyn_proxybusobject_addinterface(alljoyn_proxybusobject bus, const alljoyn_interfacedescription iface);
+extern AJ_API QStatus alljoyn_proxybusobject_addinterface(alljoyn_proxybusobject bus, const alljoyn_interfacedescription iface);
 
 /**
  * Make a synchronous method call
@@ -782,14 +783,14 @@ QStatus alljoyn_proxybusobject_addinterface(alljoyn_proxybusobject bus, const al
  *      - #ER_OK if the method call succeeded and the reply message type is #MESSAGE_METHOD_RET
  *      - #ER_BUS_REPLY_IS_ERROR_MESSAGE if the reply message type is #MESSAGE_ERROR
  */
-QStatus alljoyn_proxybusobject_methodcall_synch(alljoyn_proxybusobject obj,
-                                                const char* ifaceName,
-                                                const char* methodName,
-                                                alljoyn_msgargs args,
-                                                size_t numArgs,
-                                                alljoyn_message replyMsg,
-                                                uint32_t timeout,
-                                                uint8_t flags);
+extern AJ_API QStatus alljoyn_proxybusobject_methodcall_synch(alljoyn_proxybusobject obj,
+                                                              const char* ifaceName,
+                                                              const char* methodName,
+                                                              alljoyn_msgargs args,
+                                                              size_t numArgs,
+                                                              alljoyn_message replyMsg,
+                                                              uint32_t timeout,
+                                                              uint8_t flags);
 
 #ifdef __cplusplus
 } /* extern "C" */

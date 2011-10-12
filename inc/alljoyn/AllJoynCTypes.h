@@ -38,4 +38,9 @@ typedef struct _alljoyn_credentials_handle*                 alljoyn_credentials;
 typedef struct _alljoyn_keystore_handle*                    alljoyn_keystore;
 typedef struct _alljoyn_keystorelistener_handle*            alljoyn_keystorelistener;
 
+/** This #define allows for redefinition to __dllexport or __dllimport on relevant platforms */
+#ifndef AJ_API
+#   define AJ_API
+#endif
+
 #endif

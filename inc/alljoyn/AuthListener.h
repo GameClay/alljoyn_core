@@ -319,28 +319,28 @@ typedef struct {
  *
  * @return Handle to newly allocated AuthListener.
  */
-alljoyn_authlistener alljoyn_authlistener_create(const alljoyn_authlistener_callbacks* callbacks, const void* context);
+extern AJ_API alljoyn_authlistener alljoyn_authlistener_create(const alljoyn_authlistener_callbacks* callbacks, const void* context);
 
 /**
  * Destroy a AuthListener.
  *
  * @param listener AuthListener to destroy.
  */
-void alljoyn_authlistener_destroy(alljoyn_authlistener listener);
+extern AJ_API void alljoyn_authlistener_destroy(alljoyn_authlistener listener);
 
 /**
  * Create credentials
  *
  * @return Newly created credentials.
  */
-alljoyn_credentials alljoyn_credentials_create();
+extern AJ_API alljoyn_credentials alljoyn_credentials_create();
 
 /**
  * Destroy credentials
  *
  * @param cred Credentials to destroy.
  */
-void alljoyn_credentials_destroy(alljoyn_credentials cred);
+extern AJ_API void alljoyn_credentials_destroy(alljoyn_credentials cred);
 
 /**
  * Tests if one or more credentials are set.
@@ -349,7 +349,7 @@ void alljoyn_credentials_destroy(alljoyn_credentials cred);
  * @param creds  A logical or of the credential bit values.
  * @return true if the credentials are set.
  */
-QC_BOOL alljoyn_credentials_isset(const alljoyn_credentials cred, uint16_t creds);
+extern AJ_API QC_BOOL alljoyn_credentials_isset(const alljoyn_credentials cred, uint16_t creds);
 
 /**
  * Sets a requested password, pincode, or passphrase.
@@ -357,7 +357,7 @@ QC_BOOL alljoyn_credentials_isset(const alljoyn_credentials cred, uint16_t creds
  * @param cred The credentials to set.
  * @param pwd  The password to set.
  */
-void alljoyn_credentials_setpassword(alljoyn_credentials cred, const char* pwd);
+extern AJ_API void alljoyn_credentials_setpassword(alljoyn_credentials cred, const char* pwd);
 
 /**
  * Sets a requested user name.
@@ -365,7 +365,7 @@ void alljoyn_credentials_setpassword(alljoyn_credentials cred, const char* pwd);
  * @param cred      The credentials to set.
  * @param userName  The user name to set.
  */
-void alljoyn_credentials_setusername(alljoyn_credentials cred, const char* userName);
+extern AJ_API void alljoyn_credentials_setusername(alljoyn_credentials cred, const char* userName);
 
 /**
  * Sets a requested public key certificate chain. The certificates must be PEM encoded.
@@ -373,7 +373,7 @@ void alljoyn_credentials_setusername(alljoyn_credentials cred, const char* userN
  * @param cred       The credentials to set.
  * @param certChain  The certificate chain to set.
  */
-void alljoyn_credentials_setcertchain(alljoyn_credentials cred, const char* certChain);
+extern AJ_API void alljoyn_credentials_setcertchain(alljoyn_credentials cred, const char* certChain);
 
 /**
  * Sets a requested private key. The private key must be PEM encoded and may be encrypted. If
@@ -382,7 +382,7 @@ void alljoyn_credentials_setcertchain(alljoyn_credentials cred, const char* cert
  * @param cred The credentials to set.
  * @param pk   The private key to set.
  */
-void alljoyn_credentials_setprivatekey(alljoyn_credentials cred, const char* pk);
+extern AJ_API void alljoyn_credentials_setprivatekey(alljoyn_credentials cred, const char* pk);
 
 /**
  * Sets a logon entry. For example for the Secure Remote Password protocol in RFC 5054, a
@@ -393,7 +393,7 @@ void alljoyn_credentials_setprivatekey(alljoyn_credentials cred, const char* pk)
  * @param cred        The credentials to set.
  * @param logonEntry  The logon entry to set.
  */
-void alljoyn_credentials_setlogonentry(alljoyn_credentials cred, const char* logonEntry);
+extern AJ_API void alljoyn_credentials_setlogonentry(alljoyn_credentials cred, const char* logonEntry);
 
 /**
  * Sets an expiration time in seconds relative to the current time for the credentials. This value is optional and
@@ -404,7 +404,7 @@ void alljoyn_credentials_setlogonentry(alljoyn_credentials cred, const char* log
  * @param cred        The credentials to set.
  * @param expiration  The expiration time in seconds.
  */
-void alljoyn_credentials_setexpiration(alljoyn_credentials cred, uint32_t expiration);
+extern AJ_API void alljoyn_credentials_setexpiration(alljoyn_credentials cred, uint32_t expiration);
 
 /**
  * Gets the password, pincode, or passphrase from this credentials instance.
@@ -412,7 +412,7 @@ void alljoyn_credentials_setexpiration(alljoyn_credentials cred, uint32_t expira
  * @param cred The credentials to query.
  * @return A password or an empty string.
  */
-const char* alljoyn_credentials_getpassword(const alljoyn_credentials cred);
+extern AJ_API const char* alljoyn_credentials_getpassword(const alljoyn_credentials cred);
 
 /**
  * Gets the user name from this credentials instance.
@@ -420,7 +420,7 @@ const char* alljoyn_credentials_getpassword(const alljoyn_credentials cred);
  * @param cred The credentials to query.
  * @return A user name or an empty string.
  */
-const char* alljoyn_credentials_getusername(const alljoyn_credentials cred);
+extern AJ_API const char* alljoyn_credentials_getusername(const alljoyn_credentials cred);
 
 /**
  * Gets the PEM encoded X509 certificate chain from this credentials instance.
@@ -428,7 +428,7 @@ const char* alljoyn_credentials_getusername(const alljoyn_credentials cred);
  * @param cred The credentials to query.
  * @return An X509 certificate chain or an empty string.
  */
-const char* alljoyn_credentials_getcertchain(const alljoyn_credentials cred);
+extern AJ_API const char* alljoyn_credentials_getcertchain(const alljoyn_credentials cred);
 
 /**
  * Gets the PEM encode private key from this credentials instance.
@@ -436,7 +436,7 @@ const char* alljoyn_credentials_getcertchain(const alljoyn_credentials cred);
  * @param cred The credentials to query.
  * @return An PEM encode private key or an empty string.
  */
-const char* alljoyn_credentials_getprivateKey(const alljoyn_credentials cred);
+extern AJ_API const char* alljoyn_credentials_getprivateKey(const alljoyn_credentials cred);
 
 /**
  * Gets a logon entry.
@@ -444,7 +444,7 @@ const char* alljoyn_credentials_getprivateKey(const alljoyn_credentials cred);
  * @param cred The credentials to query.
  * @return An encoded logon entry or an empty string.
  */
-const char* alljoyn_credentials_getlogonentry(const alljoyn_credentials cred);
+extern AJ_API const char* alljoyn_credentials_getlogonentry(const alljoyn_credentials cred);
 
 /**
  * Get the expiration time in seconds if it is set.
@@ -452,14 +452,14 @@ const char* alljoyn_credentials_getlogonentry(const alljoyn_credentials cred);
  * @param cred The credentials to query.
  * @return The expiration or the max 32 bit unsigned value if it was not set.
  */
-uint32_t alljoyn_credentials_getexpiration(const alljoyn_credentials cred);
+extern AJ_API uint32_t alljoyn_credentials_getexpiration(const alljoyn_credentials cred);
 
 /**
  * Clear the credentials.
  *
  * @param cred The credentials to clear.
  */
-void alljoyn_credentials_clear(alljoyn_credentials cred);
+extern AJ_API void alljoyn_credentials_clear(alljoyn_credentials cred);
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -99,14 +99,15 @@ typedef struct {
  *
  * @return Handle to newly allocated SessionPortListener.
  */
-alljoyn_sessionportlistener alljoyn_sessionportlistener_create(const alljoyn_sessionportlistener_callbacks* callbacks, const void* context);
+extern AJ_API alljoyn_sessionportlistener alljoyn_sessionportlistener_create(const alljoyn_sessionportlistener_callbacks* callbacks,
+                                                                             const void* context);
 
 /**
  * Destroy a SessionPortListener.
  *
  * @param listener SessionPortListener to destroy.
  */
-void alljoyn_sessionportlistener_destroy(alljoyn_sessionportlistener listener);
+extern AJ_API void alljoyn_sessionportlistener_destroy(alljoyn_sessionportlistener listener);
 
 #ifdef __cplusplus
 } /* extern "C" */

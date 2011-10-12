@@ -411,15 +411,15 @@ typedef struct {
  *      - #ER_OK if successful
  *      - #ER_BUS_MEMBER_ALREADY_EXISTS if member already exists
  */
-QStatus alljoyn_interfacedescription_addmethod(alljoyn_interfacedescription iface, const char* name, const char* inputSig,
-                                               const char* outSig, const char* argNames, uint8_t annotation);
+extern AJ_API QStatus alljoyn_interfacedescription_addmethod(alljoyn_interfacedescription iface, const char* name, const char* inputSig,
+                                                             const char* outSig, const char* argNames, uint8_t annotation);
 /**
  * Activate this interface. An interface must be activated before it can be used. Activating an
  * interface locks the interface so that is can no longer be modified.
  *
  * @param iface InterfaceDescription to activate.
  */
-void alljoyn_interfacedescription_activate(alljoyn_interfacedescription iface);
+extern AJ_API void alljoyn_interfacedescription_activate(alljoyn_interfacedescription iface);
 
 /**
  * Lookup a member description by name
@@ -430,8 +430,8 @@ void alljoyn_interfacedescription_activate(alljoyn_interfacedescription iface);
  *
  * @return QC_FALSE if member does not exist, QC_TRUE otherwise.
  */
-QC_BOOL alljoyn_interfacedescription_getmember(const alljoyn_interfacedescription iface, const char* name,
-                                               alljoyn_interfacedescription_member* member);
+extern AJ_API QC_BOOL alljoyn_interfacedescription_getmember(const alljoyn_interfacedescription iface, const char* name,
+                                                             alljoyn_interfacedescription_member* member);
 
 #ifdef __cplusplus
 } /* extern "C" */

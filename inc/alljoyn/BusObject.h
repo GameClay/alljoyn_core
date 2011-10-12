@@ -448,15 +448,15 @@ typedef struct {
  * @param isPlaceholder  Place-holder objects are created by the bus itself and serve only
  *                       as parent objects (in the object path sense) to other objects.
  */
-alljoyn_busobject alljoyn_busobject_create(alljoyn_busattachment bus, const char* path, QC_BOOL isPlaceholder,
-                                           const alljoyn_busobject_callbacks* callbacks_in, const void* context_in);
+extern AJ_API alljoyn_busobject alljoyn_busobject_create(alljoyn_busattachment bus, const char* path, QC_BOOL isPlaceholder,
+                                                         const alljoyn_busobject_callbacks* callbacks_in, const void* context_in);
 
 /**
  * Destroy a BusObject
  *
  * @param bus Bus to destroy.
  */
-void alljoyn_busobject_destroy(alljoyn_busobject bus);
+extern AJ_API void alljoyn_busobject_destroy(alljoyn_busobject bus);
 
 /**
  * Return the path for the object
@@ -464,7 +464,7 @@ void alljoyn_busobject_destroy(alljoyn_busobject bus);
  * @param bus BusObject on which to get the path.
  * @return Object path
  */
-const char* alljoyn_busobject_getpath(alljoyn_busobject bus);
+extern AJ_API const char* alljoyn_busobject_getpath(alljoyn_busobject bus);
 
 /**
  * Get the name of this object.
@@ -475,7 +475,7 @@ const char* alljoyn_busobject_getpath(alljoyn_busobject bus);
  * @param bufferSz  The size of the buffer provided.
  * @return The size of the name string, if the returned value is > bufferSz, the entire name was not copied into buffer.
  */
-size_t alljoyn_busobject_getname(alljoyn_busobject bus, char* buffer, size_t bufferSz);
+extern AJ_API size_t alljoyn_busobject_getname(alljoyn_busobject bus, char* buffer, size_t bufferSz);
 
 /**
  * Add an interface to this object. If the interface has properties this will also add the
@@ -495,7 +495,7 @@ size_t alljoyn_busobject_getname(alljoyn_busobject bus, char* buffer, size_t buf
  *      - #ER_BUS_IFACE_ALREADY_EXISTS if the interface already exists.
  *      - An error status otherwise
  */
-QStatus alljoyn_busobject_addinterface(alljoyn_busobject bus, const alljoyn_interfacedescription iface);
+extern AJ_API QStatus alljoyn_busobject_addinterface(alljoyn_busobject bus, const alljoyn_interfacedescription iface);
 
 /**
  * Add a set of method handers at once.
@@ -508,7 +508,9 @@ QStatus alljoyn_busobject_addinterface(alljoyn_busobject bus, const alljoyn_inte
  *      - #ER_OK if all the methods were added
  *      - #ER_BUS_NO_SUCH_INTERFACE is method can not be added because interface does not exist.
  */
-QStatus alljoyn_busobject_addmethodhandlers(alljoyn_busobject bus, const alljoyn_busobject_methodentry* entries, size_t numEntries);
+extern AJ_API QStatus alljoyn_busobject_addmethodhandlers(alljoyn_busobject bus,
+                                                          const alljoyn_busobject_methodentry* entries,
+                                                          size_t numEntries);
 
 /**
  * Reply to a method call
@@ -521,8 +523,8 @@ QStatus alljoyn_busobject_addmethodhandlers(alljoyn_busobject bus, const alljoyn
  *      - #ER_OK if successful
  *      - An error status otherwise
  */
-QStatus alljoyn_busobject_methodreply_args(alljoyn_busobject bus, alljoyn_message msg,
-                                           const alljoyn_msgargs args, size_t numArgs);
+extern AJ_API QStatus alljoyn_busobject_methodreply_args(alljoyn_busobject bus, alljoyn_message msg,
+                                                         const alljoyn_msgargs args, size_t numArgs);
 /**
  * Reply to a method call with an error message
  *
@@ -534,8 +536,8 @@ QStatus alljoyn_busobject_methodreply_args(alljoyn_busobject bus, alljoyn_messag
  *      - #ER_OK if successful
  *      - An error status otherwise
  */
-QStatus alljoyn_busobject_methodreply_err(alljoyn_busobject bus, alljoyn_message msg,
-                                          const char* error, const char* errorMessage);
+extern AJ_API QStatus alljoyn_busobject_methodreply_err(alljoyn_busobject bus, alljoyn_message msg,
+                                                        const char* error, const char* errorMessage);
 /**
  * Reply to a method call with an error message
  *
@@ -546,7 +548,7 @@ QStatus alljoyn_busobject_methodreply_err(alljoyn_busobject bus, alljoyn_message
  *      - #ER_OK if successful
  *      - An error status otherwise
  */
-QStatus alljoyn_busobject_methodreply_status(alljoyn_busobject bus, alljoyn_message msg, QStatus status);
+extern AJ_API QStatus alljoyn_busobject_methodreply_status(alljoyn_busobject bus, alljoyn_message msg, QStatus status);
 
 #ifdef __cplusplus
 } /* extern "C" */

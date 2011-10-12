@@ -669,14 +669,14 @@ extern "C" {
  *
  * @param numArgs Number of arguments to create in the array.
  */
-alljoyn_msgargs alljoyn_msgargs_create(size_t numArgs);
+extern AJ_API alljoyn_msgargs alljoyn_msgargs_create(size_t numArgs);
 
 /**
  * Destroy a message argument.
  *
  * @param arg The message argument to destroy.
  */
-void alljoyn_msgargs_destroy(alljoyn_msgargs arg);
+extern AJ_API void alljoyn_msgargs_destroy(alljoyn_msgargs arg);
 
 /**
  * Set an array of MsgArgs by applying the Set() method to each MsgArg in turn.
@@ -695,7 +695,7 @@ void alljoyn_msgargs_destroy(alljoyn_msgargs arg);
  *       - #ER_BUS_TRUNCATED if the signature was longer than expected.
  *       - Other error status codes indicating a failure.
  */
-QStatus alljoyn_msgargs_set(alljoyn_msgargs args, size_t argOffset, size_t* numArgs, const char* signature, ...);
+extern AJ_API QStatus alljoyn_msgargs_set(alljoyn_msgargs args, size_t argOffset, size_t* numArgs, const char* signature, ...);
 
 /*
     AllJoynString v_objPath;
@@ -709,16 +709,16 @@ QStatus alljoyn_msgargs_set(alljoyn_msgargs args, size_t argOffset, size_t* numA
     AllJoynInvalid v_invalid;
  */
 
-uint8_t alljoyn_msgargs_as_uint8(const alljoyn_msgargs args, size_t idx);
-QC_BOOL alljoyn_msgargs_as_bool(const alljoyn_msgargs args, size_t idx);
-int16_t alljoyn_msgargs_as_int16(const alljoyn_msgargs args, size_t idx);
-uint16_t alljoyn_msgargs_as_uint16(const alljoyn_msgargs args, size_t idx);
-int32_t alljoyn_msgargs_as_int32(const alljoyn_msgargs args, size_t idx);
-uint32_t alljoyn_msgargs_as_uint32(const alljoyn_msgargs args, size_t idx);
-int64_t alljoyn_msgargs_as_int64(const alljoyn_msgargs args, size_t idx);
-uint64_t alljoyn_msgargs_as_uint64(const alljoyn_msgargs args, size_t idx);
-double alljoyn_msgargs_as_double(const alljoyn_msgargs args, size_t idx);
-const char* alljoyn_msgargs_as_string(const alljoyn_msgargs args, size_t idx);
+extern AJ_API uint8_t alljoyn_msgargs_as_uint8(const alljoyn_msgargs args, size_t idx);
+extern AJ_API QC_BOOL alljoyn_msgargs_as_bool(const alljoyn_msgargs args, size_t idx);
+extern AJ_API int16_t alljoyn_msgargs_as_int16(const alljoyn_msgargs args, size_t idx);
+extern AJ_API uint16_t alljoyn_msgargs_as_uint16(const alljoyn_msgargs args, size_t idx);
+extern AJ_API int32_t alljoyn_msgargs_as_int32(const alljoyn_msgargs args, size_t idx);
+extern AJ_API uint32_t alljoyn_msgargs_as_uint32(const alljoyn_msgargs args, size_t idx);
+extern AJ_API int64_t alljoyn_msgargs_as_int64(const alljoyn_msgargs args, size_t idx);
+extern AJ_API uint64_t alljoyn_msgargs_as_uint64(const alljoyn_msgargs args, size_t idx);
+extern AJ_API double alljoyn_msgargs_as_double(const alljoyn_msgargs args, size_t idx);
+extern AJ_API const char* alljoyn_msgargs_as_string(const alljoyn_msgargs args, size_t idx);
 
 #ifdef __cplusplus
 } /* extern "C" */

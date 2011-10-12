@@ -101,14 +101,15 @@ typedef struct {
  *
  * @return Handle to newly allocated SessionListener.
  */
-alljoyn_sessionlistener alljoyn_sessionlistener_create(const alljoyn_sessionlistener_callbacks* callbacks, const void* context);
+extern AJ_API alljoyn_sessionlistener alljoyn_sessionlistener_create(const alljoyn_sessionlistener_callbacks* callbacks,
+                                                                     const void* context);
 
 /**
  * Destroy a SessionListener.
  *
  * @param listener SessionListener to destroy.
  */
-void alljoyn_sessionlistener_destroy(alljoyn_sessionlistener listener);
+extern AJ_API void alljoyn_sessionlistener_destroy(alljoyn_sessionlistener listener);
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -909,14 +909,14 @@ extern "C" {
  * @param applicationName       Name of the application.
  * @param allowRemoteMessages   QC_TRUE if this attachment is allowed to receive messages from remote devices.
  */
-alljoyn_busattachment alljoyn_busattachment_create(const char* applicationName, QC_BOOL allowRemoteMessages);
+extern AJ_API alljoyn_busattachment alljoyn_busattachment_create(const char* applicationName, QC_BOOL allowRemoteMessages);
 
 /**
  * Free an allocated BusAttachment.
  *
  * @param bus BusAttachment to free.
  */
-void alljoyn_busattachment_destroy(alljoyn_busattachment bus);
+extern AJ_API void alljoyn_busattachment_destroy(alljoyn_busattachment bus);
 
 /**
  * Stop the message bus.
@@ -928,7 +928,7 @@ void alljoyn_busattachment_destroy(alljoyn_busattachment bus);
  *      - #ER_OK if successful.
  *      - An error status if unable to stop the message bus
  */
-QStatus alljoyn_busattachment_stop(alljoyn_busattachment bus, QC_BOOL blockUntilStopped);
+extern AJ_API QStatus alljoyn_busattachment_stop(alljoyn_busattachment bus, QC_BOOL blockUntilStopped);
 
 /**
  * Wait for the message bus to be stopped. This method blocks the calling thread until another thread
@@ -936,7 +936,7 @@ QStatus alljoyn_busattachment_stop(alljoyn_busattachment bus, QC_BOOL blockUntil
  *
  * @param bus The bus to wait on stopping.
  */
-void alljoyn_busattachment_waitstop(alljoyn_busattachment bus);
+extern AJ_API void alljoyn_busattachment_waitstop(alljoyn_busattachment bus);
 
 /**
  * Create an interface description with a given name.
@@ -953,7 +953,8 @@ void alljoyn_busattachment_waitstop(alljoyn_busattachment bus);
  *      - #ER_BUS_IFACE_ALREADY_EXISTS if requested interface already exists
  * @see BusAttachment::CreateInterface
  */
-QStatus alljoyn_busattachment_createinterface(alljoyn_busattachment bus, const char* name, alljoyn_interfacedescription* iface, QC_BOOL secure);
+extern AJ_API QStatus alljoyn_busattachment_createinterface(alljoyn_busattachment bus, const char* name,
+                                                            alljoyn_interfacedescription* iface, QC_BOOL secure);
 
 /**
  * Start the message bus.
@@ -972,7 +973,7 @@ QStatus alljoyn_busattachment_createinterface(alljoyn_busattachment bus, const c
  *      - #ER_BUS_BUS_ALREADY_STARTED if already started
  *      - Other error status codes indicating a failure
  */
-QStatus alljoyn_busattachment_start(alljoyn_busattachment bus);
+extern AJ_API QStatus alljoyn_busattachment_start(alljoyn_busattachment bus);
 
 /**
  * Connect to a remote bus address.
@@ -985,7 +986,7 @@ QStatus alljoyn_busattachment_start(alljoyn_busattachment bus);
  *      - #ER_OK if successful.
  *      - An error status otherwise
  */
-QStatus alljoyn_busattachment_connect(alljoyn_busattachment bus, const char* connectSpec);
+extern AJ_API QStatus alljoyn_busattachment_connect(alljoyn_busattachment bus, const char* connectSpec);
 
 /**
  * Register an object that will receive bus event notifications.
@@ -993,7 +994,7 @@ QStatus alljoyn_busattachment_connect(alljoyn_busattachment bus, const char* con
  * @param bus       The BusAttachment on which to attach a BusListener.
  * @param listener  Object instance that will receive bus event notifications.
  */
-void alljoyn_busattachment_registerbuslistener(alljoyn_busattachment bus, alljoyn_buslistener listener);
+extern AJ_API void alljoyn_busattachment_registerbuslistener(alljoyn_busattachment bus, alljoyn_buslistener listener);
 
 /**
  * Unregister an object that was previously registered with RegisterBusListener.
@@ -1001,7 +1002,7 @@ void alljoyn_busattachment_registerbuslistener(alljoyn_busattachment bus, alljoy
  * @param bus       The BusAttachment from which to detach a BusListener.
  * @param listener  Object instance to un-register as a listener.
  */
-void alljoyn_busattachment_unregisterbuslistener(alljoyn_busattachment bus, alljoyn_buslistener listener);
+extern AJ_API void alljoyn_busattachment_unregisterbuslistener(alljoyn_busattachment bus, alljoyn_buslistener listener);
 
 /**
  * Register interest in a well-known name prefix for the purpose of discovery.
@@ -1017,7 +1018,7 @@ void alljoyn_busattachment_unregisterbuslistener(alljoyn_busattachment bus, allj
  *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
  *      - Other error status codes indicating a failure.
  */
-QStatus alljoyn_busattachment_findadvertisedname(alljoyn_busattachment bus, const char* namePrefix);
+extern AJ_API QStatus alljoyn_busattachment_findadvertisedname(alljoyn_busattachment bus, const char* namePrefix);
 
 /**
  * Cancel interest in a well-known name prefix that was previously
@@ -1034,7 +1035,7 @@ QStatus alljoyn_busattachment_findadvertisedname(alljoyn_busattachment bus, cons
  *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
  *      - Other error status codes indicating a failure.
  */
-QStatus alljoyn_busattachment_cancelfindadvertisedname(alljoyn_busattachment bus, const char* namePrefix);
+extern AJ_API QStatus alljoyn_busattachment_cancelfindadvertisedname(alljoyn_busattachment bus, const char* namePrefix);
 
 /**
  * Advertise the existence of a well-known name to other (possibly disconnected) AllJoyn daemons.
@@ -1051,7 +1052,7 @@ QStatus alljoyn_busattachment_cancelfindadvertisedname(alljoyn_busattachment bus
  *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
  *      - Other error status codes indicating a failure.
  */
-QStatus alljoyn_busattachment_advertisename(alljoyn_busattachment bus, const char* name, alljoyn_transportmask transports);
+extern AJ_API QStatus alljoyn_busattachment_advertisename(alljoyn_busattachment bus, const char* name, alljoyn_transportmask transports);
 
 /**
  * Stop advertising the existence of a well-known name to other AllJoyn daemons.
@@ -1067,7 +1068,7 @@ QStatus alljoyn_busattachment_advertisename(alljoyn_busattachment bus, const cha
  *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
  *      - Other error status codes indicating a failure.
  */
-QStatus alljoyn_busattachment_canceladvertisename(alljoyn_busattachment bus, const char* name, alljoyn_transportmask transports);
+extern AJ_API QStatus alljoyn_busattachment_canceladvertisename(alljoyn_busattachment bus, const char* name, alljoyn_transportmask transports);
 
 /**
  * Retrieve an existing activated InterfaceDescription.
@@ -1079,7 +1080,7 @@ QStatus alljoyn_busattachment_canceladvertisename(alljoyn_busattachment bus, con
  *      - A pointer to the registered interface
  *      - NULL if interface doesn't exist
  */
-const alljoyn_interfacedescription alljoyn_busattachment_getinterface(alljoyn_busattachment bus, const char* name);
+extern AJ_API const alljoyn_interfacedescription alljoyn_busattachment_getinterface(alljoyn_busattachment bus, const char* name);
 
 /**
  * Join a session.
@@ -1098,9 +1099,9 @@ const alljoyn_interfacedescription alljoyn_busattachment_getinterface(alljoyn_bu
  *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
  *      - Other error status codes indicating a failure.
  */
-QStatus alljoyn_busattachment_joinsession(alljoyn_busattachment bus, const char* sessionHost,
-                                          alljoyn_sessionport sessionPort, alljoyn_buslistener listener,
-                                          alljoyn_sessionid* sessionId, alljoyn_sessionopts opts);
+extern AJ_API QStatus alljoyn_busattachment_joinsession(alljoyn_busattachment bus, const char* sessionHost,
+                                                        alljoyn_sessionport sessionPort, alljoyn_buslistener listener,
+                                                        alljoyn_sessionid* sessionId, alljoyn_sessionopts opts);
 
 /**
  * Register a BusObject
@@ -1112,7 +1113,7 @@ QStatus alljoyn_busattachment_joinsession(alljoyn_busattachment bus, const char*
  *      - #ER_OK if successful.
  *      - #ER_BUS_BAD_OBJ_PATH for a bad object path
  */
-QStatus alljoyn_busattachment_registerbusobject(alljoyn_busattachment bus, alljoyn_busobject obj);
+extern AJ_API QStatus alljoyn_busattachment_registerbusobject(alljoyn_busattachment bus, alljoyn_busobject obj);
 
 /**
  * Unregister a BusObject
@@ -1120,7 +1121,7 @@ QStatus alljoyn_busattachment_registerbusobject(alljoyn_busattachment bus, alljo
  * @param bus     The bus from which to unregister the object.
  * @param object  Object to be unregistered.
  */
-void alljoyn_busattachment_unregisterbusobject(alljoyn_busattachment bus, alljoyn_busobject object);
+extern AJ_API void alljoyn_busattachment_unregisterbusobject(alljoyn_busattachment bus, alljoyn_busobject object);
 
 /**
  * Request a well-known name.
@@ -1136,7 +1137,7 @@ void alljoyn_busattachment_unregisterbusobject(alljoyn_busattachment bus, alljoy
  *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
  *      - Other error status codes indicating a failure.
  */
-QStatus alljoyn_busattachment_requestname(alljoyn_busattachment bus, const char* requestedName, uint32_t flags);
+extern AJ_API QStatus alljoyn_busattachment_requestname(alljoyn_busattachment bus, const char* requestedName, uint32_t flags);
 
 /**
  * Release a previously requeted well-known name.
@@ -1151,7 +1152,7 @@ QStatus alljoyn_busattachment_requestname(alljoyn_busattachment bus, const char*
  *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
  *      - Other error status codes indicating a failure.
  */
-QStatus alljoyn_busattachment_releasename(alljoyn_busattachment bus, const char* name);
+extern AJ_API QStatus alljoyn_busattachment_releasename(alljoyn_busattachment bus, const char* name);
 
 /**
  * Make a SessionPort available for external BusAttachments to join.
@@ -1186,8 +1187,8 @@ QStatus alljoyn_busattachment_releasename(alljoyn_busattachment bus, const char*
  *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
  *      - Other error status codes indicating a failure.
  */
-QStatus alljoyn_busattachment_bindsessionport(alljoyn_busattachment bus, alljoyn_sessionport* sessionPort,
-                                              const alljoyn_sessionopts opts, alljoyn_sessionportlistener listener);
+extern AJ_API QStatus alljoyn_busattachment_bindsessionport(alljoyn_busattachment bus, alljoyn_sessionport* sessionPort,
+                                                            const alljoyn_sessionopts opts, alljoyn_sessionportlistener listener);
 
 /**
  * Cancel an existing port binding.
@@ -1200,7 +1201,7 @@ QStatus alljoyn_busattachment_bindsessionport(alljoyn_busattachment bus, alljoyn
  *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
  *      - Other error status codes indicating a failure.
  */
-QStatus alljoyn_busattachment_unbindsessionport(alljoyn_busattachment bus, alljoyn_sessionport sessionPort);
+extern AJ_API QStatus alljoyn_busattachment_unbindsessionport(alljoyn_busattachment bus, alljoyn_sessionport sessionPort);
 
 /**
  * Enable peer-to-peer security. This function must be called by applications that want to use
@@ -1229,9 +1230,9 @@ QStatus alljoyn_busattachment_unbindsessionport(alljoyn_busattachment bus, alljo
  *      - #ER_OK if peer security was enabled.
  *      - #ER_BUS_BUS_NOT_STARTED BusAttachment::Start has not be called
  */
-QStatus alljoyn_busattachment_enablepeersecurity(alljoyn_busattachment bus, const char* authMechanisms,
-                                                 alljoyn_authlistener listener, const char* keyStoreFileName,
-                                                 QC_BOOL isShared);
+extern AJ_API QStatus alljoyn_busattachment_enablepeersecurity(alljoyn_busattachment bus, const char* authMechanisms,
+                                                               alljoyn_authlistener listener, const char* keyStoreFileName,
+                                                               QC_BOOL isShared);
 
 /**
  * Check is peer security has been enabled for this bus attachment.
@@ -1240,7 +1241,7 @@ QStatus alljoyn_busattachment_enablepeersecurity(alljoyn_busattachment bus, cons
  *
  * @return   Returns QC_TRUE if peer security has been enabled, QC_FALSE otherwise.
  */
-QC_BOOL alljoyn_busattachment_ispeersecurityenabled(alljoyn_busattachment bus);
+extern AJ_API QC_BOOL alljoyn_busattachment_ispeersecurityenabled(alljoyn_busattachment bus);
 
 /**
  * Initialize one more interface descriptions from an XML string in DBus introspection format.
@@ -1258,7 +1259,7 @@ QC_BOOL alljoyn_busattachment_ispeersecurityenabled(alljoyn_busattachment bus);
  *      - #ER_OK if parsing is completely successful.
  *      - An error status otherwise.
  */
-QStatus alljoyn_busattachment_createinterfacesfromxml(alljoyn_busattachment bus, const char* xml);
+extern AJ_API QStatus alljoyn_busattachment_createinterfacesfromxml(alljoyn_busattachment bus, const char* xml);
 
 /**
  * Returns the existing activated InterfaceDescriptions.
@@ -1271,8 +1272,8 @@ QStatus alljoyn_busattachment_createinterfacesfromxml(alljoyn_busattachment bus,
  *
  * @return  The number of interfaces returned or the total number of interfaces if ifaces is NULL.
  */
-size_t alljoyn_busattachment_getinterfaces(const alljoyn_busattachment bus, 
-                                           const alljoyn_interfacedescription* ifaces, size_t numIfaces);
+extern AJ_API size_t alljoyn_busattachment_getinterfaces(const alljoyn_busattachment bus,
+                                                         const alljoyn_interfacedescription* ifaces, size_t numIfaces);
 
 /**
  * Delete an interface description with a given name.
@@ -1286,20 +1287,20 @@ size_t alljoyn_busattachment_getinterfaces(const alljoyn_busattachment bus,
  *      - #ER_OK if deletion was successful
  *      - #ER_BUS_NO_SUCH_INTERFACE if interface was not found
  */
-QStatus alljoyn_busattachment_deleteinterface(alljoyn_busattachment bus, alljoyn_interfacedescription iface);
+extern AJ_API QStatus alljoyn_busattachment_deleteinterface(alljoyn_busattachment bus, alljoyn_interfacedescription iface);
 /**
  * Returns QC_TRUE if the mesage bus has been started.
  *
  * @param bus The bus to query.
  */
-QC_BOOL alljoyn_busattachment_isstarted(alljoyn_busattachment bus);
+extern AJ_API QC_BOOL alljoyn_busattachment_isstarted(alljoyn_busattachment bus);
 
 /**
  * Returns QC_TRUE if the mesage bus has been requested to stop.
  *
  * @param bus The bus to query.
  */
-QC_BOOL alljoyn_busattachment_isstopping(alljoyn_busattachment bus);
+extern AJ_API QC_BOOL alljoyn_busattachment_isstopping(alljoyn_busattachment bus);
 
 /**
  * Indicate whether bus is currently connected.
@@ -1309,7 +1310,7 @@ QC_BOOL alljoyn_busattachment_isstopping(alljoyn_busattachment bus);
  * @param bus The bus to query.
  * @return true if the bus is connected.
  */
-QC_BOOL alljoyn_busattachment_isconnected(const alljoyn_busattachment bus);
+extern AJ_API QC_BOOL alljoyn_busattachment_isconnected(const alljoyn_busattachment bus);
 
 /**
  * Disconnect a remote bus address connection.
@@ -1323,7 +1324,7 @@ QC_BOOL alljoyn_busattachment_isconnected(const alljoyn_busattachment bus);
  *          - #ER_BUS_NOT_CONNECTED if the %BusAttachment is not connected to the bus
  *          - Other error status codes indicating a failure
  */
-QStatus alljoyn_busattachment_disconnect(alljoyn_busattachment bus, const char* connectSpec);
+extern AJ_API QStatus alljoyn_busattachment_disconnect(alljoyn_busattachment bus, const char* connectSpec);
 
 /**
  * Get the org.freedesktop.DBus proxy object.
@@ -1332,7 +1333,7 @@ QStatus alljoyn_busattachment_disconnect(alljoyn_busattachment bus, const char* 
  *
  * @return org.freedesktop.DBus proxy object
  */
-const alljoyn_proxybusobject alljoyn_busattachment_getdbusproxyobj(alljoyn_busattachment bus);
+extern AJ_API const alljoyn_proxybusobject alljoyn_busattachment_getdbusproxyobj(alljoyn_busattachment bus);
 
 /**
  * Get the org.alljoyn.Bus proxy object.
@@ -1341,7 +1342,7 @@ const alljoyn_proxybusobject alljoyn_busattachment_getdbusproxyobj(alljoyn_busat
  *
  * @return org.alljoyn.Bus proxy object
  */
-const alljoyn_proxybusobject alljoyn_busattachment_getalljoynproxyobj(alljoyn_busattachment bus);
+extern AJ_API const alljoyn_proxybusobject alljoyn_busattachment_getalljoynproxyobj(alljoyn_busattachment bus);
 
 /**
  * Get the org.alljoyn.Debug proxy object.
@@ -1350,7 +1351,7 @@ const alljoyn_proxybusobject alljoyn_busattachment_getalljoynproxyobj(alljoyn_bu
  *
  * @return org.alljoyn.Debug proxy object
  */
-const alljoyn_proxybusobject alljoyn_busattachment_getalljoyndebugobj(alljoyn_busattachment bus);
+extern AJ_API const alljoyn_proxybusobject alljoyn_busattachment_getalljoyndebugobj(alljoyn_busattachment bus);
 
 /**
  * Get the unique name of this BusAttachment.
@@ -1359,7 +1360,7 @@ const alljoyn_proxybusobject alljoyn_busattachment_getalljoyndebugobj(alljoyn_bu
  *
  * @return The unique name of this BusAttachment.
  */
-const char* alljoyn_busattachment_getuniquename(const alljoyn_busattachment bus);
+extern AJ_API const char* alljoyn_busattachment_getuniquename(const alljoyn_busattachment bus);
 
 /**
  * Get the guid of the local daemon as a string
@@ -1368,7 +1369,7 @@ const char* alljoyn_busattachment_getuniquename(const alljoyn_busattachment bus)
  *
  * @return GUID of local AllJoyn daemon as a string.
  */
-const char* alljoyn_busattachment_getglobalguidstring(const alljoyn_busattachment bus);
+extern AJ_API const char* alljoyn_busattachment_getglobalguidstring(const alljoyn_busattachment bus);
 
 /**
  * Set a key store listener to listen for key store load and store requests.
@@ -1382,7 +1383,7 @@ const char* alljoyn_busattachment_getglobalguidstring(const alljoyn_busattachmen
  *      - #ER_BUS_LISTENER_ALREADY_SET if a listener has been set by this function or because
  *         EnablePeerSecurity has been called.
  */
-QStatus alljoyn_busattachment_registerkeystorelistener(alljoyn_busattachment bus, alljoyn_keystorelistener listener);
+extern AJ_API QStatus alljoyn_busattachment_registerkeystorelistener(alljoyn_busattachment bus, alljoyn_keystorelistener listener);
 
 /**
  * Reloads the key store for this bus attachment. This function would normally only be called in
@@ -1395,7 +1396,7 @@ QStatus alljoyn_busattachment_registerkeystorelistener(alljoyn_busattachment bus
  * @return - ER_OK if the key store was succesfully reloaded
  *         - An error status indicating that the key store reload failed.
  */
-QStatus alljoyn_busattachment_reloadkeystore(alljoyn_busattachment bus);
+extern AJ_API QStatus alljoyn_busattachment_reloadkeystore(alljoyn_busattachment bus);
 
 /**
  * Clears all stored keys from the key store. All store keys and authentication information is
@@ -1404,7 +1405,7 @@ QStatus alljoyn_busattachment_reloadkeystore(alljoyn_busattachment bus);
  *
  * @param bus The bus on which to clear the key store.
  */
-void alljoyn_busattachment_clearkeystore(alljoyn_busattachment bus);
+extern AJ_API void alljoyn_busattachment_clearkeystore(alljoyn_busattachment bus);
 
 /**
  * Clear the keys associated with aa specific remote peer as identified by its peer GUID. The
@@ -1417,7 +1418,7 @@ void alljoyn_busattachment_clearkeystore(alljoyn_busattachment bus);
  *          - ER_UNKNOWN_GUID if there is no peer with the specified GUID
  *          - Other errors
  */
-QStatus alljoyn_busattachment_clearkeys(alljoyn_busattachment bus, const char* guid);
+extern AJ_API QStatus alljoyn_busattachment_clearkeys(alljoyn_busattachment bus, const char* guid);
 
 /**
  * Set the expiration time on keys associated with a specific remote peer as identified by its
@@ -1432,7 +1433,7 @@ QStatus alljoyn_busattachment_clearkeys(alljoyn_busattachment bus, const char* g
  *          - ER_UNKNOWN_GUID if there is no authenticated peer with the specified GUID
  *          - Other errors
  */
-QStatus alljoyn_busattachment_setkeyexpiration(alljoyn_busattachment bus, const char* guid, uint32_t timeout);
+extern AJ_API QStatus alljoyn_busattachment_setkeyexpiration(alljoyn_busattachment bus, const char* guid, uint32_t timeout);
 
 /**
  * Get the expiration time on keys associated with a specific authenticated remote peer as
@@ -1447,7 +1448,7 @@ QStatus alljoyn_busattachment_setkeyexpiration(alljoyn_busattachment bus, const 
  *          - ER_UNKNOWN_GUID if there is no authenticated peer with the specified GUID
  *          - Other errors
  */
-QStatus alljoyn_busattachment_getkeyexpiration(alljoyn_busattachment bus, const char* guid, uint32_t* timeout);
+extern AJ_API QStatus alljoyn_busattachment_getkeyexpiration(alljoyn_busattachment bus, const char* guid, uint32_t* timeout);
 
 /**
  * Adds a logon entry string for the requested authentication mechanism to the key store. This
@@ -1469,8 +1470,8 @@ QStatus alljoyn_busattachment_getkeyexpiration(alljoyn_busattachment bus, const 
  *      - #ER_BAD_ARG_3 indicates a null string was used as the password.
  *      - Other error status codes indicating a failure
  */
-QStatus alljoyn_busattachment_addlogonentry(alljoyn_busattachment bus, const char* authMechanism,
-                                            const char* userName, const char* password);
+extern AJ_API QStatus alljoyn_busattachment_addlogonentry(alljoyn_busattachment bus, const char* authMechanism,
+                                                          const char* userName, const char* password);
 
 /**
  * Add a DBus match rule.
@@ -1484,7 +1485,7 @@ QStatus alljoyn_busattachment_addlogonentry(alljoyn_busattachment bus, const cha
  *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
  *      - Other error status codes indicating a failure.
  */
-QStatus alljoyn_busattachment_addmatch(alljoyn_busattachment bus, const char* rule);
+extern AJ_API QStatus alljoyn_busattachment_addmatch(alljoyn_busattachment bus, const char* rule);
 
 /**
  * Remove a DBus match rule.
@@ -1498,7 +1499,7 @@ QStatus alljoyn_busattachment_addmatch(alljoyn_busattachment bus, const char* ru
  *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
  *      - Other error status codes indicating a failure.
  */
-QStatus alljoyn_busattachment_removematch(alljoyn_busattachment bus, const char* rule);
+extern AJ_API QStatus alljoyn_busattachment_removematch(alljoyn_busattachment bus, const char* rule);
 
 /**
  * Set the SessionListener for an existing sessionId.
@@ -1510,8 +1511,8 @@ QStatus alljoyn_busattachment_removematch(alljoyn_busattachment bus, const char*
  * @param listener     The SessionListener to associate with the session. May be NULL to clear previous listener.
  * @return  ER_OK if successful.
  */
-QStatus alljoyn_busattachment_setsessionlistener(alljoyn_busattachment bus, alljoyn_sessionid sessionId,
-                                                 alljoyn_sessionlistener listener);
+extern AJ_API QStatus alljoyn_busattachment_setsessionlistener(alljoyn_busattachment bus, alljoyn_sessionid sessionId,
+                                                               alljoyn_sessionlistener listener);
 
 /**
  * Leave an existing session.
@@ -1526,7 +1527,7 @@ QStatus alljoyn_busattachment_setsessionlistener(alljoyn_busattachment bus, allj
  *      - #ER_BUS_NOT_CONNECTED if a connection has not been made with a local bus.
  *      - Other error status codes indicating a failure.
  */
-QStatus alljoyn_busattachment_leavesession(alljoyn_busattachment bus, alljoyn_sessionid sessionId);
+extern AJ_API QStatus alljoyn_busattachment_leavesession(alljoyn_busattachment bus, alljoyn_sessionid sessionId);
 
 /**
  * Set the link timeout for a session.
@@ -1553,7 +1554,7 @@ QStatus alljoyn_busattachment_leavesession(alljoyn_busattachment bus, alljoyn_se
  *      - #ER_ALLJOYN_SETLINKTIMEOUT_REPLY_FAILED if SetLinkTimeout failed
  *      - #ER_BUS_NOT_CONNECTED if the BusAttachment is not connected to the daemon
  */
-QStatus alljoyn_busattachment_setlinktimeout(alljoyn_busattachment bus, alljoyn_sessionid sessionid, uint32_t* linkTimeout);
+extern AJ_API QStatus alljoyn_busattachment_setlinktimeout(alljoyn_busattachment bus, alljoyn_sessionid sessionid, uint32_t* linkTimeout);
 
 /**
  * Determine whether a given well-known name exists on the bus.
@@ -1568,7 +1569,7 @@ QStatus alljoyn_busattachment_setlinktimeout(alljoyn_busattachment bus, alljoyn_
  *      - #ER_OK if name ownership was able to be determined.
  *      - An error status otherwise
  */
-QStatus alljoyn_busattachment_namehasowner(alljoyn_busattachment bus, const char* name, QC_BOOL* hasOwner);
+extern AJ_API QStatus alljoyn_busattachment_namehasowner(alljoyn_busattachment bus, const char* name, QC_BOOL* hasOwner);
 
 /**
  * Get the peer GUID for this peer of the local peer or an authenticated remote peer. The bus
@@ -1587,7 +1588,7 @@ QStatus alljoyn_busattachment_namehasowner(alljoyn_busattachment bus, const char
  *      - #ER_OK if the requested GUID was obtained.
  *      - An error status otherwise.
  */
-QStatus alljoyn_busattachment_getpeerguid(alljoyn_busattachment bus, const char* name, char* guid, size_t guidSz);
+extern AJ_API QStatus alljoyn_busattachment_getpeerguid(alljoyn_busattachment bus, const char* name, char* guid, size_t guidSz);
 
 /**
  * This sets the debug level of the local AllJoyn daemon if that daemon
@@ -1628,7 +1629,7 @@ QStatus alljoyn_busattachment_getpeerguid(alljoyn_busattachment bus, const char*
  *       daemon.
  *     - #ER_BUS_NO_SUCH_OBJECT if daemon was not built in debug mode.
  */
-QStatus alljoyn_busattachment_setdaemondebug(alljoyn_busattachment bus, const char* module, uint32_t level);
+extern AJ_API QStatus alljoyn_busattachment_setdaemondebug(alljoyn_busattachment bus, const char* module, uint32_t level);
 
 /**
  * Returns the current non-absolute real-time clock used internally by AllJoyn. This value can be
@@ -1637,7 +1638,7 @@ QStatus alljoyn_busattachment_setdaemondebug(alljoyn_busattachment bus, const ch
  *
  * @return  The current timestamp in milliseconds.
  */
-uint32_t alljoyn_busattachment_gettimestamp();
+extern AJ_API uint32_t alljoyn_busattachment_gettimestamp();
 
 #if 0
 /* TODO? */

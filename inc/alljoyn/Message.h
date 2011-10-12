@@ -827,14 +827,14 @@ typedef enum {
  *
  * @param bus  The bus that this message is sent or received on.
  */
-alljoyn_message alljoyn_message_create(alljoyn_busattachment bus);
+extern AJ_API alljoyn_message alljoyn_message_create(alljoyn_busattachment bus);
 
 /**
  * Destroy a message object.
  *
  * @param msg The message to destroy
  */
-void alljoyn_message_destroy(alljoyn_message msg);
+extern AJ_API void alljoyn_message_destroy(alljoyn_message msg);
 
 /**
  * Return a specific argument.
@@ -846,7 +846,7 @@ void alljoyn_message_destroy(alljoyn_message msg);
  *      - The argument
  *      - NULL if unmarshal failed or there is not such argument.
  */
-const alljoyn_msgargs alljoyn_message_getarg(alljoyn_message msg, size_t argN);
+extern AJ_API const alljoyn_msgargs alljoyn_message_getarg(alljoyn_message msg, size_t argN);
 
 #ifdef __cplusplus
 } /* extern "C" */
