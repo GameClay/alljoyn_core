@@ -332,3 +332,54 @@ QC_BOOL alljoyn_interfacedescription_getmember(const alljoyn_interfacedescriptio
     }
     return (found_member == NULL ? QC_FALSE : QC_TRUE);
 }
+
+QStatus alljoyn_interfacedescription_addmember(alljoyn_interfacedescription iface, alljoyn_messagetype type,
+                                               const char* name, const char* inputSig, const char* outSig,
+                                               const char* argNames, uint8_t annotation)
+{
+    return ((ajn::InterfaceDescription*)iface)->AddMember((ajn::AllJoynMessageType)type, name, inputSig, outSig,
+                                                          argNames, annotation);
+}
+
+size_t alljoyn_interfacedescription_getmembers(const alljoyn_interfacedescription iface,
+                                               alljoyn_interfacedescription_member* members,
+                                               size_t numMembers)
+{
+    const ajn::InterfaceDescription::Member** tempMembers = NULL;
+    if (members != NULL) {
+        tempMembers = new const ajn::InterfaceDescription::Member*[numMembers];
+    }
+    size_t ret = ((const ajn::InterfaceDescription*)iface)->GetMembers(tempMembers, numMembers);
+    for (size_t i = 0; i < numMembers; i++) {
+        members[i].iface = (alljoyn_interfacedescription)tempMembers[i]->iface;
+        members[i].memberType = (alljoyn_messagetype)tempMembers[i]->memberType;
+        members[i].name = tempMembers[i]->name.c_str();
+        members[i].signature = tempMembers[i]->signature.c_str();
+        members[i].returnSignature = tempMembers[i]->returnSignature.c_str();
+        members[i].argNames = tempMembers[i]->argNames.c_str();
+        members[i].annotation = tempMembers[i]->annotation;
+        members[i].internal_member = tempMembers[i];
+    }
+
+    if (tempMembers != NULL) {
+        delete [] tempMembers;
+    }
+
+    return ret;
+}
+
+QC_BOOL alljoyn_interfacedescription_hasmember(alljoyn_interfacedescription iface,
+                                               const char* name, const char* inSig, const char* outSig)
+{
+    return (((ajn::InterfaceDescription*)iface)->HasMember(name, inSig, outSig) == true ? QC_TRUE : QC_FALSE);
+}
+
+QC_BOOL alljoyn_interfacedescription_getmethod(const alljoyn_interfacedescription iface, const char* name,
+                                               alljoyn_interfacedescription_member* method)
+{
+    QC_BOOL ret = alljoyn_interfacedescription_getmember(iface, name, method);
+    if (ret == QC_TRUE) {
+        ret = (method->memberType == ALLJOYN_MESSAGE_METHOD_CALL ? QC_TRUE : QC_FALSE);
+    }
+    return ret;
+}

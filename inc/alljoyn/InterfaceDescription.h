@@ -433,6 +433,70 @@ extern AJ_API void alljoyn_interfacedescription_activate(alljoyn_interfacedescri
 extern AJ_API QC_BOOL alljoyn_interfacedescription_getmember(const alljoyn_interfacedescription iface, const char* name,
                                                              alljoyn_interfacedescription_member* member);
 
+/**
+ * Add a member to the interface.
+ *
+ * @param iface       Interface on which to add the member.
+ * @param type        Message type.
+ * @param name        Name of member.
+ * @param inputSig    Signature of input parameters or NULL for none.
+ * @param outSig      Signature of output parameters or NULL for none.
+ * @param argNames    Comma separated list of input and then output arg names used in annotation XML.
+ * @param annotation  Annotation flags.
+ *
+ * @return
+ *      - #ER_OK if successful
+ *      - #ER_BUS_MEMBER_ALREADY_EXISTS if member already exists
+ */
+extern AJ_API QStatus alljoyn_interfacedescription_addmember(alljoyn_interfacedescription iface, alljoyn_messagetype type,
+                                                             const char* name, const char* inputSig, const char* outSig,
+                                                             const char* argNames, uint8_t annotation);
+
+/**
+ * Get all the members.
+ *
+ * @param iface       The interface from which to get all members.
+ * @param members     A pointer to a Member array to receive the members. Can be NULL in
+ *                    which case no members are returned and the return value gives the number
+ *                    of members available.
+ * @param numMembers  The size of the Member array. If this value is smaller than the total
+ *                    number of members only numMembers will be returned.
+ *
+ * @return  The number of members returned or the total number of members if members is NULL.
+ */
+extern AJ_API size_t alljoyn_interfacedescription_getmembers(const alljoyn_interfacedescription iface,
+                                                             alljoyn_interfacedescription_member* members,
+                                                             size_t numMembers);
+
+/**
+ * Check for existence of a member. Optionally check the signature also.
+ * @remark
+ * if the a signature is not provided this method will only check to see if
+ * a member with the given @c name exists.  If a signature is provided a
+ * member with the given @c name and @c signature must exist for this to return true.
+ *
+ * @param iface      Interface to query for a member.
+ * @param name       Name of the member to lookup
+ * @param inSig      Input parameter signature of the member to lookup
+ * @param outSig     Output parameter signature of the member to lookup (leave NULL for signals)
+ * @return true if the member name exists.
+ */
+extern AJ_API QC_BOOL alljoyn_interfacedescription_hasmember(alljoyn_interfacedescription iface,
+                                                             const char* name, const char* inSig,
+                                                             const char* outSig);
+/**
+ * Lookup a member method description by name
+ *
+ * @param iface  Interface on which to look up the method.
+ * @param name   Name of the method to lookup
+ * @param method Storage for method lookup result.
+ *
+ * @return QC_FALSE if does not exist.
+ */
+extern AJ_API QC_BOOL alljoyn_interfacedescription_getmethod(const alljoyn_interfacedescription iface, const char* name,
+                                                             alljoyn_interfacedescription_member* method);
+
+#if 0
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
