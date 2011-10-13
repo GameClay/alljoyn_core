@@ -468,7 +468,14 @@ int main()
                 }
             }
             BigNum exp = a.mod_exp(e, m);
-            CHECK(exp == check);
+            if (exp != check) {
+                printf("mod_exp failed\n");
+                printf("val: %s\n", a.get_hex().c_str());
+                printf("exp: %s\n", e.get_hex().c_str());
+                printf("mod: %s\n", m.get_hex().c_str());
+                printf("!!!!!check failed\n");
+                exit(1);
+            }
         }
         printf("%d ", i);
         if ((i % 20) == 0) {
