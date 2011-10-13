@@ -177,14 +177,15 @@ QStatus InterfaceDescription::AddMember(AllJoynMessageType type,
                                         const char* inSig,
                                         const char* outSig,
                                         const char* argNames,
-                                        uint8_t annotation)
+                                        uint8_t annotation,
+                                        const char* accessPerms)
 {
     if (isActivated) {
         return ER_BUS_INTERFACE_ACTIVATED;
     }
 
     StringMapKey key = qcc::String(name);
-    Member member(this, type, name, inSig, outSig, argNames, annotation);
+    Member member(this, type, name, inSig, outSig, argNames, annotation, accessPerms);
     pair<StringMapKey, Member> item(key, member);
     pair<map<StringMapKey, Member>::iterator, bool> ret = defs->members.insert(item);
     return ret.second ? ER_OK : ER_BUS_MEMBER_ALREADY_EXISTS;
