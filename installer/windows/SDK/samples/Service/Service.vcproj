@@ -42,7 +42,7 @@
 				Name="VCCLCompilerTool"
 				AdditionalOptions="/vmm /vmg"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\aj\alljoyn_core\build\windows\x86\debug\dist\inc;$(NOINHERIT)"
+				AdditionalIncludeDirectories="C:\Alljoyn\SDK\CPP\inc;$(NOINHERIT)"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;QCC_OS_GROUP_WINDOWS;QCC_OS_WINDOWS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -62,9 +62,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="alljoyn.lib libeay32.lib ssleay32.lib wsock32.lib ws2_32.lib secur32.lib $(NOINHERIT)"
+				AdditionalDependencies="alljoyn.lib wsock32.lib ws2_32.lib secur32.lib crypt32.lib Bcrypt.lib Ncrypt.lib $(NOINHERIT)"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="C:\aj\alljoyn_core\build\windows\x86\debug\dist\lib;&quot;C:\OpenSSL-Win32\lib&quot;;$(NOINHERIT)"
+				AdditionalLibraryDirectories="C:\Alljoyn\SDK\CPP\lib\Debug;$(NOINHERIT)"
 				IgnoreDefaultLibraryNames="msvcrt.lib"
 				GenerateDebugInformation="true"
 				SubSystem="1"
