@@ -45,18 +45,18 @@ namespace ajn {
 
 /**
  * Get the assigned permissions of the installed Android package with specific user id
- * @Param uid          The user Id
- * @Param permissions  Container to store the permission entries
- * @Return true if permission information for the user id is found
+ * @param uid          The user Id
+ * @param permissions  Container to store the permission entries
+ * @return true if permission information for the user id is found
  */
 static bool GetPermsAssignedByAndroid(const uint32_t uid, std::set<qcc::String>& permissions);
 
 /**
  * Get the assigned permissions of the installed Android package with specific shared user id
- * @Param sharedUid    The shared user Id
- * @Param permissions  Container to store the permission entries
- * @Param root         The root element of a parsed xml file
- * @Return true if permission information for the shared user id is found
+ * @param sharedUid    The shared user Id
+ * @param permissions  Container to store the permission entries
+ * @param root         The root element of a parsed xml file
+ * @return true if permission information for the shared user id is found
  */
 static bool GetPermsBySharedUserId(const char* sharedUid, std::set<qcc::String>& permissions, const XmlElement& root);
 
