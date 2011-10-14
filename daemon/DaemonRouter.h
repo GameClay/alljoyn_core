@@ -85,7 +85,7 @@ class DaemonRouter : public Router {
      *
      * @param guid   GUID of bus associated with this router.
      */
-    void SetGlobalGUID(const qcc::GUID& guid) { nameTable.SetGUID(guid); }
+    void SetGlobalGUID(const qcc::GUID128& guid) { nameTable.SetGUID(guid); }
 
     /**
      * Generate a unique endpoint name.

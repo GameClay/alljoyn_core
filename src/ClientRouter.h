@@ -122,7 +122,7 @@ class ClientRouter : public Router, public qcc::AlarmListener {
      *
      * @param guid   GUID of bus associated with this router.
      */
-    void SetGlobalGUID(const qcc::GUID& guid) { }
+    void SetGlobalGUID(const qcc::GUID128& guid) { }
 
     /**
      * Destructor

@@ -109,7 +109,7 @@ class Router {
      *
      * @param guid   GUID of bus associated with this router.
      */
-    virtual void SetGlobalGUID(const qcc::GUID& guid) = 0;
+    virtual void SetGlobalGUID(const qcc::GUID128& guid) = 0;
 };
 
 }

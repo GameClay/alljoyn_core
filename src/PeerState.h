@@ -113,12 +113,12 @@ class _PeerState {
      *
      * @return  Returns the GUID for this peer.
      */
-    const qcc::GUID& GetGuid() { return guid; }
+    const qcc::GUID128& GetGuid() { return guid; }
 
     /**
      * Sets the GUID for this peer.
      */
-    void SetGuid(const qcc::GUID& guid) { this->guid = guid; }
+    void SetGuid(const qcc::GUID128& guid) { this->guid = guid; }
 
     /**
      * Sets the session key for this peer
@@ -220,7 +220,7 @@ class _PeerState {
     /**
      * The GUID for this peer.
      */
-    qcc::GUID guid;
+    qcc::GUID128 guid;
 
     /**
      * The session keys (unicast and broadcast) for this peer.

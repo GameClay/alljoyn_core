@@ -48,7 +48,7 @@ qcc::String NameTable::GenerateUniqueName(void)
     return uniquePrefix + U32ToString(IncrementAndFetch((int32_t*)&uniqueId));
 }
 
-void NameTable::SetGUID(const qcc::GUID& guid)
+void NameTable::SetGUID(const qcc::GUID128& guid)
 {
     Log(LOG_INFO, "AllJoyn Daemon GUID = %s (%s)\n", guid.ToString().c_str(), guid.ToShortString().c_str());
     uniquePrefix = ":";

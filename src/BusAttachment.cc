@@ -75,7 +75,7 @@ BusAttachment::Internal::Internal(const char* appName, BusAttachment& bus, Trans
     transportList(bus, factories),
     keyStore(application),
     authManager(keyStore),
-    globalGuid(qcc::GUID()),
+    globalGuid(qcc::GUID128()),
     msgSerial(1),
     router(router ? router : new ClientRouter),
     localEndpoint(transportList.GetLocalTransport()->GetLocalEndpoint()),
@@ -262,7 +262,7 @@ QStatus BusAttachment::TryAlternativeDaemon(RemoteEndpoint** newep)
 
     /* If bundle daemon connect spec is not set yet, then generate a unique connect spec using UUID*/
     if (bundleConnectSpec.empty()) {
-        qcc::GUID specGuid;
+        qcc::GUID128 specGuid;
         bundleConnectSpec = "unix:abstract=alljoyn-" + specGuid.ToString();
     }
 
@@ -1781,10 +1781,10 @@ QStatus BusAttachment::ReloadKeyStore()
 
 QStatus BusAttachment::ClearKeys(const qcc::String& guid)
 {
-    if (!qcc::GUID::IsGUID(guid)) {
+    if (!qcc::GUID128::IsGUID(guid)) {
         return ER_INVALID_GUID;
     } else {
-        qcc::GUID g(guid);
+        qcc::GUID128 g(guid);
         if (busInternal->keyStore.HasKey(g)) {
             return busInternal->keyStore.DelKey(g);
         } else {
@@ -1798,10 +1798,10 @@ QStatus BusAttachment::SetKeyExpiration(const qcc::String& guid, uint32_t timeou
     if (timeout == 0) {
         return ClearKeys(guid);
     }
-    if (!qcc::GUID::IsGUID(guid)) {
+    if (!qcc::GUID128::IsGUID(guid)) {
         return ER_INVALID_GUID;
     } else {
-        qcc::GUID g(guid);
+        qcc::GUID128 g(guid);
         uint64_t millis = 1000ull * timeout;
         Timespec expiration(millis, TIME_RELATIVE);
         return busInternal->keyStore.SetKeyExpiration(g, expiration);
@@ -1810,10 +1810,10 @@ QStatus BusAttachment::SetKeyExpiration(const qcc::String& guid, uint32_t timeou
 
 QStatus BusAttachment::GetKeyExpiration(const qcc::String& guid, uint32_t& timeout)
 {
-    if (!qcc::GUID::IsGUID(guid)) {
+    if (!qcc::GUID128::IsGUID(guid)) {
         return ER_INVALID_GUID;
     } else {
-        qcc::GUID g(guid);
+        qcc::GUID128 g(guid);
         Timespec expiration;
         QStatus status = busInternal->keyStore.GetKeyExpiration(g, expiration);
         if (status == ER_OK) {

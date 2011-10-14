@@ -206,12 +206,12 @@ qcc::String AuthMechLogon::Response(const qcc::String& challenge,
 /*
  * Generate a hex encoded GUID from a user id.
  */
-static void UserNameToGuid(qcc::GUID& guid, qcc::String userName)
+static void UserNameToGuid(qcc::GUID128& guid, qcc::String userName)
 {
     static const char label[] = "SRP Logon Verifier";
     Crypto_SHA1 sha1;
     uint8_t digest[Crypto_SHA1::DIGEST_SIZE];
-    assert(Crypto_SHA1::DIGEST_SIZE >= qcc::GUID::SIZE);
+    assert(Crypto_SHA1::DIGEST_SIZE >= qcc::GUID128::SIZE);
     /*
      * The label makes the generated Guid unique for this authentication mechanism.
      */
@@ -227,7 +227,7 @@ QStatus AuthMechLogon::AddLogonEntry(KeyStore& keyStore, const char* userName, c
     QStatus status = ER_OK;
     Crypto_SRP srp;
     qcc::String tmp;
-    qcc::GUID userGuid(0);
+    qcc::GUID128 userGuid(0);
 
     UserNameToGuid(userGuid, userName);
 
@@ -256,7 +256,7 @@ qcc::String AuthMechLogon::Challenge(const qcc::String& response,
     QStatus status = ER_OK;
     qcc::String challenge;
     qcc::String userName;
-    qcc::GUID userGuid(0);
+    qcc::GUID128 userGuid(0);
     KeyBlob userBlob;
     size_t pos;
 

@@ -1881,7 +1881,7 @@ void AllJoynObj::DetachSessionSignalHandler(const InterfaceDescription::Member* 
     const char* src = args[1].v_string.str;
 
     /* Do not process our own detach message signals */
-    if (::strncmp(guid.ToShortString().c_str(), msg->GetSender() + 1, qcc::GUID::SHORT_SIZE) == 0) {
+    if (::strncmp(guid.ToShortString().c_str(), msg->GetSender() + 1, qcc::GUID128::SHORT_SIZE) == 0) {
         return;
     }
 
@@ -2475,7 +2475,7 @@ void AllJoynObj::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
 
             /* Let directly connected daemons know that this virtual endpoint is gone. */
             map<qcc::StringMapKey, RemoteEndpoint*>::iterator it2 = b2bEndpoints.begin();
-            const qcc::GUID& otherSideGuid = endpoint.GetRemoteGUID();
+            const qcc::GUID128& otherSideGuid = endpoint.GetRemoteGUID();
             while (it2 != b2bEndpoints.end()) {
                 if ((it2->second != &endpoint) && (it2->second->GetRemoteGUID() != otherSideGuid)) {
                     Message sigMsg(bus);

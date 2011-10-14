@@ -82,8 +82,8 @@ QStatus AuthMechRSA::Init(AuthRole authRole, const qcc::String& authPeer)
     /*
      * GUIDS for storing cert and private key blobs in the key store
      */
-    qcc::GUID certGuid(SELF_CERT_GUID);
-    qcc::GUID privGuid(SELF_PRIV_GUID);
+    qcc::GUID128 certGuid(SELF_CERT_GUID);
+    qcc::GUID128 privGuid(SELF_PRIV_GUID);
     if (!listener.RequestCredentials(GetName(), authPeer.c_str(), authCount, "", mask, creds)) {
         return ER_AUTH_FAIL;
     }
@@ -99,7 +99,7 @@ QStatus AuthMechRSA::Init(AuthRole authRole, const qcc::String& authPeer)
      * If the listener didn't provide a cert chain see if we have stored credentials.
      */
     if (!creds.IsSet(AuthListener::CRED_CERT_CHAIN)) {
-        qcc::GUID peerGuid;
+        qcc::GUID128 peerGuid;
         keyStore.GetGuid(peerGuid);
         KeyBlob certBlob;
         QStatus status = keyStore.GetKey(certGuid, certBlob);

@@ -99,7 +99,7 @@ class KeyStore {
      *      - ER_BUS_KEY_UNAVAILABLE if key is unavailable
      *      - ER_BUS_KEY_EXPIRED if the requested key has expired
      */
-    QStatus GetKey(const qcc::GUID& guid, qcc::KeyBlob& key);
+    QStatus GetKey(const qcc::GUID128& guid, qcc::KeyBlob& key);
 
     /**
      * Add a key blob to the key store
@@ -109,7 +109,7 @@ class KeyStore {
      * @param expires  Time when the key expires.
      * @return ER_OK
      */
-    QStatus AddKey(const qcc::GUID& guid, const qcc::KeyBlob& key);
+    QStatus AddKey(const qcc::GUID128& guid, const qcc::KeyBlob& key);
 
     /**
      * Remove a key blob from the key store
@@ -117,7 +117,7 @@ class KeyStore {
      * @param guid  The unique identifier for the key
      * return ER_OK
      */
-    QStatus DelKey(const qcc::GUID& guid);
+    QStatus DelKey(const qcc::GUID128& guid);
 
     /**
      * Set expiration time on a key blob from the key store
@@ -126,7 +126,7 @@ class KeyStore {
      * @param expiration  Time to expire the key
      * return ER_OK
      */
-    QStatus SetKeyExpiration(const qcc::GUID& guid, const qcc::Timespec& expiration);
+    QStatus SetKeyExpiration(const qcc::GUID128& guid, const qcc::Timespec& expiration);
 
     /**
      * Get expiration time on a key blob from the key store
@@ -135,7 +135,7 @@ class KeyStore {
      * @param expiration  Time the key will expire
      * return ER_OK
      */
-    QStatus GetKeyExpiration(const qcc::GUID& guid, qcc::Timespec& expiration);
+    QStatus GetKeyExpiration(const qcc::GUID128& guid, qcc::Timespec& expiration);
 
     /**
      * Test is there is a requested key blob in the key store
@@ -143,7 +143,7 @@ class KeyStore {
      * @param guid  The unique identifier for the key
      * @return      Returns true if the requested key is in the key store.
      */
-    bool HasKey(const qcc::GUID& guid);
+    bool HasKey(const qcc::GUID128& guid);
 
     /**
      * Return the GUID for this key store
@@ -152,7 +152,7 @@ class KeyStore {
      *      - ER_OK on success
      *      - ER_BUS_KEY_STORE_NOT_LOADED if the GUID is not available
      */
-    QStatus GetGuid(qcc::GUID& guid)
+    QStatus GetGuid(qcc::GUID128& guid)
     {
         if (storeState == UNAVAILABLE) {
             return ER_BUS_KEY_STORE_NOT_LOADED;
@@ -276,7 +276,7 @@ class KeyStore {
     /**
      * Type for a key map
      */
-    typedef std::map<qcc::GUID, KeyRecord> KeyMap;
+    typedef std::map<qcc::GUID128, KeyRecord> KeyMap;
 
     /**
      * In memory copy of the key store
@@ -286,7 +286,7 @@ class KeyStore {
     /**
      * GUID for keys that have been deleted
      */
-    std::set<qcc::GUID> deletions;
+    std::set<qcc::GUID128> deletions;
 
     /**
      * Default listener for handling load/store requests
@@ -301,7 +301,7 @@ class KeyStore {
     /**
      * The guid for this key store
      */
-    qcc::GUID thisGuid;
+    qcc::GUID128 thisGuid;
 
     /**
      * Mutex to protect key store

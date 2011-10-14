@@ -99,7 +99,7 @@ QStatus EndpointAuth::Hello()
         status = response->UnmarshalArgs("ssu");
         if (ER_OK == status) {
             uniqueName = response->GetArg(0)->v_string.str;
-            remoteGUID = qcc::GUID(response->GetArg(1)->v_string.str);
+            remoteGUID = qcc::GUID128(response->GetArg(1)->v_string.str);
             remoteProtocolVersion = response->GetArg(2)->v_uint32;
             if (remoteGUID == bus.GetInternal().GetGlobalGUID()) {
                 QCC_DbgPrintf(("BusHello was sent to self"));
@@ -184,7 +184,7 @@ QStatus EndpointAuth::WaitHello()
             status = hello->UnmarshalArgs("su");
             hello->GetArgs(numArgs, args);
             if ((ER_OK == status) && (2 == numArgs) && (ALLJOYN_STRING == args[0].typeId) && (ALLJOYN_UINT32 == args[1].typeId)) {
-                remoteGUID = qcc::GUID(args[0].v_string.str);
+                remoteGUID = qcc::GUID128(args[0].v_string.str);
                 remoteProtocolVersion = args[1].v_uint32;
                 if (remoteGUID == bus.GetInternal().GetGlobalGUID()) {
                     QCC_DbgPrintf(("BusHello was sent by self"));
@@ -324,12 +324,12 @@ QStatus EndpointAuth::Establish(const qcc::String& authMechanisms,
                  * Get the server's GUID
                  */
                 qcc::String id = sasl.GetRemoteId();
-                if (!qcc::GUID::IsGUID(id)) {
+                if (!qcc::GUID128::IsGUID(id)) {
                     QCC_DbgPrintf(("Expected GUID got: %s", id.c_str()));
                     status = ER_BUS_ESTABLISH_FAILED;
                     goto ExitEstablish;
                 }
-                remoteGUID = qcc::GUID(id);
+                remoteGUID = qcc::GUID128(id);
                 /*
                  * Remember the authentication mechanism that was used
                  */

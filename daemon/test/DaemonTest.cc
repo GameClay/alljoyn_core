@@ -187,7 +187,7 @@ int main(int argc, char** argv, char** envArg)
 {
     QStatus status = ER_OK;
     unsigned long reportInterval = 1000;
-    qcc::GUID guid;
+    qcc::GUID128 guid;
 
     printf("AllJoyn Library version: %s\n", ajn::GetVersion());
     printf("AllJoyn Library build info: %s\n", ajn::GetBuildInfo());

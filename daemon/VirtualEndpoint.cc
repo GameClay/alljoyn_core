@@ -250,7 +250,7 @@ bool VirtualEndpoint::CanUseRoute(const RemoteEndpoint& b2bEndpoint) const
     return isFound;
 }
 
-bool VirtualEndpoint::CanRouteWithout(const qcc::GUID& guid) const
+bool VirtualEndpoint::CanRouteWithout(const qcc::GUID128& guid) const
 {
     bool canRoute = false;
     m_b2bEndpointsLock.Lock();

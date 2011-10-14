@@ -51,7 +51,7 @@ ThreadReturn STDCALL ServerThread(void* arg)
 {
     SocketFd sockfd;
     QStatus status;
-    qcc::GUID serverGUID;
+    qcc::GUID128 serverGUID;
     Bus bus(true);
     QCC_SyncPrintf("Starting server thread\n");
 

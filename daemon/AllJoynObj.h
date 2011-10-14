@@ -425,7 +425,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     };
     std::multimap<std::pair<qcc::String, SessionId>, SessionMapEntry> sessionMap;  /**< Map (endpointName,sessionId) to session info */
 
-    const qcc::GUID& guid;                               /**< Global GUID of this daemon */
+    const qcc::GUID128& guid;                               /**< Global GUID of this daemon */
 
     const InterfaceDescription::Member* exchangeNamesSignal;   /**< org.alljoyn.Daemon.ExchangeNames signal member */
     const InterfaceDescription::Member* detachSessionSignal;   /**< org.alljoyn.Daemon.DetachSession signal member */

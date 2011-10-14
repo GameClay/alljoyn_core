@@ -1098,7 +1098,7 @@ static Transport* BTTransportFactory(BusAttachment& bus, const char* transType)
 int main(int argc, char** argv)
 {
     QStatus status = ER_OK;
-    qcc::GUID guid;
+    qcc::GUID128 guid;
     Environ* env;
 
     /* Parse command line args */

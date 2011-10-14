@@ -175,7 +175,7 @@ class VirtualEndpoint : public BusEndpoint {
      * @param guid     GUID of daemon that should be ignored when determing whether vep can route to dest.
      * @return true iff the vep can route to its dest without the aid of daemon identified by guid.
      */
-    bool CanRouteWithout(const qcc::GUID& guid) const;
+    bool CanRouteWithout(const qcc::GUID128& guid) const;
 
     /**
      * Get the set of sessionIds that route through a given bus-to-bus endpoint.

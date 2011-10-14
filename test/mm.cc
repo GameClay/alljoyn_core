@@ -223,7 +223,7 @@ void dummy_function(void)
 int main(int argc, char** argv) {
 
     // Create message bus and sample specific bus object
-    qcc::GUID guid;
+    qcc::GUID128 guid;
     Bus msgBus(false);
     DeviceServiceAllJoynObj busObj(msgBus, "/obj1");
 

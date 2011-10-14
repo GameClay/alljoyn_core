@@ -381,7 +381,7 @@ int main(int argc, char** argv)
 #endif
 
     QStatus status = ER_OK;
-    qcc::GUID guid;
+    qcc::GUID128 guid;
     bool mimicBbservice = false;
     bool noBT = false;
     ConfigDB* config(ConfigDB::GetConfigDB());

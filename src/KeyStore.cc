@@ -292,7 +292,7 @@ QStatus KeyStore::Pull(Source& source, const qcc::String& password)
 
     lock.Lock();
 
-    uint8_t guidBuf[qcc::GUID::SIZE];
+    uint8_t guidBuf[qcc::GUID128::SIZE];
     size_t pulled;
     size_t len = 0;
     uint16_t version;
@@ -309,7 +309,7 @@ QStatus KeyStore::Pull(Source& source, const qcc::String& password)
     }
     /* Pull the application GUID */
     if (status == ER_OK) {
-        status = source.PullBytes(guidBuf, qcc::GUID::SIZE, pulled);
+        status = source.PullBytes(guidBuf, qcc::GUID128::SIZE, pulled);
         thisGuid.SetBytes(guidBuf);
     }
 
@@ -363,10 +363,10 @@ QStatus KeyStore::Pull(Source& source, const qcc::String& password)
                 uint32_t rev;
                 status = strSource.PullBytes(&rev, sizeof(rev), pulled);
                 if (status == ER_OK) {
-                    status = strSource.PullBytes(guidBuf, qcc::GUID::SIZE, pulled);
+                    status = strSource.PullBytes(guidBuf, qcc::GUID128::SIZE, pulled);
                 }
                 if (status == ER_OK) {
-                    qcc::GUID guid;
+                    qcc::GUID128 guid;
                     guid.SetBytes(guidBuf);
                     KeyRecord& keyRec = (*keys)[guid];
                     keyRec.revision = rev;
@@ -457,7 +457,7 @@ QStatus KeyStore::Reload()
         /*
          * Handle deletions
          */
-        std::set<qcc::GUID>::iterator itDel;
+        std::set<qcc::GUID128>::iterator itDel;
         for (itDel = deletions.begin(); itDel != deletions.end(); ++itDel) {
             it = keys->find(*itDel);
             if ((it != keys->end()) && (it->second.revision <= currentRevision)) {
@@ -515,7 +515,7 @@ QStatus KeyStore::Push(Sink& sink)
     KeyMap::iterator it;
     for (it = keys->begin(); it != keys->end(); ++it) {
         strSink.PushBytes(&it->second.revision, sizeof(revision), pushed);
-        strSink.PushBytes(it->first.GetBytes(), qcc::GUID::SIZE, pushed);
+        strSink.PushBytes(it->first.GetBytes(), qcc::GUID128::SIZE, pushed);
         it->second.key.Store(strSink);
         QCC_DbgPrintf(("KeyStore::Push rev:%d GUID %s", it->second.revision, it->first.ToString().c_str()));
     }
@@ -540,7 +540,7 @@ QStatus KeyStore::Push(Sink& sink)
      * Store the GUID
      */
     if (status == ER_OK) {
-        status = sink.PushBytes(thisGuid.GetBytes(), qcc::GUID::SIZE, pushed);
+        status = sink.PushBytes(thisGuid.GetBytes(), qcc::GUID128::SIZE, pushed);
     }
     if (status != ER_OK) {
         goto ExitPush;
@@ -579,7 +579,7 @@ ExitPush:
     return status;
 }
 
-QStatus KeyStore::GetKey(const qcc::GUID& guid, KeyBlob& key)
+QStatus KeyStore::GetKey(const qcc::GUID128& guid, KeyBlob& key)
 {
     if (storeState == UNAVAILABLE) {
         return ER_BUS_KEYSTORE_NOT_LOADED;
@@ -597,7 +597,7 @@ QStatus KeyStore::GetKey(const qcc::GUID& guid, KeyBlob& key)
     return status;
 }
 
-bool KeyStore::HasKey(const qcc::GUID& guid)
+bool KeyStore::HasKey(const qcc::GUID128& guid)
 {
     if (storeState == UNAVAILABLE) {
         return false;
@@ -609,7 +609,7 @@ bool KeyStore::HasKey(const qcc::GUID& guid)
     return hasKey;
 }
 
-QStatus KeyStore::AddKey(const qcc::GUID& guid, const KeyBlob& key)
+QStatus KeyStore::AddKey(const qcc::GUID128& guid, const KeyBlob& key)
 {
     if (storeState == UNAVAILABLE) {
         return ER_BUS_KEYSTORE_NOT_LOADED;
@@ -625,7 +625,7 @@ QStatus KeyStore::AddKey(const qcc::GUID& guid, const KeyBlob& key)
     return ER_OK;
 }
 
-QStatus KeyStore::DelKey(const qcc::GUID& guid)
+QStatus KeyStore::DelKey(const qcc::GUID128& guid)
 {
     if (storeState == UNAVAILABLE) {
         return ER_BUS_KEYSTORE_NOT_LOADED;
@@ -640,7 +640,7 @@ QStatus KeyStore::DelKey(const qcc::GUID& guid)
     return ER_OK;
 }
 
-QStatus KeyStore::SetKeyExpiration(const qcc::GUID& guid, const Timespec& expiration)
+QStatus KeyStore::SetKeyExpiration(const qcc::GUID128& guid, const Timespec& expiration)
 {
     if (storeState == UNAVAILABLE) {
         return ER_BUS_KEYSTORE_NOT_LOADED;
@@ -661,7 +661,7 @@ QStatus KeyStore::SetKeyExpiration(const qcc::GUID& guid, const Timespec& expira
     return status;
 }
 
-QStatus KeyStore::GetKeyExpiration(const qcc::GUID& guid, Timespec& expiration)
+QStatus KeyStore::GetKeyExpiration(const qcc::GUID128& guid, Timespec& expiration)
 {
     if (storeState == UNAVAILABLE) {
         return ER_BUS_KEYSTORE_NOT_LOADED;

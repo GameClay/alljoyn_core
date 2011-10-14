@@ -104,7 +104,7 @@ class EndpointAuth : public SASLEngine::ExtensionHandler {
      * @return   The GUID for the remote side of this connection.
      *
      */
-    const qcc::GUID& GetRemoteGUID() const { return remoteGUID; }
+    const qcc::GUID128& GetRemoteGUID() const { return remoteGUID; }
 
     /**
      * Get the AllJoyn protocol version number of the remote side.
@@ -133,7 +133,7 @@ class EndpointAuth : public SASLEngine::ExtensionHandler {
 
     bool isAccepting;                ///< Indicates if this is a client or server
 
-    qcc::GUID remoteGUID;            ///< GUID of the remote side (when applicable)
+    qcc::GUID128 remoteGUID;            ///< GUID of the remote side (when applicable)
     uint32_t remoteProtocolVersion;  ///< ALLJOYN protocol version of the remote side
 
     ProtectedAuthListener authListener;  ///< Authentication listener

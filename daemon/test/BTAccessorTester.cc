@@ -193,7 +193,7 @@ class TestDriver : public BTTransport {
     BTAccessor* btAccessor;
     BusAttachment bus;
     const CmdLineOptions& opts;
-    qcc::GUID busGuid;
+    qcc::GUID128 busGuid;
     RemoteEndpoint* ep;
 
     deque<bool> btDevAvailQueue;
@@ -215,8 +215,8 @@ class TestDriver : public BTTransport {
     void ReportTestDetail(const String& detail, size_t indent = 0) const;
     bool SendBuf(const uint8_t* buf, size_t size);
     bool RecvBuf(uint8_t* buf, size_t size);
-    String BuildName(const BTBusAddress& addr, const GUID& guid, size_t entry);
-    void HashName(const BTBusAddress& addr, const GUID& guid, uint32_t serial, const String& name, String& hash);
+    String BuildName(const BTBusAddress& addr, const GUID128& guid, size_t entry);
+    void HashName(const BTBusAddress& addr, const GUID128& guid, uint32_t serial, const String& name, String& hash);
 
   private:
     list<TestCaseInfo> tcList;
@@ -530,7 +530,7 @@ bool TestDriver::RecvBuf(uint8_t* buf, size_t size)
     return true;
 }
 
-String TestDriver::BuildName(const BTBusAddress& addr, const GUID& guid, size_t entry)
+String TestDriver::BuildName(const BTBusAddress& addr, const GUID128& guid, size_t entry)
 {
     String hash;
     String baseName = (opts.basename +
@@ -544,7 +544,7 @@ String TestDriver::BuildName(const BTBusAddress& addr, const GUID& guid, size_t 
 }
 
 void TestDriver::HashName(const BTBusAddress& addr,
-                          const GUID& guid,
+                          const GUID128& guid,
                           uint32_t serial,
                           const String& name,
                           String& hash)
@@ -1277,15 +1277,15 @@ exit:
 bool ClientTestDriver::ExchangeData(size_t size)
 {
     bool tcSuccess = true;
-    size_t bufSize = size * qcc::GUID::SIZE;
+    size_t bufSize = size * qcc::GUID128::SIZE;
     uint8_t* txBuf = new uint8_t[bufSize];
     uint8_t* rxBuf = new uint8_t[bufSize];
     uint8_t* buf = new uint8_t[bufSize];
     uint8_t* expBuf = new uint8_t[bufSize];
 
-    for (size_t i = 0; i < bufSize; i += qcc::GUID::SIZE) {
-        memcpy(txBuf + i, busGuid.GetBytes(), qcc::GUID::SIZE);
-        memcpy(expBuf + i, connNode->GetGUID().GetBytes(), qcc::GUID::SIZE);
+    for (size_t i = 0; i < bufSize; i += qcc::GUID128::SIZE) {
+        memcpy(txBuf + i, busGuid.GetBytes(), qcc::GUID128::SIZE);
+        memcpy(expBuf + i, connNode->GetGUID().GetBytes(), qcc::GUID128::SIZE);
     }
 
     tcSuccess = SendBuf(txBuf, bufSize);
@@ -1528,13 +1528,13 @@ bool ServerTestDriver::TC_ExchangeLargeData()
 bool ServerTestDriver::ExchangeData(size_t size)
 {
     bool tcSuccess = true;
-    size_t bufSize = size * qcc::GUID::SIZE;
+    size_t bufSize = size * qcc::GUID128::SIZE;
     uint8_t* txBuf = new uint8_t[bufSize];
     uint8_t* rxBuf = new uint8_t[bufSize];
     uint8_t* buf = new uint8_t[bufSize];
 
-    for (size_t i = 0; i < bufSize; i += qcc::GUID::SIZE) {
-        memcpy(buf + i, busGuid.GetBytes(), qcc::GUID::SIZE);
+    for (size_t i = 0; i < bufSize; i += qcc::GUID128::SIZE) {
+        memcpy(buf + i, busGuid.GetBytes(), qcc::GUID128::SIZE);
     }
 
     tcSuccess = RecvBuf(rxBuf, bufSize);

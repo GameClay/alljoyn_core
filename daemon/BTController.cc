@@ -2132,7 +2132,7 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
 
         String busName(bn);
         BTBusAddress nodeAddr(BDAddress(rawBdAddr), psm);
-        GUID guid(guidStr);
+        GUID128 guid(guidStr);
 
         QCC_DbgPrintf(("Processing names for new minion %s (GUID: %s  uniqueName: %s):",
                        nodeAddr.ToString().c_str(),
@@ -2328,7 +2328,7 @@ QStatus BTController::ExtractAdInfo(const MsgArg* entries, size_t size, BTNodeDB
 
             if (status == ER_OK) {
                 String guidStr(guidRaw);
-                GUID guid(guidStr);
+                GUID128 guid(guidStr);
                 String empty;
                 BTBusAddress addr(rawAddr, psm);
                 BTNodeInfo node(addr, empty, guid);
@@ -2413,7 +2413,7 @@ QStatus BTController::ExtractNodeInfo(const MsgArg* entries, size_t size, BTNode
             node->SetConnectNode(n->IsValid() ? n->GetConnectNode() : connNode);
 
             String guidStr(guidRaw);
-            GUID guid(guidStr);
+            GUID128 guid(guidStr);
             node->SetGUID(guid);
             node->SetUUIDRev(uuidRev);
             node->SetExpireTime(expireTime);

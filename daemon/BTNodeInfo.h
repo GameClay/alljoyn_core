@@ -118,7 +118,7 @@ class _BTNodeInfo {
      * @param uniqueName    Unique bus name of the daemon on the node
      * @param guid          Bus GUID of the node
      */
-    _BTNodeInfo(const BTBusAddress& nodeAddr, const qcc::String& uniqueName, const qcc::GUID& guid) :
+    _BTNodeInfo(const BTBusAddress& nodeAddr, const qcc::String& uniqueName, const qcc::GUID128& guid) :
         guid(guid),
         uniqueName(uniqueName),
         nodeAddr(nodeAddr),
@@ -311,15 +311,15 @@ class _BTNodeInfo {
      *
      * @return  String representation of the bus GUID.
      */
-    const qcc::GUID& GetGUID() const { return guid; }
+    const qcc::GUID128& GetGUID() const { return guid; }
 
     /**
      * Set the bus GUID.
      *
      * @param guid  String representation of the bus GUID.
      */
-    void SetGUID(const qcc::String& guid) { this->guid = qcc::GUID(guid); }
-    void SetGUID(const qcc::GUID& guid) { this->guid = guid; }
+    void SetGUID(const qcc::String& guid) { this->guid = qcc::GUID128(guid); }
+    void SetGUID(const qcc::GUID128& guid) { this->guid = guid; }
 
     /**
      * Get the unique name of the AllJoyn controller object.
@@ -549,7 +549,7 @@ class _BTNodeInfo {
      */
     _BTNodeInfo& operator=(const _BTNodeInfo& other) { return *this; }
 
-    qcc::GUID guid;                 /**< Bus GUID of the node. */
+    qcc::GUID128 guid;                 /**< Bus GUID of the node. */
     qcc::String uniqueName;         /**< Unique bus name of the daemon on the node. */
     BTBusAddress nodeAddr;          /**< Bus address of the node. */
     NodeRelationships relationship; /**< Relationship of node with respect to self. */

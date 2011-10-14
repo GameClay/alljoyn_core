@@ -82,7 +82,7 @@ class NameTable {
      *
      * @param guid   The bus guid.
      */
-    void SetGUID(const qcc::GUID& guid);
+    void SetGUID(const qcc::GUID128& guid);
 
     /**
      * Register a listener that will be called whenever ownership of a bus name

@@ -272,7 +272,7 @@ class LocalEndpoint : public BusEndpoint, public qcc::AlarmListener, public Mess
      *
      * @return  The guid for the local endpoint
      */
-    const qcc::GUID& GetGuid() { return guid; }
+    const qcc::GUID128& GetGuid() { return guid; }
 
     /**
      * Return the user id of the endpoint.
@@ -413,7 +413,7 @@ class LocalEndpoint : public BusEndpoint, public qcc::AlarmListener, public Mess
     BusAttachment& bus;                /**< Message bus */
     qcc::Mutex objectsLock;            /**< Mutex protecting Objects hash table */
     qcc::Mutex replyMapLock;           /**< Mutex protecting replyMap */
-    qcc::GUID guid;                    /**< GUID to uniquely identify a local endpoint */
+    qcc::GUID128 guid;                    /**< GUID to uniquely identify a local endpoint */
     qcc::String uniqueName;            /**< Unique name for endpoint */
 
     std::vector<BusObject*> defaultObjects;  /**< Auto-generated, heap allocated parent objects */

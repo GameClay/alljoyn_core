@@ -288,7 +288,7 @@ void AllJoynPeerObj::ExchangeGroupKeys(const InterfaceDescription::Member* membe
 
 void AllJoynPeerObj::ExchangeGuids(const InterfaceDescription::Member* member, Message& msg)
 {
-    qcc::GUID remotePeerGuid(msg->GetArg(0)->v_string.str);
+    qcc::GUID128 remotePeerGuid(msg->GetArg(0)->v_string.str);
     uint32_t version = msg->GetArg(1)->v_uint32;
     qcc::String localGuidStr = bus.GetInternal().GetKeyStore().GetGuid();
     if (!localGuidStr.empty()) {
@@ -370,8 +370,8 @@ void AllJoynPeerObj::GenSessionKey(const InterfaceDescription::Member* member, M
 {
     QStatus status;
     PeerState peerState = bus.GetInternal().GetPeerStateTable()->GetPeerState(msg->GetSender());
-    qcc::GUID remotePeerGuid(msg->GetArg(0)->v_string.str);
-    qcc::GUID localPeerGuid(msg->GetArg(1)->v_string.str);
+    qcc::GUID128 remotePeerGuid(msg->GetArg(0)->v_string.str);
+    qcc::GUID128 localPeerGuid(msg->GetArg(1)->v_string.str);
     /*
      * Check that target GUID is our GUID.
      */
@@ -436,7 +436,7 @@ void AllJoynPeerObj::AuthAdvance(Message& msg)
         status = sasl->GetMasterSecret(masterSecret);
         mech = sasl->GetMechanism();
         if (status == ER_OK) {
-            qcc::GUID remotePeerGuid(sasl->GetRemoteId());
+            qcc::GUID128 remotePeerGuid(sasl->GetRemoteId());
             /* Tag the master secret with the auth mechanism used to generate it */
             masterSecret.SetTag(mech, KeyBlob::RESPONDER);
             status = keyStore.AddKey(remotePeerGuid, masterSecret);
@@ -567,7 +567,7 @@ QStatus AllJoynPeerObj::AuthenticatePeer(const qcc::String& busName)
     /*
      * Extract the remote guid from the message
      */
-    qcc::GUID remotePeerGuid(replyMsg->GetArg(0)->v_string.str);
+    qcc::GUID128 remotePeerGuid(replyMsg->GetArg(0)->v_string.str);
     uint32_t version = replyMsg->GetArg(1)->v_uint32;
     qcc::String remoteGuidStr = remotePeerGuid.ToString();
 

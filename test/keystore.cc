@@ -48,10 +48,10 @@ static const char testData[] = "This is the message that we are going to encrypt
 
 int main(int argc, char** argv)
 {
-    qcc::GUID guid1;
-    qcc::GUID guid2;
-    qcc::GUID guid3;
-    qcc::GUID guid4;
+    qcc::GUID128 guid1;
+    qcc::GUID128 guid2;
+    qcc::GUID128 guid3;
+    qcc::GUID128 guid4;
     QStatus status = ER_OK;
     KeyBlob key;
 

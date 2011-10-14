@@ -215,7 +215,7 @@ class RemoteEndpoint : public BusEndpoint, public qcc::ThreadListener {
      *
      * @return GUID of the remote side of a bus-to-bus endpoint.
      */
-    const qcc::GUID& GetRemoteGUID() const { return auth.GetRemoteGUID(); }
+    const qcc::GUID128& GetRemoteGUID() const { return auth.GetRemoteGUID(); }
 
     /**
      * Get the connect spec for this endpoint.
