@@ -294,7 +294,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     qcc::Alarm DispatchOperation(DispatchInfo* op, uint32_t delay = 0)
     {
         qcc::Alarm alarm(delay, this, 0, (void*)op);
-        bzBus.GetInternal().GetDispatcher().AddAlarm(alarm);
+        timer.AddAlarm(alarm);
         return alarm;
     }
 
@@ -302,7 +302,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     {
         qcc::Timespec ts(triggerTime);
         qcc::Alarm alarm(ts, this, 0, (void*)op);
-        bzBus.GetInternal().GetDispatcher().AddAlarm(alarm);
+        timer.AddAlarm(alarm);
         return alarm;
     }
 
@@ -383,6 +383,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     mutable qcc::Mutex deviceLock; // Generic lock for device related objects, maps, etc.
     FoundInfoMap foundDevices;  // Map of found AllJoyn devices w/ UUID-Rev and expire time.
     FoundInfoExpireMap foundExpirations;
+    qcc::Timer timer;
     qcc::Alarm expireAlarm;
     qcc::Alarm stopAdAlarm;
     BDAddressSet ignoreAddrs;

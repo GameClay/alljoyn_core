@@ -169,6 +169,7 @@ BTTransport::BTAccessor::BTAccessor(BTTransport* transport,
     busGuid(busGuid),
     transport(transport),
     recordHandle(0),
+    timer("BT-Dispatcher"),
     bluetoothAvailable(false),
     discoverable(false),
     discoveryActive(false),
@@ -249,6 +250,8 @@ BTTransport::BTAccessor::BTAccessor(BTTransport* transport,
 
     bzManagerObj.AddInterface(*org.bluez.Manager.interface);
     bzBus.RegisterBusListener(*this);
+
+    timer.Start();
 }
 
 
@@ -454,7 +457,7 @@ QStatus BTTransport::BTAccessor::StartDiscoverability(uint32_t duration)
     discoverable = true;
     if (bluetoothAvailable) {
         status = SetDiscoverabilityProperty();
-        bzBus.GetInternal().GetDispatcher().RemoveAlarm(stopAdAlarm);
+        timer.RemoveAlarm(stopAdAlarm);
         if (duration > 0) {
             stopAdAlarm = DispatchOperation(new DispatchInfo(DispatchInfo::STOP_DISCOVERABILITY),  duration * 1000);
         }
@@ -1245,7 +1248,7 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
                 GetTimeNow(&now);
                 foundInfo.timeout = now.GetAbsoluteMillis() + EXPIRE_DEVICE_TIME;
                 foundExpirations.insert(pair<uint64_t, BDAddress>(foundInfo.timeout, addr));
-                if (!bzBus.GetInternal().GetDispatcher().HasAlarm(expireAlarm)) {
+                if (!timer.HasAlarm(expireAlarm)) {
                     expireAlarm = DispatchOperation(new DispatchInfo(DispatchInfo::EXPIRE_DEVICE_FOUND),
                                                     foundExpirations.begin()->first + EXPIRE_DEVICE_TIME_EXT);
                 }
