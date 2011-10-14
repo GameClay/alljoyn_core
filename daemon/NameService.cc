@@ -836,7 +836,11 @@ void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& 
                 entry.m_addr = buffer;
 
 #if NS_BROADCAST
+#if (NTDDI_VERSION >= NTDDI_WIN7)
                 entry.m_prefixlen = paddr->OnLinkPrefixLength;
+#else
+                entry.m_prefixlen = ~0;
+#endif
 #endif
                 entries.push_back(entry);
             }
@@ -2353,6 +2357,12 @@ void NameService::SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIPv4, H
         }
 
 #if NS_BROADCAST
+//
+// WINDOWS XP doesn't provide the OnLInkPrefixLength we need to construct a
+// subnet directed broadcast in the IP_ADAPTER_UNICAST_ADDRESS returned
+// by GetAdaptersAddresses
+//
+#if defined(QCC_OS_WINDOWS) && (NTDDI_VERSION >= NTDDI_WIN7)
         if (m_broadcast) {
             //
             // In order to ensure that our broadcast goes to the correct
@@ -2390,6 +2400,7 @@ void NameService::SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIPv4, H
         } else {
             QCC_DbgPrintf(("NameService::SendProtocolMessage():  subnet directed broadcasts are disabled\n"));
         }
+#endif
 #endif
     } else {
         QCC_DbgPrintf(("NameService::SendProtocolMessage():  Sending to IPv6\n"));
@@ -2718,7 +2729,7 @@ void* NameService::Run(void* arg)
                     //
                     QCC_LogError(status, ("NameService::Run(): qcc::RecvFrom(): Failed"));
                     qcc::Sleep(50);
-                    break;
+                    continue;
                 }
 
                 //
