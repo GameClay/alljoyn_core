@@ -77,6 +77,7 @@ static const char policyConfig[] =
     "  <limit name=\"max_completed_connections_tcp\">64</limit>"
     "  <alljoyn module=\"ipns\">"
     "    <property interfaces=\"*\"/>"
+    "    <property disable_directed_broadcast=\"false\"/>"
     "  </alljoyn>"
     "</busconfig>";
 

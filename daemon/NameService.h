@@ -50,7 +50,7 @@
  *
  * To enable this feature define NS_BROADCAST to be non-zero.
  */
-#define NS_BROADCAST 0
+#define NS_BROADCAST 1
 
 namespace ajn {
 
@@ -89,6 +89,14 @@ class NameService : public qcc::Thread {
      * @brief The property value used to specify the wildcard interface name.
      */
     static const char* INTERFACES_WILDCARD;
+
+#if NS_BROADCAST
+    /**
+     * @brief The property name used to define the interfaces (e.g., eth0) used
+     * in discovery.
+     */
+    static const char* BROADCAST_PROPERTY;
+#endif
 
     /**
      * @brief The maximum size of a name, in general.
@@ -265,6 +273,10 @@ class NameService : public qcc::Thread {
      * @param enableIPv6 If true, advertise and listen over interfaces that
      *     have IPv6 addresses assigned.  If false, this bit trumps any
      *     OpenInterface() requests for specific IPv6 addresses.
+     * @param disableBroadcast If true, do not send IPv4 subnet directed
+     *     broadcasts.  Note that sending these broadcasts is often the only
+     *     way to get IPv4 name service  packets out on APs that block
+     *     multicast.
      * @param loopback If true, receive our own advertisements.
      *     Typically used for test programs to listen to themselves talk.
      *
@@ -272,7 +284,14 @@ class NameService : public qcc::Thread {
      *
      * @see OpenInterface()
      */
-    QStatus Init(const qcc::String& guid, bool enableIPv4, bool enableIPv6, bool loopback = false);
+    QStatus Init(
+        const qcc::String & guid,
+        bool enableIPv4,
+        bool enableIPv6,
+#if NS_BROADCAST
+        bool disableBroadcast,
+#endif
+        bool loopback = false);
 
     /**
      * @brief Provide parameters to define the general operation of the protocol.
@@ -876,6 +895,15 @@ class NameService : public qcc::Thread {
      * @brief Listen to our own advertisements if true.
      */
     bool m_loopback;
+
+#if NS_BROADCAST
+    /**
+     * @internal
+     * @brief Send name service packets via IPv4 subnet directed broadcast if
+     * true.
+     */
+    bool m_broadcast;
+#endif
 
     /**
      * @internal

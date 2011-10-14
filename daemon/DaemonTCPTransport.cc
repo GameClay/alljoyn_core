@@ -270,11 +270,22 @@ QStatus DaemonTCPTransport::Start()
     /*
      * Start up an instance of the lightweight name service and tell it what
      * GUID we think we are and whether or not to advertise over IPv4 and or
-     * IPv6
+     * IPv6 and whether or not to use subnet directed broadcasts.
      */
+#if NS_BROADCAST
+    bool disable = false;
+    if (ConfigDB::GetConfigDB()->GetProperty(NameService::MODULE_NAME, NameService::BROADCAST_PROPERTY) == "true") {
+        disable = true;
+    }
+#endif
+
     m_ns = new NameService;
     qcc::String guidStr = m_bus.GetInternal().GetGlobalGUID().ToString();
-    QStatus status = m_ns->Init(guidStr, true, true);
+    QStatus status = m_ns->Init(guidStr, true, true
+#if NS_BROADCAST
+                                , disable
+#endif
+                                );
     if (status != ER_OK) {
         QCC_LogError(status, ("DaemonTCPTransport::Start(): Error starting name service"));
         return status;

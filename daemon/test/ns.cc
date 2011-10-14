@@ -201,7 +201,11 @@ int main(int argc, char** argv)
     //
     bool enableIPv4, enableIPv6, loopback;
     enableIPv4 = enableIPv6 = loopback = true;
-    status = ns.Init(qcc::GUID128().ToString(), enableIPv4, enableIPv6, loopback);
+    status = ns.Init(qcc::GUID().ToString(), enableIPv4, enableIPv6,
+#if NS_BROADCAST
+                     false,
+#endif
+                     loopback);
     if (status != ER_OK) {
         QCC_LogError(status, ("Init failed"));
         ERROR_EXIT;

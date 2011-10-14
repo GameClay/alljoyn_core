@@ -302,7 +302,11 @@ QStatus AdvTunnel::RelayAdv()
     NameService* ns;
     if (nsRelay.count(guid) == 0) {
         ns = new NameService();
-        status = ns->Init(guid, true, true);
+        status = ns->Init(guid, true, true
+#if NS_BROADCAST
+                          , false
+#endif
+                          );
         if (status != ER_OK) {
             delete ns;
             return status;
@@ -470,7 +474,11 @@ int main(int argc, char** argv)
      * In sniffMode we just report advertisements
      */
     if (sniffMode) {
-        ns.Init(guid, true, true);
+        ns.Init(guid, true, true
+#if NS_BROADCAST
+                , false
+#endif
+                );
         ns.OpenInterface("*");
         ns.Locate("");
         printf("Started sniffing for advertised names\n");
@@ -489,7 +497,11 @@ int main(int argc, char** argv)
         } else {
             printf("Relay established\n");
 
-            ns.Init(guid, true, true);
+            ns.Init(guid, true, true
+#if NS_BROADCAST
+                    , false
+#endif
+                    );
 
             ns.OpenInterface("*");
             ns.Locate("");

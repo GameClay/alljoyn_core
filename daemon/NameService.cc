@@ -80,6 +80,7 @@ namespace ajn {
 //   <busconfig>
 //     <alljoyn module="ipns">
 //       <property interfaces="*"/>
+//       <property disable_directed_broadcast="true"/>
 //     </alljoyn>
 //   </busconfig>
 //
@@ -96,6 +97,18 @@ const char* NameService::INTERFACES_PROPERTY = "interfaces";
 // to run discovery over all interfaces in the system.
 //
 const char* NameService::INTERFACES_WILDCARD = "*";
+
+#if NS_BROADCAST
+//
+// The name of the property used to configure whether or not we disable the
+// sending of subnet directed broadcasts during discovery.  The value "true"
+// means broadcast will not be done, and "false" means we will do them.  It
+// turns out that on some wireless access points, directed broadcasts are
+// the only way to get IPv4 name service packets out if IPv4 multicast is
+// disabled.  This setting defaults to "false".
+//
+const char* NameService::BROADCAST_PROPERTY = "disable_directed_broadcast";
+#endif
 
 //
 // This is just a random multicast group chosen out of an unreserved block of
@@ -912,7 +925,14 @@ exit:
 #error No known OS specified
 #endif
 
-QStatus NameService::Init(const qcc::String& guid, bool enableIPv4, bool enableIPv6, bool loopback)
+QStatus NameService::Init(
+    const qcc::String& guid,
+    bool enableIPv4,
+    bool enableIPv6,
+#if NS_BROADCAST
+    bool disableBroadcast,
+#endif
+    bool loopback)
 {
     QCC_DbgHLPrintf(("NameService::Init()\n"));
 
@@ -929,6 +949,9 @@ QStatus NameService::Init(const qcc::String& guid, bool enableIPv4, bool enableI
     m_guid = guid;
     m_enableIPv4 = enableIPv4;
     m_enableIPv6 = enableIPv6;
+#if NS_BROADCAST
+    m_broadcast = !disableBroadcast;
+#endif
     m_loopback = loopback;
 
     assert(IsRunning() == false);
@@ -1590,16 +1613,18 @@ void NameService::LazyUpdateInterfaces(void)
             }
 
 #if NS_BROADCAST
-            //
-            // If we're going to send broadcasts, we have to ask for
-            // permission.  Note that we must be running as root to do
-            // this.
-            //
-            int broadcast = 1;
-            if (setsockopt(sockFd, SOL_SOCKET, SO_BROADCAST, (char*)&broadcast, sizeof broadcast) == -1) {
-                QCC_LogError(status, ("LazyUpdateInterfaces: setsockopt(SO_BROADCAST) failed: %d - %s", errno,
-                                      strerror(errno)));
-                continue;
+            if (m_broadcast) {
+                //
+                // If we're going to send broadcasts, we have to ask for
+                // permission.
+                // this.
+                //
+                int broadcast = 1;
+                if (setsockopt(sockFd, SOL_SOCKET, SO_BROADCAST, (char*)&broadcast, sizeof broadcast) == -1) {
+                    QCC_LogError(status, ("LazyUpdateInterfaces: setsockopt(SO_BROADCAST) failed: %d - %s", errno,
+                                          strerror(errno)));
+                    continue;
+                }
             }
 #endif
         } else if (entries[i].m_family == AF_INET6) {
@@ -2328,38 +2353,42 @@ void NameService::SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIPv4, H
         }
 
 #if NS_BROADCAST
-        //
-        // In order to ensure that our broadcast goes to the correct
-        // interface and is not just sent out some default way, we
-        // have to form a subnet directed broadcast.  To do this we need
-        // the IP address and netmask.
-        //
-        QCC_DbgPrintf(("NameService::SendProtocolMessage():  InterfaceAddress %s, prefix %d\n",
-                       interfaceAddress.ToString().c_str(), interfaceAddressPrefixLen));
+        if (m_broadcast) {
+            //
+            // In order to ensure that our broadcast goes to the correct
+            // interface and is not just sent out some default way, we
+            // have to form a subnet directed broadcast.  To do this we need
+            // the IP address and netmask.
+            //
+            QCC_DbgPrintf(("NameService::SendProtocolMessage():  InterfaceAddress %s, prefix %d\n",
+                           interfaceAddress.ToString().c_str(), interfaceAddressPrefixLen));
 
-        //
-        // Create a netmask with a one in the leading bits for each position
-        // implied by the prefix length.
-        //
-        uint32_t mask = 0;
-        for (uint32_t i = 0; i < interfaceAddressPrefixLen; ++i) {
-            mask >>= 1;
-            mask |= 0x80000000;
-        }
+            //
+            // Create a netmask with a one in the leading bits for each position
+            // implied by the prefix length.
+            //
+            uint32_t mask = 0;
+            for (uint32_t i = 0; i < interfaceAddressPrefixLen; ++i) {
+                mask >>= 1;
+                mask |= 0x80000000;
+            }
 
-        //
-        // The subnet directed broadcast address is the address part of the
-        // interface address (defined by the mask) with the rest of the bits
-        // set to one.
-        //
-        uint32_t addr = (interfaceAddress.GetIPv4AddressCPUOrder() & mask) | ~mask;
-        qcc::IPAddress ipv4Broadcast(addr);
-        QCC_DbgPrintf(("NameService::SendProtocolMessage():  Sending to subnet directed broadcast address %s\n",
-                       ipv4Broadcast.ToString().c_str()));
+            //
+            // The subnet directed broadcast address is the address part of the
+            // interface address (defined by the mask) with the rest of the bits
+            // set to one.
+            //
+            uint32_t addr = (interfaceAddress.GetIPv4AddressCPUOrder() & mask) | ~mask;
+            qcc::IPAddress ipv4Broadcast(addr);
+            QCC_DbgPrintf(("NameService::SendProtocolMessage():  Sending to subnet directed broadcast address %s\n",
+                           ipv4Broadcast.ToString().c_str()));
 
-        status = qcc::SendTo(sockFd, ipv4Broadcast, BROADCAST_PORT, buffer, size, sent);
-        if (status != ER_OK) {
-            QCC_LogError(ER_FAIL, ("NameService::SendProtocolMessage():  Error sending to IPv4 (broadcast)\n"));
+            status = qcc::SendTo(sockFd, ipv4Broadcast, BROADCAST_PORT, buffer, size, sent);
+            if (status != ER_OK) {
+                QCC_LogError(ER_FAIL, ("NameService::SendProtocolMessage():  Error sending to IPv4 (broadcast)\n"));
+            }
+        } else {
+            QCC_DbgPrintf(("NameService::SendProtocolMessage():  subnet directed broadcasts are disabled\n"));
         }
 #endif
     } else {
