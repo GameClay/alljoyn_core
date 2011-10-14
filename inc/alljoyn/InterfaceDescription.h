@@ -141,6 +141,7 @@ class InterfaceDescription {
      * @param outSig      Signature of output parameters or NULL for none.
      * @param argNames    Comma separated list of input and then output arg names used in annotation XML.
      * @param annotation  Annotation flags.
+     * @param accessPerms Required permissions to invoke this call
      *
      * @return
      *      - #ER_OK if successful
@@ -193,7 +194,7 @@ class InterfaceDescription {
      * @param outSig      Signature of output parameters or NULL for none.
      * @param argNames    Comma separated list of input and then output arg names used in annotation XML.
      * @param annotation  Annotation flags.
-     * @Param accessPerms  Access permission requirements on this call
+     * @param accessPerms Access permission requirements on this call
      *
      * @return
      *      - #ER_OK if successful
@@ -225,7 +226,7 @@ class InterfaceDescription {
      * @param sig         Signature of parameters or NULL for none.
      * @param argNames    Comma separated list of arg names used in annotation XML.
      * @param annotation  Annotation flags.
-     * @Param accessPerms  Access permission requirements on this call
+     * @param accessPerms Access permission requirements on this call
      *
      * @return
      *      - #ER_OK if successful
