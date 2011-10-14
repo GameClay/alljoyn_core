@@ -689,7 +689,6 @@ QStatus BTTransport::BTAccessor::FillAdapterAddress(AdapterObject& adapter)
 
     if (adapter->IsValid()) {
         Message rsp(bzBus);
-        const char* bdAddrStr;
         const MsgArg* arg;
 
         status = adapter->MethodCall(*org.bluez.Adapter.GetProperties, NULL, 0, rsp, BT_DEFAULT_TO);
@@ -705,12 +704,21 @@ QStatus BTTransport::BTAccessor::FillAdapterAddress(AdapterObject& adapter)
         arg = rsp->GetArg(0);
 
         if (arg) {
+            const char* bdAddrStr;
+            uint32_t cod;
+
             status = arg->GetElement("{ss}", "Address", &bdAddrStr);
             if (status == ER_OK) {
                 status = adapter->address.FromString(bdAddrStr);
             }
 
             arg->GetElement("{sb}", "Discovering", &adapter->bluezDiscovering);
+
+            status  = arg->GetElement("{su}", "Class", &cod);
+            if (status == ER_OK) {
+                fprintf(stderr, "SJK: old cod: %08x   new cod: %08x\n", cod, cod | 0x00800000);
+                status = ConfigureClassOfDevice(adapter->id, cod | 0x00800000);
+            }
         }
     }
 
@@ -1189,17 +1197,57 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
 
     const MsgArg* uuids;
     size_t listSize;
-    bool eirCapable = true;
+    bool ajDev = false;
+    bool eirCapable;
+    uint32_t cod = 0xdeadbeef;
 
     // We can safely assume that dictonary is an array of dictionary elements
     // because the core AllJoyn code validated the args before calling us.
     status = dictionary->GetElement("{sas}", "UUIDs", &listSize, &uuids);
-    if (status == ER_BUS_ELEMENT_NOT_FOUND) {
+    if (status == ER_OK) {
+        ajDev = true;
+        eirCapable = true;
+    } else if (status == ER_BUS_ELEMENT_NOT_FOUND) {
         eirCapable = false;
         listSize = 0;
-        status = ER_OK;
+
+        status = dictionary->GetElement("{su}", "Class", &cod);
+        if (status == ER_OK) {
+            ajDev = cod & 0x00800000;  // Check if Information flag is set.
+        }
     }
-    if (status == ER_OK) {
+
+#ifndef NDEBUG
+    String deviceInfoStr = "Found ";
+    const char* icon = NULL;
+    const char* name = NULL;
+    dictionary->GetElement("{ss}", "Icon", &icon);
+    dictionary->GetElement("{ss}", "Name", &name);
+    dictionary->GetElement("{su}", "Class", &cod);
+
+    if (!eirCapable) {
+        deviceInfoStr += "possible ";
+    }
+    deviceInfoStr += "AllJoyn device: ";
+    deviceInfoStr += addrStr;
+    if (eirCapable) {
+        deviceInfoStr += "   EIR Capable";
+        //deviceInfoStr += "   uuidRev: ";
+        //deviceInfoStr += U32ToString(uuidRev, 16, 8, '0');
+        //deviceInfoStr += "   foundInfo.uuidRev: ";
+        //deviceInfoStr += U32ToString(foundInfo.uuidRev, 16, 8, '0');
+    }
+    deviceInfoStr += "   CoD: 0x";
+    deviceInfoStr += U32ToString(cod, 16, 8, '0');
+    deviceInfoStr += "   Icon: ";
+    deviceInfoStr += icon ? icon : "<null>";
+    deviceInfoStr += "   Name: ";
+    deviceInfoStr += name ? name : "<null>";
+    QCC_DbgHLPrintf(("%s", deviceInfoStr.c_str()));
+#endif
+
+
+    if (ajDev && (status == ER_OK)) {
         //QCC_DbgPrintf(("BTTransport::BTAccessor::DeviceFoundSignalHandler(): checking %s (%d UUIDs, %sEIR capable)",
         //               addrStr, listSize, eirCapable ? "" : "not "));
 
@@ -1212,36 +1260,6 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
             FoundInfoMap::iterator it = foundDevices.find(addr);
             bool newDevice = (it == foundDevices.end());
             FoundInfo& foundInfo = newDevice ? foundDevices[addr] : it->second;
-
-
-#ifndef NDEBUG
-            String deviceInfoStr = "Found ";
-            uint32_t cod;
-            const char* icon = NULL;
-            const char* name = NULL;
-            dictionary->GetElement("{su}", "Class", &cod);
-            dictionary->GetElement("{ss}", "Icon", &icon);
-            dictionary->GetElement("{ss}", "Name", &name);
-
-            if (!eirCapable) {
-                deviceInfoStr += "possible ";
-            }
-            deviceInfoStr += "AllJoyn device: ";
-            deviceInfoStr += addrStr;
-            if (eirCapable) {
-                deviceInfoStr += "   uuidRev: ";
-                deviceInfoStr += U32ToString(uuidRev, 16, 8, '0');
-                deviceInfoStr += "   foundInfo.uuidRev: ";
-                deviceInfoStr += U32ToString(foundInfo.uuidRev, 16, 8, '0');
-            }
-            deviceInfoStr += "   CoD: 0x";
-            deviceInfoStr += U32ToString(cod, 16, 8, '0');
-            deviceInfoStr += "   Icon: ";
-            deviceInfoStr += icon ? icon : "<null>";
-            deviceInfoStr += "   Name: ";
-            deviceInfoStr += name ? name : "<null>";
-            QCC_DbgHLPrintf(("%s", deviceInfoStr.c_str()));
-#endif
 
             if (newDevice) {
                 Timespec now;

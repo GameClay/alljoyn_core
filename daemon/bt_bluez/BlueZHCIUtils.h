@@ -74,6 +74,8 @@ QStatus ConfigurePeriodicInquiry(uint16_t deviceId,
 
 QStatus ConfigureSimplePairingDebugMode(uint16_t deviceId, bool enable);
 
+QStatus ConfigureClassOfDevice(uint16_t deviceId, uint32_t cod);
+
 } // namespace bluez
 } // namespace ajn
 

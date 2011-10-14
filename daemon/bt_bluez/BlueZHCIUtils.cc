@@ -342,6 +342,51 @@ Exit:
 }
 
 
+QStatus ConfigureClassOfDevice(uint16_t deviceId, uint32_t cod)
+{
+    static const uint8_t hciWriteCOD[] = {
+        0x01, 0x24, 0x0c, 0x03, 0x00, 0x00, 0x00
+    };
+    QStatus status = ER_OK;
+    uint8_t cmd[sizeof(hciWriteCOD)];
+    sockaddr_hci addr;
+    SocketFd hciFd;
+    size_t sent;
+
+    hciFd = (SocketFd)socket(AF_BLUETOOTH, QCC_SOCK_RAW, 1);
+    if (hciFd < 0) {
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("Failed to create socket (errno %d)", errno));
+        return status;
+    }
+
+    addr.family = AF_BLUETOOTH;
+    addr.dev = deviceId;
+    if (bind(hciFd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        status = ER_OS_ERROR;
+        QCC_LogError(status, ("Failed to bind to BT device id %d socket (errno %d)", deviceId, errno));
+        goto Exit;
+    }
+
+    memcpy(cmd, hciWriteCOD, sizeof(hciWriteCOD));
+
+    cmd[4] = cod & 0xff;
+    cmd[5] = (cod >> 8) & 0xff;
+    cmd[6] = (cod >> 16) & 0xff;
+
+    status = Send(hciFd, cmd, sizeof(hciWriteCOD), sent);
+    if (status != ER_OK) {
+        QCC_LogError(status, ("Failed to send Write CoD HCI command (errno %d)", errno));
+        goto Exit;
+    }
+
+Exit:
+
+    close(hciFd);
+    return status;
+}
+
+
 QStatus IsMaster(uint16_t deviceId, const BDAddress& bdAddr, bool& master)
 {
     int ret;
