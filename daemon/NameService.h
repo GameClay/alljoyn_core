@@ -39,14 +39,29 @@
 
 #include "NsProtocol.h"
 
-/*
+/**
  * @brief Experimental Feature to allow broadcast of Name Service packets
  *
- * Some Access Points, notably those in South East Asia are configured to
- * throw away multicast packets by default.  These APs consider support of
- * broadcast mandatory to support legacy protocols (ARP).  Because of this
- * we allow the NameService to broadcast its packets since it would otherwise
- * be worthless.
+ * Some Access Points, notably Cisco Aironet 1140s, are configured to throw away
+ * IPv4 multicast packets by default.  There doesn't seem to be a configuration
+ * item available to convince these APs to forward IPv4 multicast.  They do,
+ * however, consider support of broadcast to be mandatory since many protocols
+ * depend on it.  Because of this we allow the NameService to broadcast its
+ * WHO-HAS and IS-AT packets.  We do this over a subnet directed broadcast so
+ * we have control over which links the packets go out.
+ *
+ * Somewhat counter-intuitively, it is the higher-end access points that tend
+ * to be more restrictive about multicast, and the more you pay for your access
+ * point, the more knobs you get to turn that will give AllJoyn heartburn.  For
+ * example, the Cisco Unified Wireless Network (CUWN) Wireless Lan Controllers
+ * (WLCs) include settings to turn on or off IPv4 muticast, limit the rate at
+ * which IGMP packets are forwarded, and limit the rate at which multicast
+ * packets in general are forwarded.
+ *
+ * This can result in strangely unpredictable discovery behavior as viewed by a
+ * user so we are experimenting with just falling back to broadcast for IPv4
+ * discovery packets even though networking gurus may be shocked at seeing such
+ * "old-fashioned" point to multi-point packets on a modern network.
  *
  * To enable this feature define NS_BROADCAST to be non-zero.
  */
