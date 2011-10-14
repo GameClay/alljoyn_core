@@ -201,7 +201,7 @@ int main(int argc, char** argv)
     //
     bool enableIPv4, enableIPv6, loopback;
     enableIPv4 = enableIPv6 = loopback = true;
-    status = ns.Init(qcc::GUID().ToString(), enableIPv4, enableIPv6,
+    status = ns.Init(qcc::GUID128().ToString(), enableIPv4, enableIPv6,
 #if NS_BROADCAST
                      false,
 #endif
