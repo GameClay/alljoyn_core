@@ -2362,7 +2362,7 @@ void NameService::SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIPv4, H
 // subnet directed broadcast in the IP_ADAPTER_UNICAST_ADDRESS returned
 // by GetAdaptersAddresses
 //
-#if defined(QCC_OS_WINDOWS) && (NTDDI_VERSION >= NTDDI_WIN7)
+#if !defined(QCC_OS_WINDOWS) || defined(QCC_OS_WINDOWS) && (NTDDI_VERSION >= NTDDI_WIN7)
         if (m_broadcast) {
             //
             // In order to ensure that our broadcast goes to the correct
