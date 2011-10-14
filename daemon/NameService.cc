@@ -2427,20 +2427,44 @@ void* NameService::Run(void* arg)
 
         //
         // We need to figure out which interfaces we can send and receive
-        // protocol messages over.  We want to do this often enough to
-        // appear responsive to the user, but we also don't want to naively
-        // do this fairly complicated operation every time a packet is sent
-        // if our dear user has decided to write code that does lots of
-        // Locate() or Advertise() calls.
+        // protocol messages over.  On one hand, we don't want to get carried
+        // away with multicast group joins and leaves since we could get tangled
+        // up in IGMP rate limits.  On the other hand we want to do this often
+        // enough to appear responsive to the user when she moves into proximity
+        // with another device.
         //
-        // TODO:  This should ultimately be a configurable policy, but for
-        // now we defer to our users and always check out the interface
-        // situation before sending messages; but we never let more than
-        // LAZY_UPDATE_INTERVAL seconds pass without er-evaluating our
-        // interface status.
+        // Some quick measurements indicate that a Linux box can take about 15
+        // seconds to associate, Windows and Android about 5 seconds.  Based on
+        // the lower limits, it won't do much good to lazy update faster than
+        // about once every five seconds; so we take that as an upper limit on
+        // how often we allow a lazy update.  On the other hand, we want to
+        // make sure we do a lazy update at least every 15 seconds.  We define
+        // a couple of constants, LAZY_UPDATE_{MAX,MIN}_INTERVAL to allow this
+        // range.
         //
-        bool timedOut = tLastLazyUpdate + qcc::Timespec(LAZY_UPDATE_INTERVAL * MS_PER_SEC) < tNow;
-        if (m_forceLazyUpdate || m_outbound.size() || timedOut) {
+        // What drives the middle ground between MAX and MIN timing?  The
+        // presence or absence of Locate() and Advertise() calls.  If the
+        // application is poked by an impatient user who "knows" she should be
+        // able to connect, she may arrange to send out a Locate() or
+        // Advertise().  This is indicated to us by a message on the m_outbound
+        // queue.
+        //
+        // So there are three basic cases which cause us to rn the lazy updater:
+        //
+        //     1) If m_forceLazyUpdate is true, some major configuration change
+        //        has happened and we need to update no matter what.
+        //
+        //     2) If a message is found on the outbound queue, we need to do a
+        //        lazy update if LAZY_UPDATE_MIN_INTERVAL has passed since the
+        //        last update.
+        //
+        //     3) If LAZY_UPDATE_MAX_INTERVAL has elapsed since the last lazy
+        //        update, we need to update.
+        //
+        if (m_forceLazyUpdate ||
+            (m_outbound.size() && tLastLazyUpdate + qcc::Timespec(LAZY_UPDATE_MIN_INTERVAL * MS_PER_SEC) < tNow) ||
+            (tLastLazyUpdate + qcc::Timespec(LAZY_UPDATE_MAX_INTERVAL * MS_PER_SEC) < tNow)) {
+
             LazyUpdateInterfaces();
             tLastLazyUpdate = tNow;
             m_forceLazyUpdate = false;
@@ -2650,14 +2674,21 @@ void* NameService::Run(void* arg)
                 QStatus status = qcc::RecvFrom(sockFd, address, port, buffer, bufsize, nbytes);
                 if (status != ER_OK) {
                     //
-                    // Not many options here if an error happens either.  We bail
-                    // to avoid states where we read repeatedly and basically
-                    // just end up in an infinite loop getting errors.
+                    // We have a RecvFrom error.  We want to avoid states where
+                    // we get repeated read errors and just end up in an
+                    // infinite loop getting errors sucking up all available
+                    // CPU, so we make sure we sleep for a short time after
+                    // detecting the error.
                     //
-                    // XXX We could actually close the socket and stop listening
-                    // on the failing interface.
+                    // Our basic strategy is to hope that this is a transient
+                    // error, or one that will be recovered at the next lazy
+                    // update.  We don't want to blindly force a lazy update
+                    // or we may get into an infinite lazy update loop, so
+                    // the worst that can happen is that we introduce a short
+                    // delay here in our handler whenever we detect an error.
                     //
                     QCC_LogError(status, ("NameService::Run(): qcc::RecvFrom(): Failed"));
+                    qcc::Sleep(50);
                     break;
                 }
 

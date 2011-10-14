@@ -149,10 +149,16 @@ class NameService : public qcc::Thread {
     static const uint32_t RETRY_INTERVAL = 5;
 
     /**
-     * The modulus indicating the time between interface lazy updates.
+     * The modulus indicating the minimum time between interface lazy updates.
      * Units are seconds.
      */
-    static const uint32_t LAZY_UPDATE_INTERVAL = 15;
+    static const uint32_t LAZY_UPDATE_MIN_INTERVAL = 5;
+
+    /**
+     * The modulus indicating the maximum time between interface lazy updates.
+     * Units are seconds.
+     */
+    static const uint32_t LAZY_UPDATE_MAX_INTERVAL = 15;
 
     /**
      * @brief The time value indicating an advertisement is valid forever.
