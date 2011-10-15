@@ -836,10 +836,10 @@ void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& 
                 entry.m_addr = buffer;
 
 #if NS_BROADCAST
-#if (NTDDI_VERSION >= NTDDI_WIN7)
-                entry.m_prefixlen = paddr->OnLinkPrefixLength;
-#else
+#if !defined (NTDDI_VERSION) || !defined (NTDDI_WIN7) || (NTDDI_VERSION < NTDDI_WIN7)
                 entry.m_prefixlen = ~0;
+#else
+                entry.m_prefixlen = paddr->OnLinkPrefixLength;
 #endif
 #endif
                 entries.push_back(entry);
