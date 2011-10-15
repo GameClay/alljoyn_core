@@ -804,6 +804,8 @@ bool BTController::AcceptSessionJoiner(SessionPort sessionPort,
     String uniqueName(joiner);
     BTNodeInfo node = nodeDB.FindNode(uniqueName);
 
+    QCC_DbgPrintf(("SJK: accept = %d", accept));
+
     if (accept) {
         RemoteEndpoint* ep = static_cast<RemoteEndpoint*>(bt.LookupEndpoint(uniqueName));
 
@@ -815,6 +817,8 @@ bool BTController::AcceptSessionJoiner(SessionPort sessionPort,
         accept = (ep &&
                   ep->IsIncomingConnection() &&
                   (!node->IsValid() || (node->GetSessionID() == 0)));
+
+        QCC_DbgPrintf(("SJK: accept = %d", accept));
 
         if (ep) {
             bt.ReturnEndpoint(ep);
@@ -829,12 +833,14 @@ bool BTController::AcceptSessionJoiner(SessionPort sessionPort,
          */
         if (joinSessionNodeDB.FindNode(uniqueName)->IsValid() && !(uniqueName < bus.GetUniqueName())) {
             accept = false;
+            QCC_DbgPrintf(("SJK: accept = %d   uniqueName = '%s'   bus.GetUniqueName() = '%s'", accept, uniqueName.c_str(), bus.GetUniqueName().c_str()));
         }
     }
 
     QCC_DbgPrintf(("%s session join from %s",
                    accept ? "Accepting" : "Rejecting",
                    node->IsValid() ? node->GetBusAddress().ToString().c_str() : uniqueName.c_str()));
+
 
     return accept;
 }
