@@ -1417,6 +1417,12 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
         ProxyBusObject dev(bzBus, bzBusName, devObjPath.c_str(), 0);
         dev.AddInterface(*org.bluez.Device.interface);
 
+
+        dev.MethodCall(*org.bluez.Device.GetProperties, NULL, 0, rsp);
+        fprintf(stderr, "SJK:\n%s\n\n", rsp->ToString().c_str());
+
+
+
         QCC_DbgPrintf(("Getting service info for AllJoyn service"));
         status = dev.MethodCall(*org.bluez.Device.DiscoverServices, &arg, 1, rsp, BT_SDPQUERY_TO);
         if (status == ER_OK) {
