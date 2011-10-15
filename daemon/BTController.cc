@@ -599,13 +599,14 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
         size_t numArgs = ArraySize(args);
 
         status = MsgArg::Set(args, numArgs, SIG_FOUND_DEV, adBdAddr.GetRaw(), uuidRev, eirCapable);
+
+        lock.Unlock();
+
         if (status != ER_OK) {
             QCC_LogError(status, ("MsgArg::Set(args = <>, numArgs = %u, %s, %s, %08x, <%s>) failed",
                                   numArgs, SIG_FOUND_DEV, adBdAddr.ToString().c_str(), uuidRev, eirCapable ? "true" : "false"));
             return;
         }
-
-        lock.Unlock();
 
         status = Signal(masterNode->GetUniqueName().c_str(), masterNode->GetSessionID(), *org.alljoyn.Bus.BTController.FoundDevice, args, numArgs);
     }
@@ -1544,6 +1545,7 @@ QStatus BTController::DeferredSendSetState(const BTNodeInfo& node)
                          self->GetBusAddress().psm,
                          nodeStateArgsStorage.size(), &nodeStateArgsStorage.front(),
                          foundNodeArgsStorage.size(), &foundNodeArgsStorage.front());
+    lock.Unlock();
     if (status != ER_OK) {
         delete newMaster;
         QCC_LogError(status, ("Dropping %s due to internal error", node->GetBusAddress().ToString().c_str()));
@@ -1558,7 +1560,6 @@ QStatus BTController::DeferredSendSetState(const BTNodeInfo& node)
      * possible deadlock in that case.  The SendSetState function must not run
      * in the same thread as that HandleSetState function.
      */
-    lock.Unlock();
     QCC_DbgPrintf(("Sending SetState method call to %s (%s)",
                    node->GetUniqueName().c_str(), node->GetBusAddress().ToString().c_str()));
     status = newMaster->MethodCallAsync(*org.alljoyn.Bus.BTController.SetState,
