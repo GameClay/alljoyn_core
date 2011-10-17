@@ -1178,11 +1178,17 @@ int main(int argc, char** argv)
     }
 
     if (fuzz) {
+        int count=0;
         fuzzing = true;
         nobig = true;
         for (size_t i = 0; i < 10000; ++i) {
             MarshalTests();
+            count++;
         }
+
+       if(10000 == count){
+          printf("\n FUZZING PASSED \n");
+       }
     }
 
     return 0;
