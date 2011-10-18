@@ -817,6 +817,16 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
     QCC_DbgPrintf(("Pause Discovery"));
     DiscoveryControl(false);
 
+    // SJK Temporary test code.
+    if (true) {
+        AdapterObject adapter = GetDefaultAdapterObject();
+        while (adapter->IsValid() && adapter->bluezDiscovering) {
+            QCC_DbgPrintf(("SJK: Waiting 1 second for discovery to stop."));
+            Sleep(1000);
+            adapter = GetDefaultAdapterObject();
+        }
+    }
+
     memset(&skaddr, 0, sizeof(skaddr));
 
     skaddr.l2cap.sa_family = AF_BLUETOOTH;
@@ -1408,6 +1418,16 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
 
     QCC_DbgPrintf(("Pause Discovery"));
     DiscoveryControl(false);
+
+    // SJK Temporary test code.
+    if (true) {
+        AdapterObject adapter = GetDefaultAdapterObject();
+        while (adapter->IsValid() && adapter->bluezDiscovering) {
+            QCC_DbgPrintf(("SJK: Waiting 1 second for discovery to stop."));
+            Sleep(1000);
+            adapter = GetDefaultAdapterObject();
+        }
+    }
 
     status = GetDeviceObjPath(addr, devObjPath);
     if (status == ER_OK) {
