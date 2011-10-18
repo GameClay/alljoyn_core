@@ -208,10 +208,11 @@ class MyBusListener : public BusListener, public SessionListener {
 
 class Crasher : public Thread, public MessageReceiver {
   public:
-    Crasher(BusAttachment& bus, ProxyBusObject& bzAdapterObj, bool wait) :
+    Crasher(BusAttachment& bus, ProxyBusObject& bzAdapterObj, bool wait, uint64_t stopTime) :
         bus(bus),
         bzAdapterObj(bzAdapterObj),
         wait(wait),
+        stopTime(stopTime),
         discovering(false)
     {
         QStatus status = bus.RegisterSignalHandler(this,
@@ -256,6 +257,8 @@ class Crasher : public Thread, public MessageReceiver {
     list<BDAddress> checkList;
     Event newAddr;
     bool wait;
+    uint64_t stopTime;
+
     bool discovering;
     pthread_cond_t notDiscovering;
     pthread_mutex_t discMutex;
@@ -316,7 +319,7 @@ void* Crasher::Run(void* arg)
     ProxyBusObject deviceObject;
     MsgArg allSrv("s", "");
 
-    while (!IsStopping()) {
+    while (!IsStopping() && (GetTimestamp64() < stopTime)) {
         pthread_mutex_lock(&discMutex);
         if (wait && discovering) {
             printf("waiting for discovery to stop...\n");
@@ -375,11 +378,20 @@ void* Crasher::Run(void* arg)
 }
 
 
+static void usage(void)
+{
+    printf("bluetoothd-crasher [-w] [-t #]\n"
+           "  -w    Wait for discovery to stop to do SDP query.\n"
+           "  -t #  Only run for the specified number of minutes.\n");
+}
+
+
 int main(int argc, char** argv)
 {
     QStatus status;
     Environ* env = Environ::GetAppEnviron();
     bool wait = false;
+    uint32_t runTime = -1;
 
 #ifdef ANDROID
     qcc::String connectArgs(env->Find("DBUS_SYSTEM_BUS_ADDRESS",
@@ -389,9 +401,19 @@ int main(int argc, char** argv)
                                       "unix:path=/var/run/dbus/system_bus_socket"));
 #endif
 
-    if (argc == 2) {
-        if (strcmp(argv[1], "-w") == 0) {
+    /* Parse command line args */
+    for (int i = 1; i < argc; ++i) {
+        if (strcmp(argv[i], "-w") == 0) {
             wait = true;
+        } else if (strcmp(argv[i], "-t") == 0) {
+           ++i;
+            if (i == argc) {
+                printf("option %s requires a parameter\n", argv[i - 1]);
+                usage();
+                exit(1);
+            } else {
+                runTime = strtoul(argv[i], NULL, 10);
+            }
         }
     }
 
@@ -424,6 +446,7 @@ int main(int argc, char** argv)
     vector<MsgArg> args;
 
     size_t tableIndex, member;
+    uint64_t stopTime = GetTimestamp64() + (1000ULL * 60ULL * static_cast<uint64_t>(runTime));
 
     for (tableIndex = 0; tableIndex < ifcTableSize; ++tableIndex) {
         InterfaceDescription* ifc;
@@ -494,9 +517,8 @@ int main(int argc, char** argv)
     bzAdapterObj = ProxyBusObject(bus, bzBusName, adapterObjPath.c_str(), 0);
     bzAdapterObj.AddInterface(*test::org.bluez.Adapter.interface);
 
-    Crasher crasher(bus, bzAdapterObj, wait);
+    Crasher crasher(bus, bzAdapterObj, wait, stopTime);
     crasher.Start();
-
 
     status = bzAdapterObj.MethodCall(*test::org.bluez.Adapter.StartDiscovery, NULL, 0);
     if (status != ER_OK) {
