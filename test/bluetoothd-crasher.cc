@@ -25,6 +25,8 @@
 #include <set>
 #include <stdio.h>
 
+#include <pthread.h>
+
 #include <qcc/Environ.h>
 #include <qcc/Event.h>
 #include <qcc/String.h>
@@ -206,9 +208,11 @@ class MyBusListener : public BusListener, public SessionListener {
 
 class Crasher : public Thread, public MessageReceiver {
   public:
-    Crasher(BusAttachment& bus, ProxyBusObject& bzAdapterObj) :
+    Crasher(BusAttachment& bus, ProxyBusObject& bzAdapterObj, bool wait) :
         bus(bus),
-        bzAdapterObj(bzAdapterObj)
+        bzAdapterObj(bzAdapterObj),
+        wait(wait),
+        discovering(false)
     {
         QStatus status = bus.RegisterSignalHandler(this,
                                                    static_cast<MessageReceiver::SignalHandler>(&Crasher::DeviceFoundSignalHandler),
@@ -217,11 +221,31 @@ class Crasher : public Thread, public MessageReceiver {
             printf("Failed to register signal handler: %s\n", QCC_StatusText(status));
             exit(1);
         }
+
+        status = bus.RegisterSignalHandler(this,
+                                           static_cast<MessageReceiver::SignalHandler>(&Crasher::PropertyChangedSignalHandler),
+                                           test::org.bluez.Adapter.PropertyChanged, NULL);
+        if (status != ER_OK) {
+            printf("Failed to register signal handler: %s\n", QCC_StatusText(status));
+            exit(1);
+        }
+        pthread_cond_init(&notDiscovering, NULL);
+        pthread_mutex_init(&discMutex, NULL);
     }
+
+    ~Crasher()
+    {
+        pthread_mutex_destroy(&discMutex);
+        pthread_cond_destroy(&notDiscovering);
+    }
+
 
     void DeviceFoundSignalHandler(const InterfaceDescription::Member* member,
                                   const char* sourcePath,
                                   Message& msg);
+    void PropertyChangedSignalHandler(const InterfaceDescription::Member* member,
+                                      const char* sourcePath,
+                                      Message& msg);
 
     void* Run(void* arg);
 
@@ -230,8 +254,11 @@ class Crasher : public Thread, public MessageReceiver {
     ProxyBusObject& bzAdapterObj;
     set<BDAddress> foundSet;
     list<BDAddress> checkList;
-    Mutex lock;
     Event newAddr;
+    bool wait;
+    bool discovering;
+    pthread_cond_t notDiscovering;
+    pthread_mutex_t discMutex;
 };
 
 
@@ -241,16 +268,37 @@ void Crasher::DeviceFoundSignalHandler(const InterfaceDescription::Member* membe
 {
     BDAddress addr(msg->GetArg(0)->v_string.str);
     if (foundSet.find(addr) == foundSet.end()) {
-        lock.Lock();
+        pthread_mutex_lock(&discMutex);
         foundSet.insert(addr);
         checkList.push_back(addr);
-        lock.Unlock();
+        pthread_mutex_unlock(&discMutex);
         printf("Found: %s\n", addr.ToString().c_str());
         if (foundSet.size() == 1) {
             newAddr.SetEvent();
         }
     }
 }
+
+
+void Crasher::PropertyChangedSignalHandler(const InterfaceDescription::Member* member,
+                                           const char* sourcePath,
+                                           Message& msg)
+{
+    const char* property;
+    const MsgArg* value;
+
+    msg->GetArgs("sv", &property, &value);
+
+    if (strcmp(property, "Discovering") == 0) {
+        value->Get("b", &discovering);
+        printf("Discovering %s.\n", discovering ? "on" : "off");
+
+        if (wait && !discovering) {
+            pthread_cond_signal(&notDiscovering);
+        }
+    }
+}
+
 
 void* Crasher::Run(void* arg)
 {
@@ -264,13 +312,18 @@ void* Crasher::Run(void* arg)
     }
 
     list<BDAddress>::iterator check;
+    String objPath;
     ProxyBusObject deviceObject;
     MsgArg allSrv("s", "");
 
     while (!IsStopping()) {
-        lock.Lock();
-        for (check = checkList.begin(); check != checkList.end(); ++check) {
-            lock.Unlock();
+        pthread_mutex_lock(&discMutex);
+        if (wait && discovering) {
+            printf("waiting for discovery to stop...\n");
+            pthread_cond_wait(&notDiscovering, &discMutex);
+        }
+        for (check = checkList.begin(); (!wait || !discovering) && check != checkList.end(); ++check) {
+            pthread_mutex_unlock(&discMutex);
             printf("Checking: %s\n", check->ToString().c_str());
             MsgArg arg("s", check->ToString().c_str());
             Message reply(bus);
@@ -290,10 +343,11 @@ void* Crasher::Run(void* arg)
                 } else {
                     printf("Failed find/create %s: %s\n", check->ToString().c_str(), QCC_StatusText(status));
                 }
-                lock.Lock();
+                pthread_mutex_lock(&discMutex);
                 continue;
             }
-            deviceObject = ProxyBusObject(bus, bzBusName, reply->GetArg(0)->v_objPath.str, 0);
+            objPath = reply->GetArg(0)->v_objPath.str;
+            deviceObject = ProxyBusObject(bus, bzBusName, objPath.c_str(), 0);
             deviceObject.AddInterface(*test::org.bluez.Device.interface);
 
             status = deviceObject.MethodCall(*test::org.bluez.Device.DiscoverServices, &allSrv, 1, reply);
@@ -306,9 +360,14 @@ void* Crasher::Run(void* arg)
                     printf("Failed to get service info: %s\n", QCC_StatusText(status));
                 }
             }
-            lock.Lock();
+
+            arg.Set("o", objPath.c_str());
+            bzAdapterObj.MethodCall(*test::org.bluez.Adapter.RemoveDevice, &arg, 1, reply);
+
+            pthread_mutex_lock(&discMutex);
         }
-        lock.Unlock();
+        pthread_mutex_unlock(&discMutex);
+        Sleep(500 + Rand32() % 500);
     }
 
     bzAdapterObj.MethodCall(*test::org.bluez.Adapter.StopDiscovery, NULL, 0);
@@ -316,10 +375,12 @@ void* Crasher::Run(void* arg)
 }
 
 
-int main(void)
+int main(int argc, char** argv)
 {
     QStatus status;
     Environ* env = Environ::GetAppEnviron();
+    bool wait = false;
+
 #ifdef ANDROID
     qcc::String connectArgs(env->Find("DBUS_SYSTEM_BUS_ADDRESS",
                                       "unix:path=/dev/socket/dbus"));
@@ -327,6 +388,13 @@ int main(void)
     qcc::String connectArgs(env->Find("DBUS_SYSTEM_BUS_ADDRESS",
                                       "unix:path=/var/run/dbus/system_bus_socket"));
 #endif
+
+    if (argc == 2) {
+        if (strcmp(argv[1], "-w") == 0) {
+            wait = true;
+        }
+    }
+
 
     /* Create message bus */
     BusAttachment bus("bluetoothd-crasher");
@@ -426,7 +494,7 @@ int main(void)
     bzAdapterObj = ProxyBusObject(bus, bzBusName, adapterObjPath.c_str(), 0);
     bzAdapterObj.AddInterface(*test::org.bluez.Adapter.interface);
 
-    Crasher crasher(bus, bzAdapterObj);
+    Crasher crasher(bus, bzAdapterObj, wait);
     crasher.Start();
 
 
