@@ -569,7 +569,7 @@ QStatus BTTransport::BTAccessor::AddRecord(const char* recordXml,
         status = adapter->MethodCall(*org.bluez.Service.AddRecord, &arg, 1, rsp, BT_DEFAULT_TO);
         if (status == ER_OK) {
             rsp->GetArg(0)->Get("u", &newHandle);
-            fprintf(stderr, "SJK: old cod: %08x   new cod: %08x\n", cod, cod | 0x00800000);
+            QCC_DbgPrintf(("SJK: old cod: %08x   new cod: %08x\n", cod, cod | 0x00800000));
             status = ConfigureClassOfDevice(adapter->id, cod | 0x00800000);
         } else {
             qcc::String errMsg;
@@ -1433,7 +1433,7 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
 
 
         dev.MethodCall(*org.bluez.Device.GetProperties, NULL, 0, rsp);
-        fprintf(stderr, "SJK:\n%s\n\n", rsp->ToString().c_str());
+        QCC_DbgPrintf(("SJK:\n%s\n\n", rsp->ToString().c_str()));
 
 
 
