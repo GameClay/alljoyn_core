@@ -750,7 +750,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
 
                 /* Otherwise wait */
                 uint32_t now = GetTimestamp();
-                if (now > (startTime + 10000)) {
+                if (now > (startTime + 30000)) {
                     replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
                     QCC_LogError(ER_FAIL, ("JoinSession timed out waiting for %s to appear on %s",
                                            sessionHost, b2bEp->GetUniqueName().c_str()));
@@ -1346,7 +1346,7 @@ qcc::ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunAttach()
                         }
                         /* Otherwise wait */
                         uint32_t now = GetTimestamp();
-                        if (now > (startTime + 10000)) {
+                        if (now > (startTime + 30000)) {
                             replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
                             QCC_LogError(ER_FAIL, ("AttachSession timed out waiting for destination to appear"));
                             break;
