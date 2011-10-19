@@ -1216,16 +1216,17 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
 
     dictionary->GetElement("{sn}", "RSSI", &rssi);
 
-#ifndef NDEBUG
-    String deviceInfoStr = "Found ";
-    const char* icon = NULL;
-    const char* name = NULL;
-
 #if 1
     qcc::String uuid;
     uint32_t uuidRev = bt::INVALID_UUIDREV;
     bool found = !eirCapable || FindAllJoynUUID(uuids, listSize, uuidRev);
 #endif
+
+
+#ifndef NDEBUG
+    String deviceInfoStr = "Found ";
+    const char* icon = NULL;
+    const char* name = NULL;
 
     dictionary->GetElement("{ss}", "Icon", &icon);
     dictionary->GetElement("{ss}", "Name", &name);
