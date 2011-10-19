@@ -817,16 +817,6 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
     QCC_DbgPrintf(("Pause Discovery"));
     DiscoveryControl(false);
 
-    // SJK Temporary test code.
-    if (true) {
-        AdapterObject adapter = GetDefaultAdapterObject();
-        while (adapter->IsValid() && adapter->bluezDiscovering) {
-            QCC_DbgPrintf(("SJK: Waiting 1 second for discovery to stop."));
-            Sleep(1000);
-            adapter = GetDefaultAdapterObject();
-        }
-    }
-
     memset(&skaddr, 0, sizeof(skaddr));
 
     skaddr.l2cap.sa_family = AF_BLUETOOTH;
@@ -1419,16 +1409,6 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
     QCC_DbgPrintf(("Pause Discovery"));
     DiscoveryControl(false);
 
-    // SJK Temporary test code.
-    if (true) {
-        AdapterObject adapter = GetDefaultAdapterObject();
-        while (adapter->IsValid() && adapter->bluezDiscovering) {
-            QCC_DbgPrintf(("SJK: Waiting 1 second for discovery to stop."));
-            Sleep(1000);
-            adapter = GetDefaultAdapterObject();
-        }
-    }
-
     status = GetDeviceObjPath(addr, devObjPath);
     if (status == ER_OK) {
         Message rsp(bzBus);
@@ -1905,6 +1885,16 @@ QStatus BTTransport::BTAccessor::DiscoveryControl(const InterfaceDescription::Me
             QCC_LogError(status, ("Call to org.bluez.Adapter.%s failed %s - %s",
                                   method->name.c_str(),
                                   errName, errMsg.c_str()));
+        }
+
+        // SJK Temporary test code.
+        if (true) {
+            uint64_t stopTime = GetTimestamp64() + 10000;  // give up after 10 seconds
+            while ((GetTimestamp64() < stopTime) && adapter->IsValid() && (adapter->bluezDiscovering != start)) {
+                QCC_DbgPrintf(("SJK: Waiting 100 ms for discovery to %s.", start ? "start" : "stop"));
+                Sleep(100);
+                adapter = GetDefaultAdapterObject();  // In case adapter goes away
+            }
         }
     }
     return status;
