@@ -406,7 +406,7 @@ int main(int argc, char** argv)
         if (strcmp(argv[i], "-w") == 0) {
             wait = true;
         } else if (strcmp(argv[i], "-t") == 0) {
-           ++i;
+            ++i;
             if (i == argc) {
                 printf("option %s requires a parameter\n", argv[i - 1]);
                 usage();
