@@ -1198,6 +1198,7 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
     bool ajDev = false;
     bool eirCapable;
     uint32_t cod = 0xdeadbeef;
+    int16_t rssi = 0;
 
     // We can safely assume that dictonary is an array of dictionary elements
     // because the core AllJoyn code validated the args before calling us.
@@ -1215,28 +1216,44 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
         }
     }
 
+    dictionary->GetElement("{sn}", "RSSI", &rssi);
+
 #ifndef NDEBUG
     String deviceInfoStr = "Found ";
     const char* icon = NULL;
     const char* name = NULL;
+
+#if 1
+    qcc::String uuid;
+    uint32_t uuidRev = bt::INVALID_UUIDREV;
+    bool found = !eirCapable || FindAllJoynUUID(uuids, listSize, uuidRev);
+#endif
+
     dictionary->GetElement("{ss}", "Icon", &icon);
     dictionary->GetElement("{ss}", "Name", &name);
     dictionary->GetElement("{su}", "Class", &cod);
 
     if (!eirCapable) {
-        deviceInfoStr += "possible ";
+        deviceInfoStr += ajDev ? "possible " : "non-";
+    }
+    if (!found) {
+        deviceInfoStr += "non-";
     }
     deviceInfoStr += "AllJoyn device: ";
     deviceInfoStr += addrStr;
     if (eirCapable) {
         deviceInfoStr += "   EIR Capable";
-        //deviceInfoStr += "   uuidRev: ";
-        //deviceInfoStr += U32ToString(uuidRev, 16, 8, '0');
-        //deviceInfoStr += "   foundInfo.uuidRev: ";
-        //deviceInfoStr += U32ToString(foundInfo.uuidRev, 16, 8, '0');
+        if (found) {
+            deviceInfoStr += "   uuidRev: ";
+            deviceInfoStr += U32ToString(uuidRev, 16, 8, '0');
+            //deviceInfoStr += "   foundInfo.uuidRev: ";
+            //deviceInfoStr += U32ToString(foundInfo.uuidRev, 16, 8, '0');
+        }
     }
     deviceInfoStr += "   CoD: 0x";
     deviceInfoStr += U32ToString(cod, 16, 8, '0');
+    deviceInfoStr += "   RSSI: ";
+    deviceInfoStr += I32ToString(static_cast<int32_t>(rssi));
     deviceInfoStr += "   Icon: ";
     deviceInfoStr += icon ? icon : "<null>";
     deviceInfoStr += "   Name: ";
@@ -1245,13 +1262,15 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
 #endif
 
 
-    if (ajDev && (status == ER_OK)) {
-        //QCC_DbgPrintf(("BTTransport::BTAccessor::DeviceFoundSignalHandler(): checking %s (%d UUIDs, %sEIR capable)",
-        //               addrStr, listSize, eirCapable ? "" : "not "));
+    fprintf(stderr, "SJK: rssi = %d,  ajDev = %d   status = %s\n", rssi, ajDev, QCC_StatusText(status));
 
-        qcc::String uuid;
-        uint32_t uuidRev = bt::INVALID_UUIDREV;
-        bool found = !eirCapable || FindAllJoynUUID(uuids, listSize, uuidRev);
+    if ((rssi > -80) && ajDev && (status == ER_OK)) {
+        QCC_DbgPrintf(("BTTransport::BTAccessor::DeviceFoundSignalHandler(): checking %s (%d UUIDs, %sEIR capable)",
+                       addrStr, listSize, eirCapable ? "" : "not "));
+
+        //qcc::String uuid;
+        //uint32_t uuidRev = bt::INVALID_UUIDREV;
+        //bool found = !eirCapable || FindAllJoynUUID(uuids, listSize, uuidRev);
 
         if (found) {
             deviceLock.Lock();
@@ -1357,6 +1376,8 @@ bool BTTransport::BTAccessor::FindAllJoynUUID(const MsgArg* uuids,
     for (size_t i = 0; i < listSize; ++i) {
         const char* uuid;
         QStatus status = uuids[i].Get("s", &uuid);
+
+        QCC_DbgPrintf(("    UUID: %s", uuid));
 
         if ((status == ER_OK) &&
             (strcasecmp(alljoynUUIDBase, uuid + ALLJOYN_BT_UUID_REV_SIZE) == 0)) {
