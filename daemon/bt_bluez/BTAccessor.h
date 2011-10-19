@@ -398,6 +398,8 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     qcc::SocketFd l2capLFd;
     qcc::Event* l2capEvent;
 
+    uint32_t cod;
+
     struct {
         struct {
             struct {

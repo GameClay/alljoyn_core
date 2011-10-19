@@ -174,7 +174,8 @@ BTTransport::BTAccessor::BTAccessor(BTTransport* transport,
     discoverable(false),
     discoveryCtrl(0),
     l2capLFd(-1),
-    l2capEvent(NULL)
+    l2capEvent(NULL),
+    cod(0)
 {
     size_t tableIndex, member;
 
@@ -568,6 +569,8 @@ QStatus BTTransport::BTAccessor::AddRecord(const char* recordXml,
         status = adapter->MethodCall(*org.bluez.Service.AddRecord, &arg, 1, rsp, BT_DEFAULT_TO);
         if (status == ER_OK) {
             rsp->GetArg(0)->Get("u", &newHandle);
+            fprintf(stderr, "SJK: old cod: %08x   new cod: %08x\n", cod, cod | 0x00800000);
+            status = ConfigureClassOfDevice(adapter->id, cod | 0x00800000);
         } else {
             qcc::String errMsg;
             const char* errName = rsp->GetErrorName(&errMsg);
@@ -705,7 +708,6 @@ QStatus BTTransport::BTAccessor::FillAdapterAddress(AdapterObject& adapter)
 
         if (arg) {
             const char* bdAddrStr;
-            uint32_t cod;
 
             status = arg->GetElement("{ss}", "Address", &bdAddrStr);
             if (status == ER_OK) {
@@ -715,10 +717,6 @@ QStatus BTTransport::BTAccessor::FillAdapterAddress(AdapterObject& adapter)
             arg->GetElement("{sb}", "Discovering", &adapter->bluezDiscovering);
 
             status  = arg->GetElement("{su}", "Class", &cod);
-            if (status == ER_OK) {
-                fprintf(stderr, "SJK: old cod: %08x   new cod: %08x\n", cod, cod | 0x00800000);
-                status = ConfigureClassOfDevice(adapter->id, cod | 0x00800000);
-            }
         }
     }
 
@@ -1261,9 +1259,6 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
     QCC_DbgHLPrintf(("%s", deviceInfoStr.c_str()));
 #endif
 
-
-    fprintf(stderr, "SJK: rssi = %d,  ajDev = %d   status = %s\n", rssi, ajDev, QCC_StatusText(status));
-
     if ((rssi > -80) && ajDev && (status == ER_OK)) {
         QCC_DbgPrintf(("BTTransport::BTAccessor::DeviceFoundSignalHandler(): checking %s (%d UUIDs, %sEIR capable)",
                        addrStr, listSize, eirCapable ? "" : "not "));
@@ -1376,8 +1371,6 @@ bool BTTransport::BTAccessor::FindAllJoynUUID(const MsgArg* uuids,
     for (size_t i = 0; i < listSize; ++i) {
         const char* uuid;
         QStatus status = uuids[i].Get("s", &uuid);
-
-        QCC_DbgPrintf(("    UUID: %s", uuid));
 
         if ((status == ER_OK) &&
             (strcasecmp(alljoynUUIDBase, uuid + ALLJOYN_BT_UUID_REV_SIZE) == 0)) {
