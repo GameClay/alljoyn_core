@@ -188,6 +188,20 @@ const InterfaceTable ifcTables[] = {
 const size_t ifcTableSize = ArraySize(ifcTables);
 
 
+static int TSPrintf(const char* fmt, ...)
+{
+    uint32_t timestamp = GetTimestamp();
+    int ret = 0;
+    va_list ap;
+    printf("%4d.%03d | ", timestamp / 1000, timestamp % 1000);
+
+    va_start(ap, fmt);
+    ret = vprintf(fmt, ap);
+    va_end(ap);
+    return ret;
+}
+
+
 class MyBusListener : public BusListener, public SessionListener {
   public:
 
@@ -196,7 +210,7 @@ class MyBusListener : public BusListener, public SessionListener {
     void NameOwnerChanged(const char* name, const char* previousOwner, const char* newOwner)
     {
         if (previousOwner && !newOwner && (strcmp(name, bzBusName) == 0)) {
-            printf("org.bluez has crashed.  Stopping...\n");
+            TSPrintf("org.bluez has crashed.  Stopping...\n");
             exit(0);
         }
     }
@@ -219,7 +233,7 @@ class Crasher : public Thread, public MessageReceiver {
                                                    static_cast<MessageReceiver::SignalHandler>(&Crasher::DeviceFoundSignalHandler),
                                                    test::org.bluez.Adapter.DeviceFound, NULL);
         if (status != ER_OK) {
-            printf("Failed to register signal handler: %s\n", QCC_StatusText(status));
+            TSPrintf("Failed to register signal handler: %s\n", QCC_StatusText(status));
             exit(1);
         }
 
@@ -227,7 +241,7 @@ class Crasher : public Thread, public MessageReceiver {
                                            static_cast<MessageReceiver::SignalHandler>(&Crasher::PropertyChangedSignalHandler),
                                            test::org.bluez.Adapter.PropertyChanged, NULL);
         if (status != ER_OK) {
-            printf("Failed to register signal handler: %s\n", QCC_StatusText(status));
+            TSPrintf("Failed to register signal handler: %s\n", QCC_StatusText(status));
             exit(1);
         }
         pthread_cond_init(&notDiscovering, NULL);
@@ -275,7 +289,7 @@ void Crasher::DeviceFoundSignalHandler(const InterfaceDescription::Member* membe
         foundSet.insert(addr);
         checkList.push_back(addr);
         pthread_mutex_unlock(&discMutex);
-        printf("Found: %s\n", addr.ToString().c_str());
+        TSPrintf("Found: %s\n", addr.ToString().c_str());
         if (foundSet.size() == 1) {
             newAddr.SetEvent();
         }
@@ -294,7 +308,7 @@ void Crasher::PropertyChangedSignalHandler(const InterfaceDescription::Member* m
 
     if (strcmp(property, "Discovering") == 0) {
         value->Get("b", &discovering);
-        printf("Discovering %s.\n", discovering ? "on" : "off");
+        TSPrintf("Discovering %s.\n", discovering ? "on" : "off");
 
         if (wait && !discovering) {
             pthread_cond_signal(&notDiscovering);
@@ -309,7 +323,7 @@ void* Crasher::Run(void* arg)
 
     status = Event::Wait(newAddr);
     if (status != ER_OK) {
-        printf("Wait failed: %s\n", QCC_StatusText(status));
+        TSPrintf("Wait failed: %s\n", QCC_StatusText(status));
         bzAdapterObj.MethodCall(*test::org.bluez.Adapter.StopDiscovery, NULL, 0);
         return (void*) 1;
     }
@@ -322,12 +336,12 @@ void* Crasher::Run(void* arg)
     while (!IsStopping() && (GetTimestamp64() < stopTime)) {
         pthread_mutex_lock(&discMutex);
         if (wait && discovering) {
-            printf("waiting for discovery to stop...\n");
+            TSPrintf("waiting for discovery to stop...\n");
             pthread_cond_wait(&notDiscovering, &discMutex);
         }
         for (check = checkList.begin(); (!wait || !discovering) && check != checkList.end(); ++check) {
             pthread_mutex_unlock(&discMutex);
-            printf("Checking: %s\n", check->ToString().c_str());
+            TSPrintf("Checking: %s\n", check->ToString().c_str());
             MsgArg arg("s", check->ToString().c_str());
             Message reply(bus);
             status = bzAdapterObj.MethodCall(*test::org.bluez.Adapter.FindDevice, &arg, 1, reply);
@@ -338,13 +352,13 @@ void* Crasher::Run(void* arg)
                 if (status == ER_BUS_REPLY_IS_ERROR_MESSAGE) {
                     String errMsg;
                     const char* errName = reply->GetErrorName(&errMsg);
-                    printf("Failed find/create %s: %s - %s\n", check->ToString().c_str(), errName, errMsg.c_str());
+                    TSPrintf("Failed find/create %s: %s - %s\n", check->ToString().c_str(), errName, errMsg.c_str());
                     if (strcmp(errName, "org.freedesktop.DBus.Error.NameHasNoOwner") == 0) {
-                        printf("bluetoothd crashed\n");
+                        TSPrintf("bluetoothd crashed\n");
                         exit(0);
                     }
                 } else {
-                    printf("Failed find/create %s: %s\n", check->ToString().c_str(), QCC_StatusText(status));
+                    TSPrintf("Failed find/create %s: %s\n", check->ToString().c_str(), QCC_StatusText(status));
                 }
                 pthread_mutex_lock(&discMutex);
                 continue;
@@ -358,10 +372,12 @@ void* Crasher::Run(void* arg)
                 if (status == ER_BUS_REPLY_IS_ERROR_MESSAGE) {
                     String errMsg;
                     const char* errName = reply->GetErrorName(&errMsg);
-                    printf("Failed to get service info: %s - %s\n", errName, errMsg.c_str());
+                    TSPrintf("Failed to get service info for %s: %s - %s\n", check->ToString().c_str(), errName, errMsg.c_str());
                 } else {
-                    printf("Failed to get service info: %s\n", QCC_StatusText(status));
+                    TSPrintf("Failed to get service info for %s: %s\n", check->ToString().c_str(), QCC_StatusText(status));
                 }
+            } else {
+                TSPrintf("Completed getting SDP info for %s.\n", check->ToString().c_str());
             }
 
             arg.Set("o", objPath.c_str());
