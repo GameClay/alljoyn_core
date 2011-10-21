@@ -888,7 +888,7 @@ void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& 
                                      sizeof(interfaces), (LPDWORD)&nBytes, 0, 0) == SOCKET_ERROR) {
                             QCC_LogError(status, ("IfConfigByFamily: WSAIoctl(SIO_GET_INTERFACE_LIST) failed: affects %s",
                                                   entry.m_name.c_str()));
-                            entry.m_prefixlen = ~0;
+                            entry.m_prefixlen = static_cast<uint32_t>(-1);
                         } else {
                             //
                             // Walk the array of interface address information
@@ -911,7 +911,7 @@ void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& 
                                 //
                                 // XP doesn't have inet_ntop, so we fall back to inet_ntoa
                                 //
-                                char *buffer = inet_ntoa(*addr);
+                                char* buffer = inet_ntoa(*addr);
 
                                 if (entry.m_addr == qcc::String(buffer)) {
                                     //
@@ -941,7 +941,7 @@ void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& 
                         }
                     } else {
                         QCC_LogError(status, ("IfConfigByFamily: Socket(QCC_AF_INET) failed: affects %s", entry.m_name.c_str()));
-                        entry.m_prefixlen = ~0;
+                        entry.m_prefixlen = static_cast<uint32_t>(-1);
                     }
                 } else {
                     //
@@ -950,7 +950,7 @@ void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& 
                     // so if someone does try to use it, it will be obviously
                     // bogus.
                     //
-                    entry.m_prefixlen = ~0;
+                    entry.m_prefixlen = static_cast<uint32_t>(-1);
                 }
 #else // Windows 7 or greater
                 entry.m_prefixlen = paddr->OnLinkPrefixLength;
@@ -2476,7 +2476,7 @@ void NameService::SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIPv4, H
         // error will have been logged when we did the IfConfig, so
         // don't flood out any more, just silenty ignore the problem.
         //
-        if (m_broadcast && interfaceAddressPrefixLen != ~0) {
+        if (m_broadcast && interfaceAddressPrefixLen != static_cast<uint32_t>(-1)) {
             //
             // In order to ensure that our broadcast goes to the correct
             // interface and is not just sent out some default way, we
