@@ -884,10 +884,10 @@ void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& 
                         // Make the WinSuck call to get the address information about
                         // the various interfaces in the system.
                         //
-                        if (WSAIoctl(sockFd, SIO_GET_INTERFACE_LIST, 0, 0, &interfaces, 
-                            sizeof(interfaces), (LPDWORD)&nBytes, 0, 0) == SOCKET_ERROR) {
+                        if (WSAIoctl(sockFd, SIO_GET_INTERFACE_LIST, 0, 0, &interfaces,
+                                     sizeof(interfaces), (LPDWORD)&nBytes, 0, 0) == SOCKET_ERROR) {
                             QCC_LogError(status, ("IfConfigByFamily: WSAIoctl(SIO_GET_INTERFACE_LIST) failed: affects %s",
-                                    entry.m_name.c_str()));
+                                                  entry.m_name.c_str()));
                             entry.m_prefixlen = ~0;
                         } else {
                             //
@@ -907,10 +907,10 @@ void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& 
                             //
                             uint32_t nInterfaces = nBytes / sizeof(INTERFACE_INFO);
                             for (uint32_t i = 0; i < nInterfaces; ++i) {
-                                struct in_addr *addr = &interfaces[i].iiAddress.AddressIn.sin_addr;
+                                struct in_addr* addr = &interfaces[i].iiAddress.AddressIn.sin_addr;
                                 char buffer[17];
                                 inet_ntop(AF_INET, addr, buffer, sizeof(buffer));
-                                
+
                                 if (entry.m_addr == qcc::String(buffer)) {
                                     //
                                     // This is the address we want modulo the corner
@@ -926,7 +926,7 @@ void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& 
                                     // convert it to a prefix length.
                                     //
                                     uint32_t mask = ntohl(interfaces[i].iiNetmask.AddressIn.sin_addr.s_addr);
-                                    
+
                                     uint32_t prefixlen = 0;
                                     while (mask & 0x80000000) {
                                         ++prefixlen;
