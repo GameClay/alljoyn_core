@@ -837,11 +837,123 @@ void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& 
 
 #if NS_BROADCAST
 #if !defined (NTDDI_VERSION) || !defined (NTDDI_WIN7) || (NTDDI_VERSION < NTDDI_WIN7)
-                entry.m_prefixlen = ~0;
-#else
+                //
+                // WINDOWS XP doesn't provide the OnLInkPrefixLength we need to
+                // construct a subnet directed broadcast in the
+                // IP_ADAPTER_UNICAST_ADDRESS structure.  This information is,
+                // however, available in the INTERFACE_INFO structure.  The
+                // problem is that some of the information that is actually
+                // avialable in the IP_ADAPTER_UNICAST_ADDRESS structure is not
+                // available in the INTERFACE_INFO structure.  We don't
+                // absolutely need the mtu, but we do need the interface index.
+                //
+                // So, to get the same amount of information about interfaces, we
+                // have to make an extra call and wander through a different data
+                // structure on XP.  This is only required for AF_INET since
+                // there is no such thing as a subnet directed broadcast in IPv6
+                // (and IPv6 multicast works fine).
+                //
+                if (family == AF_INET) {
+                    //
+                    // Get a socket through qcc::Socket to keep its reference
+                    // counting squared away.
+                    //
+                    qcc::SocketFd sockFd;
+
+                    QStatus status = qcc::Socket(qcc::QCC_AF_INET, qcc::QCC_SOCK_DGRAM, sockFd);
+
+                    if (status == ER_OK) {
+                        //
+                        // Like many interfaces that do similar things, there's no
+                        // clean way to figure out beforehand how big of a buffer we
+                        // are going to eventually need.  Typically user code just
+                        // picks buffers that are "big enough."  On the Linux side
+                        // of things, we run into a similar situation.  There we
+                        // chose a buffer that could handle about 150 interfaces, so
+                        // we just do the same thing here.  Hopefully 150 will be
+                        // "big enough" and an INTERFACE_INFO is not that big since
+                        // it holds a long flags and three sockaddr_gen structures
+                        // (two shorts, two longs and sixteen btyes).  We're then
+                        // looking at allocating 13,200 bytes on the stack which
+                        // doesn't see too terribly outrageous.
+                        //
+                        INTERFACE_INFO interfaces[150];
+                        uint32_t nBytes;
+
+                        //
+                        // Make the WinSuck call to get the address information about
+                        // the various interfaces in the system.
+                        //
+                        if (WSAIoctl(sockFd, SIO_GET_INTERFACE_LIST, 0, 0, &interfaces, 
+                            sizeof(interfaces), (LPDWORD)&nBytes, 0, 0) == SOCKET_ERROR) {
+                            QCC_LogError(status, ("IfConfigByFamily: WSAIoctl(SIO_GET_INTERFACE_LIST) failed: affects %s",
+                                    entry.m_name.c_str()));
+                            entry.m_prefixlen = ~0;
+                        } else {
+                            //
+                            // Walk the array of interface address information
+                            // looking for one with the same address as the adapter
+                            // we are currently inspecting.  It is conceivable that
+                            // we might see a system presenting us with multiple
+                            // adapters with the same IP address but different
+                            // netmasks, but that will confuse more modules than us.
+                            // For example, someone might have multiple wireless
+                            // interfaces connected to multiple access points which
+                            // dole out the same DHCP address with different network
+                            // parts.  This is expected to be extraordinarily rare,
+                            // but if it happens, we'll just form an incorrect
+                            // broadcast address.  This is minor in the grand scheme
+                            // of things.
+                            //
+                            uint32_t nInterfaces = nBytes / sizeof(INTERFACE_INFO);
+                            for (uint32_t i = 0; i < nInterfaces; ++i) {
+                                struct in_addr *addr = &interfaces[i].iiAddress.AddressIn.sin_addr;
+                                char buffer[17];
+                                inet_ntop(AF_INET, addr, buffer, sizeof(buffer));
+                                
+                                if (entry.m_addr == qcc::String(buffer)) {
+                                    //
+                                    // This is the address we want modulo the corner
+                                    // case discussed above.  Grown-up systems
+                                    // recognize that CIDR is the way to go and give
+                                    // us a prefix length, but XP is going to give
+                                    // us a netmask.  We have to convert the mask to
+                                    // a prefix since we consider ourselves all
+                                    // grown-up.
+                                    //
+                                    // So get the 32-bits of netmask returned by
+                                    // Windows (remembering endianness issues) and
+                                    // convert it to a prefix length.
+                                    //
+                                    uint32_t mask = ntohl(interfaces[i].iiNetmask.AddressIn.sin_addr.s_addr);
+                                    
+                                    uint32_t prefixlen = 0;
+                                    while (mask & 0x80000000) {
+                                        ++prefixlen;
+                                        mask <<= 1;
+                                    }
+                                    entry.m_prefixlen = prefixlen;
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        QCC_LogError(status, ("IfConfigByFamily: Socket(QCC_AF_INET) failed: affects %s", entry.m_name.c_str()));
+                        entry.m_prefixlen = ~0;
+                    }
+                } else {
+                    //
+                    // Don't even attempt to find the prefix length for AF_INET6
+                    // since it will never be used.  Set it to some insane value
+                    // so if someone does try to use it, it will be obviously
+                    // bogus.
+                    //
+                    entry.m_prefixlen = ~0;
+                }
+#else // Windows 7 or greater
                 entry.m_prefixlen = paddr->OnLinkPrefixLength;
-#endif
-#endif
+#endif // Windows 7 or greater
+#endif // NS_BROADCAST
                 entries.push_back(entry);
             }
         }
@@ -921,8 +1033,6 @@ exit:
         freeifaddrs(iflist);
     }
     return status;
-
-
 }
 
 #else
@@ -2357,13 +2467,14 @@ void NameService::SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIPv4, H
         }
 
 #if NS_BROADCAST
-//
-// WINDOWS XP doesn't provide the OnLInkPrefixLength we need to construct a
-// subnet directed broadcast in the IP_ADAPTER_UNICAST_ADDRESS returned
-// by GetAdaptersAddresses
-//
-#if !defined(QCC_OS_WINDOWS) || defined(QCC_OS_WINDOWS) && (NTDDI_VERSION >= NTDDI_WIN7)
-        if (m_broadcast) {
+        //
+        // If there was a problem getting the IP address prefix
+        // length, it will come in as -1.  In this case, we can't form
+        // a proper subnet directed broadcast and so we don't try.  An
+        // error will have been logged when we did the IfConfig, so
+        // don't flood out any more, just silenty ignore the problem.
+        //
+        if (m_broadcast && interfaceAddressPrefixLen != ~0) {
             //
             // In order to ensure that our broadcast goes to the correct
             // interface and is not just sent out some default way, we
@@ -2400,7 +2511,6 @@ void NameService::SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIPv4, H
         } else {
             QCC_DbgPrintf(("NameService::SendProtocolMessage():  subnet directed broadcasts are disabled\n"));
         }
-#endif
 #endif
     } else {
         QCC_DbgPrintf(("NameService::SendProtocolMessage():  Sending to IPv6\n"));
