@@ -908,8 +908,10 @@ void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& 
                             uint32_t nInterfaces = nBytes / sizeof(INTERFACE_INFO);
                             for (uint32_t i = 0; i < nInterfaces; ++i) {
                                 struct in_addr* addr = &interfaces[i].iiAddress.AddressIn.sin_addr;
-                                char buffer[17];
-                                inet_ntop(AF_INET, addr, buffer, sizeof(buffer));
+                                //
+                                // XP doesn't have inet_ntop, so we fall back to inet_ntoa
+                                //
+                                char *buffer = inet_ntoa(*addr);
 
                                 if (entry.m_addr == qcc::String(buffer)) {
                                     //
