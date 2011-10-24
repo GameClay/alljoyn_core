@@ -414,10 +414,10 @@ void BTNodeDB::RemoveExpiration()
 {
     Lock();
     uint64_t expireTime = numeric_limits<uint64_t>::max();
-    iterator it = expireSet.begin();
-    while (it != expireSet.end()) {
+    expireSet.clear();
+    iterator it = nodes.begin();
+    while (it != nodes.end()) {
         BTNodeInfo node = *it;
-        expireSet.erase(it++);
         node->SetExpireTime(expireTime);
         expireSet.insert(node);
     }
@@ -432,10 +432,10 @@ void BTNodeDB::RefreshExpiration(uint32_t expireDelta)
     Timespec now;
     GetTimeNow(&now);
     uint64_t expireTime = now.GetAbsoluteMillis() + expireDelta;
-    iterator it = expireSet.begin();
-    while (it != expireSet.end()) {
+    expireSet.clear();
+    iterator it = nodes.begin();
+    while (it != nodes.end()) {
         BTNodeInfo node = *it;
-        expireSet.erase(it++);
         node->SetExpireTime(expireTime);
         expireSet.insert(node);
     }
