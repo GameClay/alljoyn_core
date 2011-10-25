@@ -169,7 +169,7 @@ int main(int argc, char** argv)
 
     char buf[1024];
     for (uint32_t i = 0; i < n; ++i) {
-        sprintf(buf, "H%d", i);
+        snprintf(buf, 1024, "H%d", i);
 #if IPV4
         if (sendto(fd4, buf, 1 + strlen(buf), 0, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) < 0) {
             perror("sendto");

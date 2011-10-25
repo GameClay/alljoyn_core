@@ -691,7 +691,7 @@ int main(int argc, char** argv)
                     pingArgs[0].Set("u", now.seconds);
                     pingArgs[1].Set("q", now.mseconds);
                 } else {
-                    sprintf(buf, "Ping String %u", static_cast<unsigned int>(++cnt));
+                    snprintf(buf, 80, "Ping String %u", static_cast<unsigned int>(++cnt));
                     pingArgs[0].Set("s", buf);
 
                     if (pingDelay > 0) {

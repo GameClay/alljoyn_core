@@ -171,7 +171,7 @@ class SrpKeyXListener : public AuthListener {
                     srand(time(NULL));
                     int pin = rand() % 1000000;
                     char pinStr[7];
-                    sprintf(pinStr, "%06d", pin);
+                    snprintf(pinStr, 7, "%06d", pin);
                     printf("One Time Password : %s\n", pinStr);
                     fflush(stdout);
                     creds.SetPassword(pinStr);

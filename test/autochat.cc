@@ -356,7 +356,7 @@ int main(int argc, char** argv)
     while (true) {
         if (connections.size() > 0) {
             char abuf[128];
-            sprintf(abuf, "this is autochat message %d from %s\n", n++, myName.c_str());
+            snprintf(abuf, 128, "this is autochat message %d from %s\n", n++, myName.c_str());
             chatObj.SendChatSignal(abuf);
             qcc::Sleep(500 + 8 * qcc::Rand8());
         } else {
