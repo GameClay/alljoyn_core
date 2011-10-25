@@ -235,7 +235,7 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
 
     /* Forward broadcast to endpoints (local or remote) whose rules allow it */
     if ((destinationEmpty && (sessionId == 0)) || policydb->EavesdropEnabled()) {
-        nameTable.Lock()
+        nameTable.Lock();
         ruleTable.Lock();
         RuleIterator it = ruleTable.Begin();
         while (it != ruleTable.End()) {
