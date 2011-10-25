@@ -25,6 +25,8 @@
 
 #include <qcc/platform.h>
 
+#ifdef __cplusplus
+
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/InterfaceDescription.h>
 
@@ -65,6 +67,8 @@ QStatus CreateInterfaces(BusAttachment& bus);
 }
 }
 }
+#endif /* #ifdef __cplusplus */
+
 /**
  * @name DBus RequestName input params
  * org.freedesktop.DBus.RequestName input params (see DBus spec)
