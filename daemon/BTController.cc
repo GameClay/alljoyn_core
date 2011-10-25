@@ -714,6 +714,7 @@ void BTController::LostLastConnection(const BDAddress& addr)
     } else {
         BTNodeDB::const_iterator it;
         BTNodeDB::const_iterator end;
+        nodeDB.Lock();
         nodeDB.FindNodes(addr, it, end);
         for (; it != end; ++it) {
             if ((*it)->GetConnectionCount() == 1) {
@@ -721,6 +722,7 @@ void BTController::LostLastConnection(const BDAddress& addr)
                 break;
             }
         }
+        nodeDB.Unlock();
     }
 
     if ((node->IsValid()) && (node->IsEIRCapable())) {

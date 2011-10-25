@@ -235,6 +235,7 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
 
     /* Forward broadcast to endpoints (local or remote) whose rules allow it */
     if ((destinationEmpty && (sessionId == 0)) || policydb->EavesdropEnabled()) {
+        nameTable.Lock()
         ruleTable.Lock();
         RuleIterator it = ruleTable.Begin();
         while (it != ruleTable.End()) {
@@ -285,6 +286,7 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
             }
         }
         ruleTable.Unlock();
+        nameTable.Unlock();
     }
 
     /* Send global broadcast to all busToBus endpoints that aren't the sender of the message */
