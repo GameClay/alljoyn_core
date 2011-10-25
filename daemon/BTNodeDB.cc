@@ -420,6 +420,7 @@ void BTNodeDB::RemoveExpiration()
         BTNodeInfo node = *it;
         node->SetExpireTime(expireTime);
         expireSet.insert(node);
+        ++it;
     }
     assert(expireSet.size() == nodes.size());
     Unlock();
@@ -438,6 +439,7 @@ void BTNodeDB::RefreshExpiration(uint32_t expireDelta)
         BTNodeInfo node = *it;
         node->SetExpireTime(expireTime);
         expireSet.insert(node);
+        ++it;
     }
     assert(expireSet.size() == nodes.size());
     Unlock();
