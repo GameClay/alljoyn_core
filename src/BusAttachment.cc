@@ -469,7 +469,7 @@ QStatus BusAttachment::Disconnect(const char* connectSpec)
             if (alljoynIface) {
                 UnregisterSignalHandler(this,
                                         static_cast<MessageReceiver::SignalHandler>(&BusAttachment::Internal::AllJoynSignalHandler),
-                                        alljoynIface->GetMember("FoundName"),
+                                        alljoynIface->GetMember("FoundAdvertisedName"),
                                         NULL);
             }
             if (alljoynIface) {
