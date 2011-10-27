@@ -792,6 +792,14 @@ int main(int argc, char** argv)
                 }
             }
 
+            /* Disconnect from the bus */
+            if (ER_OK == status) {
+                status = g_msgBus->Disconnect(connectArgs.c_str());
+                if (ER_OK != status) {
+                    QCC_LogError(status, ("BusAttachment::Disconnect(\"%s\") failed", connectArgs.c_str()));
+                }
+            }
+
             /* Stop the bus */
             if (waitStop) {
                 g_msgBus->WaitStop();
