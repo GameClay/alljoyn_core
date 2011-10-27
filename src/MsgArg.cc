@@ -1154,7 +1154,7 @@ QStatus MsgArg::Set(const char* signature, ...)
     return status;
 }
 
-QStatus MsgArgUtils::SetV(MsgArg* args, size_t& numArgs, const char* signature, va_list* argpIn)
+QStatus MsgArgUtils_SetV(MsgArg* args, size_t& numArgs, const char* signature, va_list* argpIn)
 {
     va_list& argp = *argpIn;
 
@@ -1180,7 +1180,7 @@ QStatus MsgArg::Set(MsgArg* args, size_t& numArgs, const char* signature, ...)
 {
     va_list argp;
     va_start(argp, signature);
-    QStatus status = MsgArgUtils::SetV(args, numArgs, signature, &argp);
+    QStatus status = MsgArgUtils_SetV(args, numArgs, signature, &argp);
     va_end(argp);
     return status;
 }

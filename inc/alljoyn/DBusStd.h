@@ -106,6 +106,9 @@ QStatus CreateInterfaces(BusAttachment& bus);
 #define DBUS_START_REPLY_SUCCESS          1         /**< StartServiceByName reply: Service is started */
 #define DBUS_START_REPLY_ALREADY_RUNNING  2         /**< StartServiceByName reply: Service is already running */
 // @}
+
+#ifdef __cplusplus 
 }
+#endif
 
 #endif

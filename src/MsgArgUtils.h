@@ -31,30 +31,25 @@
 #include <Status.h>
 
 namespace ajn {
+namespace MsgArgUtils {
+/**
+ * Set an array of MsgArgs by applying the Set() method to each MsgArg in turn.
+ *
+ * @param args     An array of MsgArgs to set.
+ * @param numArgs  [in,out] On input the size of the args array. On output the number of MsgArgs
+ *                 that were set. There must be at least enought MsgArgs to completely
+ *                 initialize the signature.
+ *                 there should at least enough.
+ * @param signature   The signature for MsgArg values
+ * @param argp        A va_list of one or more values to initialize the MsgArg list.
+ *
+ * @return - ER_OK if the MsgArgs were successfully set.
+ *         - ER_BUS_TRUNCATED if the signature was longer than expected.
+ *         - Otherwise an error status.
+ */
+extern QStatus SetV(MsgArg* args, size_t& numArgs, const char* signature, va_list* argp);
 
-class MsgArgUtils {
-
-  public:
-
-    /**
-     * Set an array of MsgArgs by applying the Set() method to each MsgArg in turn.
-     *
-     * @param args     An array of MsgArgs to set.
-     * @param numArgs  [in,out] On input the size of the args array. On output the number of MsgArgs
-     *                 that were set. There must be at least enought MsgArgs to completely
-     *                 initialize the signature.
-     *                 there should at least enough.
-     * @param signature   The signature for MsgArg values
-     * @param argp        A va_list of one or more values to initialize the MsgArg list.
-     *
-     * @return - ER_OK if the MsgArgs were successfully set.
-     *         - ER_BUS_TRUNCATED if the signature was longer than expected.
-     *         - Otherwise an error status.
-     */
-    static QStatus SetV(MsgArg* args, size_t& numArgs, const char* signature, va_list* argp);
-
-};
-
+}
 }
 
 #endif

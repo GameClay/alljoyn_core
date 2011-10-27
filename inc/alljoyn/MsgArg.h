@@ -232,7 +232,7 @@ typedef struct {
 class MsgArg {
 
     friend class _Message;
-    friend class MsgArgUtils;
+    friend QStatus MsgArgUtils_SetV(MsgArg* args, size_t& numArgs, const char* signature, va_list* argp);
 
   public:
 
