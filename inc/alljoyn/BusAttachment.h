@@ -174,6 +174,66 @@ class BusAttachment : public MessageReceiver {
      *    -# BusAttachment::IsConnected() returns true
      *    -# BusObject::ObjectRegistered() is called by the bus
      *
+     * Start(), Stop() and WaitStop() all work together to manage the autonomous
+     * activities that can happen in a BusAttachment.  The activities are
+     * carried out by so-called hardware threads.  POSIX defines functions used
+     * to control hardware threads, which it calls pthreads.  Many threading
+     * packages use similar constructs.
+     *
+     * In a threading package, a start method asks the underlying system to
+     * arrange for the start of thread execution; and a stop method asks the
+     * underlying system to arrange for a thread to stop its execution.  Note
+     * that neither of these functions is synchronous in the sense that one has
+     * actually accomplished the desired effect upon the return from a call into
+     * the threads package.  Of particular interest is the fact that after a
+     * call to Stop(), threads will still be running.  These threads have been
+     * asked to stop, but they have not necessarily stopped.
+     *
+     * In order to wait until all of the threads have actually stopped, another
+     * blocking call is required.  In threading packages this is typically
+     * called join.
+     *
+     * A Start() method call should be thought of as mapping to a threading
+     * package start function.  it causes the activity threads in the
+     * BusAttachment to be spun up and gets the attachment ready to do its main
+     * job.
+     *
+     * A Stop(false) method call should be thought of as mapping to a threading
+     * packet stop function.  It asks the BusAttachment to begin shutting down
+     * but does not wait for any threads to exit.  It is an asynchronous request.
+     *
+     * A Stop(true) method call should be thoughf of as mapping to a threading
+     * package stop function call followed by a threading package join function
+     * call.  It asks the BusAttachment to begin shutting down, but waits for all
+     * of its activity threads to exit before running.  It is a synchronous
+     * request.
+     *
+     * A WaitStop() method call should be thought of as mapping to a threading
+     * package join function call.  It waits until all of the threads in the
+     * BusAttachment have exited.  If called without a prior Stop(), it acts as
+     * a convenient place to park a main thread in a long-running program.
+     *
+     * Since Start(), Stop() and WaitStop() conceptually map to threads
+     * functions, one should not expect them to clean up any state when they are
+     * called.  For example, if there is state in an object, one can repeatedly
+     * send threads through the object without resetting the state of the object.
+     * That is the case with Start(), Stop() and WaitStop().  If one uses these
+     * functions in a loop, one must explicitly undo everything that was done
+     * in the loop.  For example,
+     *
+     *   Start()
+     *   Connect()
+     *   RegisterBusObject()
+     *   ... work with a bus object
+     *   UnregisterBusObject()
+     *   Disconnect()
+     *   Stop()
+     *
+     * Just because you call Stop(), there is no cleanup implied.
+     *
+     * @see Stop()
+     * @see WaitStop()
+
      * @return
      *      - #ER_OK if successful.
      *      - #ER_BUS_BUS_ALREADY_STARTED if already started
@@ -182,7 +242,10 @@ class BusAttachment : public MessageReceiver {
     QStatus Start();
 
     /**
-     * Stop the message bus.
+     * Stop the threaded activities in the message bus.
+     *
+     * @see Start()
+     * @see WaitStop()
      *
      * @param blockUntilStopped   Block the caller until the bus is stopped
      *
@@ -193,7 +256,7 @@ class BusAttachment : public MessageReceiver {
     QStatus Stop(bool blockUntilStopped = true);
 
     /**
-     * Returns true if the mesage bus has been started.
+     * Returns true if the message bus has been Start()ed.
      */
     bool IsStarted() { return isStarted; }
 
@@ -203,8 +266,12 @@ class BusAttachment : public MessageReceiver {
     bool IsStopping() { return isStopping; }
 
     /**
-     * Wait for the message bus to be stopped. This method blocks the calling thread until another thread
-     * calls the Stop() method. Return immediately if the message bus has not been started.
+     * Wait for the message bus to be stopped. This method blocks the calling
+     * thread until another thread calls the Stop() method. Return immediately
+     * if the message bus has not been started.
+     *
+     * @see Start()
+     * @see Stop()
      */
     void WaitStop();
 
