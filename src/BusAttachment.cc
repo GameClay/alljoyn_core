@@ -460,32 +460,32 @@ QStatus BusAttachment::Disconnect(const char* connectSpec)
         if ((ER_OK == status) && !isDaemon) {
             const InterfaceDescription* dbusIface = GetInterface(org::freedesktop::DBus::InterfaceName);
             if (dbusIface) {
-                UnregisterSignalHandler(this,
+                UnregisterSignalHandler(busInternal,
                                         static_cast<MessageReceiver::SignalHandler>(&BusAttachment::Internal::AllJoynSignalHandler),
                                         dbusIface->GetMember("NameOwnerChanged"),
                                         NULL);
             }
             const InterfaceDescription* alljoynIface = GetInterface(org::alljoyn::Bus::InterfaceName);
             if (alljoynIface) {
-                UnregisterSignalHandler(this,
+                UnregisterSignalHandler(busInternal,
                                         static_cast<MessageReceiver::SignalHandler>(&BusAttachment::Internal::AllJoynSignalHandler),
                                         alljoynIface->GetMember("FoundAdvertisedName"),
                                         NULL);
             }
             if (alljoynIface) {
-                UnregisterSignalHandler(this,
+                UnregisterSignalHandler(busInternal,
                                         static_cast<MessageReceiver::SignalHandler>(&BusAttachment::Internal::AllJoynSignalHandler),
                                         alljoynIface->GetMember("LostAdvertisedName"),
                                         NULL);
             }
             if (alljoynIface) {
-                UnregisterSignalHandler(this,
+                UnregisterSignalHandler(busInternal,
                                         static_cast<MessageReceiver::SignalHandler>(&BusAttachment::Internal::AllJoynSignalHandler),
                                         alljoynIface->GetMember("SessionLost"),
                                         NULL);
             }
             if (alljoynIface) {
-                UnregisterSignalHandler(this,
+                UnregisterSignalHandler(busInternal,
                                         static_cast<MessageReceiver::SignalHandler>(&BusAttachment::Internal::AllJoynSignalHandler),
                                         alljoynIface->GetMember("MPSessionChanged"),
                                         NULL);
