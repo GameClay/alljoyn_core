@@ -35,6 +35,7 @@ progs = [
     env.Program('compression',   ['compression.cc']),
     env.Program('rawclient',     ['rawclient.cc']),
     env.Program('rawservice',    ['rawservice.cc']),
+    env.Program('bbsignals',     ['bbsignals.cc']),
     env.Program('sessions',      ['sessions.cc'])
     ]
 

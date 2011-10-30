@@ -314,7 +314,7 @@ class DaemonRouter : public Router {
     BusController* busController;   /**< The bus controller used with this router */
     PermissionDB permDb;            /**< Permission security information cache */
 
-    std::vector<RemoteEndpoint*> m_b2bEndpoints;  /**< Collection of Bus-to-bus endpoints */
+    std::set<RemoteEndpoint*> m_b2bEndpoints;  /**< Collection of Bus-to-bus endpoints */
     qcc::Mutex m_b2bEndpointsLock;       /**< Lock that protects m_b2bEndpoints */
 
     /** Session multicast destination map */

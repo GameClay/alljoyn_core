@@ -292,13 +292,19 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
     /* Send global broadcast to all busToBus endpoints that aren't the sender of the message */
     if (destinationEmpty && (sessionId == 0) && msg->IsGlobalBroadcast()) {
         m_b2bEndpointsLock.Lock();
-        vector<RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
+        set<RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
         while (it != m_b2bEndpoints.end()) {
             if ((*it) != &origSender) {
-                QStatus tStatus = SendThroughEndpoint(msg, **it, sessionId);
+                RemoteEndpoint* ep = *it;
+                m_b2bEndpointsLock.Unlock();
+                QStatus tStatus = SendThroughEndpoint(msg, *ep, sessionId);
                 status = (status == ER_OK) ? tStatus : status;
+                m_b2bEndpointsLock.Lock();
+                it = m_b2bEndpoints.lower_bound(ep);
             }
-            ++it;
+            if (it != m_b2bEndpoints.end()) {
+                ++it;
+            }
         }
         m_b2bEndpointsLock.Unlock();
     }
@@ -311,11 +317,17 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
         set<SessionCastEntry>::iterator sit = sessionCastSet.lower_bound(sce);
         while ((sit != sessionCastSet.end()) && (sit->id == sce.id) && (sit->src == sce.src)) {
             if (!sit->b2bEp || (sit->b2bEp != lastB2b)) {
+                lastB2b = sit->b2bEp;
+                SessionCastEntry entry = *sit;
+                sessionCastSetLock.Unlock();
                 QStatus tStatus = SendThroughEndpoint(msg, *sit->destEp, sessionId);
                 status = (status == ER_OK) ? tStatus : status;
-                lastB2b = sit->b2bEp;
+                sessionCastSetLock.Lock();
+                sit = sessionCastSet.lower_bound(entry);
             }
-            ++sit;
+            if (sit != sessionCastSet.end()) {
+                ++sit;
+            }
         }
         sessionCastSetLock.Unlock();
     }
@@ -333,7 +345,7 @@ BusEndpoint* DaemonRouter::FindEndpoint(const qcc::String& busName)
     BusEndpoint* ep = nameTable.FindEndpoint(busName);
     if (!ep) {
         m_b2bEndpointsLock.Lock();
-        for (vector<RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin(); it != m_b2bEndpoints.end(); ++it) {
+        for (set<RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin(); it != m_b2bEndpoints.end(); ++it) {
             if ((*it)->GetUniqueName() == busName) {
                 ep = *it;
                 break;
@@ -362,7 +374,7 @@ QStatus DaemonRouter::RegisterEndpoint(BusEndpoint& endpoint, bool isLocal)
 
         /* Add to list of bus-to-bus endpoints */
         m_b2bEndpointsLock.Lock();
-        m_b2bEndpoints.push_back(busToBusEndpoint);
+        m_b2bEndpoints.insert(busToBusEndpoint);
         m_b2bEndpointsLock.Unlock();
     } else {
         /* Bus-to-client endpoints appear directly on the bus */
@@ -389,7 +401,7 @@ void DaemonRouter::UnregisterEndpoint(BusEndpoint& endpoint)
 
         /* Remove the bus2bus endpoint from the list */
         m_b2bEndpointsLock.Lock();
-        vector<RemoteEndpoint*>::iterator it = m_b2bEndpoints.begin();
+        set<RemoteEndpoint*>::iterator it = m_b2bEndpoints.begin();
         while (it != m_b2bEndpoints.end()) {
             if (*it == busToBusEndpoint) {
                 m_b2bEndpoints.erase(it);

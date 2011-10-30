@@ -331,7 +331,7 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
                  *
                  * In all other cases an invalid serial number cause the connection to be dropped.
                  */
-                if (msg->IsUnreliable() || (bus2bus && msg->IsBroadcastSignal()) || IsControlMessage(msg)) {
+                if (msg->IsUnreliable() || msg->IsBroadcastSignal() || IsControlMessage(msg)) {
                     QCC_DbgHLPrintf(("Invalid serial discarding %s", msg->Description().c_str()));
                     status = ER_OK;
                 } else {
