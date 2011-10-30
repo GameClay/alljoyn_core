@@ -1239,7 +1239,9 @@ qcc::ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunAttach()
                             /* Re-lock and re-acquire */
                             ajObj.AcquireLocks();
                             destEp = ajObj.router.FindEndpoint(destStr);
-                            if (!destEp) {
+                            srcEp = static_cast<VirtualEndpoint*>(ajObj.router.FindEndpoint(srcStr));
+                            if (!destEp || !srcEp) {
+                                QCC_LogError(ER_FAIL, ("%s disappeared during JoinSession", !destEp ? "destEp" : "srcEp"));
                                 replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
                             }
                         }
