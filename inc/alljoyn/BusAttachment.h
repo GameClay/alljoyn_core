@@ -259,7 +259,7 @@ class BusAttachment : public MessageReceiver {
          *      - #ER_OK if successful.
          *      - An error status if unable to stop the message bus
          */
-        QStatus Stop(bool blockUntilStopped = true);
+        QStatus Stop(bool blockUntilStopped = true)
         );
 
     /**
@@ -287,7 +287,7 @@ class BusAttachment : public MessageReceiver {
          * @see Start()
          * @see Stop()
          */
-        void WaitStop();
+        void WaitStop()
         );
 
     /**
