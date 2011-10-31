@@ -60,18 +60,11 @@ static const char* SERVICE_NAME = "org.alljoyn.Bus.signal_sample";
 static const char* SERVICE_PATH = "/";
 static const SessionPort SERVICE_PORT = 25;
 
-/**
- * Signal handler
- * with out the signal handler the program will exit without stopping the bus when kill signal is received.  (i.e. [Ctrl + c] is pressed)
- * not using this may result in a memory leak if [ctrl + c] is used to end this program.
- */
-static void SigIntHandler(int sig) {
-    if (NULL != g_msgBus) {
-        QStatus status = g_msgBus->Stop(false);
-        if (ER_OK != status) {
-            printf("BusAttachment::Stop() failed\n");
-        }
-    }
+static volatile sig_atomic_t g_interrupt = false;
+
+static void SigIntHandler(int sig)
+{
+    g_interrupt = true;
 }
 
 class BasicSampleObject : public BusObject {
@@ -255,10 +248,9 @@ int main(int argc, char** argv, char** envArg) {
     }
 
     if (ER_OK == status) {
-        /*
-         * Wait until bus is stopped
-         */
-        g_msgBus->WaitStop();
+        while (g_interrupt == false) {
+            sleep(1);
+        }
     }
 
     /* Clean up msg bus */
