@@ -71,8 +71,6 @@ static String g_wellKnownName = ::org::alljoyn::alljoyn_test::DefaultWellKnownNa
 static String g_advertiseName = ::org::alljoyn::alljoyn_test::DefaultAdvertiseName;
 static Event g_discoverEvent;
 
-static bool stopNow = false;
-
 static bool compress = false;
 static bool encryption = false;
 static bool broacast = false;
@@ -121,18 +119,11 @@ class MyBusListener : public BusListener, public SessionListener {
 static MyBusListener g_busListener;
 
 
-/** Signal handler */
+static volatile sig_atomic_t g_interrupt = false;
+
 static void SigIntHandler(int sig)
 {
-    if (!stopNow) {
-        stopNow = true;
-        if (NULL != g_msgBus) {
-            QStatus status = g_msgBus->Stop(false);
-            if (ER_OK != status) {
-                QCC_LogError(status, ("BusAttachment::Stop() failed"));
-            }
-        }
-    }
+    g_interrupt = true;
 }
 
 class LocalTestObject : public BusObject {
@@ -412,7 +403,6 @@ static void usage(void)
     printf("   -e[k] [RSA|SRP] = Encrypt the test interface using specified auth mechanism, -ek means clear keys\n");
     printf("   -d              = discover remote bus with test service\n");
     printf("   -b              = Signal is broadcast rather than multicast\n");
-    printf("   -w              = Wait for a CTRL-C to stop the bus\n");
 }
 
 
@@ -427,7 +417,6 @@ int main(int argc, char** argv)
     unsigned long authCount = 1000;
 
     bool doStress = false;
-    bool waitStop = false;
     bool useSignalHandler = false;
     bool discoverRemote = false;
     unsigned int pid;
@@ -536,8 +525,6 @@ int main(int argc, char** argv)
             }
         } else if (0 == strcmp("-x", argv[i])) {
             compress = true;
-        } else if (0 == strcmp("-w", argv[i])) {
-            waitStop = true;
         } else if (0 == strcmp("-b", argv[i])) {
             broacast = true;
         } else if ((0 == strcmp("-e", argv[i])) || (0 == strcmp("-ek", argv[i]))) {
@@ -664,6 +651,9 @@ int main(int argc, char** argv)
                 if (testObj->signalDelay > 0) {
                     qcc::Sleep(testObj->signalDelay);
                 }
+                if (g_interrupt) {
+                    break;
+                }
             }
             /* If we are not sending signals we wait for signals to be sent to us */
             if (useSignalHandler && (testObj->maxSignals == 0)) {
@@ -676,25 +666,16 @@ int main(int argc, char** argv)
             qcc::Sleep(testObj->disconnectDelay);
         }
 
-        if (waitStop) {
-            g_msgBus->WaitStop();
-        } else {
-            /* Stop the bus */
-            status = g_msgBus->Stop();
-            if (ER_OK != status) {
-                QCC_LogError(status, ("BusAttachment::Stop() failed"));
-            }
-        }
-
-        /* Clean up the test object for the next stress loop iteration */
-        delete testObj;
-
         /* Clean up msg bus for next stress loop iteration*/
         BusAttachment* deleteMe = g_msgBus;
         g_msgBus = NULL;
         delete deleteMe;
 
-    } while ((ER_OK == status) && doStress && !stopNow);
+        /* Clean up the test object for the next stress loop iteration */
+        delete testObj;
+        testObj = NULL;
+
+    } while ((ER_OK == status) && doStress && !g_interrupt);
 
 
     if (g_msgBus) {
