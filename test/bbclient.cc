@@ -143,15 +143,11 @@ class MyBusListener : public BusListener, public SessionListener {
 /** Static bus listener */
 static MyBusListener* g_busListener;
 
-/** Signal handler */
+static volatile sig_atomic_t g_interrupt = false;
+
 static void SigIntHandler(int sig)
 {
-    if (NULL != g_msgBus) {
-        QStatus status = g_msgBus->Stop(false);
-        if (ER_OK != status) {
-            QCC_LogError(status, ("BusAttachment::Stop() failed"));
-        }
-    }
+    g_interrupt = true;
 }
 
 static void usage(void)
@@ -512,7 +508,7 @@ int main(int argc, char** argv)
     qcc::String connectArgs = env->Find("BUS_ADDRESS", "unix:abstract=alljoyn");
 #endif
 
-    for (unsigned long i = 0; i < repCount; i++) {
+    for (unsigned long i = 0; i < repCount && !g_interrupt; i++) {
         unsigned long pings;
         if (runTime > 0) {
             pings = 1;
