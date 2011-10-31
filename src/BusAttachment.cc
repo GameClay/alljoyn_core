@@ -60,6 +60,7 @@
 
 #define QCC_MODULE "ALLJOYN"
 
+#define OPTIONAL_START 1
 
 using namespace std;
 using namespace qcc;
@@ -154,11 +155,11 @@ BusAttachment::~BusAttachment(void)
 {
     QCC_DbgTrace(("BusAttachment Destructor (%p)", this));
 
-    Stop(true);
+    StopInternal(true);
 
     /*
      * Other threads may be attempting to stop the bus. We need to wait for
-     * ALL callers of BusAttachment::Stop() to exit before deleting the object
+     * ALL callers of BusAttachment::StopInternal() to exit before deleting the object
      */
     while (busInternal->stopCount) {
         qcc::Sleep(5);
@@ -175,11 +176,19 @@ QStatus BusAttachment::Start()
     QCC_DbgTrace(("BusAttachment::Start()"));
 
     if (isStarted) {
+#if OPTIONAL_START
+        /*
+         * Optional implies it may be called multiple times.
+         */
+        QCC_DbgTrace(("BusAttachment::Start(): Optional restart"));
+        return ER_OK;
+#else
         status = ER_BUS_BUS_ALREADY_STARTED;
         QCC_LogError(status, ("BusAttachment::Start already started"));
+#endif
     } else if (isStopping) {
         status = ER_BUS_STOPPING;
-        QCC_LogError(status, ("BusAttachment::Start bus is stopping call WaitStop() before calling Start()"));
+        QCC_LogError(status, ("BusAttachment::Start bus is stopping call WaitStopInternal() before calling Start()"));
     } else {
         isStarted = true;
         /*
@@ -204,7 +213,7 @@ QStatus BusAttachment::Start()
             busInternal->dispatcher.Stop();
             busInternal->timer.Stop();
             busInternal->transportList.Stop();
-            WaitStop();
+            WaitStopInternal();
         }
 
     }
@@ -358,7 +367,15 @@ QStatus BusAttachment::Connect(const char* connectSpec, RemoteEndpoint** newep)
     bool isDaemon = busInternal->GetRouter().IsDaemon();
 
     if (!isStarted) {
+#if OPTIONAL_START
+        /*
+         * Optional implies it may not already be called.
+         */
+        QCC_DbgTrace(("BusAttachment::Connect(): Exercising optional Start()"));
+        status = Start();
+#else
         status = ER_BUS_BUS_NOT_STARTED;
+#endif
     } else if (isStopping) {
         status = ER_BUS_STOPPING;
         QCC_LogError(status, ("BusAttachment::Connect cannot connect while bus is stopping"));
@@ -499,12 +516,17 @@ QStatus BusAttachment::Disconnect(const char* connectSpec)
     return status;
 }
 
+QStatus BusAttachment::Stop(bool blockUntilStopped)
+{
+    return StopInternal(blockUntilStopped);
+}
+
 /*
  * Note if called with blockUntilStopped == false this function must not do anything that might block.
  * Because we don't know what kind of cleanup various transports may do on Stop() the transports are
  * stopped on the ThreadExit callback for the dispatch thread.
  */
-QStatus BusAttachment::Stop(bool blockUntilStopped)
+QStatus BusAttachment::StopInternal(bool blockUntilStopped)
 {
     QStatus status = ER_OK;
     if (isStarted) {
@@ -535,7 +557,7 @@ QStatus BusAttachment::Stop(bool blockUntilStopped)
         }
 
         if ((status == ER_OK) && blockUntilStopped) {
-            WaitStop();
+            WaitStopInternal();
         }
     }
     return status;
@@ -544,6 +566,12 @@ QStatus BusAttachment::Stop(bool blockUntilStopped)
 void BusAttachment::WaitStop()
 {
     QCC_DbgTrace(("BusAttachment::WaitStop"));
+    WaitStopInternal();
+}
+
+void BusAttachment::WaitStopInternal()
+{
+    QCC_DbgTrace(("BusAttachment::WaitStopInternal"));
     if (isStarted) {
         /*
          * We use a combination of a mutex and a counter to ensure that all threads that are
@@ -553,7 +581,7 @@ void BusAttachment::WaitStop()
         busInternal->stopLock.Lock();
 
         /*
-         * In the case where more than one thread has called WaitStop() the first thread in will
+         * In the case where more than one thread has called WaitStopInternal() the first thread in will
          * clear the isStarted flag.
          */
         if (isStarted) {

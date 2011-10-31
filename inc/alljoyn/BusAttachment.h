@@ -242,18 +242,25 @@ class BusAttachment : public MessageReceiver {
     QStatus Start();
 
     /**
-     * Stop the threaded activities in the message bus.
-     *
-     * @see Start()
-     * @see WaitStop()
-     *
-     * @param blockUntilStopped   Block the caller until the bus is stopped
-     *
-     * @return
-     *      - #ER_OK if successful.
-     *      - An error status if unable to stop the message bus
+     * Stop() is deprecated.  A bus attachment should be torn down simply by
+     * using its destructor, which does an implied Stop().
      */
-    QStatus Stop(bool blockUntilStopped = true);
+    QCC_DEPRECATED(
+        /**
+         * @deprecated
+         * Stop the threaded activities in the message bus.
+         *
+         * @see Start()
+         * @see WaitStop()
+         *
+         * @param blockUntilStopped   Block the caller until the bus is stopped
+         *
+         * @return
+         *      - #ER_OK if successful.
+         *      - An error status if unable to stop the message bus
+         */
+        QStatus Stop(bool blockUntilStopped = true);
+        );
 
     /**
      * Returns true if the message bus has been Start()ed.
@@ -266,14 +273,22 @@ class BusAttachment : public MessageReceiver {
     bool IsStopping() { return isStopping; }
 
     /**
-     * Wait for the message bus to be stopped. This method blocks the calling
-     * thread until another thread calls the Stop() method. Return immediately
-     * if the message bus has not been started.
-     *
-     * @see Start()
-     * @see Stop()
+     * WaitStop() is deprecated.  A bus attachment should be torn down simply by
+     * using its destructor, which does an implied WaitStop().
      */
-    void WaitStop();
+    QCC_DEPRECATED(
+        /**
+         * @deprecated
+         *
+         * Wait for the message bus to be stopped. This method blocks the calling
+         * thread until another thread calls the Stop() method. Return immediately
+         * if the message bus has not been started.
+         *
+         * @see Start()
+         * @see Stop()
+         */
+        void WaitStop();
+        );
 
     /**
      * Connect to a remote bus address.
@@ -937,8 +952,8 @@ class BusAttachment : public MessageReceiver {
      */
     BusAttachment(Internal* internal);
     /// @endcond
-  private:
 
+  private:
     /**
      * Assignment operator is private.
      */
@@ -948,6 +963,16 @@ class BusAttachment : public MessageReceiver {
      * Copy constructor is private.
      */
     BusAttachment(const BusAttachment& other) { }
+
+    /**
+     * Stop the bus, optionally blocking until all of the threads join
+     */
+    QStatus StopInternal(bool blockUntilStopped = true);
+
+    /**
+     * Wait until all of the threads have stopped (join).
+     */
+    void WaitStopInternal();
 
 #if defined(QCC_OS_ANDROID)
     /**
