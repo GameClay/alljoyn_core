@@ -64,15 +64,11 @@ const char* Path = "/org/alljoyn/sock_test";
 
 static BusAttachment* gBus = NULL;
 
-/** Signal handler */
+static volatile sig_atomic_t g_interrupt = false;
+
 static void SigIntHandler(int sig)
 {
-    if (gBus) {
-        QStatus status = gBus->Stop(false);
-        if (ER_OK != status) {
-            QCC_LogError(status, ("BusAttachment::Stop() failed"));
-        }
-    }
+    g_interrupt = true;
 }
 
 static void usage(void)
@@ -364,10 +360,9 @@ int main(int argc, char** argv)
                     QCC_LogError(status, ("PutSock failed"));
                 }
             }
-        }
-        status = bus.Stop(false);
-        if (ER_OK != status) {
-            QCC_LogError(status, ("BusAttachment::Stop() failed"));
+            if (g_interrupt) {
+                break;
+            }
         }
     } else {
         QStatus status = bus.CreateInterfacesFromXml(ifcXML);
@@ -377,7 +372,10 @@ int main(int argc, char** argv)
         }
         SockService sockService(bus);
         bus.RegisterBusObject(sockService);
-        bus.WaitStop();
+
+        while (g_interrupt == false) {
+            qcc::Sleep(1000);
+        }
     }
 
 Exit:
