@@ -294,7 +294,7 @@ int main(int argc, char** argv, char** envArg)
     }
 
     while (g_interrupt == false) {
-        qcc::Sleep(1000);
+        sleep(1);
     }
 
     /* Clean up msg bus */
