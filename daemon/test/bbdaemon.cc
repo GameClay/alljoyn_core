@@ -82,20 +82,13 @@ static const char policyConfig[] =
     "</busconfig>";
 
 /** Static top level message bus object */
-static Bus* g_msgBus = NULL;
 static qcc::String serverArgs;
 
-/** Signal handler */
+static volatile sig_atomic_t g_interrupt = false;
+
 static void SigIntHandler(int sig)
 {
-    if (NULL != g_msgBus) {
-        // TODO: Disable advertisement here.  Need list of transports to do that.
-        g_msgBus->StopListen(serverArgs.c_str());
-        QStatus status = g_msgBus->Stop(false);
-        if (ER_OK != status) {
-            QCC_LogError(status, ("Bus::Stop() failed"));
-        }
-    }
+    g_interrupt = true;
 }
 
 namespace org {
@@ -487,10 +480,6 @@ int main(int argc, char** argv)
     }
 
     if (ER_OK == status) {
-
-        /* Store bus for signal handler */
-        g_msgBus = &bus;
-
         /* Start the msg bus */
         status = bus.Start();
         if (ER_OK == status) {
@@ -506,13 +495,17 @@ int main(int argc, char** argv)
             status = bus.StartListen(serverArgs.c_str());
             if (ER_OK != status) {
                 QCC_LogError(status, ("Bus::StartListen failed"));
-                bus.Stop(false);
             }
 
-            /* Wait for Bus to exit */
             printf("AllJoyn Daemon PID = %d\n", GetPid());
             fflush(stdout);
-            bus.WaitStop();
+
+            if (ER_OK == status) {
+                while (g_interrupt == false) {
+                    qcc::Sleep(1000);
+                }
+                bus.StopListen(serverArgs.c_str());
+            }
 
             if (mimicBbservice) {
                 bus.UnregisterBusObject(*testObj);
@@ -524,9 +517,6 @@ int main(int argc, char** argv)
     } else {
         QCC_LogError(status, ("BusController initialization failed"));
     }
-
-    /* Bus is going away */
-    g_msgBus = NULL;
 
     return (int) status;
 }

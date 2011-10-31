@@ -755,8 +755,10 @@ int main(int argc, char** argv)
         QCC_LogError(status, ("Failed to connect to \"%s\"", clientArgs.c_str()));
     }
 
-    while (g_interrupt == false) {
-        qcc::Sleep(1000);
+    if (ER_OK == status) {
+        while (g_interrupt == false) {
+            qcc::Sleep(1000);
+        }
     }
 
     g_msgBus->UnregisterBusObject(testObj);
