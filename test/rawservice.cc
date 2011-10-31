@@ -56,15 +56,11 @@ static const SessionPort SESSION_PORT = 33;
 static BusAttachment* g_msgBus = NULL;
 static String g_wellKnownName = "org.alljoyn.raw_test";
 
-/** Signal handler */
+static volatile sig_atomic_t g_interrupt = false;
+
 static void SigIntHandler(int sig)
 {
-    if (NULL != g_msgBus) {
-        QStatus status = g_msgBus->Stop(false);
-        if (ER_OK != status) {
-            QCC_LogError(status, ("BusAttachment::Stop() failed"));
-        }
-    }
+    g_interrupt = true;
 }
 
 class MySessionPortListener : public SessionPortListener {
@@ -232,10 +228,8 @@ int main(int argc, char** argv)
         }
     }
 
-    /* Wait for bus to stop */
-    if (status == ER_OK) {
-        /* Wait until bus is stopped */
-        g_msgBus->WaitStop();
+    while (g_interrupt == false) {
+        qcc::Sleep(1000);
     }
 
     /* Delete the bus */
