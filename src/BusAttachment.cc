@@ -60,7 +60,7 @@
 
 #define QCC_MODULE "ALLJOYN"
 
-#define OPTIONAL_START 1
+#define OPTIONAL_START 0
 
 using namespace std;
 using namespace qcc;
