@@ -70,15 +70,11 @@ static bool g_echo_signal = false;
 static bool g_compress = false;
 static uint32_t keyExpiration = 0xFFFFFFFF;
 
-/** Signal handler */
+static volatile sig_atomic_t g_interrupt = false;
+
 static void SigIntHandler(int sig)
 {
-    if (NULL != g_msgBus) {
-        QStatus status = g_msgBus->Stop(false);
-        if (ER_OK != status) {
-            QCC_LogError(status, ("BusAttachment::Stop() failed"));
-        }
-    }
+    g_interrupt = true;
 }
 
 static const char x509certChain[] = {
@@ -729,43 +725,41 @@ int main(int argc, char** argv)
         status = g_msgBus->Start();
     } else {
         QCC_LogError(status, ("BusAttachment::Start failed"));
+        exit(1);
     }
 
+    /* Create a bus listener to be used to accept incoming session requests */
+    MyBusListener* myBusListener = new MyBusListener(*g_msgBus, opts);
+
+    /* Register local objects and connect to the daemon */
+    LocalTestObject testObj(*g_msgBus, ::org::alljoyn::alljoyn_test::ObjectPath, reportInterval, opts);
+    g_msgBus->RegisterBusObject(testObj);
+
+
+    g_msgBus->EnablePeerSecurity("ALLJOYN_SRP_KEYX ALLJOYN_RSA_KEYX ALLJOYN_SRP_LOGON", new MyAuthListener(), keyStore, keyStore != NULL);
+    /*
+     * Pre-compute logon entry for user sleepy
+     */
+    g_msgBus->AddLogonEntry("ALLJOYN_SRP_LOGON", "sleepy", "123456");
+
+    /* Connect to the daemon */
+    status = g_msgBus->Connect(clientArgs.c_str());
     if (ER_OK == status) {
-        /* Create a bus listener to be used to accept incoming session requests */
-        MyBusListener* myBusListener = new MyBusListener(*g_msgBus, opts);
-
-        /* Register local objects and connect to the daemon */
-        LocalTestObject testObj(*g_msgBus, ::org::alljoyn::alljoyn_test::ObjectPath, reportInterval, opts);
-        g_msgBus->RegisterBusObject(testObj);
-
-
-        g_msgBus->EnablePeerSecurity("ALLJOYN_SRP_KEYX ALLJOYN_RSA_KEYX ALLJOYN_SRP_LOGON", new MyAuthListener(), keyStore, keyStore != NULL);
-        /*
-         * Pre-compute logon entry for user sleepy
-         */
-        g_msgBus->AddLogonEntry("ALLJOYN_SRP_LOGON", "sleepy", "123456");
-
-        /* Connect to the daemon */
-        status = g_msgBus->Connect(clientArgs.c_str());
-        if (ER_OK == status) {
-            /* Bind a well-known session port for incoming client connections */
-            SessionPort sessionPort = ::org::alljoyn::alljoyn_test::SessionPort;
-            status = g_msgBus->BindSessionPort(sessionPort, opts, *myBusListener);
-            if (status != ER_OK) {
-                QCC_LogError(status, ("BindSessionPort failed"));
-            }
-
-            /* Wait until bus is stopped */
-            if (status == ER_OK) {
-                g_msgBus->WaitStop();
-            }
-        } else {
-            QCC_LogError(status, ("Failed to connect to \"%s\"", clientArgs.c_str()));
+        /* Bind a well-known session port for incoming client connections */
+        SessionPort sessionPort = ::org::alljoyn::alljoyn_test::SessionPort;
+        status = g_msgBus->BindSessionPort(sessionPort, opts, *myBusListener);
+        if (status != ER_OK) {
+            QCC_LogError(status, ("BindSessionPort failed"));
         }
-        /* Unregister the bus object */
-        g_msgBus->UnregisterBusObject(testObj);
+    } else {
+        QCC_LogError(status, ("Failed to connect to \"%s\"", clientArgs.c_str()));
     }
+
+    while (g_interrupt == false) {
+        qcc::Sleep(1000);
+    }
+
+    g_msgBus->UnregisterBusObject(testObj);
 
     /* Clean up msg bus */
     BusAttachment* deleteMe = g_msgBus;
