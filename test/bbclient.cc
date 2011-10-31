@@ -167,7 +167,6 @@ static void usage(void)
     printf("   -kx #                 = Authentication key expiration (seconds)\n");
     printf("   -r #                  = AllJoyn attachment restart count\n");
     printf("   -l                    = launch bbservice if not already running\n");
-    printf("   -la                   = launch bbservice if not already running using auto-launch\n");
     printf("   -n <well-known name>  = Well-known bus name advertised by bbservice\n");
     printf("   -d                    = discover remote bus with test service\n");
     printf("   -ds                   = discover remote bus with test service and cancel discover when found\n");
@@ -175,7 +174,6 @@ static void usage(void)
     printf("   -ta                   = Like -t except calls asynchronously\n");
     printf("   -rt [run time]        = Round trip timer (optional run time in ms)\n");
     printf("   -w                    = Don't wait for service\n");
-    printf("   -s                    = Call BusAttachment::WaitStop before exiting");
     printf("\n");
 }
 
@@ -347,14 +345,12 @@ int main(int argc, char** argv)
     uint64_t runTime = 0;
     Environ* env;
     bool startService = false;
-    bool autoStartService = false;
     bool discoverRemote = false;
     bool stopDiscover = false;
     bool waitForService = true;
     bool asyncPing = false;
     uint32_t pingDelay = 0;
     uint32_t pingInterval = 0;
-    bool waitStop = false;
     bool roundtrip = false;
 
 #ifdef _WIN32
@@ -464,8 +460,6 @@ int main(int argc, char** argv)
             exit(0);
         } else if (0 == strcmp("-l", argv[i])) {
             startService = true;
-        } else if (0 == strcmp("-la", argv[i])) {
-            autoStartService = true;
         } else if (0 == strcmp("-d", argv[i])) {
             discoverRemote = true;
         } else if (0 == strcmp("-ds", argv[i])) {
@@ -501,8 +495,6 @@ int main(int argc, char** argv)
             } else if (pingCount == 1) {
                 pingCount = 1000;
             }
-        } else if (0 == strcmp("-s", argv[i])) {
-            waitStop = true;
         } else {
             status = ER_FAIL;
             printf("Unknown option %s\n", argv[i]);
@@ -520,46 +512,6 @@ int main(int argc, char** argv)
     qcc::String connectArgs = env->Find("BUS_ADDRESS", "unix:abstract=alljoyn");
 #endif
 
-    /* Create message bus */
-    g_msgBus = new BusAttachment("bbclient", true);
-
-    if (!useIntrospection) {
-        /* Add org.alljoyn.alljoyn_test interface */
-        InterfaceDescription* testIntf = NULL;
-        status = g_msgBus->CreateInterface(::org::alljoyn::alljoyn_test::InterfaceName, testIntf, encryptIfc);
-        if ((ER_OK == status) && testIntf) {
-            testIntf->AddSignal("my_signal", NULL, NULL, 0);
-            testIntf->AddMethod("my_ping", "s", "s", "outStr,inStr", 0);
-            testIntf->AddMethod("delayed_ping", "su", "s", "outStr,delay,inStr", 0);
-            testIntf->AddMethod("time_ping", "uq", "uq", NULL, 0);
-            testIntf->Activate();
-        } else {
-            if (ER_OK == status) status = ER_FAIL;
-            QCC_LogError(status, ("Failed to create interface \"%s\"", ::org::alljoyn::alljoyn_test::InterfaceName));
-        }
-
-        if (ER_OK == status) {
-            /* Add org.alljoyn.alljoyn_test.values interface */
-            InterfaceDescription* valuesIntf = NULL;
-            status = g_msgBus->CreateInterface(::org::alljoyn::alljoyn_test::values::InterfaceName, valuesIntf, encryptIfc);
-            if ((ER_OK == status) && valuesIntf) {
-                valuesIntf->AddProperty("int_val", "i", PROP_ACCESS_RW);
-                valuesIntf->AddProperty("str_val", "s", PROP_ACCESS_RW);
-                valuesIntf->AddProperty("ro_str", "s", PROP_ACCESS_READ);
-                valuesIntf->Activate();
-            } else {
-                if (ER_OK == status) status = ER_FAIL;
-                QCC_LogError(status, ("Failed to create interface \"%s\"", ::org::alljoyn::alljoyn_test::values::InterfaceName));
-            }
-        }
-    }
-
-    /* Register a bus listener in order to get discovery indications */
-    if (ER_OK == status) {
-        g_busListener = new MyBusListener(stopDiscover);
-        g_msgBus->RegisterBusListener(*g_busListener);
-    }
-
     for (unsigned long i = 0; i < repCount; i++) {
         unsigned long pings;
         if (runTime > 0) {
@@ -567,6 +519,46 @@ int main(int argc, char** argv)
             pingCount = 0;
         } else {
             pings = pingCount;
+        }
+
+        /* Create message bus */
+        g_msgBus = new BusAttachment("bbclient", true);
+
+        if (!useIntrospection) {
+            /* Add org.alljoyn.alljoyn_test interface */
+            InterfaceDescription* testIntf = NULL;
+            status = g_msgBus->CreateInterface(::org::alljoyn::alljoyn_test::InterfaceName, testIntf, encryptIfc);
+            if ((ER_OK == status) && testIntf) {
+                testIntf->AddSignal("my_signal", NULL, NULL, 0);
+                testIntf->AddMethod("my_ping", "s", "s", "outStr,inStr", 0);
+                testIntf->AddMethod("delayed_ping", "su", "s", "outStr,delay,inStr", 0);
+                testIntf->AddMethod("time_ping", "uq", "uq", NULL, 0);
+                testIntf->Activate();
+            } else {
+                if (ER_OK == status) status = ER_FAIL;
+                QCC_LogError(status, ("Failed to create interface \"%s\"", ::org::alljoyn::alljoyn_test::InterfaceName));
+            }
+
+            if (ER_OK == status) {
+                /* Add org.alljoyn.alljoyn_test.values interface */
+                InterfaceDescription* valuesIntf = NULL;
+                status = g_msgBus->CreateInterface(::org::alljoyn::alljoyn_test::values::InterfaceName, valuesIntf, encryptIfc);
+                if ((ER_OK == status) && valuesIntf) {
+                    valuesIntf->AddProperty("int_val", "i", PROP_ACCESS_RW);
+                    valuesIntf->AddProperty("str_val", "s", PROP_ACCESS_RW);
+                    valuesIntf->AddProperty("ro_str", "s", PROP_ACCESS_READ);
+                    valuesIntf->Activate();
+                } else {
+                    if (ER_OK == status) status = ER_FAIL;
+                    QCC_LogError(status, ("Failed to create interface \"%s\"", ::org::alljoyn::alljoyn_test::values::InterfaceName));
+                }
+            }
+        }
+
+        /* Register a bus listener in order to get discovery indications */
+        if (ER_OK == status) {
+            g_busListener = new MyBusListener(stopDiscover);
+            g_msgBus->RegisterBusListener(*g_busListener);
         }
 
         /* Start the msg bus */
@@ -791,38 +783,20 @@ int main(int argc, char** argv)
                     QCC_LogError(status, ("GetProperty on %s failed", g_wellKnownName.c_str()));
                 }
             }
+        }
 
-            /* Disconnect from the bus */
-            if (ER_OK == status) {
-                status = g_msgBus->Disconnect(connectArgs.c_str());
-                if (ER_OK != status) {
-                    QCC_LogError(status, ("BusAttachment::Disconnect(\"%s\") failed", connectArgs.c_str()));
-                }
-            }
+        /* Deallocate bus */
+        BusAttachment* deleteMe = g_msgBus;
+        g_msgBus = NULL;
+        delete deleteMe;
 
-            /* Stop the bus */
-            if (waitStop) {
-                g_msgBus->WaitStop();
-            } else {
-                QStatus s = g_msgBus->Stop();
-                if (ER_OK != s) {
-                    QCC_LogError(s, ("BusAttachment::Stop failed"));
-                }
-            }
+        delete g_busListener;
+        g_busListener = NULL;
 
-            if (status != ER_OK) {
-                break;
-            }
+        if (status != ER_OK) {
+            break;
         }
     }
-
-    /* Deallocate bus */
-    BusAttachment* deleteMe = g_msgBus;
-    g_msgBus = NULL;
-    delete deleteMe;
-
-    delete g_busListener;
-    g_busListener = NULL;
 
     printf("bbclient exiting with status %d (%s)\n", status, QCC_StatusText(status));
 
