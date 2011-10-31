@@ -29,6 +29,7 @@
 #include <qcc/Environ.h>
 #include <qcc/GUID.h>
 #include <qcc/Util.h>
+#include <qcc/Thread.h>
 
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/DBusStd.h>
@@ -48,15 +49,11 @@ using namespace ajn;
 /** Static top level message bus object */
 static BusAttachment* g_msgBus = NULL;
 
-/** Signal handler */
+static volatile sig_atomic_t g_interrupt = false;
+
 static void SigIntHandler(int sig)
 {
-    if (NULL != g_msgBus) {
-        QStatus status = g_msgBus->Stop(false);
-        if (ER_OK != status) {
-            QCC_LogError(status, ("BusAttachment::Stop() failed"));
-        }
-    }
+    g_interrupt = true;
 }
 
 namespace org {
@@ -260,10 +257,14 @@ int main(int argc, char** argv, char** envArg)
 
         /* Connect to the daemon and wait for the bus to exit */
         status = g_msgBus->Connect(clientArgs.c_str());
-        if (ER_OK == status) {
-            g_msgBus->WaitStop();
-        } else {
+        if (ER_OK != status) {
             QCC_LogError(status, ("Failed to connect to \"%s\"", clientArgs.c_str()));
+        }
+    }
+
+    if (ER_OK == status) {
+        while (g_interrupt == false) {
+            qcc::Sleep(1000);
         }
     }
 

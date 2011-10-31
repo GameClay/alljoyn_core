@@ -509,7 +509,6 @@ int daemon(OptParse& opts)
     if (!config->GetAuth().empty()) {
         if (ajBus.GetInternal().FilterAuthMechanisms(config->GetAuth()) == 0) {
             Log(LOG_ERR, "No supported authentication mechanisms.  Aborting...\n");
-            ajBus.Stop();
             return DAEMON_EXIT_STARTUP_ERROR;
         }
     }
@@ -517,7 +516,6 @@ int daemon(OptParse& opts)
     status = ajBus.StartListen(listenSpecs.c_str());
     if (ER_OK != status) {
         Log(LOG_ERR, "Failed to start listening on specified addresses\n");
-        ajBus.Stop();
         return DAEMON_EXIT_STARTUP_ERROR;
     }
 
@@ -587,8 +585,6 @@ int daemon(OptParse& opts)
 
     Log(LOG_INFO, "Terminating.\n");
     ajBus.StopListen(listenSpecs.c_str());
-    ajBus.Stop();
-    ajBus.WaitStop();
 
     if (!pidfn.empty()) {
         unlink(pidfn.c_str());
