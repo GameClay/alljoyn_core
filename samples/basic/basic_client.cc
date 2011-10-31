@@ -50,16 +50,11 @@ static const SessionPort SERVICE_PORT = 25;
 static bool s_joinComplete = false;
 static SessionId s_sessionId = 0;
 
-/** Signal handler */
+static volatile sig_atomic_t g_interrupt = false;
+
 static void SigIntHandler(int sig)
 {
-    if (NULL != g_msgBus) {
-        QStatus status = g_msgBus->Stop(false);
-        if (ER_OK != status) {
-            printf("BusAttachment::Stop() failed\n");
-        }
-    }
-    exit(0);
+    g_interrupt = true;
 }
 
 /** AllJoynListener receives discovery events from AllJoyn */
@@ -190,14 +185,6 @@ int main(int argc, char** argv, char** envArg)
                    SERVICE_PATH, reply->GetArg(0)->v_string.str);
         } else {
             printf("MethodCall on %s.%s failed", SERVICE_NAME, "cat");
-        }
-    }
-
-    /* Stop the bus (not strictly necessary since we are going to delete it anyways) */
-    if (g_msgBus) {
-        QStatus s = g_msgBus->Stop();
-        if (ER_OK != s) {
-            printf("BusAttachment::Stop failed\n");
         }
     }
 

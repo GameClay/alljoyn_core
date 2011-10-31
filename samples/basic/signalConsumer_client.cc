@@ -64,16 +64,11 @@ static BusAttachment* g_msgBus = NULL;
 static bool s_joinComplete = false;
 static SessionId s_sessionId = 0;
 
-/** Signal handler */
+static volatile sig_atomic_t g_interrupt = false;
+
 static void SigIntHandler(int sig)
 {
-    if (NULL != g_msgBus) {
-        QStatus status = g_msgBus->Stop(false);
-        if (ER_OK != status) {
-            printf("BusAttachment::Stop() failed\n");
-        }
-    }
-    exit(0);
+    g_interrupt = true;
 }
 
 /** AlljounListener receives discovery events from AllJoyn */
@@ -242,10 +237,13 @@ int main(int argc, char** argv, char** envArg)
     }
 
     if (status == ER_OK) {
-        /*
-         * Wait until bus is stopped
-         */
-        g_msgBus->WaitStop();
+        while (g_interrupt == false) {
+#ifdef _WIN32
+            Sleep(1000);
+#else
+            sleep(1);
+#endif
+        }
     } else {
         printf("BusAttachment::Start failed\n");
     }
