@@ -293,8 +293,14 @@ int main(int argc, char** argv, char** envArg)
         }
     }
 
-    while (g_interrupt == false) {
-        sleep(1);
+    if (ER_OK == status) {
+        while (g_interrupt == false) {
+#ifdef _WIN32
+            Sleep(1000);
+#else
+            sleep(1);
+#endif
+        }
     }
 
     /* Clean up msg bus */
