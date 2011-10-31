@@ -65,17 +65,12 @@ static bool g_stressTest = false;
 static char* g_findPrefix = NULL;
 SessionPort SESSION_PORT_MESSAGES_MP1 = 26;
 
-/** Signal handler */
+static volatile sig_atomic_t g_interrupt = false;
+
 static void SigIntHandler(int sig)
 {
-    if (NULL != g_msgBus) {
-        QStatus status = g_msgBus->Stop(false);
-        if (ER_OK != status) {
-            QCC_LogError(status, ("BusAttachment::Stop() failed"));
-        }
-    }
+    g_interrupt = true;
 }
-
 
 class MyBusListener : public BusListener, public SessionPortListener, public SessionListener, public BusAttachment::JoinSessionAsyncCB {
 
@@ -286,10 +281,12 @@ int main(int argc, char** argv)
             status = (status == ER_OK) ? ER_FAIL : status;
             QCC_LogError(status, ("FindAdvertisedName failed "));
         }
-
-        g_msgBus->WaitStop();
-
     }
+
+    while (g_interrupt == false) {
+        qcc::Sleep(1000);
+    }
+
     /* Clean up msg bus */
     if (g_msgBus) {
         BusAttachment* deleteMe = g_msgBus;
