@@ -665,6 +665,12 @@ void BusAttachment::ClearKeyStore()
 
 const qcc::String& BusAttachment::GetUniqueName() const
 {
+    /*
+     * Cannot have a valid unique name if not connected to the bus.
+     */
+    if (!IsConnected()) {
+        return "";
+    }
     return busInternal->localEndpoint.GetUniqueName();
 }
 
