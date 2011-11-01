@@ -615,6 +615,8 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
 
 BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
 {
+    // NOTE: This function assumes it will only ever be called from one thread.
+
     BTNodeInfo node;
 
     bool repeat;
@@ -646,12 +648,7 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
                 return node;  // Fail the connection (probably shutting down anyway).
             } else {
                 repeat = true;
-            }
-
-            if (DecrementAndFetch(&incompleteConnections) > 0) {
-                if (!IsMaster()) {
-                    connectCompleted.SetEvent();
-                }
+                DecrementAndFetch(&incompleteConnections);  // should go back to 0;
             }
         }
     } while (repeat);
@@ -672,21 +669,31 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
 
 void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& remoteName)
 {
+    // NOTE: This function assumes it will be called in the same thread as PrepConnect().
+
+    joinSessionNodeDB.Lock();
+    nodeDB.Lock();
+
+    bool inNodeDB = nodeDB.FindNode(node->GetBusAddress())->IsValid();
+    bool inJoinSessionNodeDB = joinSessionNodeDB.FindNode(node->GetBusAddress())->IsValid();
+
+    nodeDB.Unlock();
+
     if (status == ER_OK) {
         QCC_DEBUG_ONLY(connectTimer.RecordTime(node->GetBusAddress().addr, connectStartTimes[node->GetBusAddress().addr]));
         assert(!remoteName.empty());
         /* Only call JoinSessionAsync for new outgoing connections where we
          * didn't already start the join session process.
          */
-        if (IsMaster() &&
-            !nodeDB.FindNode(node->GetBusAddress())->IsValid() &&
-            !joinSessionNodeDB.FindNode(node->GetBusAddress())->IsValid()) {
+        if (IsMaster() && !inNodeDB && !inJoinSessionNodeDB) {
 
             if (node->GetUniqueName().empty()) {
                 node->SetUniqueName(remoteName);
             }
             assert(node->GetUniqueName() == remoteName);
             joinSessionNodeDB.AddNode(node);
+            joinSessionNodeDB.Unlock();
+
             QCC_DbgPrintf(("Joining BT topology manager session for %s", node->GetBusAddress().ToString().c_str()));
             status = bus.JoinSessionAsync(remoteName.c_str(),
                                           ALLJOYN_BTCONTROLLER_SESSION_PORT,
@@ -696,7 +703,16 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
                                           new BTNodeInfo(node));
             if (status != ER_OK) {
                 bt.Disconnect(remoteName);
+                DecrementAndFetch(&incompleteConnections);
             }
+        } else {
+            joinSessionNodeDB.Unlock();
+        }
+    } else {
+        joinSessionNodeDB.Unlock();
+
+        if (!inNodeDB && !inJoinSessionNodeDB) {
+            DecrementAndFetch(&incompleteConnections);
         }
     }
 }
@@ -895,6 +911,10 @@ void BTController::JoinSessionCB(QStatus status, SessionId sessionID, const Sess
         } else {
             (*node)->SetSessionID(sessionID);
             DispatchOperation(new SendSetStateDispatchInfo((*node)));
+        }
+    } else {
+        if (DecrementAndFetch(&incompleteConnections) > 0) {
+            connectCompleted.SetEvent();
         }
     }
     delete node;
@@ -1472,6 +1492,7 @@ void BTController::DeferredBTDeviceAvailable(bool on)
             find.dirty = true;  // Update ignore addrs
 
             if (IsMaster()) {
+                //DispatchOperation(new UpdateDelegationsDispatchInfo());
                 UpdateDelegations(advertise);
                 UpdateDelegations(find);
             }
@@ -1594,6 +1615,13 @@ QStatus BTController::DeferredSendSetState(const BTNodeInfo& node)
     }
 
 exit:
+
+    if (status != ER_OK) {
+        if (DecrementAndFetch(&incompleteConnections) > 0) {
+            connectCompleted.SetEvent();
+        }
+    }
+
     return status;
 }
 
