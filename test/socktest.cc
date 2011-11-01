@@ -374,7 +374,7 @@ int main(int argc, char** argv)
         bus.RegisterBusObject(sockService);
 
         while (g_interrupt == false) {
-            qcc::Sleep(1000);
+            qcc::Sleep(100);
         }
     }
 

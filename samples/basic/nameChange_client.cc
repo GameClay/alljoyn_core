@@ -144,15 +144,15 @@ int main(int argc, char** argv, char** envArg)
     }
 
     /* Wait for join session to complete */
-    while (!s_joinComplete) {
+    while (!s_joinComplete && !g_interrupt) {
 #ifdef _WIN32
-        Sleep(10);
+        Sleep(100);
 #else
-        sleep(1);
+        usleep(100 * 1000);
 #endif
     }
 
-    if (ER_OK == status) {
+    if (status == ER_OK && g_interrupt == false) {
         ProxyBusObject remoteObj(*g_msgBus, SERVICE_NAME, SERVICE_PATH, s_sessionId);
         status = remoteObj.IntrospectRemoteObject();
         if (ER_OK != status) {

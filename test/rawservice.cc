@@ -218,7 +218,7 @@ int main(int argc, char** argv)
                 printf("Failed to write testMessage (%s)\n", ::strerror(errno));
                 status = ER_FAIL;
             }
-            qcc::Sleep(1000);
+            qcc::Sleep(100);
 #ifdef WIN32
             closesocket(sockFd);
 #else
@@ -229,7 +229,7 @@ int main(int argc, char** argv)
     }
 
     while (g_interrupt == false) {
-        qcc::Sleep(1000);
+        qcc::Sleep(100);
     }
 
     /* Delete the bus */
