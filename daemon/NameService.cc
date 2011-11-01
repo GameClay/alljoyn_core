@@ -1724,7 +1724,8 @@ void NameService::LazyUpdateInterfaces(void)
         if (entries[i].m_family == AF_INET) {
             QStatus status = qcc::Socket(qcc::QCC_AF_INET, qcc::QCC_SOCK_DGRAM, sockFd);
             if (status != ER_OK) {
-                QCC_LogError(status, ("LazyUpdateInterfaces: qcc::Socket(AF_INET) failed: %d - %s", errno, strerror(errno)));
+                QCC_LogError(status, ("LazyUpdateInterfaces: qcc::Socket(AF_INET) failed: %d - %s",
+                                      qcc::GetLastError(), qcc::GetLastErrorString().c_str()));
                 continue;
             }
 
@@ -1737,8 +1738,8 @@ void NameService::LazyUpdateInterfaces(void)
                 //
                 int broadcast = 1;
                 if (setsockopt(sockFd, SOL_SOCKET, SO_BROADCAST, (char*)&broadcast, sizeof broadcast) == -1) {
-                    QCC_LogError(status, ("LazyUpdateInterfaces: setsockopt(SO_BROADCAST) failed: %d - %s", errno,
-                                          strerror(errno)));
+                    QCC_LogError(status, ("LazyUpdateInterfaces: setsockopt(SO_BROADCAST) failed: %d - %s",
+                                          qcc::GetLastError(), qcc::GetLastErrorString().c_str()));
                     continue;
                 }
             }
@@ -1746,7 +1747,8 @@ void NameService::LazyUpdateInterfaces(void)
         } else if (entries[i].m_family == AF_INET6) {
             QStatus status = qcc::Socket(qcc::QCC_AF_INET6, qcc::QCC_SOCK_DGRAM, sockFd);
             if (status != ER_OK) {
-                QCC_LogError(status, ("LazyUpdateInterfaces: qcc::Socket(AF_INET6) failed: %d - %s", errno, strerror(errno)));
+                QCC_LogError(status, ("LazyUpdateInterfaces: qcc::Socket(AF_INET6) failed: %d - %s",
+                                      qcc::GetLastError(), qcc::GetLastErrorString().c_str()));
                 continue;
             }
         } else {
@@ -1765,7 +1767,7 @@ void NameService::LazyUpdateInterfaces(void)
         uint32_t yes = 1;
         if (setsockopt(sockFd, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast<const char*>(&yes), sizeof(yes)) < 0) {
             QCC_LogError(status, ("NameService::LazyUpdateInterfaces(): setsockopt(SO_REUSEPORT) failed: %d - %s",
-                                  errno, strerror(errno)));
+                                  qcc::GetLastError(), qcc::GetLastErrorString().c_str()));
             qcc::Close(sockFd);
             continue;
         }
@@ -1779,7 +1781,7 @@ void NameService::LazyUpdateInterfaces(void)
             if (setsockopt(sockFd, IPPROTO_IP, IP_MULTICAST_TTL, reinterpret_cast<const char*>(&ttl), sizeof(ttl)) < 0) {
                 QCC_LogError(status, (
                                  "NameService::LazyUpdateInterfaces(): setsockopt(IP_MULTICAST_TTL) failed: %d - %s",
-                                 errno, strerror(errno)));
+                                 qcc::GetLastError(), qcc::GetLastErrorString().c_str()));
                 qcc::Close(sockFd);
                 continue;
             }
@@ -1789,7 +1791,7 @@ void NameService::LazyUpdateInterfaces(void)
             if (setsockopt(sockFd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, reinterpret_cast<const char*>(&ttl), sizeof(ttl)) < 0) {
                 QCC_LogError(status, (
                                  "NameService::LazyUpdateInterfaces(): setsockopt(IP_MULTICAST_HOPS) failed: %d - %s",
-                                 errno, strerror(errno)));
+                                 qcc::GetLastError(), qcc::GetLastErrorString().c_str()));
                 qcc::Close(sockFd);
                 continue;
             }
@@ -1810,7 +1812,7 @@ void NameService::LazyUpdateInterfaces(void)
                            reinterpret_cast<const char*>(&addr), sizeof(addr)) < 0) {
                 QCC_LogError(status, (
                                  "NameService::LazyUpdateInterfaces(): setsockopt(IP_MULTICAST_IF) failed: %d - %s",
-                                 errno, strerror(errno)));
+                                 qcc::GetLastError(), qcc::GetLastErrorString().c_str()));
                 qcc::Close(sockFd);
                 continue;
             }
@@ -1822,7 +1824,7 @@ void NameService::LazyUpdateInterfaces(void)
                            reinterpret_cast<const char*>(&index), sizeof(index)) < 0) {
                 QCC_LogError(status, (
                                  "NameService::LazyUpdateInterfaces(): setsockopt(IPV6_MULTICAST_IF) failed: %d - %s",
-                                 errno, strerror(errno)));
+                                 qcc::GetLastError(), qcc::GetLastErrorString().c_str()));
                 qcc::Close(sockFd);
                 continue;
             }
@@ -1871,7 +1873,7 @@ void NameService::LazyUpdateInterfaces(void)
             if (setsockopt(sockFd, IPPROTO_IP, IP_ADD_MEMBERSHIP, reinterpret_cast<const char*>(&mreq), sizeof(mreq)) < 0) {
                 QCC_LogError(status, (
                                  "NameService::LazyUpdateInterfaces(): setsockopt(IP_ADD_MEMBERSHIP) failed: %d - %s",
-                                 errno, strerror(errno)));
+                                 qcc::GetLastError(), qcc::GetLastErrorString().c_str()));
                 qcc::Close(sockFd);
                 continue;
             }
@@ -1892,7 +1894,7 @@ void NameService::LazyUpdateInterfaces(void)
                            reinterpret_cast<const char*>(&mreq), sizeof(mreq)) < 0) {
                 QCC_LogError(status, (
                                  "NameService::LazyUpdateInterfaces(): setsockopt(IPV6_ADD_MEMBERSHIP) failed: %d-%s",
-                                 errno, strerror(errno)));
+                                 qcc::GetLastError(), qcc::GetLastErrorString().c_str()));
                 qcc::Close(sockFd);
                 continue;
             }
