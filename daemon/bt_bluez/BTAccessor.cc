@@ -269,18 +269,19 @@ QStatus BTTransport::BTAccessor::Start()
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::Start()"));
 
-    QStatus status;
+    QStatus status = ER_OK;
+    bool alreadyStarted = bzBus.IsStarted();
+    bool newlyStarted = false;
+
 
     /* Start the control bus */
-    status = bzBus.Start();
-    if (status == ER_OK) {
-        qcc::String rules[] = {
-            qcc::String("type='signal',sender='") + bzBusName + "',interface='" + bzManagerIfc + "'",
-            qcc::String("type='signal',sender='") + bzBusName + "',interface='" + bzAdapterIfc + "'",
-            qcc::String("type='signal',sender='") + bzBusName + "',interface='" + bzDeviceIfc  + "'",
-            qcc::String("type='signal',sender='") + ajn::org::freedesktop::DBus::WellKnownName + "',interface='" + ajn::org::freedesktop::DBus::InterfaceName + "'"
-        };
+    if (!alreadyStarted) {
+        status = bzBus.Start();
 
+        newlyStarted = status == ER_OK;
+    }
+
+    if (status == ER_OK) {
         MsgArg arg;
         Message reply(bzBus);
         const ProxyBusObject& dbusObj = bzBus.GetDBusProxyObj();
@@ -292,11 +293,9 @@ QStatus BTTransport::BTAccessor::Start()
         /* Get environment variable for the system bus */
         Environ* env(Environ::GetAppEnviron());
 #ifdef ANDROID
-        qcc::String connectArgs(env->Find("DBUS_SYSTEM_BUS_ADDRESS",
-                                          "unix:path=/dev/socket/dbus"));
+        connectArgs = env->Find("DBUS_SYSTEM_BUS_ADDRESS", "unix:path=/dev/socket/dbus");
 #else
-        qcc::String connectArgs(env->Find("DBUS_SYSTEM_BUS_ADDRESS",
-                                          "unix:path=/var/run/dbus/system_bus_socket"));
+        connectArgs = env->Find("DBUS_SYSTEM_BUS_ADDRESS", "unix:path=/var/run/dbus/system_bus_socket");
 #endif
 
         assert(ifc);
@@ -317,13 +316,22 @@ QStatus BTTransport::BTAccessor::Start()
             goto exit;
         }
 
-        /* Add Match rules */
-        for (size_t i = 0; (status == ER_OK) && (i < ArraySize(rules)); ++i) {
-            arg.Set("s", rules[i].c_str());
-            status = dbusObj.MethodCall(*addMatch, &arg, 1, reply);
-            if (status != ER_OK) {
-                QCC_LogError(status, ("Failed to add match rule: \"%s\"", rules[i].c_str()));
-                QCC_DbgHLPrintf(("reply msg: %s\n", reply->ToString().c_str()));
+        if (newlyStarted) {
+            /* Add Match rules */
+            qcc::String rules[] = {
+                qcc::String("type='signal',sender='") + bzBusName + "',interface='" + bzManagerIfc + "'",
+                qcc::String("type='signal',sender='") + bzBusName + "',interface='" + bzAdapterIfc + "'",
+                qcc::String("type='signal',sender='") + bzBusName + "',interface='" + bzDeviceIfc  + "'",
+                qcc::String("type='signal',sender='") + ajn::org::freedesktop::DBus::WellKnownName + "',interface='" + ajn::org::freedesktop::DBus::InterfaceName + "'"
+            };
+
+            for (size_t i = 0; (status == ER_OK) && (i < ArraySize(rules)); ++i) {
+                arg.Set("s", rules[i].c_str());
+                status = dbusObj.MethodCall(*addMatch, &arg, 1, reply);
+                if (status != ER_OK) {
+                    QCC_LogError(status, ("Failed to add match rule: \"%s\"", rules[i].c_str()));
+                    QCC_DbgHLPrintf(("reply msg: %s\n", reply->ToString().c_str()));
+                }
             }
         }
 
@@ -334,8 +342,6 @@ QStatus BTTransport::BTAccessor::Start()
             QCC_LogError(status, ("Failure calling %s.NameHasOwner",
                                   ajn::org::freedesktop::DBus::InterfaceName));
             QCC_DbgHLPrintf(("reply msg: %s\n", reply->ToString().c_str()));
-            bzBus.Stop();
-            bzBus.WaitStop();
         } else if (reply->GetArg(0)->v_bool) {
             ConnectBlueZ();
         }
@@ -352,8 +358,7 @@ void BTTransport::BTAccessor::Stop()
     if (bluetoothAvailable) {
         DisconnectBlueZ();
     }
-    bzBus.Stop();
-    bzBus.WaitStop();
+    bzBus.Disconnect(connectArgs.c_str());
 }
 
 

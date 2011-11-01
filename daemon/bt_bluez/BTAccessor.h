@@ -370,6 +370,7 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
 
     BusAttachment bzBus;
     const qcc::String busGuid;
+    qcc::String connectArgs;
 
     ProxyBusObject bzManagerObj;
     bluez::AdapterObject defaultAdapterObj;
