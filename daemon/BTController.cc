@@ -723,6 +723,18 @@ void BTController::LostLastConnection(const BDAddress& addr)
             }
         }
         nodeDB.Unlock();
+
+        if (!node->IsValid()) {
+            joinSessionNodeDB.Lock();
+            joinSessionNodeDB.FindNodes(addr, it, end);
+            for (; it != end; ++it) {
+                if ((*it)->GetConnectionCount() == 1) {
+                    node = *it;
+                    break;
+                }
+            }
+            joinSessionNodeDB.Unlock();
+        }
     }
 
     if ((node->IsValid()) && (node->IsEIRCapable())) {
