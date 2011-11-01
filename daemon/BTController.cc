@@ -1840,8 +1840,10 @@ void BTController::DeferredNameLostHander(const String& name)
         // We are the master now.
 
         if (advertise.minion == self) {
-            QCC_DbgPrintf(("Stopping local advertise..."));
-            advertise.StopLocal();
+            if (advertise.active) {
+                QCC_DbgPrintf(("Stopping local advertise..."));
+                advertise.StopLocal();
+            }
         } else {
             MsgArg args[SIG_DELEGATE_AD_SIZE];
             size_t argsSize = ArraySize(args);
@@ -1862,8 +1864,10 @@ void BTController::DeferredNameLostHander(const String& name)
         }
 
         if (find.minion == self) {
-            QCC_DbgPrintf(("Stopping local find..."));
-            find.StopLocal();
+            if (find.active) {
+                QCC_DbgPrintf(("Stopping local find..."));
+                find.StopLocal();
+            }
         } else {
             MsgArg args[SIG_DELEGATE_FIND_SIZE];
             size_t argsSize = ArraySize(args);
@@ -2950,6 +2954,7 @@ QStatus BTController::AdvertiseNameArgInfo::StopLocal(bool immediate)
     if (immediate) {
         status = bto.bt.StopAdvertise();
     } else {
+        // Advertise the (presumably) empty set of advertise names for 30 seconds.
         status = bto.bt.StartAdvertise(bto.masterUUIDRev,
                                        bto.self->GetBusAddress().addr, bto.self->GetBusAddress().psm,
                                        bto.nodeDB, BTController::DELEGATE_TIME);
