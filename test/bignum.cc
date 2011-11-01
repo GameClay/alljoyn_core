@@ -483,6 +483,8 @@ int main()
         }
     }
 
+    delete [] buf;
+
     printf("\nPassed\n");
 
 }
