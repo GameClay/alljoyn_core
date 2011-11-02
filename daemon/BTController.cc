@@ -1522,7 +1522,14 @@ void BTController::DeferredBTDeviceAvailable(bool on)
             find.StopAlarm();
         }
 
-        foundNodeDB.RefreshExpiration(LOST_DEVICE_TIMEOUT);
+        /*
+         * Expire found names in 10 seconds.  If BT turning off is just a
+         * small glitch (i.e., bluetoothd crashed and will be restarted), we
+         * should get refreshes fairly soon so that no lost name gets sent
+         * out.  If BT was explicitly turned off by the user, then it will
+         * likely be off for a very long time.
+         */
+        foundNodeDB.RefreshExpiration(10000);
         ResetExpireNameAlarm();
 
         blacklist->clear();
