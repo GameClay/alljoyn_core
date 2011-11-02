@@ -901,8 +901,9 @@ void BTController::JoinSessionCB(QStatus status, SessionId sessionID, const Sess
                   QCC_StatusText(status), sessionID, context));
     assert(context);
     BTNodeInfo* node = static_cast<BTNodeInfo*>(context);
-    if (status == ER_OK) {
-        assert((*node != masterNode) && !nodeDB.FindNode((*node)->GetBusAddress())->IsValid());
+    if ((status == ER_OK) &&
+        (*node != masterNode) &&
+        !nodeDB.FindNode((*node)->GetBusAddress())->IsValid()) {
 
         uint16_t connCnt = (*node)->GetConnectionCount();
 
@@ -913,6 +914,10 @@ void BTController::JoinSessionCB(QStatus status, SessionId sessionID, const Sess
             DispatchOperation(new SendSetStateDispatchInfo((*node)));
         }
     } else {
+        if (status == ER_OK) {
+            // This is a duplicate session - shut it down.
+            bus.LeaveSession(sessionID);
+        }
         if (DecrementAndFetch(&incompleteConnections) > 0) {
             connectCompleted.SetEvent();
         }
