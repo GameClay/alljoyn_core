@@ -640,15 +640,21 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
         }
         lock.Unlock();
 
-        if (newDevice && IncrementAndFetch(&incompleteConnections) > 1) {
-            QStatus status = Event::Wait(connectCompleted);
-            connectCompleted.ResetEvent();
-            node = BTNodeInfo();
-            if (status != ER_OK) {
-                return node;  // Fail the connection (probably shutting down anyway).
-            } else {
-                repeat = true;
-                DecrementAndFetch(&incompleteConnections);  // should go back to 0;
+        if (newDevice) {
+            int ic = IncrementAndFetch(&incompleteConnections);
+            QCC_DbgPrintf(("incompleteConnections = %d", ic));
+            if (ic > 1) {
+                QStatus status = Event::Wait(connectCompleted);
+                QCC_DbgPrintf(("received connect completed event"));
+                connectCompleted.ResetEvent();
+                node = BTNodeInfo();
+                if (status != ER_OK) {
+                    return node;  // Fail the connection (probably shutting down anyway).
+                } else {
+                    repeat = true;
+                    ic = DecrementAndFetch(&incompleteConnections);  // should go back to 0;
+                    QCC_DbgPrintf(("incompleteConnections = %d", ic));
+                }
             }
         }
     } while (repeat);
@@ -703,7 +709,8 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
                                           new BTNodeInfo(node));
             if (status != ER_OK) {
                 bt.Disconnect(remoteName);
-                DecrementAndFetch(&incompleteConnections);
+                int ic = DecrementAndFetch(&incompleteConnections);
+                QCC_DbgPrintf(("incompleteConnections = %d", ic));
             }
         } else {
             joinSessionNodeDB.Unlock();
@@ -711,8 +718,10 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
     } else {
         joinSessionNodeDB.Unlock();
 
+        QCC_DbgPrintf(("inNodeDB = %d  inJoinSessionNodeDB = %d", inNodeDB, inJoinSessionNodeDB));
         if (!inNodeDB && !inJoinSessionNodeDB) {
-            DecrementAndFetch(&incompleteConnections);
+            int ic = DecrementAndFetch(&incompleteConnections);
+            QCC_DbgPrintf(("incompleteConnections = %d", ic));
         }
     }
 }
@@ -918,7 +927,10 @@ void BTController::JoinSessionCB(QStatus status, SessionId sessionID, const Sess
             // This is a duplicate session - shut it down.
             bus.LeaveSession(sessionID);
         }
-        if (DecrementAndFetch(&incompleteConnections) > 0) {
+
+        int ic = DecrementAndFetch(&incompleteConnections);
+        QCC_DbgPrintf(("incompleteConnections = %d", ic));
+        if (ic > 0) {
             connectCompleted.SetEvent();
         }
     }
@@ -1629,7 +1641,9 @@ QStatus BTController::DeferredSendSetState(const BTNodeInfo& node)
 exit:
 
     if (status != ER_OK) {
-        if (DecrementAndFetch(&incompleteConnections) > 0) {
+        int ic = DecrementAndFetch(&incompleteConnections);
+        QCC_DbgPrintf(("incompleteConnections = %d", ic));
+        if (ic > 0) {
             connectCompleted.SetEvent();
         }
     }
@@ -1770,7 +1784,9 @@ exit:
     joinSessionNodeDB.RemoveNode(node);
     lock.Unlock();
 
-    if (DecrementAndFetch(&incompleteConnections) > 0) {
+    int ic = DecrementAndFetch(&incompleteConnections);
+    QCC_DbgPrintf(("incompleteConnections = %d", ic));
+    if (ic > 0) {
         connectCompleted.SetEvent();
     }
 }
