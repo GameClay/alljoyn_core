@@ -663,7 +663,7 @@ void BusAttachment::ClearKeyStore()
     busInternal->keyStore.Clear();
 }
 
-const qcc::String& BusAttachment::GetUniqueName() const
+const qcc::String BusAttachment::GetUniqueName() const
 {
     /*
      * Cannot have a valid unique name if not connected to the bus.

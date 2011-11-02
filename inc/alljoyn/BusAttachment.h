@@ -369,7 +369,7 @@ class BusAttachment : public MessageReceiver {
      *
      * @return The unique name of this BusAttachment.
      */
-    const qcc::String& GetUniqueName() const;
+    const qcc::String GetUniqueName() const;
 
     /**
      * Get the GUID of this BusAttachment.
