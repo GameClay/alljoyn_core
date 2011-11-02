@@ -857,7 +857,7 @@ bool BTController::AcceptSessionJoiner(SessionPort sessionPort,
                   ep->IsIncomingConnection() &&
                   (!node->IsValid() || (node->GetSessionID() == 0)));
 
-        QCC_DbgPrintf(("SJK: accept = %d", accept));
+        QCC_DbgPrintf(("SJK: accept = %d  (ep=%p  ep->IsIncoming()=%d  node->IsValid()=%d  node->GetSessionID()=%08x)", accept, ep, (ep ? ep->IsIncomingConnection() : -1), node->IsValid(), node->GetSessionID()));
 
         if (ep) {
             bt.ReturnEndpoint(ep);
