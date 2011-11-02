@@ -37,6 +37,7 @@
 #include <qcc/KeyBlob.h>
 #include <qcc/ManagedObj.h>
 #include <qcc/Mutex.h>
+#include <qcc/Event.h>
 #include <qcc/time.h>
 
 #include <Status.h>
@@ -79,7 +80,8 @@ class _PeerState {
         firstClockAdjust(true),
         lastDriftAdjustTime(0),
         expectedSerial(0),
-        isSecure(false)
+        isSecure(false),
+        authEvent(NULL)
     {
         ::memset(window, 0, sizeof(window));
     }
@@ -171,6 +173,24 @@ class _PeerState {
     bool IsSecure() { return isSecure; }
 
     /**
+     * Returns the auth event for this peer. The auth event is set by the peer object while the peer
+     * is being authenticated and is used to prevent multiple threads from attempting to
+     * simultaneously authenticate the same peer.
+     *
+     * @return  Returns the auth event for this peer.
+     */
+    qcc::Event* GetAuthEvent() { return authEvent; }
+
+    /**
+     * Set the auth event for this peer. The auth event is set by the peer object while the peer
+     * is being authenticated and is used to prevent multiple threads from attempting to
+     * simultaneously authenticate the same peer.
+     *
+     * @param event  The event to set or NULL if the event is being cleared.
+     */
+    void SetAuthEvent(qcc::Event* event) { authEvent = event; }
+
+    /**
      * Tests if this peer is the local peer.
      *
      * @return  Returns true if this PeerState instance is for the local peer.
@@ -216,6 +236,11 @@ class _PeerState {
      * Set to true if this peer has keys.
      */
     bool isSecure;
+
+    /**
+     * Event used to prevent simultaneous authorization requests to this peer.
+     */
+    qcc::Event* authEvent;
 
     /**
      * The GUID for this peer.
@@ -280,6 +305,18 @@ class PeerStateTable {
      * @return  The peer state.
      */
     PeerState GetPeerState(const qcc::String& uniqueName, const qcc::String& aliasName);
+
+    /**
+     * Are two bus names known to refer to the same peer.
+     *
+     * @param name1  The first bus name
+     * @param name1  The second bus name
+     *
+     * @return  Returns true if the two bus names are known to refer to the same peer.
+     */
+    bool IsAlias(const qcc::String& name1, const qcc::String& name2) {
+        return (name1 == name2) || (GetPeerState(name1).iden(GetPeerState(name2)));
+    }
 
     /**
      * Delete peer state for a busName that is no longer in use

@@ -25,7 +25,7 @@
 #include <qcc/platform.h>
 
 #include <map>
-#include <queue>
+#include <deque>
 
 #include <qcc/GUID.h>
 #include <qcc/String.h>
@@ -131,12 +131,17 @@ class AllJoynPeerObj : public BusObject, public BusListener, public qcc::AlarmLi
      * Authenticate the connection to a remote peer. Authentication establishes a session key with a remote peer.
      *
      * @param busName   The bus name of the remote peer we are securing.
+     * @param wait      If true the function will block if there is an authentication already in
+     *                  progress with the peer on a separate thread. If false, the function will
+     *                  return an ER_WOULD_BLOCK status instead of waiting.
      *
      * @return
      *      - ER_OK if successful
+     *      - ER_WOULD_BLOCK if there is already an authentication in progress with the remote peer
+     *        and the wait parameter was false.
      *      - An error status otherwise
      */
-    QStatus AuthenticatePeer(const qcc::String& busName);
+    QStatus AuthenticatePeer(AllJoynMessageType msgType,  const qcc::String& busName, bool wait = true);
 
     /**
      * Authenticate the connection to a remote peer asynchronously. Authentication establishes a session key with
@@ -340,13 +345,11 @@ class AllJoynPeerObj : public BusObject, public BusListener, public qcc::AlarmLi
     /** Short term lock to protect the peer object. */
     qcc::Mutex lock;
 
-    /**
-     * Event map to prevent simultaneous authentications to the same remote peer.
-     */
-    std::map<qcc::String, qcc::Event*> authWait;
-
     /** Dispatcher for handling peer object requests */
     qcc::Timer dispatcher;
+
+    /** Queue of messages waiting for an authentication to complete */
+    std::deque<Message> msgsPendingAuth;
 };
 
 }

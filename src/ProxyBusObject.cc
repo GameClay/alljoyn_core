@@ -506,7 +506,7 @@ QStatus ProxyBusObject::MethodCall(const InterfaceDescription::Member& method,
             status = ER_BUS_SECURITY_NOT_ENABLED;
             goto MethodCallExit;
         }
-        status = localEndpoint.GetPeerObj()->AuthenticatePeer(serviceName);
+        status = localEndpoint.GetPeerObj()->AuthenticatePeer(MESSAGE_METHOD_CALL, serviceName);
         /*
          * Not recoverable if the connection could not be secured
          */
@@ -649,7 +649,7 @@ QStatus ProxyBusObject::SecureConnection(bool forceAuth)
     if (forceAuth) {
         peerObj->ForceAuthentication(serviceName);
     }
-    return peerObj->AuthenticatePeer(serviceName);
+    return peerObj->AuthenticatePeer(MESSAGE_METHOD_CALL, serviceName);
 }
 
 QStatus ProxyBusObject::SecureConnectionAsync(bool forceAuth)

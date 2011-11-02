@@ -169,5 +169,6 @@ Copyright 2010 - 2011, Qualcomm Innovation Center, Inc.
   <status name="ER_ALLJOYN_SETLINKTIMEOUT_REPLY_FAILED" value="0x90a2" comment="SetLinkTimeout failed"/>
   <status name="ER_ALLJOYN_ACCESS_PERMISSION_WARNING" value="0x90a3" comment="No permission to use Wifi/Bluetooth"/>
   <status name="ER_ALLJOYN_ACCESS_PERMISSION_ERROR" value="0x90a4" comment="No permission to access peer service"/>
+  <status name="ER_BUS_DESTINATION_NOT_AUTHENTICATED" value="0x90a5" comment="Cannot send a signal to a destination that is not authenticated"/>
 
 </status_block>
