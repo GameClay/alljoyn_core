@@ -57,8 +57,8 @@ partial class ProjectInstaller {
         // 
         // serviceInstaller1
         // 
-        this.serviceInstaller1.Description = "Daemon service that implements the  AllJoyn peer to peer technology.";
-        this.serviceInstaller1.DisplayName = "AllJoyn";
+        this.serviceInstaller1.Description = "Daemon service that implements the AllJoyn peer to peer technology.";
+        this.serviceInstaller1.DisplayName = "AllJoyn Daemon Service";
         this.serviceInstaller1.ServiceName = "AllJoynDaemon";
         this.serviceInstaller1.StartType = System.ServiceProcess.ServiceStartMode.Automatic;
         // 
