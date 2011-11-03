@@ -250,6 +250,8 @@ DaemonTCPTransport::~DaemonTCPTransport()
 {
     Stop();
     Join();
+    delete m_ns;
+    m_ns = 0;
 }
 
 void DaemonTCPTransport::Authenticated(DaemonTCPEndpoint* conn)
@@ -279,7 +281,9 @@ QStatus DaemonTCPTransport::Start()
     }
 #endif
 
+    assert(m_ns == NULL);
     m_ns = new NameService;
+    assert(m_ns);
     qcc::String guidStr = m_bus.GetInternal().GetGlobalGUID().ToString();
     QStatus status = m_ns->Init(guidStr, true, true
 #if NS_BROADCAST
@@ -295,7 +299,6 @@ QStatus DaemonTCPTransport::Start()
      * Tell the name service to call us back on our FoundCallback method when
      * we hear about a new well-known bus name.
      */
-    assert(m_ns);
     m_ns->SetCallback(
         new CallbackImpl<FoundCallback, void, const qcc::String&, const qcc::String&, std::vector<qcc::String>&, uint8_t>
             (&m_foundCallback, &FoundCallback::Found));
@@ -345,6 +348,22 @@ QStatus DaemonTCPTransport::Stop(void)
 
     m_endpointListLock.Unlock();
 
+    /*
+     * The use model for DaemonTCPTransport is that it works like a thread.
+     * There is a call to Start() that spins up the server accept loop in order
+     * to get it running.  When someone wants to tear down the transport, they
+     * call Stop() which requests the transport to stop.  This is followed by
+     * Join() which waits for all of the threads to actually stop.
+     *
+     * The name service should play by those rules as well.  We allocate and
+     * initialize it in Start(), which will spin up the main thread there.
+     * We need to Stop() the name service here and Join its thread in
+     * DaemonTCPTransport::Join().  If someone just deletes the transport
+     * there is an implied Stop() and Join() so it behaves correctly.
+     */
+    if (m_ns) {
+        m_ns->Stop();
+    }
     return ER_OK;
 }
 
@@ -381,6 +400,21 @@ QStatus DaemonTCPTransport::Join(void)
     assert(m_authList.size() == 0);
 
     m_endpointListLock.Unlock();
+
+    /*
+     * The use model for DaemonTCPTransport is that it works like a thread.
+     * There is a call to Start() that spins up the server accept loop in order
+     * to get it running.  When someone wants to tear down the transport, they
+     * call Stop() which requests the transport to stop.  This is followed by
+     * Join() which waits for all of the threads to actually stop.
+     *
+     * The name service needs to play by the use model for the transport (see
+     * Start()).  We allocate and initialize it in Start() so we need to Join
+     * and delete the name service here.  Since there is an implied Join() in
+     * the destructor we just delete the name service to play by the rules.
+     */
+    delete m_ns;
+    m_ns = NULL;
 
     m_stopping = false;
 
