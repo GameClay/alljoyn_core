@@ -182,7 +182,10 @@ class ServiceObject : public BusObject {
 
         /* Inform Java GUI of this ping */
         JNIEnv* env;
-        vm->AttachCurrentThread(&env, NULL);
+        jint jret = vm->GetEnv((void**)&env, JNI_VERSION_1_2);
+        if (JNI_EDETACHED == jret) {
+            vm->AttachCurrentThread(&env, NULL);
+        }
 
         jclass jcls = env->GetObjectClass(jobj);
         jmethodID mid = env->GetMethodID(jcls, "PingCallback", "(Ljava/lang/String;Ljava/lang/String;)V");
@@ -203,7 +206,9 @@ class ServiceObject : public BusObject {
             LOGE("Ping: Error sending reply (%s)", QCC_StatusText(status));
         }
 
-
+        if (JNI_EDETACHED == jret) {
+            vm->DetachCurrentThread();
+        }
     }
 
   private:

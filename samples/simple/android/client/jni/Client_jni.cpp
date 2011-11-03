@@ -68,7 +68,10 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
         if (0 == strncmp(SIMPLE_SERVICE_WELL_KNOWN_NAME_PREFIX, name, prefixLen)) {
             /* Found a name that matches service prefix. Inform Java GUI of this name */
             JNIEnv* env;
-            vm->AttachCurrentThread(&env, NULL);
+            jint jret = vm->GetEnv((void**)&env, JNI_VERSION_1_2);
+            if (JNI_EDETACHED == jret) {
+                vm->AttachCurrentThread(&env, NULL);
+            }
             jclass jcls = env->GetObjectClass(jobj);
             jmethodID mid = env->GetMethodID(jcls, "FoundNameCallback", "(Ljava/lang/String;)V");
             if (mid == 0) {
@@ -78,6 +81,9 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
                 LOGE("Calling FoundNameCallback");
                 env->CallVoidMethod(jobj, mid, jName);
                 env->DeleteLocalRef(jName);
+            }
+            if (JNI_EDETACHED == jret) {
+                vm->DetachCurrentThread();
             }
         }
     }
@@ -89,7 +95,10 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
         if (0 == strncmp(SIMPLE_SERVICE_WELL_KNOWN_NAME_PREFIX, name, prefixLen)) {
             /* Lost a name that matches service prefix. Inform Java GUI of this name */
             JNIEnv* env;
-            vm->AttachCurrentThread(&env, NULL);
+            jint jret = vm->GetEnv((void**)&env, JNI_VERSION_1_2);
+            if (JNI_EDETACHED == jret) {
+                vm->AttachCurrentThread(&env, NULL);
+            }
             jclass jcls = env->GetObjectClass(jobj);
             jmethodID mid = env->GetMethodID(jcls, "LostNameCallback", "(Ljava/lang/String;)V");
             if (mid == 0) {
@@ -99,6 +108,9 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
                 LOGE("Calling LostNameCallback");
                 env->CallVoidMethod(jobj, mid, jName);
                 env->DeleteLocalRef(jName);
+            }
+            if (JNI_EDETACHED == jret) {
+                vm->DetachCurrentThread();
             }
         }
     }
@@ -114,7 +126,10 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
 
         /* Inform Java GUI of this disconnect */
         JNIEnv* env;
-        vm->AttachCurrentThread(&env, NULL);
+        jint jret = vm->GetEnv((void**)&env, JNI_VERSION_1_2);
+        if (JNI_EDETACHED == jret) {
+            vm->AttachCurrentThread(&env, NULL);
+        }
 
         jclass jcls = env->GetObjectClass(jobj);
         jmethodID mid = env->GetMethodID(jcls, "DisconnectCallback", "(I)V");
@@ -122,6 +137,10 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
             LOGE("Failed to get Java DisconnectCallback");
         } else {
             env->CallVoidMethod(jobj, mid, jint(sessionId));
+        }
+
+        if (JNI_EDETACHED == jret) {
+            vm->DetachCurrentThread();
         }
     }
 

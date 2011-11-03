@@ -158,7 +158,10 @@ class ChatObject : public BusObject {
     {
         /* Inform Java GUI of this message */
         JNIEnv* env;
-        vm->AttachCurrentThread(&env, NULL);
+        jint jret = vm->GetEnv((void**)&env, JNI_VERSION_1_2);
+        if (JNI_EDETACHED == jret) {
+            vm->AttachCurrentThread(&env, NULL);
+        }
         jclass jcls = env->GetObjectClass(jobj);
         jmethodID mid = env->GetMethodID(jcls, "ChatCallback", "(Ljava/lang/String;Ljava/lang/String;)V");
         if (mid == 0) {
@@ -170,6 +173,9 @@ class ChatObject : public BusObject {
             env->CallVoidMethod(jobj, mid, jSender, jChatStr);
             env->DeleteLocalRef(jSender);
             env->DeleteLocalRef(jChatStr);
+        }
+        if (JNI_EDETACHED == jret) {
+            vm->DetachCurrentThread();
         }
     }
 
