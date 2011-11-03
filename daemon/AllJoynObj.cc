@@ -2867,7 +2867,25 @@ void AllJoynObj::NameOwnerChanged(const qcc::String& alias, const qcc::String* o
                  * Remove empty session entry.
                  * Preserve raw sessions until GetSessionFd is called.
                  */
-                if ((it->second.memberNames.empty() || ((it->second.memberNames.size() == 1) && it->second.sessionHost.empty())) && (it->second.fd == -1)) {
+                /*
+                 * If the session is not Multipoint the memberNames will be empty.
+                 * if the sessionHost is empty and there are no member names send
+                 * the  sessionLost signal as long as the session is not a raw session
+                 */
+                bool noMemberNoHost = (it->second.sessionHost.empty() && it->second.memberNames.empty());
+                /*
+                 * If the session is a Multipoint session it will list its own unique
+                 * name in the list of memberNames. If There is only one name in the
+                 * memberNames list and there is no session host it is safe to send
+                 * the session lost signal as long as the session does not contain a
+                 * raw session.
+                 */
+                bool singleMemberNoHost = ((it->second.memberNames.size() == 1) && it->second.sessionHost.empty());
+                /*
+                 * as long as the file descriptor is -1 this is not a raw session
+                 */
+                bool noRawSession = (it->second.fd == -1);
+                if ((noMemberNoHost || singleMemberNoHost) && noRawSession) {
                     SendSessionLost(it->second);
                     if (!it->second.isInitializing) {
                         sessionMap.erase(it++);
