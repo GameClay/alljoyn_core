@@ -352,7 +352,7 @@
         "UpgradeCode" = "8:{5F3CB03F-DD62-426E-9126-E5476468BCF3}"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:FALSE"
-        "DetectNewerInstalledVersion" = "11:FALSE"
+        "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:TRUE"
         "ProductVersion" = "8:2.2.0"
         "Manufacturer" = "8:Alljoyn.org"
