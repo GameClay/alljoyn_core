@@ -33,6 +33,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_04DC848E85C0464B9EB41BA899E8C6ED"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_06F643C962EC4EFC917EEC1793DD3A42"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -40,6 +46,12 @@
         "Entry"
         {
         "MsmKey" = "8:_0713B7C9FCEE4623983BA490F16EE459"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_0775C45C3B4B49DDBF33DD3C07110728"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -64,6 +76,12 @@
         "Entry"
         {
         "MsmKey" = "8:_0946D7932EAD4320906D4C2F43922974"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_0970E64AA5B1494EA75065CEC57FC1F9"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -135,6 +153,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_139D8503CAB64F9EBE6B749FFB67FCC2"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_139D903F1F254F86954B7DB99E397054"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -148,6 +172,12 @@
         "Entry"
         {
         "MsmKey" = "8:_14DEE7F7DA2343369C488E482C6C839D"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_158C6B8A55704EF5B644B022C00E732C"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -195,6 +225,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_1F28DD6437FC49CCBA46FCF28A84805C"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_1FDCD7EA787149C89F8818C10D908DFC"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -231,6 +267,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_259FB4B8E6404F71B168F80B8E48339F"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_29A0083DB9584CEFAB18701988578515"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -255,6 +297,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_2DA7B7DB503D44BF8809326DD196803D"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_2DD9BBD231CE4280B9F55CCD516E3384"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -268,6 +316,12 @@
         "Entry"
         {
         "MsmKey" = "8:_31E06AC5FFFA4ACE9E28997E854A4959"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_31F4D1757F8749D395D123B03450A2FF"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -297,7 +351,19 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_36839D0280804A3D849B3368EEA28EE8"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_372196E79DC2459CA954E8536A47678C"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_3735DF7B8965497E94DC7370339D4731"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -309,7 +375,19 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_3937F70A048848DB8C039A95A7E63B37"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_3953EEB8767B40EE8F46243C00E4EA45"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_39B4390C2642427F83BB0BF652A4783C"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -459,6 +537,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_460B62C43F3247BCBBBDF6C88CF25989"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_46154EFB51224D5BB83335D3B486B0BD"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -519,6 +603,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_4F621BA776CE4CD59995FAD523606718"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_4FC87FBCB08B4E3F822111D1AA8566BA"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -526,6 +616,12 @@
         "Entry"
         {
         "MsmKey" = "8:_50C81D0EF6CD49788F85146CC5481D9B"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_51DD837CA8FB4F1EB77B413F8F3686D3"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -555,7 +651,19 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_55CA66275A294119A3967B336D3D3700"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_5685FF4DFB5D4ADFA9085197BA0E3786"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_56B0F43AE677461CB303A76213024BB4"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -574,6 +682,12 @@
         "Entry"
         {
         "MsmKey" = "8:_5A10BA24512B4392B1D843ED8EF8CFB9"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_5A206834265B46738640EE21BC1BA97B"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -645,6 +759,18 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_65243877ED0D4B898147A736B054066A"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_6542DDCCC2144F1E9AAA3933ED58B449"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_68089D2A2AD4480AA18CE949ADBBFAC4"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -675,6 +801,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_6C506AB5D5C4470D8F3D9BC6F2CE1963"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_6CF39CB013084433BCDF92F99473775E"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -693,7 +825,19 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_6F8C649E93A547B0A0ECD1AEC0741E9C"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_71ECD8FA72394A9E8A4BD900C9366C52"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_747AA80302B94D81AF72937B4788C9A2"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -754,6 +898,12 @@
         "Entry"
         {
         "MsmKey" = "8:_7B545F4F33F3413E8D397E73F7AEAA68"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_7C314F3154834C269591FBE0A50DF64D"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -837,13 +987,31 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_86B09BEAB8CC4287B605A03E96C17D9C"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_88947E6019C74E0E83A4EB21B7E7A482"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
+        "MsmKey" = "8:_89E95764B8AC4DF5BFF4D68B58537528"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_8AFDE54D2ED44D90BEFA664111023CF4"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_8C422AF1EBB8451CB17EA07E839E91C7"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -939,6 +1107,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_97ABFB74173B4078827248350ECD77B9"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_98041E5D87664E8F8ADABDEFE786BEFF"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -958,6 +1132,18 @@
         "Entry"
         {
         "MsmKey" = "8:_9A985A0C801149388E549F612BAF66F7"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_9BB7FCB2EB91453D832EE79CF46E31CF"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_9C32BB1DC0154C21A4991D09002D6A08"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1029,6 +1215,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_A93FC8314D094554B56726C0A2B493D3"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_AB1A928E1CF4407A882D9818B253A274"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1041,7 +1233,19 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_AC2E4C516BEC45DE86368E35A5448358"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_ACE1D87AAD0D4C7593A7D6EE54C44BC7"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_AD2AB62E665D49A8AC56E241CAF601AC"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1077,13 +1281,37 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_B2C6ADFB44764AC380672F3B89C47947"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_B2CB808DFA1B4FB3A676AA351D7840D9"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
+        "MsmKey" = "8:_B386462336AC4A6B8EF008C73066D89B"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_B489115693C542F09AA348C7F373E753"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_B5C50D0D72FF4CE8B280B76D6C0E1812"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_B66708158719484990BFBECFAE60BA1A"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1221,6 +1449,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_C0466726D8124AAE85BE82A0DB2BA5B7"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_C097891B5AF2472CAD730BF836AC2E19"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1234,6 +1468,12 @@
         "Entry"
         {
         "MsmKey" = "8:_C2406AF116AE4D72B20EEFE91D8243A2"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_C28C460F20FA446EB3AD5180B3B7DB9F"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1282,6 +1522,12 @@
         "Entry"
         {
         "MsmKey" = "8:_CB3F8DECEE1544269BC2403E23F9606D"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_CBA324E6708747189F89AD7B777B6144"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1341,6 +1587,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_D0D2172BE8074A42A52244DBBEA79E01"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_D1F84FB1C75C4573B1F177AA4FE126D4"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1354,6 +1606,12 @@
         "Entry"
         {
         "MsmKey" = "8:_D2B3EC4AF0FC4EEA8B9F3A83ACA4CB42"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_D48024E6795E409EB1914EA496E55177"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1383,6 +1641,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_D77F968F4A384269A85F86D70155C5E9"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_D9C66FFDAF5B4C959589B456864F7B70"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1407,7 +1671,19 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_DC969E978168471FB1877BDE14DB51A9"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_DCF88DC341B94468B7F931FC4C873AD8"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_DD542D78905840F6A057486C6CC0D008"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1443,6 +1719,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_E3B19C8292BA4F43B0CD76AA14FC229E"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_E3CCED8737CA47799FC01D73903BB4E7"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1450,6 +1732,12 @@
         "Entry"
         {
         "MsmKey" = "8:_E3E0E191C852410D88343C60B096F7B2"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_E85363A70AF6434FAE10BEF88C1AC0A9"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1467,6 +1755,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_EB8FF0D508B746E2AD2BB77E651A8E17"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_EBC12A82A8A944F28A2DDC0748247839"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1474,6 +1768,12 @@
         "Entry"
         {
         "MsmKey" = "8:_ED1866CE631B491DAA90B7056EE48639"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_ED2D1C4DB06E4DCDBF85B79FEB6114D3"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1533,6 +1833,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_F1036ABC14FA4F2C890334CC526E0AE3"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_F13EFF3FC331478BA8772A7587B28AAB"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1546,6 +1852,18 @@
         "Entry"
         {
         "MsmKey" = "8:_F2E76679CFFB4CF0B151BE53DB4DD272"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_F2F53D33D68B4F2F905E7A413DD75592"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_F45AF860B9E34519BA9AD19BA7B0F79E"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1576,6 +1894,30 @@
         "Entry"
         {
         "MsmKey" = "8:_F6C5D6AB9E5E462DAB5C3FF571C03B28"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_F7BA0F07785E43B68BE5FF19F6946D51"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_F840A57624B24E80BE8F3D41428CB32F"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_F8F63AF173174761B3A4D51110ABBAA3"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_FA3D8A04041244FEB050D3EA51A87743"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1766,6 +2108,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_04DC848E85C0464B9EB41BA899E8C6ED"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\Properties\\Resources.Designer.cs"
+            "TargetName" = "8:Resources.Designer.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_F9D0FABC635A42DEB8F77B8886D811A3"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_06F643C962EC4EFC917EEC1793DD3A42"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\docs\\constant-values.html"
@@ -1793,6 +2155,26 @@
             "Tag" = "8:"
             "Folder" = "8:_DCF62BBF8C134F16BA24C09EA93279D2"
             "Condition" = "8:CHECKBOXC4=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0775C45C3B4B49DDBF33DD3C07110728"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\SimpleTranscript.Designer.cs"
+            "TargetName" = "8:SimpleTranscript.Designer.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -1874,6 +2256,26 @@
             "Folder" = "8:_F112B5A3790E4339AF27E4FDC4FC45B6"
             "Condition" = "8:CHECKBOXC4=1"
             "Transitive" = "11:TRUE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0970E64AA5B1494EA75065CEC57FC1F9"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\SimpleChatForm.cs"
+            "TargetName" = "8:SimpleChatForm.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
             "Hidden" = "11:FALSE"
@@ -2106,6 +2508,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_139D8503CAB64F9EBE6B749FFB67FCC2"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\SimpleChatForm.Designer.cs"
+            "TargetName" = "8:SimpleChatForm.Designer.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_139D903F1F254F86954B7DB99E397054"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\docs\\org\\alljoyn\\bus\\ifaces\\class-use\\Peer.html"
@@ -2153,6 +2575,26 @@
             "Tag" = "8:"
             "Folder" = "8:_8FF526D479704EF8A7A218E089202AE9"
             "Condition" = "8:CHECKBOXB1=1 OR CHECKBOXB2=1 OR  CHECKBOXB3 = 1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_158C6B8A55704EF5B644B022C00E732C"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynBusLib\\AllJoynBusAPI.h"
+            "TargetName" = "8:AllJoynBusAPI.h"
+            "Tag" = "8:"
+            "Folder" = "8:_31A3F65E04BB4B8B805BD01C31FB792A"
+            "Condition" = "8:CHECKBOXB3=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -2306,6 +2748,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1F28DD6437FC49CCBA46FCF28A84805C"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\Properties\\AssemblyInfo.cs"
+            "TargetName" = "8:AssemblyInfo.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_5DEB307FB96D4F4DBB9ECC2CE8075BF6"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1FDCD7EA787149C89F8818C10D908DFC"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\jar\\JavaSDKDocPropertiesService.jar"
@@ -2426,6 +2888,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_259FB4B8E6404F71B168F80B8E48339F"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynBusLib\\AllJoynBusLib.vcproj"
+            "TargetName" = "8:AllJoynBusLib.vcproj"
+            "Tag" = "8:"
+            "Folder" = "8:_31A3F65E04BB4B8B805BD01C31FB792A"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_29A0083DB9584CEFAB18701988578515"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\docs\\org\\alljoyn\\bus\\annotation\\BusInterface.html"
@@ -2506,6 +2988,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2DA7B7DB503D44BF8809326DD196803D"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\Properties\\Resources.resx"
+            "TargetName" = "8:Resources.resx"
+            "Tag" = "8:"
+            "Folder" = "8:_F9D0FABC635A42DEB8F77B8886D811A3"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2DD9BBD231CE4280B9F55CCD516E3384"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\docs\\org\\alljoyn\\bus\\class-use\\BusAttachment.html"
@@ -2554,6 +3056,26 @@
             "Folder" = "8:_991FBF33294540AB91B86C51B72E948D"
             "Condition" = "8:CHECKBOXC4=1"
             "Transitive" = "11:TRUE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_31F4D1757F8749D395D123B03450A2FF"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\logo.gif"
+            "TargetName" = "8:logo.gif"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
             "Hidden" = "11:FALSE"
@@ -2646,6 +3168,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_36839D0280804A3D849B3368EEA28EE8"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\Program.cs"
+            "TargetName" = "8:Program.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_B8258A49EF654E69A2471EC4C9C34C5E"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_372196E79DC2459CA954E8536A47678C"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\lib\\daemonlib.lib"
@@ -2654,6 +3196,26 @@
             "Folder" = "8:_DBED88823C004C8A97460BD343F4A107"
             "Condition" = "8:CHECKBOXC1=1"
             "Transitive" = "11:TRUE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3735DF7B8965497E94DC7370339D4731"
+            {
+            "SourcePath" = "8:..\\..\\samples\\Chat\\Properties\\Settings.settings"
+            "TargetName" = "8:Settings.settings"
+            "Tag" = "8:"
+            "Folder" = "8:_43F6610FBC034DF5B56B4658E0B493FC"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
             "Hidden" = "11:FALSE"
@@ -2686,6 +3248,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3937F70A048848DB8C039A95A7E63B37"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\StartForm.Designer.cs"
+            "TargetName" = "8:StartForm.Designer.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3953EEB8767B40EE8F46243C00E4EA45"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\docs\\org\\alljoyn\\bus\\class-use\\SignalEmitter.GlobalBroadcast.html"
@@ -2694,6 +3276,26 @@
             "Folder" = "8:_71D38D35DE224422A77F20FF01804F05"
             "Condition" = "8:CHECKBOXC4=1"
             "Transitive" = "11:TRUE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_39B4390C2642427F83BB0BF652A4783C"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\AlljoynConnect.cs"
+            "TargetName" = "8:AlljoynConnect.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
             "Hidden" = "11:FALSE"
@@ -3186,6 +3788,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_460B62C43F3247BCBBBDF6C88CF25989"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\Program.cs"
+            "TargetName" = "8:Program.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_46154EFB51224D5BB83335D3B486B0BD"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\inc\\qcc\\String.h"
@@ -3386,6 +4008,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4F621BA776CE4CD59995FAD523606718"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\AlljoynConnect.resx"
+            "TargetName" = "8:AlljoynConnect.resx"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4FC87FBCB08B4E3F822111D1AA8566BA"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\docs\\org\\alljoyn\\bus\\SessionListener.html"
@@ -3413,6 +4055,26 @@
             "Tag" = "8:"
             "Folder" = "8:_DCF62BBF8C134F16BA24C09EA93279D2"
             "Condition" = "8:CHECKBOXC4=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_51DD837CA8FB4F1EB77B413F8F3686D3"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\PhotoChatForm.cs"
+            "TargetName" = "8:PhotoChatForm.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_B8258A49EF654E69A2471EC4C9C34C5E"
+            "Condition" = "8:CHECKBOXB3=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -3506,6 +4168,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_55CA66275A294119A3967B336D3D3700"
+            {
+            "SourcePath" = "8:..\\..\\samples\\Chat\\Properties\\AssemblyInfo.cs"
+            "TargetName" = "8:AssemblyInfo.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_43F6610FBC034DF5B56B4658E0B493FC"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5685FF4DFB5D4ADFA9085197BA0E3786"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\inc\\qcc\\ManagedObj.h"
@@ -3513,6 +4195,26 @@
             "Tag" = "8:"
             "Folder" = "8:_8FF526D479704EF8A7A218E089202AE9"
             "Condition" = "8:CHECKBOXB1=1 OR CHECKBOXB2=1 OR  CHECKBOXB3 = 1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_56B0F43AE677461CB303A76213024BB4"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\Transcript.Designer.cs"
+            "TargetName" = "8:Transcript.Designer.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -3573,6 +4275,26 @@
             "Tag" = "8:"
             "Folder" = "8:_8FF526D479704EF8A7A218E089202AE9"
             "Condition" = "8:CHECKBOXB1=1 OR CHECKBOXB2=1 OR  CHECKBOXB3 = 1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5A206834265B46738640EE21BC1BA97B"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynBusLib\\dllmain.cpp"
+            "TargetName" = "8:dllmain.cpp"
+            "Tag" = "8:"
+            "Folder" = "8:_31A3F65E04BB4B8B805BD01C31FB792A"
+            "Condition" = "8:CHECKBOXB3=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -3806,6 +4528,46 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_65243877ED0D4B898147A736B054066A"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\Properties\\Settings.Designer.cs"
+            "TargetName" = "8:Settings.Designer.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_F9D0FABC635A42DEB8F77B8886D811A3"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6542DDCCC2144F1E9AAA3933ED58B449"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\AlljoynConnectForm.resx"
+            "TargetName" = "8:AlljoynConnectForm.resx"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_68089D2A2AD4480AA18CE949ADBBFAC4"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\docs\\org\\alljoyn\\bus\\annotation\\BusSignalHandler.html"
@@ -3906,6 +4668,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6C506AB5D5C4470D8F3D9BC6F2CE1963"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\AlljoynSetup.cs"
+            "TargetName" = "8:AlljoynSetup.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6CF39CB013084433BCDF92F99473775E"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\inc\\alljoyn\\SimpleBusListener.h"
@@ -3966,6 +4748,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6F8C649E93A547B0A0ECD1AEC0741E9C"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\SimpleTranscript.cs"
+            "TargetName" = "8:SimpleTranscript.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_71ECD8FA72394A9E8A4BD900C9366C52"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\IA64\\debug\\dist\\lib\\alljoyn.lib"
@@ -3973,6 +4775,26 @@
             "Tag" = "8:"
             "Folder" = "8:_5D495ADF4E06489C87850E6E2ADEE1DC"
             "Condition" = "8:CHECKBOXB2=1 OR  CHECKBOXB3 = 1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_747AA80302B94D81AF72937B4788C9A2"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynBusLib\\stdafx.cpp"
+            "TargetName" = "8:stdafx.cpp"
+            "Tag" = "8:"
+            "Folder" = "8:_31A3F65E04BB4B8B805BD01C31FB792A"
+            "Condition" = "8:CHECKBOXB3=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -4174,6 +4996,26 @@
             "Folder" = "8:_32ED65737CAA44A8B062DEADF82AEFB4"
             "Condition" = "8:CHECKBOXC1=1"
             "Transitive" = "11:TRUE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7C314F3154834C269591FBE0A50DF64D"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\AlljoynSetup.resx"
+            "TargetName" = "8:AlljoynSetup.resx"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
             "Hidden" = "11:FALSE"
@@ -4446,6 +5288,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_86B09BEAB8CC4287B605A03E96C17D9C"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\PhotoChatForm.resx"
+            "TargetName" = "8:PhotoChatForm.resx"
+            "Tag" = "8:"
+            "Folder" = "8:_B8258A49EF654E69A2471EC4C9C34C5E"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_88947E6019C74E0E83A4EB21B7E7A482"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\docs\\org\\alljoyn\\bus\\BusObjectListener.html"
@@ -4453,6 +5315,26 @@
             "Tag" = "8:"
             "Folder" = "8:_DCF62BBF8C134F16BA24C09EA93279D2"
             "Condition" = "8:CHECKBOXC4=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_89E95764B8AC4DF5BFF4D68B58537528"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\AJBus.cs"
+            "TargetName" = "8:AJBus.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -4474,6 +5356,26 @@
             "Folder" = "8:_71D38D35DE224422A77F20FF01804F05"
             "Condition" = "8:CHECKBOXC4=1"
             "Transitive" = "11:TRUE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8C422AF1EBB8451CB17EA07E839E91C7"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynBusLib\\targetver.h"
+            "TargetName" = "8:targetver.h"
+            "Tag" = "8:"
+            "Folder" = "8:_31A3F65E04BB4B8B805BD01C31FB792A"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
             "Hidden" = "11:FALSE"
@@ -4786,6 +5688,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_97ABFB74173B4078827248350ECD77B9"
+            {
+            "SourcePath" = "8:..\\..\\samples\\Chat\\Properties\\Resources.resx"
+            "TargetName" = "8:Resources.resx"
+            "Tag" = "8:"
+            "Folder" = "8:_43F6610FBC034DF5B56B4658E0B493FC"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_98041E5D87664E8F8ADABDEFE786BEFF"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\samples\\props\\Service.java"
@@ -4854,6 +5776,46 @@
             "Folder" = "8:_32ED65737CAA44A8B062DEADF82AEFB4"
             "Condition" = "8:CHECKBOXC1=1"
             "Transitive" = "11:TRUE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9BB7FCB2EB91453D832EE79CF46E31CF"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\Properties\\Settings.settings"
+            "TargetName" = "8:Settings.settings"
+            "Tag" = "8:"
+            "Folder" = "8:_5DEB307FB96D4F4DBB9ECC2CE8075BF6"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9C32BB1DC0154C21A4991D09002D6A08"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\AlljoynSetup.Designer.cs"
+            "TargetName" = "8:AlljoynSetup.Designer.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
             "Hidden" = "11:FALSE"
@@ -5086,6 +6048,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A93FC8314D094554B56726C0A2B493D3"
+            {
+            "SourcePath" = "8:..\\..\\samples\\Chat\\Properties\\Resources.Designer.cs"
+            "TargetName" = "8:Resources.Designer.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_43F6610FBC034DF5B56B4658E0B493FC"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AB1A928E1CF4407A882D9818B253A274"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\docs\\org\\alljoyn\\bus\\annotation\\class-use\\Signature.html"
@@ -5126,6 +6108,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AC2E4C516BEC45DE86368E35A5448358"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\RichTextBuffer.cs"
+            "TargetName" = "8:RichTextBuffer.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_B8258A49EF654E69A2471EC4C9C34C5E"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_ACE1D87AAD0D4C7593A7D6EE54C44BC7"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\bin\\compression.exe"
@@ -5133,6 +6135,26 @@
             "Tag" = "8:"
             "Folder" = "8:_0385890169A84CFFAAC97F8126D88F02"
             "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AD2AB62E665D49A8AC56E241CAF601AC"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\Properties\\AssemblyInfo.cs"
+            "TargetName" = "8:AssemblyInfo.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_F9D0FABC635A42DEB8F77B8886D811A3"
+            "Condition" = "8:CHECKBOXB3=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -5246,6 +6268,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B2C6ADFB44764AC380672F3B89C47947"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\Properties\\Settings.settings"
+            "TargetName" = "8:Settings.settings"
+            "Tag" = "8:"
+            "Folder" = "8:_F9D0FABC635A42DEB8F77B8886D811A3"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B2CB808DFA1B4FB3A676AA351D7840D9"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\docs\\org\\alljoyn\\bus\\class-use\\VariantTypeReference.html"
@@ -5266,6 +6308,46 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B386462336AC4A6B8EF008C73066D89B"
+            {
+            "SourcePath" = "8:..\\..\\samples\\Chat\\Properties\\Settings.Designer.cs"
+            "TargetName" = "8:Settings.Designer.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_43F6610FBC034DF5B56B4658E0B493FC"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B489115693C542F09AA348C7F373E753"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\StartForm.cs"
+            "TargetName" = "8:StartForm.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B5C50D0D72FF4CE8B280B76D6C0E1812"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\docs\\overview-tree.html"
@@ -5274,6 +6356,26 @@
             "Folder" = "8:_991FBF33294540AB91B86C51B72E948D"
             "Condition" = "8:CHECKBOXC4=1"
             "Transitive" = "11:TRUE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B66708158719484990BFBECFAE60BA1A"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\SimpleTranscript.resx"
+            "TargetName" = "8:SimpleTranscript.resx"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
             "Hidden" = "11:FALSE"
@@ -5726,6 +6828,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C0466726D8124AAE85BE82A0DB2BA5B7"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\AlljoynConnectForm.designer.cs"
+            "TargetName" = "8:AlljoynConnectForm.designer.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C097891B5AF2472CAD730BF836AC2E19"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\docs\\org\\alljoyn\\bus\\class-use\\OnJoinSessionListener.html"
@@ -5773,6 +6895,26 @@
             "Tag" = "8:"
             "Folder" = "8:_0385890169A84CFFAAC97F8126D88F02"
             "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C28C460F20FA446EB3AD5180B3B7DB9F"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\Properties\\Settings.Designer.cs"
+            "TargetName" = "8:Settings.Designer.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_5DEB307FB96D4F4DBB9ECC2CE8075BF6"
+            "Condition" = "8:CHECKBOXB3=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -5933,6 +7075,26 @@
             "Tag" = "8:"
             "Folder" = "8:_0385890169A84CFFAAC97F8126D88F02"
             "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CBA324E6708747189F89AD7B777B6144"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\Transcript.resx"
+            "TargetName" = "8:Transcript.resx"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -6126,6 +7288,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D0D2172BE8074A42A52244DBBEA79E01"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\PhotoChat.sln"
+            "TargetName" = "8:PhotoChat.sln"
+            "Tag" = "8:"
+            "Folder" = "8:_B8258A49EF654E69A2471EC4C9C34C5E"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D1F84FB1C75C4573B1F177AA4FE126D4"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\jar\\JavaSDKDocSecurityLogonService.jar"
@@ -6173,6 +7355,26 @@
             "Tag" = "8:"
             "Folder" = "8:_A17EFCF4119F41109739DE8EAC1213E1"
             "Condition" = "8:CHECKBOXB1=1 OR  CHECKBOXB3 = 1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D48024E6795E409EB1914EA496E55177"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\SimpleChatForm.resx"
+            "TargetName" = "8:SimpleChatForm.resx"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -6266,6 +7468,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D77F968F4A384269A85F86D70155C5E9"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynBusLib\\AllJoynConnection.h"
+            "TargetName" = "8:AllJoynConnection.h"
+            "Tag" = "8:"
+            "Folder" = "8:_31A3F65E04BB4B8B805BD01C31FB792A"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D9C66FFDAF5B4C959589B456864F7B70"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\bin\\bignum.exe"
@@ -6346,6 +7568,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_DC969E978168471FB1877BDE14DB51A9"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\Properties\\Resources.resx"
+            "TargetName" = "8:Resources.resx"
+            "Tag" = "8:"
+            "Folder" = "8:_5DEB307FB96D4F4DBB9ECC2CE8075BF6"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_DCF88DC341B94468B7F931FC4C873AD8"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\docs\\resources\\inherit.gif"
@@ -6354,6 +7596,26 @@
             "Folder" = "8:_895D9C6EDF584E83B642804C13C97B4B"
             "Condition" = "8:CHECKBOXC4=1"
             "Transitive" = "11:TRUE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_DD542D78905840F6A057486C6CC0D008"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\AllJoynNET.csproj"
+            "TargetName" = "8:AllJoynNET.csproj"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
             "Hidden" = "11:FALSE"
@@ -6466,6 +7728,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E3B19C8292BA4F43B0CD76AA14FC229E"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynBusLib\\stdafx.h"
+            "TargetName" = "8:stdafx.h"
+            "Tag" = "8:"
+            "Folder" = "8:_31A3F65E04BB4B8B805BD01C31FB792A"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E3CCED8737CA47799FC01D73903BB4E7"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\samples\\simple\\Service.java"
@@ -6493,6 +7775,26 @@
             "Tag" = "8:"
             "Folder" = "8:_0385890169A84CFFAAC97F8126D88F02"
             "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E85363A70AF6434FAE10BEF88C1AC0A9"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynBusLib\\AllJoynBusLib.cpp"
+            "TargetName" = "8:AllJoynBusLib.cpp"
+            "Tag" = "8:"
+            "Folder" = "8:_31A3F65E04BB4B8B805BD01C31FB792A"
+            "Condition" = "8:CHECKBOXB3=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -6546,6 +7848,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_EB8FF0D508B746E2AD2BB77E651A8E17"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\AlljoynConnectForm.cs"
+            "TargetName" = "8:AlljoynConnectForm.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_EBC12A82A8A944F28A2DDC0748247839"
             {
             "SourcePath" = "8:..\\..\\..\\..\\..\\..\\build\\win7\\x86\\release\\dist\\java\\docs\\allclasses-frame.html"
@@ -6572,6 +7894,26 @@
             "TargetName" = "8:ChatDialog.resx"
             "Tag" = "8:"
             "Folder" = "8:_796E335BB44F494487C2AD2B53A1B95D"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_ED2D1C4DB06E4DCDBF85B79FEB6114D3"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\Transcript.cs"
+            "TargetName" = "8:Transcript.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
             "Condition" = "8:CHECKBOXB3=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -6766,6 +8108,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F1036ABC14FA4F2C890334CC526E0AE3"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\Properties\\Resources.Designer.cs"
+            "TargetName" = "8:Resources.Designer.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_5DEB307FB96D4F4DBB9ECC2CE8075BF6"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F13EFF3FC331478BA8772A7587B28AAB"
             {
             "SourcePath" = "8:..\\..\\samples\\Client\\Client.vcproj"
@@ -6813,6 +8175,46 @@
             "Tag" = "8:"
             "Folder" = "8:_0385890169A84CFFAAC97F8126D88F02"
             "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F2F53D33D68B4F2F905E7A413DD75592"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\AlljoynConnect.Designer.cs"
+            "TargetName" = "8:AlljoynConnect.Designer.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F45AF860B9E34519BA9AD19BA7B0F79E"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynBusLib\\AllJoynConnection.cpp"
+            "TargetName" = "8:AllJoynConnection.cpp"
+            "Tag" = "8:"
+            "Folder" = "8:_31A3F65E04BB4B8B805BD01C31FB792A"
+            "Condition" = "8:CHECKBOXB3=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -6913,6 +8315,86 @@
             "Tag" = "8:"
             "Folder" = "8:_0531F2BDC5E544E3A66EEF0F5E5FDDEC"
             "Condition" = "8:CHECKBOXB1=1 OR CHECKBOXB2=1 OR  CHECKBOXB3 = 1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F7BA0F07785E43B68BE5FF19F6946D51"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\AllJoynNET\\StartForm.resx"
+            "TargetName" = "8:StartForm.resx"
+            "Tag" = "8:"
+            "Folder" = "8:_0BA2491AB91A4B92AB906284E1099CBA"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F840A57624B24E80BE8F3D41428CB32F"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\PhotoChat.csproj"
+            "TargetName" = "8:PhotoChat.csproj"
+            "Tag" = "8:"
+            "Folder" = "8:_B8258A49EF654E69A2471EC4C9C34C5E"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F8F63AF173174761B3A4D51110ABBAA3"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\PhotoChatForm.Designer.cs"
+            "TargetName" = "8:PhotoChatForm.Designer.cs"
+            "Tag" = "8:"
+            "Folder" = "8:_B8258A49EF654E69A2471EC4C9C34C5E"
+            "Condition" = "8:CHECKBOXB3=1"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_FA3D8A04041244FEB050D3EA51A87743"
+            {
+            "SourcePath" = "8:..\\..\\samples\\PhotoChat\\logo.gif"
+            "TargetName" = "8:logo.gif"
+            "Tag" = "8:"
+            "Folder" = "8:_B8258A49EF654E69A2471EC4C9C34C5E"
+            "Condition" = "8:CHECKBOXB3=1"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
             "ReadOnly" = "11:FALSE"
@@ -7289,6 +8771,17 @@
                                     "Property" = "8:_BD18FF538D74438BA18321573969E246"
                                         "Folders"
                                         {
+                                            "{9EF0B969-E518-4E46-987F-47570745A589}:_43F6610FBC034DF5B56B4658E0B493FC"
+                                            {
+                                            "Name" = "8:Properties"
+                                            "AlwaysCreate" = "11:FALSE"
+                                            "Condition" = "8:"
+                                            "Transitive" = "11:FALSE"
+                                            "Property" = "8:_E824048CC7BF4954A1BDF2D27FC96091"
+                                                "Folders"
+                                                {
+                                                }
+                                            }
                                             "{9EF0B969-E518-4E46-987F-47570745A589}:_7ED159B324B043F78ACFF60EFFC76929"
                                             {
                                             "Name" = "8:ChatLib32"
@@ -7296,6 +8789,61 @@
                                             "Condition" = "8:"
                                             "Transitive" = "11:TRUE"
                                             "Property" = "8:_B45F292019D94CF6A7088341878205B3"
+                                                "Folders"
+                                                {
+                                                }
+                                            }
+                                        }
+                                    }
+                                    "{9EF0B969-E518-4E46-987F-47570745A589}:_B8258A49EF654E69A2471EC4C9C34C5E"
+                                    {
+                                    "Name" = "8:PhotoChat"
+                                    "AlwaysCreate" = "11:FALSE"
+                                    "Condition" = "8:"
+                                    "Transitive" = "11:FALSE"
+                                    "Property" = "8:_00BFB1DE548349189D00D5F32547C7AA"
+                                        "Folders"
+                                        {
+                                            "{9EF0B969-E518-4E46-987F-47570745A589}:_0BA2491AB91A4B92AB906284E1099CBA"
+                                            {
+                                            "Name" = "8:AllJoynNET"
+                                            "AlwaysCreate" = "11:FALSE"
+                                            "Condition" = "8:"
+                                            "Transitive" = "11:FALSE"
+                                            "Property" = "8:_FEC6AE6DD6D1435181C1A4219E850DE8"
+                                                "Folders"
+                                                {
+                                                    "{9EF0B969-E518-4E46-987F-47570745A589}:_F9D0FABC635A42DEB8F77B8886D811A3"
+                                                    {
+                                                    "Name" = "8:Properties"
+                                                    "AlwaysCreate" = "11:FALSE"
+                                                    "Condition" = "8:"
+                                                    "Transitive" = "11:FALSE"
+                                                    "Property" = "8:_28C64D442E054B8C93A2C3B46E14946F"
+                                                        "Folders"
+                                                        {
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            "{9EF0B969-E518-4E46-987F-47570745A589}:_31A3F65E04BB4B8B805BD01C31FB792A"
+                                            {
+                                            "Name" = "8:AllJoynBusLib"
+                                            "AlwaysCreate" = "11:FALSE"
+                                            "Condition" = "8:"
+                                            "Transitive" = "11:FALSE"
+                                            "Property" = "8:_7C9DB0C773774092A82294F7CDA07524"
+                                                "Folders"
+                                                {
+                                                }
+                                            }
+                                            "{9EF0B969-E518-4E46-987F-47570745A589}:_5DEB307FB96D4F4DBB9ECC2CE8075BF6"
+                                            {
+                                            "Name" = "8:Properties"
+                                            "AlwaysCreate" = "11:FALSE"
+                                            "Condition" = "8:"
+                                            "Transitive" = "11:FALSE"
+                                            "Property" = "8:_5EB68D5271CE4A0AACFFFF995457CFC0"
                                                 "Folders"
                                                 {
                                                 }
