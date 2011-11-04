@@ -86,6 +86,7 @@ class PermissionDB {
     qcc::Mutex permissionDbLock;
     std::map<uint32_t, std::set<qcc::String> > uidPermsMap;          /**< cache the permissions owned by an endpoint identified by user id */
     std::map<uint32_t, uint32_t> uidAliasMap;                        /**< map of alias user id to the unique user id. */
+    std::set<uint32_t> unknownApps;                                  /**< apps whose permission info is unknown */
 };
 
 }

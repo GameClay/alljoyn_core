@@ -70,12 +70,17 @@ bool PermissionDB::VerifyPermsOnAndroid(const uint32_t userId, const std::set<qc
         return true;
     }
     permissionDbLock.Lock();
+    if (unknownApps.find(userId) != unknownApps.end()) {
+        permissionDbLock.Unlock();
+        return true;
+    }
     std::map<uint32_t, std::set<qcc::String> >::const_iterator uidPermsIt = uidPermsMap.find(userId);
     std::set<qcc::String> permsOwned;
 
     if (uidPermsIt == uidPermsMap.end()) {
         /* If no permission info is found because of failure to read the "/data/system/packages.xml" file, then ignore the permission check */
         if (!GetPermsAssignedByAndroid(userId, permsOwned)) {
+            unknownApps.insert(userId);
             permissionDbLock.Unlock();
             return true;
         }
@@ -90,7 +95,7 @@ bool PermissionDB::VerifyPermsOnAndroid(const uint32_t userId, const std::set<qc
         set<qcc::String>::iterator permsOwnedIt = permsOwned.find(*permsIt);
         if (permsOwnedIt == permsOwned.end()) {
             pass = false;
-            QCC_DbgHLPrintf(("PermissionDB::Permission %s is not granted for user %d", userId));
+            QCC_DbgHLPrintf(("PermissionDB::Permission %s is not granted for user %d", (*permsIt).c_str(), userId));
             break;
         }
     }
@@ -180,6 +185,7 @@ QStatus PermissionDB::RemovePermissionCache(BusEndpoint& endpoint)
     uint32_t userId = endpoint.GetUserId();
     uidAliasMap.erase(userId);
     uidPermsMap.erase(UniqueUserID(userId));
+    unknownApps.erase(UniqueUserID(userId));
     permissionDbLock.Unlock();
     return ER_OK;
 }
@@ -210,14 +216,22 @@ static bool GetPermsAssignedByAndroid(uint32_t uid, std::set<qcc::String>& permi
             const vector<XmlElement*>& elements = root.GetChildren();
             vector<XmlElement*>::const_iterator it;
 
+            bool isSystemApp = false;
             for (it = elements.begin(); it != elements.end() && !found; ++it) {
                 if ((*it)->GetName().compare("package") == 0) {
                     QCC_DbgPrintf(("Xml Tag %s", "package"));
                     const map<qcc::String, qcc::String>& attrs((*it)->GetAttributes());
-
                     map<qcc::String, qcc::String>::const_iterator attrIt;
+
+                    isSystemApp = false;
                     for (attrIt = attrs.begin(); attrIt != attrs.end(); ++attrIt) {
-                        if (attrIt->first.compare("userId") == 0) {
+                        if (attrIt->first.compare("codePath") == 0) {
+                            uint32_t cmpLen = attrIt->second.size() < strlen("/system/app") ? attrIt->second.size() : strlen("/system/app");
+                            if (attrIt->second.compare(0, cmpLen, "/system/app") == 0) {
+                                QCC_DbgPrintf(("Xml Tag %s = %s", "codePath", attrIt->second.c_str()));
+                                isSystemApp = true;
+                            }
+                        } else if (attrIt->first.compare("userId") == 0) {
                             QCC_DbgPrintf(("Xml Tag %s = %s", "userId", attrIt->second.c_str()));
                             if (attrIt->second.compare(userId) == 0) {
                                 QCC_DbgHLPrintf(("PermissionDB::GetPermsAssignedByAndroid() entry for userId %d is found", uid));
@@ -234,6 +248,10 @@ static bool GetPermsAssignedByAndroid(uint32_t uid, std::set<qcc::String>& permi
                         }
                     }
                     if (found) {
+                        /* If this is a pre-installed system app, then we trust it without checking the permissions becasue the permissions for system apps is not listed in packages.xml */
+                        if (isSystemApp) {
+                            return false;
+                        }
                         /* If this is a shared user Id, then we should read the permissions from <shared-user> element*/
                         if (isSharedUserId) {
                             found = GetPermsBySharedUserId(userId, permissions, root);
