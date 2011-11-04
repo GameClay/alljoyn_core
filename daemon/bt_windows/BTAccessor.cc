@@ -23,6 +23,7 @@
 #include <Setupapi.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <bthsdpdef.h>
 #include <BluetoothAPIs.h>
 
 #include <qcc/SocketStream.h>
