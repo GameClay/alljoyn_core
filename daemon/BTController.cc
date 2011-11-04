@@ -424,10 +424,18 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
         bool distributeChanges = false;
 
         bool knownAdNode = adNode->IsValid();
-        bool getInfo = (!bt.IsEIRCapable() ||
-                        !knownAdNode ||
-                        (!adNode->IsEIRCapable() && (!eirCapable || (adNode->GetUUIDRev() != uuidRev))) ||
-                        (adNode->IsEIRCapable() && (eirCapable && (adNode->GetUUIDRev() != uuidRev))));
+
+        // Get SDP record information if both devices are EIR capable and the
+        // advertising device is either unknown or its UUID Rev changed.  Also
+        // get the SDP record information if either device is not EIR capable
+        // and the advertising device is unknown.
+        bool getInfo = ((bt.IsEIRCapable() && (eirCapable || (knownAdNode && adNode->IsEIRCapable())) &&
+                         (!knownAdNode || (adNode->GetUUIDRev() != uuidRev))) ||
+                        ((!bt.IsEIRCapable() || !eirCapable) && !knownAdNode));
+
+        // Only refresh exipriation times for EIR capable devices.  This will
+        // cause us to poll SDP information every 60 seconds for non-EIR
+        // devices.
         bool refreshExpiration = (bt.IsEIRCapable() &&
                                   knownAdNode &&
                                   eirCapable &&
@@ -493,8 +501,6 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                     return;
                 }
 
-                bool autoConnect = !bt.IsEIRCapable() || (!eirCapable && !(knownAdNode && adNode->IsEIRCapable()));
-
                 if (newAdInfo.FindNode(self->GetBusAddress())->IsValid()) {
                     QCC_DbgPrintf(("Device %s is advertising a set of nodes that include our own BD Address, ignoring it for now.", adBdAddr.ToString().c_str()));
                     // Clear out the newAdInfo DB then re-add minimal
@@ -504,7 +510,6 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                     n->SetEIRCapable(eirCapable || adNode->IsEIRCapable());
                     newAdInfo.Clear();
                     newAdInfo.AddNode(n);
-                    autoConnect = false;  // We do not want to connect to this device since its probably in a bad state.
                 }
 
                 BTNodeInfo newConnNode = newAdInfo.FindNode(connAddr);
@@ -553,37 +558,6 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
 
                 foundNodeDB.Unlock();
 
-                // Only autoconnect if the advertising device is not EIR
-                // capable.  Sometimes, however, the BTAccessor layer may
-                // indicate that an EIR capable device is not EIR capable, so
-                // check our cache as well.
-                if (autoConnect) {
-                    // Make sure we didn't become connected to the found
-                    // device while doing the SDP query.
-                    if (!nodeDB.FindNode(adBdAddr)->IsValid()) {
-                        if (newConnNode->IsValid()) {
-                            vector<String> vectorizedNames;
-                            // Build up the bus name of the remote daemon based on informatin we do have.
-                            String name = String(":") + newConnNode->GetGUID().ToShortString() + ".1";
-                            vectorizedNames.push_back(name);
-                            bt.FoundNamesChange(newConnNode->GetGUID().ToString(),
-                                                vectorizedNames,
-                                                newConnNode->GetBusAddress().addr,
-                                                newConnNode->GetBusAddress().psm, false);
-                            // Now the session manager knows the unique name we are interested in joining.
-                            newConnNode->SetUniqueName(name);
-                            joinSessionNodeDB.AddNode(newConnNode);
-                            QCC_DbgPrintf(("Joining BT topology manager session for %s", connAddr.ToString().c_str()));
-                            status = bus.JoinSessionAsync(name.c_str(),
-                                                          ALLJOYN_BTCONTROLLER_SESSION_PORT,
-                                                          NULL,
-                                                          BTSESSION_OPTS,
-                                                          this,
-                                                          new BTNodeInfo(newConnNode));
-                        }
-                    }
-                }
-
                 distributeChanges = true;
                 ResetExpireNameAlarm();
             }
@@ -615,8 +589,6 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
 
 BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
 {
-    // NOTE: This function assumes it will only ever be called from one thread.
-
     BTNodeInfo node;
 
     bool repeat;
@@ -644,6 +616,7 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
             int ic = IncrementAndFetch(&incompleteConnections);
             QCC_DbgPrintf(("incompleteConnections = %d", ic));
             if (ic > 1) {
+                // Serialize creating new ACLs.
                 QStatus status = Event::Wait(connectCompleted);
                 QCC_DbgPrintf(("received connect completed event"));
                 connectCompleted.ResetEvent();
@@ -652,7 +625,7 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
                     return node;  // Fail the connection (probably shutting down anyway).
                 } else {
                     repeat = true;
-                    ic = DecrementAndFetch(&incompleteConnections);  // should go back to 0;
+                    ic = DecrementAndFetch(&incompleteConnections);
                     QCC_DbgPrintf(("incompleteConnections = %d", ic));
                 }
             }
@@ -675,8 +648,6 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
 
 void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& remoteName)
 {
-    // NOTE: This function assumes it will be called in the same thread as PrepConnect().
-
     joinSessionNodeDB.Lock();
     nodeDB.Lock();
 
@@ -850,11 +821,9 @@ bool BTController::AcceptSessionJoiner(SessionPort sessionPort,
 
         /* We only accept sessions from joiners who meet the following criteria:
          * - The endpoint is a Bluetooth endpoint (endpoint lookup succeeds).
-         * - It is an incoming connection (BTBusAddress of endpoint is invalid).
          * - Is not already connected to us (sessionID is 0).
          */
         accept = (ep &&
-                  ep->IsIncomingConnection() &&
                   (!node->IsValid() || (node->GetSessionID() == 0)));
 
         QCC_DbgPrintf(("SJK: accept = %d  (ep=%p  ep->IsIncoming()=%d  node->IsValid()=%d  node->GetSessionID()=%08x)", accept, ep, (ep ? ep->IsIncomingConnection() : -1), node->IsValid(), node->GetSessionID()));
@@ -916,7 +885,7 @@ void BTController::JoinSessionCB(QStatus status, SessionId sessionID, const Sess
 
         uint16_t connCnt = (*node)->GetConnectionCount();
 
-        if ((*node)->IsEIRCapable() && (connCnt == 1)) {
+        if (connCnt == 1) {
             bus.LeaveSession(sessionID);
         } else {
             (*node)->SetSessionID(sessionID);
