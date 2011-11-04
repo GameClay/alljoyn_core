@@ -53,7 +53,6 @@ class MyBusListener;
 
 /* Static data */
 static BusAttachment* s_bus = NULL;
-static ProxyBusObject s_remoteObj;
 static MyBusListener* s_busListener = NULL;
 
 /* Local types */
@@ -336,6 +335,12 @@ JNIEXPORT jstring JNICALL Java_org_alljoyn_bus_samples_simpleclient_Client_simpl
 
 }
 
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm,
+                                  void* reserved)
+{
+    QCC_UseOSLogging(true);
+    return JNI_VERSION_1_2;
+}
 
 #ifdef __cplusplus
 }

@@ -62,9 +62,6 @@ public class Chat extends Activity {
     /** Called when activity UI sends a chat message */
     private native int sendChatMsg(String str);
 
-    /** Called when user selects "Disconnect" */
-    private native boolean disconnect();
-
     /** Called when user enters a name to be "Advertised" " */
     private native boolean advertise(String wellKnownName);
     

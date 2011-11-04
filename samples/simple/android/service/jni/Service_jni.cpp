@@ -59,9 +59,6 @@ class MyBusListener;
 static BusAttachment* s_bus = NULL;
 static ServiceObject* s_obj = NULL;
 static MyBusListener* s_busListener = NULL;
-static qcc::String s_joinName;
-static SessionId s_sessionId = 0;
-static bool s_joinComplete = false;
 
 
 class MyBusListener : public BusListener, public SessionPortListener, public SessionListener {
@@ -89,7 +86,6 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
 
     void SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner)
     {
-        s_sessionId = id;
         LOGD("SessionJoined with %s (id=%u)\n", joiner, id);
     }
 
@@ -377,18 +373,29 @@ JNIEXPORT void JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_stopSe
  */
 JNIEXPORT void JNICALL Java_org_alljoyn_bus_samples_simpleservice_Service_simpleOnDestroy(JNIEnv* env, jobject jobj)
 {
-    /* Unregister and deallocate service object */
-    if (s_obj) {
-        if (s_bus) {
-            // s_bus->DeregisterBusObject(*s_obj);
-        }
-        delete s_obj;
-    }
-
     /* Deallocate bus */
     if (s_bus) {
         delete s_bus;
+        s_bus = NULL;
     }
+
+    if (s_busListener) {
+        delete s_busListener;
+        s_busListener = NULL;
+    }
+
+    /* Unregister and deallocate service object */
+    if (s_obj) {
+        delete s_obj;
+        s_obj = NULL;
+    }
+}
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm,
+                                  void* reserved)
+{
+    QCC_UseOSLogging(true);
+    return JNI_VERSION_1_2;
 }
 
 #ifdef __cplusplus

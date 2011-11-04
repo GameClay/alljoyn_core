@@ -56,14 +56,6 @@ JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_chat_Chat_sendChatMsg
 
 /*
  * Class:     org_alljoyn_bus_samples_chat_Chat
- * Method:    disconnect
- * Signature: ()Z
- */
-JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_disconnect
-    (JNIEnv *, jobject);
-
-/*
- * Class:     org_alljoyn_bus_samples_chat_Chat
  * Method:    advertise
  * Signature: (Ljava/lang/String;)Z
  */
