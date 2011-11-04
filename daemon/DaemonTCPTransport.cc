@@ -314,6 +314,14 @@ QStatus DaemonTCPTransport::Stop(void)
     m_stopping = true;
 
     /*
+     * Tell the name service to stop calling us back if it's there (we may get
+     * called more than once in the chain of destruction).
+     */
+    if (m_ns) {
+        m_ns->SetCallback(NULL);
+    }
+
+    /*
      * Tell the server accept loop thread to shut down through the thead
      * base class.
      */
