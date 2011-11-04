@@ -18,21 +18,7 @@ Import('env')
 # Make private headers available
 env.Append(CPPPATH=[env.Dir('../../daemon').srcnode()])
 
-# Make WDK headers available
-# TODO: Fix this to use WIN7BASE instead of C:/WinDDK/7600.16385.1
-env.AppendUnique(CPPPATH=['C:/WinDDK/7600.16385.1/inc/ddk'])
-
-# Make WDK libraries available
-# TODO: Fix this to use WIN7BASE instead of C:/WinDDK/7600.16385.1
-if env['CPU'] == 'IA64':
-    env.AppendUnique(LIBPATH=['C:/WinDDK/7600.16385.1/lib/win7/amd64'])
-elif env['CPU'] == 'x86':
-    env.AppendUnique(LIBPATH=['C:/WinDDK/7600.16385.1/lib/win7/i386'])
-else:
-    # Houston, we have a problem.
-    pass
-
-env.AppendUnique(LIBS=['fltLib.lib', 'Bthprops.lib'])
+env.AppendUnique(LIBS=['Bthprops.lib'])
 
 # Build using Windows
 srcs = env.Glob('*.cc')
