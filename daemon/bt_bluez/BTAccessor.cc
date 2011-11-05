@@ -846,21 +846,13 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
             status = ER_BUS_CONNECT_FAILED;
             close(sockFd);
             sockFd = -1;
-            if ((errno == EINTR) ||
-                (errno == ECONNREFUSED) ||
-                (errno == EBADFD) ||
-                (errno == EALREADY) ||
-                (errno == EINPROGRESS) ||
-                (errno == EHOSTDOWN)) {
-                QCC_DbgHLPrintf(("Connect failed - %s (errno: %d - %s)",
-                                 connAddr.ToString().c_str(), errno, strerror(errno)));
-                qcc::Sleep(Rand32() % 5000);
-                continue;
-            }
+            QCC_DbgHLPrintf(("Connect failed - %s (errno: %d - %s)",
+                             connAddr.ToString().c_str(), errno, strerror(errno)));
+            qcc::Sleep(Rand32() % 5000);
         } else {
             status = ER_OK;
+            break;
         }
-        break;
     }
     if (status != ER_OK) {
         QCC_LogError(status, ("Connect to %s failed (errno: %d - %s)",
