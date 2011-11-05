@@ -182,7 +182,7 @@ void* BTTransport::Run(void* arg)
 
                 if (ER_OK == status) {
                     const BTNodeInfo& connNode = reinterpret_cast<BTEndpoint*>(conn)->GetNode();
-                    BTNodeInfo node = connNodeDB.FindNode(connNode->GetBusAddress());
+                    BTNodeInfo node = connNodeDB.FindNode(connNode->GetBusAddress().addr);
                     if (!node->IsValid()) {
                         node = connNode;
                         connNodeDB.AddNode(node);
@@ -608,9 +608,13 @@ exit:
         if (newep) {
             *newep = conn;
 
-            const BTNodeInfo& connNode = reinterpret_cast<BTEndpoint*>(conn)->GetNode();
-            BTNodeInfo node = connNodeDB.FindNode(connNode->GetBusAddress());
-            if (!node->IsValid()) {
+            BTNodeInfo connNode = reinterpret_cast<BTEndpoint*>(conn)->GetNode();
+            BTNodeInfo node = connNodeDB.FindNode(connNode->GetBusAddress().addr);
+            if (!node->IsValid() || (node->GetBusAddress().psm == bt::INCOMING_PSM)) {
+                if (node->GetBusAddress().psm == bt::INCOMING_PSM) {
+                    connNode->SetConnectionCount(node->GetConnectionCount());
+                    connNodeDB.RemoveNode(node);
+                }
                 node = connNode;
                 connNodeDB.AddNode(node);
             }
