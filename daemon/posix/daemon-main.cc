@@ -585,6 +585,7 @@ int daemon(OptParse& opts)
 
     Log(LOG_INFO, "Terminating.\n");
     ajBus.StopListen(listenSpecs.c_str());
+    ajBus.Stop();
 
     if (!pidfn.empty()) {
         unlink(pidfn.c_str());

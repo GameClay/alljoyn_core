@@ -509,6 +509,7 @@ int main(int argc, char** argv)
                     qcc::Sleep(100);
                 }
                 bus.StopListen(serverArgs.c_str());
+                bus.Stop();
             }
 
             if (mimicBbservice) {
