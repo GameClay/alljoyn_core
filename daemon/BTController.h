@@ -522,11 +522,7 @@ class BTController :
     };
 
     struct SendSetStateDispatchInfo : public DispatchInfo {
-        BTNodeInfo node;
-        SendSetStateDispatchInfo(const BTNodeInfo& node) :
-            DispatchInfo(SEND_SET_STATE),
-            node(node)
-        { }
+        SendSetStateDispatchInfo() : DispatchInfo(SEND_SET_STATE) { }
     };
 
     struct DeferredMessageHandlerDispatchInfo : public DispatchInfo {
@@ -539,13 +535,10 @@ class BTController :
 
     struct ProcessSetStateReplyDispatchInfo : public DeferredMessageHandlerDispatchInfo {
         ProxyBusObject* newMaster;
-        BTNodeInfo node;
         ProcessSetStateReplyDispatchInfo(const Message& msg,
-                                         ProxyBusObject* newMaster,
-                                         BTNodeInfo node) :
+                                         ProxyBusObject* newMaster) :
             DeferredMessageHandlerDispatchInfo(PROCESS_SET_STATE_REPLY, msg),
-            newMaster(newMaster),
-            node(node)
+            newMaster(newMaster)
         { }
     };
 
@@ -558,15 +551,6 @@ class BTController :
     struct ExpireBlacklistedDevDispatchInfo : public DispatchInfo {
         BDAddress addr;
         ExpireBlacklistedDevDispatchInfo(BDAddress addr) : DispatchInfo(EXPIRE_BLACKLISTED_DEVICE), addr(addr) { }
-    };
-
-    struct SetStateReplyContext {
-        ProxyBusObject* newMaster;
-        BTNodeInfo node;
-        SetStateReplyContext(ProxyBusObject* newMaster, const BTNodeInfo& node) :
-            newMaster(newMaster),
-            node(node)
-        { }
     };
 
 
@@ -681,17 +665,12 @@ class BTController :
     /**
      * Send the SetState method call to the Master node we are connecting to.
      *
-     * @param busName           Unique name of the endpoint with the
-     *                          BTController object on the device just
-     *                          connected to
-     *
      * @return ER_OK if successful.
      */
-    QStatus DeferredSendSetState(const BTNodeInfo& node);
+    QStatus DeferredSendSetState();
 
     void DeferredProcessSetStateReply(Message& reply,
-                                      ProxyBusObject* newMaster,
-                                      BTNodeInfo& node);
+                                      ProxyBusObject* newMaster);
 
     /**
      * Handle the incoming DelegateFind signal on the BTController dispatch
@@ -902,6 +881,7 @@ class BTController :
 
     ProxyBusObject* master;        // Bus Object we believe is our master
     BTNodeInfo masterNode;
+    BTNodeInfo joinSessionNode;
 
     uint8_t maxConnects;           // Maximum number of direct connections
     uint32_t masterUUIDRev;        // Revision number for AllJoyn Bluetooth UUID
@@ -924,7 +904,6 @@ class BTController :
     qcc::Alarm expireAlarm;
 
     BDAddressSet blacklist;
-    BTNodeDB joinSessionNodeDB;
 
     int32_t incompleteConnections; // Number of outgoing connections that are being setup
     qcc::Event connectCompleted;
