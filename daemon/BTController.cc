@@ -826,7 +826,7 @@ bool BTController::AcceptSessionJoiner(SessionPort sessionPort,
         accept = (ep &&
                   (!node->IsValid() || (node->GetSessionID() == 0)));
 
-        QCC_DbgPrintf(("SJK: accept = %d  (ep=%p  ep->IsIncoming()=%d  node->IsValid()=%d  node->GetSessionID()=%08x)", accept, ep, (ep ? ep->IsIncomingConnection() : -1), node->IsValid(), node->GetSessionID()));
+        QCC_DbgPrintf(("SJK: accept = %d  (ep=%p  node->IsValid()=%d  node->GetSessionID()=%08x)", accept, ep, node->IsValid(), node->GetSessionID()));
 
         if (ep) {
             bt.ReturnEndpoint(ep);
@@ -1056,20 +1056,21 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     RemoteEndpoint* ep = bt.LookupEndpoint(sender);
 
     if ((ep == NULL) ||
-        !ep->IsIncomingConnection() ||
         nodeDB.FindNode(ep->GetRemoteName())->IsValid()) {
         /* We don't acknowledge anyone calling the SetState method call who
          * fits into one of these categories:
          *
          * - Not a Bluetooth endpoint
-         * - Not an incoming connection
          * - Has already called SetState
+         * - We are not the Master
          *
          * Don't send a response as punishment >:)
          */
         if (ep) {
             bt.ReturnEndpoint(ep);
         }
+        QCC_LogError(ER_FAIL, ("Received a SetState method call from %s.",
+                               (ep == NULL) ? "an invalid sender" : "a node we're already connected to"));
         return;
     }
 
