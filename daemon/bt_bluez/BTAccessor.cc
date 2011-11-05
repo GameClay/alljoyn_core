@@ -1443,8 +1443,8 @@ QStatus BTTransport::BTAccessor::GetDeviceInfo(const BDAddress& addr,
         dev.AddInterface(*org.bluez.Device.interface);
 
 
-        dev.MethodCall(*org.bluez.Device.GetProperties, NULL, 0, rsp);
-        QCC_DbgPrintf(("SJK:\n%s\n\n", rsp->ToString().c_str()));
+        //dev.MethodCall(*org.bluez.Device.GetProperties, NULL, 0, rsp);
+        //QCC_DbgPrintf(("SJK:\n%s\n\n", rsp->ToString().c_str()));
 
 
 
