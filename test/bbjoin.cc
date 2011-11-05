@@ -201,6 +201,8 @@ static void usage(void)
     printf("   -r           = Reject incoming joinSession attempts\n");
     printf("   -s           = Stress test. Continous leave/join\n");
     printf("   -f <prefix>  = FindAdvertisedName prefix\n");
+    printf("   -b           = Advertise over Bluetooth (enables selective advertising)\n");
+    printf("   -t           = Advertise over TCP (enables selective advertising)\n");
     printf("\n");
 }
 
@@ -208,6 +210,7 @@ static void usage(void)
 int main(int argc, char** argv)
 {
     QStatus status = ER_OK;
+    uint32_t transportOpts = 0;
 
 #ifdef _WIN32
     WSADATA wsaData;
@@ -240,12 +243,21 @@ int main(int argc, char** argv)
             g_stressTest = true;
         } else if (0 == strcmp("-f", argv[i])) {
             g_findPrefix = argv[++i];
+        } else if (0 == strcmp("-b", argv[i])) {
+            transportOpts |= TRANSPORT_BLUETOOTH;
+        } else if (0 == strcmp("-t", argv[i])) {
+            transportOpts |= TRANSPORT_WLAN;
         } else {
             status = ER_FAIL;
             printf("Unknown option %s\n", argv[i]);
             usage();
             exit(1);
         }
+    }
+
+    /* If no transport option was specifie, then make session options very open */
+    if (transportOpts == 0) {
+        transportOpts = TRANSPORT_ANY;
     }
 
     /* Get env vars */
@@ -280,7 +292,7 @@ int main(int argc, char** argv)
     if (ER_OK == status) {
 
         /* Create session opts */
-        SessionOpts optsmp(SessionOpts::TRAFFIC_MESSAGES, true,  SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+        SessionOpts optsmp(SessionOpts::TRAFFIC_MESSAGES, true,  SessionOpts::PROXIMITY_ANY, transportOpts);
 
         /* Create a session for incoming client connections */
         status = g_msgBus->BindSessionPort(SESSION_PORT_MESSAGES_MP1, optsmp, myBusListener);
@@ -297,7 +309,7 @@ int main(int argc, char** argv)
         }
 
         /* Begin Advertising the well-known name */
-        status = g_msgBus->AdvertiseName(g_wellKnownName.c_str(), TRANSPORT_ANY);
+        status = g_msgBus->AdvertiseName(g_wellKnownName.c_str(), transportOpts);
         if (ER_OK != status) {
             status = (status == ER_OK) ? ER_FAIL : status;
             QCC_LogError(status, ("Sending org.alljoyn.Bus.Advertise failed "));
