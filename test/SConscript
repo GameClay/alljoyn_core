@@ -29,6 +29,7 @@ progs = [
     env.Program('bbservice',     ['bbservice.cc']),
     env.Program('bbsig',         ['bbsig.cc']),
     env.Program('bbclient',      ['bbclient.cc']),
+    env.Program('bbjoin',        ['bbjoin.cc']),
     env.Program('bttimingclient', ['bttimingclient.cc']),
     env.Program('marshal',       ['marshal.cc']),
     env.Program('names',         ['names.cc']),
@@ -42,6 +43,5 @@ if env['OS'] == 'linux' or env['OS'] == 'android':
    progs.extend(env.Program('mc-rcv',     ['mc-rcv.cc']))
    progs.extend(env.Program('mc-snd',     ['mc-snd.cc']))
    progs.extend(env.Program('bluetoothd-crasher',     ['bluetoothd-crasher.cc']))
-   progs.extend(env.Program('bbjoin',     ['bbjoin.cc']))
 
 Return('progs')
