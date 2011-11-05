@@ -132,7 +132,7 @@ ALLJOYN_API void __stdcall QueryRemoteXfer(int index, char* filename, int& files
             NotifyUser(MSG_STATUS, "Accepted");
         } else
             NotifyUser(MSG_STATUS, "Rejected");
-    } else   {
+    } else {
         NotifyUser(MSG_ERROR, "%s", QCC_StatusText(status));
 //	    if( status == ER_BUS_REPLY_IS_ERROR_MESSAGE)
 //			if( NULL != reply->GetArg(0)->v_string.str )

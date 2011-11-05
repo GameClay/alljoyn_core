@@ -92,7 +92,7 @@ void AllJoynConnection::Connect(char* tag, bool asAdvertiser)
         advertisedName += "xfer";
         joinName = "";
         NotifyUser(MSG_STATUS, "%s is advertiser \n", advertisedName.c_str());
-    } else   {
+    } else {
         joinName = NAME_PREFIX;
         joinName += "xfer";
         advertisedName = "";
