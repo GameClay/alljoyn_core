@@ -498,6 +498,25 @@ void LocalEndpoint::UnregisterReplyHandler(uint32_t serial)
     }
 }
 
+QStatus LocalEndpoint::ExtendReplyHandlerTimeout(uint32_t serial, uint32_t extension)
+{
+    QStatus status;
+    replyMapLock.Lock();
+    map<uint32_t, ReplyContext>::iterator iter = replyMap.find(serial);
+    if (iter != replyMap.end()) {
+        QCC_DbgPrintf(("LocalEndpoint::ExtendReplyHandlerTimeout - extending timeout for serial=%u", serial));
+        Alarm newAlarm(Timespec(iter->second.alarm.GetAlarmTime() + extension), this, 0, (void*)serial);
+        status = bus.GetInternal().GetTimer().ReplaceAlarm(iter->second.alarm, newAlarm, false);
+        if (status == ER_OK) {
+            iter->second.alarm = newAlarm;
+        }
+    } else {
+        status = ER_BUS_UNKNOWN_SERIAL;
+    }
+    replyMapLock.Unlock();
+    return status;
+}
+
 QStatus LocalEndpoint::RegisterSignalHandler(MessageReceiver* receiver,
                                              MessageReceiver::SignalHandler signalHandler,
                                              const InterfaceDescription::Member* member,

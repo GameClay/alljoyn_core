@@ -839,6 +839,12 @@ void AllJoynPeerObj::AlarmTriggered(const Alarm& alarm, QStatus reason)
         lock.Lock();
         msgsPendingAuth.push_back(req->msg);
         lock.Unlock();
+        /*
+         * Extend timeouts so reply handlers don't expire while waiting for authentication to complete
+         */
+        if (req->msg->GetType() == MESSAGE_METHOD_CALL) {
+            bus.GetInternal().GetLocalEndpoint().ExtendReplyHandlerTimeout(req->msg->GetCallSerial(), AUTH_TIMEOUT);
+        }
         status = AuthenticatePeer(req->msg->GetType(), req->msg->GetDestination(), false);
         if (status != ER_WOULDBLOCK) {
             PeerStateTable* peerStateTable = bus.GetInternal().GetPeerStateTable();

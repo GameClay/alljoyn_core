@@ -151,6 +151,18 @@ class LocalEndpoint : public BusEndpoint, public qcc::AlarmListener, public Mess
     void UnregisterReplyHandler(uint32_t serial);
 
     /**
+     * Extend the timeout on the handler for method call reply
+     *
+     * @param serial       The serial number expected in the reply
+     * @param extension    The number of milliseconds to add to the timeout.
+     *
+     * @return
+     *      - ER_OK if the timeout was succesfully extended.
+     *      - An error status otherwise
+     */
+    QStatus ExtendReplyHandlerTimeout(uint32_t serial, uint32_t extension);
+
+    /**
      * Register a signal handler.
      * Signals are forwarded to the signalHandler if sender, interface, member and path
      * qualifiers are ALL met.
