@@ -161,6 +161,8 @@ void RemoteEndpoint::SetListener(EndpointListener* listener)
 
 QStatus RemoteEndpoint::Stop(void)
 {
+    QCC_DbgPrintf(("RemoteEndpoint::Stop(%s) called\n", GetUniqueName().c_str()));
+
     /* Alert any threads that are on the wait queue */
     txQueueLock.Lock();
     deque<Thread*>::iterator it = txWaitQueue.begin();
@@ -289,14 +291,15 @@ void* RemoteEndpoint::RxThread::Run(void* arg)
                     status = router.PushMessage(msg, *ep);
                     if (status != ER_OK) {
                         /*
-                         * There are three cases where a failure to push a message to the router is ok:
+                         * There are four cases where a failure to push a message to the router is ok:
                          *
                          * 1) The message received did not match the expected signature.
                          * 2) The message was a method reply that did not match up to a method call.
                          * 3) A daemon is pushing the message to a connected client or service.
+                         * 4) Pushing a message to an endpoint that has closed.
                          *
                          */
-                        if ((router.IsDaemon() && !bus2bus) || (status == ER_BUS_SIGNATURE_MISMATCH) || (status == ER_BUS_UNMATCHED_REPLY_SERIAL)) {
+                        if ((router.IsDaemon() && !bus2bus) || (status == ER_BUS_SIGNATURE_MISMATCH) || (status == ER_BUS_UNMATCHED_REPLY_SERIAL) || (status == ER_BUS_ENDPOINT_CLOSING)) {
                             QCC_DbgHLPrintf(("Discarding %s: %s", msg->Description().c_str(), QCC_StatusText(status)));
                             status = ER_OK;
                         }
@@ -542,12 +545,15 @@ QStatus RemoteEndpoint::PushMessage(Message& msg)
 
 void RemoteEndpoint::IncrementRef()
 {
-    IncrementAndFetch(&refCount);
+    int refs = IncrementAndFetch(&refCount);
+    QCC_DbgPrintf(("RemoteEndpoint::IncrementRef(%s) refs=%d\n", GetUniqueName().c_str(), refs));
+
 }
 
 void RemoteEndpoint::DecrementRef()
 {
     int refs = DecrementAndFetch(&refCount);
+    QCC_DbgPrintf(("RemoteEndpoint::DecrementRef(%s) refs=%d\n", GetUniqueName().c_str(), refs));
     if (refs <= 0) {
         StopAfterTxEmpty(20000);
     }

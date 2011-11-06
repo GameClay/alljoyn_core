@@ -760,7 +760,6 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
                     ajObj.ReleaseLocks();
                     qcc::Sleep(10);
                     ajObj.AcquireLocks();
-
                     /* Re-acquire b2bEp now that we have the lock again */
                     b2bEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
                 }
@@ -1036,7 +1035,7 @@ void AllJoynObj::LeaveSession(const InterfaceDescription::Member* member, Messag
     assert(numArgs == 1);
     SessionId id = static_cast<SessionId>(args[0].v_uint32);
 
-    QCC_DbgTrace(("AllJoynObj::LeaveSession(%08x)", id));
+    QCC_DbgTrace(("AllJoynObj::LeaveSession(%u)", id));
 
     /* Find the session with that id */
     AcquireLocks();
@@ -1051,7 +1050,6 @@ void AllJoynObj::LeaveSession(const InterfaceDescription::Member* member, Messag
 
         QStatus status = Signal(NULL, 0, *detachSessionSignal, detachSessionArgs, ArraySize(detachSessionArgs), 0, ALLJOYN_FLAG_GLOBAL_BROADCAST);
         if (status != ER_OK) {
-            replyCode = ALLJOYN_LEAVESESSION_REPLY_FAILED;
             QCC_LogError(status, ("Error sending org.alljoyn.Daemon.DetachSession signal"));
         }
 
@@ -1076,7 +1074,6 @@ void AllJoynObj::LeaveSession(const InterfaceDescription::Member* member, Messag
     MsgArg replyArgs[1];
     replyArgs[0].Set("u", replyCode);
     QStatus status = MethodReply(msg, replyArgs, ArraySize(replyArgs));
-    QCC_DbgPrintf(("AllJoynObj::LeaveSession(%08x) returned (%08x) (status=%s)", id, replyCode, QCC_StatusText(status)));
 
     /* Log error if reply could not be sent */
     if (ER_OK != status) {
@@ -1241,7 +1238,7 @@ qcc::ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunAttach()
                             destEp = ajObj.router.FindEndpoint(destStr);
                             srcEp = static_cast<VirtualEndpoint*>(ajObj.router.FindEndpoint(srcStr));
                             if (!destEp || !srcEp) {
-                                QCC_LogError(ER_FAIL, ("%s disappeared during JoinSession", !destEp ? "destEp" : "srcEp"));
+                                QCC_LogError(ER_FAIL, ("%s (%s) disappeared during JoinSession", !destEp ? "destEp" : "srcEp", !destEp ? destStr.c_str() : srcStr.c_str()));
                                 replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
                             }
                         }
@@ -1419,7 +1416,7 @@ qcc::ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunAttach()
                     if (it->second.streamingEp) {
                         status = ajObj.ShutdownEndpoint(*it->second.streamingEp, it->second.fd);
                         if (status != ER_OK) {
-                            QCC_LogError(status, ("Failed to shutdown raw endpoint\n"));
+                            QCC_LogError(status, ("Failed to shutdown raw endpoint"));
                         }
                         it->second.streamingEp = NULL;
                     }
@@ -1483,6 +1480,8 @@ qcc::ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunAttach()
 
 void AllJoynObj::RemoveSessionRefs(BusEndpoint& endpoint, SessionId id)
 {
+    QCC_DbgTrace(("AllJoynObj::RemoveSessionRefs(%s, %u)", endpoint.GetUniqueName().c_str(), id));
+
     AcquireLocks();
     String epName = endpoint.GetUniqueName();
     vector<pair<String, SessionId> > changedSessionMembers;
@@ -1881,6 +1880,8 @@ void AllJoynObj::DetachSessionSignalHandler(const InterfaceDescription::Member* 
     msg->GetArgs(numArgs, args);
     SessionId id = args[0].v_uint32;
     const char* src = args[1].v_string.str;
+
+    QCC_DbgTrace(("AllJoynObj::DetachSessionSignalHandler(src=%s, id=%u)", src, id));
 
     /* Do not process our own detach message signals */
     if (::strncmp(guid.ToShortString().c_str(), msg->GetSender() + 1, qcc::GUID128::SHORT_SIZE) == 0) {
@@ -2626,6 +2627,7 @@ void AllJoynObj::ExchangeNamesSignalHandler(const InterfaceDescription::Member* 
 
             bool madeChange;
             VirtualEndpoint& vep = AddVirtualEndpoint(uniqueName, *(bit->second), &madeChange);
+
             if (madeChange) {
                 madeChanges = true;
             }

@@ -75,7 +75,50 @@ static void SigIntHandler(int sig)
 class MyBusListener : public BusListener, public SessionPortListener, public SessionListener, public BusAttachment::JoinSessionAsyncCB {
 
   public:
-    MyBusListener() : BusListener() { }
+    MyBusListener(BusAttachment* bus = NULL) : leaveSessionThread(bus, *this) { }
+
+    class LeaveSessionThread : public Thread
+    {
+      public:
+        LeaveSessionThread(BusAttachment* bus, MyBusListener& listener) : Thread("LSThread"), bus(bus), listener(listener) { }
+        
+      protected:
+        ThreadReturn STDCALL Run(void* arg)
+        {
+            AsyncJoinCBCtx* ctx = reinterpret_cast<AsyncJoinCBCtx*>(arg);
+            SessionId sessionId = ctx->id;
+            String name = ctx->name;
+            SessionOpts opts = ctx->opts;
+            delete ctx;
+
+            QCC_SyncPrintf("Calling LeaveSession(%u)\n", sessionId);
+            QStatus status = bus->LeaveSession(sessionId);
+            QCC_SyncPrintf("LeaveSession(%u) returned %s\n", sessionId, QCC_StatusText(status));
+            
+            if (status == ER_OK) {
+                status = bus->JoinSessionAsync(name.c_str(), 26, &listener, opts, &listener, ::strdup(name.c_str()));
+                if (status != ER_OK) {
+                    QCC_LogError(status, ("JoinSessionAsync failed"));
+                }
+            } else {
+                QCC_LogError(status, ("LeaveSession failed"));
+            }
+            return 0;
+        }
+        
+      private:
+        BusAttachment* bus;
+        MyBusListener& listener;
+    };
+
+    struct AsyncJoinCBCtx
+    {
+        SessionId id;
+        String name;
+        SessionOpts opts;
+
+        AsyncJoinCBCtx(SessionId id, const char* name, const SessionOpts& opts) : id(id), name(name), opts(opts) { }
+    };
 
     bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
     {
@@ -101,6 +144,7 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
             QStatus status = g_msgBus->JoinSessionAsync(name, 26, this, opts, this, ::strdup(name));
             if (ER_OK != status) {
                 QCC_LogError(status, ("JoinSessionAsync(%s) failed \n", name));
+                exit(1);
             }
         }
     }
@@ -116,18 +160,13 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
             QCC_SyncPrintf("JoinSession failed with %s\n", QCC_StatusText(status));
         }
 
+        /* LeaveSession on a non-callback thread since this call can block when tx queues are full */
         if ((status == ER_OK) && g_stressTest) {
-            QCC_SyncPrintf("Calling LeaveSession(%u)\n", sessionId);
-            status = g_msgBus->LeaveSession(sessionId);
-            QCC_SyncPrintf("LeaveSession(%u) returned %s\n", sessionId, QCC_StatusText(status));
-
-            if (status == ER_OK) {
-                status = g_msgBus->JoinSessionAsync(name, 26, this, opts, this, ::strdup(name));
-                if (status != ER_OK) {
-                    QCC_LogError(status, ("JoinSessionAsync failed"));
-                }
-            } else {
-                QCC_LogError(status, ("LeaveSession failed"));
+            leaveSessionThread.Join();
+            status = leaveSessionThread.Start(new AsyncJoinCBCtx(sessionId, name, opts));
+            if (status != ER_OK) {
+                QCC_LogError(status, ("LeaveSessionThread::Start failed"));
+                exit(1);
             }
         }
         free(context);
@@ -151,22 +190,9 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
         QCC_SyncPrintf("Session Lost  %u\n", sessid);
     }
 
-
+  private:
+    LeaveSessionThread leaveSessionThread;
 };
-
-static MyBusListener myBusListener;
-
-QStatus  CreateSession(SessionPort sessport, SessionOpts& options)
-{
-    /* Create a session for incoming client connections */
-    QStatus status = ER_OK;
-    status = g_msgBus->BindSessionPort(sessport, options, myBusListener);
-    if (status != ER_OK) {
-        QCC_LogError(status, ("BindSessionPort failed"));
-        return status;
-    }
-    return status;
-}
 
 static void usage(void)
 {
@@ -175,8 +201,9 @@ static void usage(void)
     printf("   -h           = Print this help message\n");
     printf("   -n <name>    = Well-known name to advertise\n");
     printf("   -r           = Reject incoming joinSession attempts\n");
-    printf("   -s           = Stress test. Continous leave/join");
-    printf("   -f <prefix>  = FindAdvertisedName prefix");
+    printf("   -s           = Stress test. Continous leave/join\n");
+    printf("   -f <prefix>  = FindAdvertisedName prefix\n");
+    printf("\n");
 }
 
 /** Main entry point */
@@ -248,7 +275,7 @@ int main(int argc, char** argv)
     /* Connect to the daemon */
     status = g_msgBus->Connect(clientArgs.c_str());
 
-    //myBusListener = new MyBusListener();
+    MyBusListener myBusListener(g_msgBus);
     g_msgBus->RegisterBusListener(myBusListener);
 
     /* Register local objects and connect to the daemon */
@@ -258,7 +285,10 @@ int main(int argc, char** argv)
         SessionOpts optsmp(SessionOpts::TRAFFIC_MESSAGES, true,  SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
 
         /* Create a session for incoming client connections */
-        status = CreateSession(SESSION_PORT_MESSAGES_MP1, optsmp);
+        status = g_msgBus->BindSessionPort(SESSION_PORT_MESSAGES_MP1, optsmp, myBusListener);
+        if (status != ER_OK) {
+            QCC_LogError(status, ("BindSessionPort failed"));
+        }
 
         /* Request a well-known name */
         QStatus status = g_msgBus->RequestName(g_wellKnownName.c_str(), DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_DO_NOT_QUEUE);

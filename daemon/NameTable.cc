@@ -58,6 +58,8 @@ void NameTable::SetGUID(const qcc::GUID128& guid)
 
 void NameTable::AddUniqueName(BusEndpoint& endpoint)
 {
+    QCC_DbgTrace(("NameTable::AddUniqueName(%s)", endpoint.GetUniqueName().c_str()));
+
     const qcc::String& uniqueName = endpoint.GetUniqueName();
     QCC_DbgPrintf(("Add unique name %s", uniqueName.c_str()));
     lock.Lock();
@@ -352,8 +354,11 @@ void NameTable::GetQueuedNames(const qcc::String& busName, std::vector<qcc::Stri
         names.clear();
     }
 }
+
 void NameTable::RemoveVirtualAliases(VirtualEndpoint& ep)
 {
+    QCC_DbgTrace(("NameTable::RemoveVirtualAliases(%s)", ep.GetUniqueName().c_str()));
+
     lock.Lock();
     map<qcc::StringMapKey, VirtualEndpoint*>::iterator vit = virtualAliasNames.begin();
     while (vit != virtualAliasNames.end()) {
@@ -374,6 +379,8 @@ bool NameTable::SetVirtualAlias(const qcc::String& alias,
                                 VirtualEndpoint* newOwner,
                                 VirtualEndpoint& requestingEndpoint)
 {
+    QCC_DbgTrace(("NameTable::SetVirtualAlias(%s, %s, %s)", alias.c_str(), newOwner ? newOwner->GetUniqueName().c_str() : "<none>", requestingEndpoint.GetUniqueName().c_str()));
+
     lock.Lock();
 
     map<qcc::StringMapKey, VirtualEndpoint*>::iterator vit = virtualAliasNames.find(alias);
