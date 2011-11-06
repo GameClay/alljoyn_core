@@ -54,8 +54,7 @@ class WindowsBTEndpoint : public BTEndpoint {
         connectionStatus(ER_FAIL),
         btStream(address, accessor)
     {
-        connectionCompleteEvent =
-            ::CreateEvent(NULL, FALSE, FALSE, TEXT("Connection Complete Event"));
+        connectionCompleteEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
     }
 
     /**
