@@ -163,14 +163,14 @@ class RuleTable {
      *
      * @return ER_OK if successful.
      */
-    QStatus Lock() { return lock.Lock(); }
+    QStatus Lock() { return lock.Lock(MUTEX_CONTEXT); }
 
     /**
      * Release exclusive access to rule table.
      *
      * @return ER_OK if successful.
      */
-    QStatus Unlock() { return lock.Unlock(); }
+    QStatus Unlock() { return lock.Unlock(MUTEX_CONTEXT); }
 
     /**
      * Return an iterator to the start of the rules.

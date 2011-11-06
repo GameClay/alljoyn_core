@@ -149,21 +149,21 @@ QStatus UnixTransport::Stop(void)
     /*
      * Ask any running endpoints to shut down and exit their threads.
      */
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
     m_stopping = true;
 
     for (vector<UnixEndpoint*>::iterator i = m_endpointList.begin(); i != m_endpointList.end(); ++i) {
         (*i)->Stop();
     }
 
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
     return ER_OK;
 }
 
 QStatus UnixTransport::Join(void)
 {
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
 
     /*
      * A call to Stop() above will ask all of the endpoints to stop.  We still
@@ -174,12 +174,12 @@ QStatus UnixTransport::Join(void)
      * exit.
      */
     while (m_endpointList.size() > 0) {
-        m_endpointListLock.Unlock();
+        m_endpointListLock.Unlock(MUTEX_CONTEXT);
         qcc::Sleep(50);
-        m_endpointListLock.Lock();
+        m_endpointListLock.Lock(MUTEX_CONTEXT);
     }
 
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
     return ER_OK;
 }
@@ -198,12 +198,12 @@ void UnixTransport::EndpointExit(RemoteEndpoint* ep)
     QCC_DbgTrace(("UnixTransport::EndpointExit()"));
 
     /* Remove thread from thread list */
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
     vector<UnixEndpoint*>::iterator i = find(m_endpointList.begin(), m_endpointList.end(), uep);
     if (i != m_endpointList.end()) {
         m_endpointList.erase(i);
     }
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
     delete uep;
 }
@@ -325,14 +325,14 @@ QStatus UnixTransport::Connect(const char* connectArgs, const SessionOpts& opts,
      * by the address and port.  If we are we never duplicate the connection.
      */
     qcc::String& connectAddr = argMap["_spec"];
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
     for (vector<UnixEndpoint*>::const_iterator i = m_endpointList.begin(); i != m_endpointList.end(); ++i) {
         if (normSpec == (*i)->GetConnectSpec()) {
-            m_endpointListLock.Unlock();
+            m_endpointListLock.Unlock(MUTEX_CONTEXT);
             return ER_BUS_ALREADY_CONNECTED;
         }
     }
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
     /*
      * This is a new not previously satisfied connection request, so attempt
@@ -362,14 +362,14 @@ QStatus UnixTransport::Connect(const char* connectArgs, const SessionOpts& opts,
 
     status = SendSocketCreds(sockFd, GetUid(), GetGid(), GetPid());
     if (status == ER_OK) {
-        m_endpointListLock.Lock();
+        m_endpointListLock.Lock(MUTEX_CONTEXT);
         if (m_stopping) {
-            m_endpointListLock.Unlock();
+            m_endpointListLock.Unlock(MUTEX_CONTEXT);
             status = ER_BUS_TRANSPORT_NOT_STARTED;
         } else {
             conn = new UnixEndpoint(m_bus, false, normSpec, sockFd);
             m_endpointList.push_back(conn);
-            m_endpointListLock.Unlock();
+            m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
             /* Initialized the features for this endpoint */
             conn->GetFeatures().isBusToBus = false;
@@ -392,12 +392,12 @@ QStatus UnixTransport::Connect(const char* connectArgs, const SessionOpts& opts,
              */
             if (status != ER_OK) {
                 QCC_LogError(status, ("UnixTransport::Connect(): Start UnixEndpoint failed"));
-                m_endpointListLock.Lock();
+                m_endpointListLock.Lock(MUTEX_CONTEXT);
                 vector<UnixEndpoint*>::iterator i = find(m_endpointList.begin(), m_endpointList.end(), conn);
                 if (i != m_endpointList.end()) {
                     m_endpointList.erase(i);
                 }
-                m_endpointListLock.Unlock();
+                m_endpointListLock.Unlock(MUTEX_CONTEXT);
                 delete conn;
                 conn = NULL;
             }
@@ -455,15 +455,15 @@ QStatus UnixTransport::Disconnect(const char* connectSpec)
      */
     status = ER_BUS_BAD_TRANSPORT_ARGS;
 
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
     for (vector<UnixEndpoint*>::iterator i = m_endpointList.begin(); i != m_endpointList.end(); ++i) {
         if (normSpec == (*i)->GetConnectSpec()) {
             UnixEndpoint* ep = *i;
-            m_endpointListLock.Unlock();
+            m_endpointListLock.Unlock(MUTEX_CONTEXT);
             return ep->Stop();
         }
     }
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
     return status;
 }
 

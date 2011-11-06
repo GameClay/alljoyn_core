@@ -208,12 +208,12 @@ class NameTable {
     /**
      * Lock table.
      */
-    void Lock() { lock.Lock(); }
+    void Lock() { lock.Lock(MUTEX_CONTEXT); }
 
     /**
      * Lock table.
      */
-    void Unlock() { lock.Unlock(); }
+    void Unlock() { lock.Unlock(MUTEX_CONTEXT); }
 
   private:
     typedef struct {

@@ -243,12 +243,12 @@ class BTNodeDB {
     /**
      * Lock the mutex that protects the database from unsafe access.
      */
-    void Lock() const { lock.Lock(); }
+    void Lock() const { lock.Lock(MUTEX_CONTEXT); }
 
     /**
      * Release the the mutex that protects the database from unsafe access.
      */
-    void Unlock() const { lock.Unlock(); }
+    void Unlock() const { lock.Unlock(MUTEX_CONTEXT); }
 
     /**
      * Get the begin iterator for the set of nodes.

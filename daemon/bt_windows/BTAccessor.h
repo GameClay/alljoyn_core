@@ -350,10 +350,10 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
      */
     void ConnectRequestsInit(void)
     {
-        deviceLock.Lock();
+        deviceLock.Lock(MUTEX_CONTEXT);
         memset(connectRequests, 0, sizeof(connectRequests));
         connectRequestsTail = connectRequestsHead = 0;
-        deviceLock.Unlock();
+        deviceLock.Unlock(MUTEX_CONTEXT);
     }
 
     /**

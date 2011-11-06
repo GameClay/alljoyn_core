@@ -267,28 +267,28 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     {
         bluez::AdapterObject adapter;
         assert(!adapter->IsValid());
-        adapterLock.Lock();
+        adapterLock.Lock(MUTEX_CONTEXT);
         AdapterMap::const_iterator it(adapterMap.find(adapterObjPath));
         if (it != adapterMap.end()) {
             adapter = it->second;
         }
-        adapterLock.Unlock();
+        adapterLock.Unlock(MUTEX_CONTEXT);
         return adapter;
     }
 
     bluez::AdapterObject GetDefaultAdapterObject() const
     {
-        adapterLock.Lock();
+        adapterLock.Lock(MUTEX_CONTEXT);
         bluez::AdapterObject adapter(defaultAdapterObj);
-        adapterLock.Unlock();
+        adapterLock.Unlock(MUTEX_CONTEXT);
         return adapter;
     }
 
     bluez::AdapterObject GetAnyAdapterObject() const
     {
-        adapterLock.Lock();
+        adapterLock.Lock(MUTEX_CONTEXT);
         bluez::AdapterObject adapter(anyAdapterObj);
-        adapterLock.Unlock();
+        adapterLock.Unlock(MUTEX_CONTEXT);
         return adapter;
     }
 

@@ -318,11 +318,11 @@ QStatus BTController::AddAdvertiseName(const qcc::String& name)
 {
     QStatus status = DoNameOp(name, *org.alljoyn.Bus.BTController.AdvertiseName, true, advertise);
 
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     bool isMaster = IsMaster();
     bool lDevAvailable = devAvailable;
     BTBusAddress addr = self->GetBusAddress();
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 
     if (isMaster && (status == ER_OK)) {
         if (lDevAvailable) {
@@ -342,11 +342,11 @@ QStatus BTController::RemoveAdvertiseName(const qcc::String& name)
 {
     QStatus status = DoNameOp(name, *org.alljoyn.Bus.BTController.CancelAdvertiseName, false, advertise);
 
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     bool isMaster = IsMaster();
     bool lDevAvailable = devAvailable;
     BTBusAddress addr = self->GetBusAddress();
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 
     if (isMaster && (status == ER_OK)) {
         if (lDevAvailable) {
@@ -395,7 +395,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
 
     QStatus status;
 
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     if (IsMaster()) {
         if (nodeDB.FindNode(adBdAddr)->IsValid()) {
             /*
@@ -412,7 +412,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
              * thing is to just ignore found device notification for devices
              * that we know are connected to us.
              */
-            lock.Unlock();
+            lock.Unlock(MUTEX_CONTEXT);
             return;
         }
 
@@ -458,7 +458,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
             BTBusAddress connAddr;
 
             if (!knownAdNode && !eirCapable && (blacklist->find(adBdAddr) != blacklist->end())) {
-                lock.Unlock();
+                lock.Unlock(MUTEX_CONTEXT);
                 return; // blacklisted - ignore it
             }
 
@@ -471,9 +471,9 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                            uuidRev));
 
             QCC_DEBUG_ONLY(sdpQueryStartTime = sdpQueryTimer.StartTime());
-            lock.Unlock();
+            lock.Unlock(MUTEX_CONTEXT);
             status = bt.GetDeviceInfo(adBdAddr, newUUIDRev, connAddr, newAdInfo);
-            lock.Lock();
+            lock.Lock(MUTEX_CONTEXT);
             QCC_DEBUG_ONLY(sdpQueryTimer.RecordTime(adBdAddr, sdpQueryStartTime));
 
             // Make sure we are still master
@@ -491,13 +491,13 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                         find.dirty = true;
                         DispatchOperation(new UpdateDelegationsDispatchInfo());
                     }
-                    lock.Unlock();
+                    lock.Unlock(MUTEX_CONTEXT);
                     return;
                 }
 
                 if (nodeDB.FindNode(connAddr)->IsValid()) {
                     // Already connected.
-                    lock.Unlock();
+                    lock.Unlock(MUTEX_CONTEXT);
                     return;
                 }
 
@@ -516,7 +516,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                 if (!newConnNode->IsValid()) {
                     QCC_LogError(ER_FAIL, ("No device with connect address %s in advertisement",
                                            connAddr.ToString().c_str()));
-                    lock.Unlock();
+                    lock.Unlock(MUTEX_CONTEXT);
                     return;
                 }
 
@@ -563,7 +563,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
             }
         }
 
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
 
         if (distributeChanges) {
             DistributeAdvertisedNameChanges(&added, &removed);
@@ -574,7 +574,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
 
         status = MsgArg::Set(args, numArgs, SIG_FOUND_DEV, adBdAddr.GetRaw(), uuidRev, eirCapable);
 
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
 
         if (status != ER_OK) {
             QCC_LogError(status, ("MsgArg::Set(args = <>, numArgs = %u, %s, %s, %08x, <%s>) failed",
@@ -598,7 +598,7 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
         repeat = false;
         newDevice = false;
 
-        lock.Lock();
+        lock.Lock(MUTEX_CONTEXT);
         if (!IsMinion()) {
             node = nodeDB.FindNode(addr);
             if (IsMaster() && !node->IsValid() && (directMinions < maxConnections)) {
@@ -610,7 +610,7 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
         if (!IsMaster() && !node->IsValid()) {
             node = masterNode;
         }
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
 
         if (newDevice) {
             int ic = IncrementAndFetch(&incompleteConnections);
@@ -912,7 +912,7 @@ QStatus BTController::DoNameOp(const qcc::String& name,
                   (&nameArgInfo == static_cast<NameArgInfo*>(&find)) ? "find" : "advertise"));
     QStatus status = ER_OK;
 
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     if (add) {
         nameArgInfo.AddName(name, self);
     } else {
@@ -923,7 +923,7 @@ QStatus BTController::DoNameOp(const qcc::String& name,
 
     bool devAvail = devAvailable;
     bool isMaster = IsMaster();
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 
     if (devAvail) {
         if (isMaster) {
@@ -991,7 +991,7 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
                            findOp ? "find" : "advertise",
                            node->GetBusAddress().ToString().c_str()));
 
-            lock.Lock();
+            lock.Lock(MUTEX_CONTEXT);
 
             // All nodes need to be registered via SetState
             qcc::String name(nameStr);
@@ -1002,7 +1002,7 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
             }
 
             bool isMaster = IsMaster();
-            lock.Unlock();
+            lock.Unlock(MUTEX_CONTEXT);
 
             if (isMaster) {
                 DispatchOperation(new UpdateDelegationsDispatchInfo());
@@ -1086,12 +1086,12 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     MsgArg* foundNodeArgs;
     bool updateDelegations = false;
 
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     if (!IsMaster()) {
         // We are not the master so we should not get a SetState method call.
         // Don't send a response as punishment >:)
         QCC_LogError(ER_FAIL, ("SetState method call received while not a master"));
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
         return;
     }
 
@@ -1106,7 +1106,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
                           &numFoundNodeArgs, &foundNodeArgs);
 
     if (status != ER_OK) {
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
         MethodReply(msg, "org.alljoyn.Bus.BTController.InternalError", QCC_StatusText(status));
         bt.Disconnect(sender);
         return;
@@ -1123,7 +1123,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
         // Don't send a response as punishment >:)
         QCC_LogError(ER_FAIL, ("SetState method call received with remote bus address the same as ours (%s)",
                                addr.ToString().c_str()));
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
         bt.Disconnect(sender);
         return;
     }
@@ -1192,7 +1192,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
 
         status = ImportState(masterNode, NULL, 0, foundNodeArgs, numFoundNodeArgs);
         if (status != ER_OK) {
-            lock.Unlock();
+            lock.Unlock(MUTEX_CONTEXT);
             MethodReply(msg, "org.alljoyn.Bus.BTController.InternalError", QCC_StatusText(status));
             bt.Disconnect(sender);
             return;
@@ -1216,7 +1216,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
 
         status = ImportState(connectingNode, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs);
         if (status != ER_OK) {
-            lock.Unlock();
+            lock.Unlock(MUTEX_CONTEXT);
             QCC_LogError(status, ("Dropping %s due to import state error", sender.c_str()));
             bt.Disconnect(sender);
             return;
@@ -1283,7 +1283,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
                          self->GetBusAddress().psm,
                          nodeStateArgsStorage.size(), &nodeStateArgsStorage.front(),
                          foundNodeArgsStorage.size(), &foundNodeArgsStorage.front());
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 
     if (status != ER_OK) {
         QCC_LogError(status, ("MsgArg::Set(%s)", SIG_SET_STATE_OUT));
@@ -1443,11 +1443,11 @@ void BTController::HandleConnectAddrChanged(const InterfaceDescription::Member* 
             nodeDB.Unlock();
         }
         if (!IsMaster()) {
-            lock.Lock();
+            lock.Lock(MUTEX_CONTEXT);
             if (masterNode->GetBusAddress() == oldAddr) {
                 masterNode->SetBusAddress(newAddr);
             }
-            lock.Unlock();
+            lock.Unlock(MUTEX_CONTEXT);
         }
     }
 }
@@ -1456,7 +1456,7 @@ void BTController::HandleConnectAddrChanged(const InterfaceDescription::Member* 
 void BTController::DeferredBTDeviceAvailable(bool on)
 {
     QCC_DbgTrace(("BTController::DeferredBTDeviceAvailable(<%s>)", on ? "on" : "off"));
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     if (on && !devAvailable) {
         BTBusAddress listenAddr;
         devAvailable = true;
@@ -1517,7 +1517,7 @@ void BTController::DeferredBTDeviceAvailable(bool on)
         devAvailable = false;
     }
 
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 }
 
 
@@ -1534,7 +1534,7 @@ QStatus BTController::DeferredSendSetState()
     Message reply(bus);
     ProxyBusObject* newMaster = new ProxyBusObject(bus, joinSessionNode->GetUniqueName().c_str(), bluetoothObjPath, joinSessionNode->GetSessionID());
 
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     if ((find.minion == self) && find.active) {
         /*
          * Gotta shut down the local find operation since the exchange
@@ -1573,7 +1573,7 @@ QStatus BTController::DeferredSendSetState()
                          self->GetBusAddress().psm,
                          nodeStateArgsStorage.size(), &nodeStateArgsStorage.front(),
                          foundNodeArgsStorage.size(), &foundNodeArgsStorage.front());
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     if (status != ER_OK) {
         delete newMaster;
         QCC_LogError(status, ("Dropping %s due to internal error", joinSessionNode->GetBusAddress().ToString().c_str()));
@@ -1617,7 +1617,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
     QCC_DbgTrace(("BTController::DeferredProcessSetStateReply(reply = <>, newMaster = %p)  [joinSessionNode = %s]",
                   newMaster, joinSessionNode->GetBusAddress().ToString().c_str()));
 
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
 
     if (reply->GetType() == MESSAGE_METHOD_RET) {
         size_t numNodeStateArgs;
@@ -1741,7 +1741,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
 exit:
 
     ClearJoinSessionNode();
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 }
 
 
@@ -1749,7 +1749,7 @@ void BTController::DeferredHandleDelegateFind(Message& msg)
 {
     QCC_DbgTrace(("BTController::HandleDelegateFind(msg = <>)"));
 
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
 
     PickNextDelegate(find);
 
@@ -1790,7 +1790,7 @@ void BTController::DeferredHandleDelegateFind(Message& msg)
 
         Signal(delegate->GetUniqueName().c_str(), delegate->GetSessionID(), *find.delegateSignal, args, numArgs);
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 }
 
 
@@ -1798,7 +1798,7 @@ void BTController::DeferredHandleDelegateAdvertise(Message& msg)
 {
     QCC_DbgTrace(("BTController::DeferredHandleDelegateAdvertise(msg = <>)"));
 
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
 
     PickNextDelegate(advertise);
 
@@ -1843,7 +1843,7 @@ void BTController::DeferredHandleDelegateAdvertise(Message& msg)
 
         Signal(delegate->GetUniqueName().c_str(), delegate->GetSessionID(), *advertise.delegateSignal, args, numArgs);
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 }
 
 
@@ -1853,7 +1853,7 @@ void BTController::DeferredNameLostHander(const String& name)
     QCC_DbgPrintf(("%s has left the bus", name.c_str()));
     bool updateDelegations = false;
 
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     if (master && (master->GetServiceName() == name)) {
         // We are a minion or a drone and our master has left us.
 
@@ -1996,7 +1996,7 @@ void BTController::DeferredNameLostHander(const String& name)
         QCC_DbgPrintf(("NodeDB after processing lost node"));
         QCC_DEBUG_ONLY(DumpNodeStateTable());
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 }
 
 
@@ -2226,7 +2226,7 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
     // At this point nodeDB now has all the nodes that have connected to us
     // (if we are the master).
 
-    lock.Lock();  // Must be acquired before the foundNodeDB lock.
+    lock.Lock(MUTEX_CONTEXT);  // Must be acquired before the foundNodeDB lock.
     foundNodeDB.Lock();
     // Figure out set of devices/names that are part of the incoming
     // device/piconet to be removed from the set of found nodes.
@@ -2277,7 +2277,7 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
         RemoveExpireNameAlarm();
     }
     foundNodeDB.Unlock();
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 
     DistributeAdvertisedNameChanges(&addedDB, &staleDB);
 
@@ -2610,7 +2610,7 @@ void BTController::SetSelfAddress(const BTBusAddress& newAddr)
     MsgArg args[SIG_CONN_ADDR_CHANGED_SIZE];
     size_t argsSize = ArraySize(args);
 
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     MsgArg::Set(args, argsSize, SIG_CONN_ADDR_CHANGED,
                 self->GetBusAddress().addr.GetRaw(),
                 self->GetBusAddress().psm,
@@ -2635,7 +2635,7 @@ void BTController::SetSelfAddress(const BTBusAddress& newAddr)
         dests.push_back(master->GetServiceName());
     }
 
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 
     for (dit = dests.begin(); dit != dests.end(); ++dit) {
         Signal((*dit)->GetUniqueName().c_str(), (*dit)->GetSessionID(), *org.alljoyn.Bus.BTController.ConnectAddrChanged, args, argsSize);
@@ -2681,12 +2681,12 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
         switch (op->operation) {
         case DispatchInfo::UPDATE_DELEGATIONS:
             QCC_DbgPrintf(("    Updating delegations"));
-            lock.Lock();
+            lock.Lock(MUTEX_CONTEXT);
             UpdateDelegations(advertise);
             UpdateDelegations(find);
             QCC_DbgPrintf(("NodeDB after updating delegations"));
             QCC_DEBUG_ONLY(DumpNodeStateTable());
-            lock.Unlock();
+            lock.Unlock(MUTEX_CONTEXT);
             break;
 
         case DispatchInfo::EXPIRE_CACHED_NODES: {
@@ -2740,11 +2740,11 @@ void BTController::AlarmTriggered(const Alarm& alarm, QStatus reason)
 
         case DispatchInfo::EXPIRE_BLACKLISTED_DEVICE:
             QCC_DbgPrintf(("    Expiring blacklisted device"));
-            lock.Lock();
+            lock.Lock(MUTEX_CONTEXT);
             blacklist->erase(static_cast<ExpireBlacklistedDevDispatchInfo*>(op)->addr);
             find.dirty = true;
             UpdateDelegations(find);
-            lock.Unlock();
+            lock.Unlock(MUTEX_CONTEXT);
             break;
         }
     }
@@ -2782,7 +2782,7 @@ void BTController::NameArgInfo::AlarmTriggered(const Alarm& alarm, QStatus reaso
                   alarm == bto.find.alarm ? "find" : "advertise", QCC_StatusText(reason)));
 
     if (reason == ER_OK) {
-        bto.lock.Lock();
+        bto.lock.Lock(MUTEX_CONTEXT);
         if (bto.RotateMinions() && !Empty()) {
             // Manually re-arm alarm since automatically recurring alarms cannot be stopped.
             StartAlarm();
@@ -2793,7 +2793,7 @@ void BTController::NameArgInfo::AlarmTriggered(const Alarm& alarm, QStatus reaso
             ClearArgs();
             SendDelegateSignal();
         }
-        bto.lock.Unlock();
+        bto.lock.Unlock(MUTEX_CONTEXT);
     }
 }
 
@@ -2805,9 +2805,9 @@ QStatus BTController::NameArgInfo::SendDelegateSignal()
     assert(minion != bto.self);
 
     NameArgs largs = args;
-    bto.lock.Unlock();  // SendDelegateSignal gets called with bto.lock held.
+    bto.lock.Unlock(MUTEX_CONTEXT);  // SendDelegateSignal gets called with bto.lock held.
     QStatus status = bto.Signal(minion->GetUniqueName().c_str(), minion->GetSessionID(), *delegateSignal, largs->args, largs->argsSize);
-    bto.lock.Lock();
+    bto.lock.Lock(MUTEX_CONTEXT);
 
     return status;
 }
@@ -2943,9 +2943,9 @@ void BTController::AdvertiseNameArgInfo::SetArgs()
                 bto.RotateMinions() ? DELEGATE_TIME : (uint32_t)0);
     assert(localArgsSize == argsSize);
 
-    bto.lock.Lock();
+    bto.lock.Lock(MUTEX_CONTEXT);
     args = newArgs;
-    bto.lock.Unlock();
+    bto.lock.Unlock(MUTEX_CONTEXT);
 
     dirty = false;
 }
@@ -2966,9 +2966,9 @@ void BTController::AdvertiseNameArgInfo::ClearArgs()
                 static_cast<uint32_t>(0));
     assert(localArgsSize == argsSize);
 
-    bto.lock.Lock();
+    bto.lock.Lock(MUTEX_CONTEXT);
     args = newArgs;
-    bto.lock.Unlock();
+    bto.lock.Unlock(MUTEX_CONTEXT);
 }
 
 
@@ -3031,7 +3031,7 @@ void BTController::FindNameArgInfo::SetArgs()
     NameArgs newArgs(argsSize);
     size_t localArgsSize = argsSize;
 
-    bto.lock.Lock();
+    bto.lock.Lock(MUTEX_CONTEXT);
     bto.nodeDB.Lock();
     ignoreAddrsCache.clear();
     ignoreAddrsCache.reserve(bto.nodeDB.Size() + bto.blacklist->size());
@@ -3052,7 +3052,7 @@ void BTController::FindNameArgInfo::SetArgs()
     assert(localArgsSize == argsSize);
 
     args = newArgs;
-    bto.lock.Unlock();
+    bto.lock.Unlock(MUTEX_CONTEXT);
 
     dirty = false;
 }
@@ -3069,9 +3069,9 @@ void BTController::FindNameArgInfo::ClearArgs()
                 static_cast<uint32_t>(0));
     assert(localArgsSize == argsSize);
 
-    bto.lock.Lock();
+    bto.lock.Lock(MUTEX_CONTEXT);
     args = newArgs;
-    bto.lock.Unlock();
+    bto.lock.Unlock(MUTEX_CONTEXT);
 }
 
 

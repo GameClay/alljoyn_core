@@ -169,9 +169,9 @@ void* BTTransport::Run(void* arg)
                 conn->GetFeatures().allowRemote = false;
                 conn->GetFeatures().handlePassing = false;
 
-                threadListLock.Lock();
+                threadListLock.Lock(MUTEX_CONTEXT);
                 threadList.insert(conn);
-                threadListLock.Unlock();
+                threadListLock.Unlock(MUTEX_CONTEXT);
                 QCC_DbgPrintf(("BTTransport::Run: Calling conn->Establish() [for accepted connection]"));
                 status = conn->Establish("ANONYMOUS", authName);
                 if (ER_OK == status) {
@@ -234,11 +234,11 @@ QStatus BTTransport::Stop(void)
     }
 
     /* Stop any endpoints that are running */
-    threadListLock.Lock();
+    threadListLock.Lock(MUTEX_CONTEXT);
     for (eit = threadList.begin(); eit != threadList.end(); ++eit) {
         (*eit)->Stop();
     }
-    threadListLock.Unlock();
+    threadListLock.Unlock(MUTEX_CONTEXT);
 
     return ER_OK;
 }
@@ -251,13 +251,13 @@ QStatus BTTransport::Join(void)
     }
 
     /* Wait for the thread list to empty out */
-    threadListLock.Lock();
+    threadListLock.Lock(MUTEX_CONTEXT);
     while (threadList.size() > 0) {
-        threadListLock.Unlock();
+        threadListLock.Unlock(MUTEX_CONTEXT);
         qcc::Sleep(50);
-        threadListLock.Lock();
+        threadListLock.Lock(MUTEX_CONTEXT);
     }
-    threadListLock.Unlock();
+    threadListLock.Unlock(MUTEX_CONTEXT);
     return Thread::Join();
 }
 
@@ -392,11 +392,11 @@ bool BTTransport::CheckIncomingAddress(const BDAddress& addr) const
 void BTTransport::DisconnectAll()
 {
     set<RemoteEndpoint*>::iterator eit;
-    threadListLock.Lock();
+    threadListLock.Lock(MUTEX_CONTEXT);
     for (eit = threadList.begin(); eit != threadList.end(); ++eit) {
         (*eit)->Stop();
     }
-    threadListLock.Unlock();
+    threadListLock.Unlock(MUTEX_CONTEXT);
 }
 
 void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
@@ -412,14 +412,14 @@ void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
     BTNodeInfo node;
 
     /* Remove thread from thread list */
-    threadListLock.Lock();
+    threadListLock.Lock(MUTEX_CONTEXT);
     set<RemoteEndpoint*>::iterator eit = threadList.find(endpoint);
     if (eit != threadList.end()) {
         BTEndpoint* btEp = reinterpret_cast<BTEndpoint*>(endpoint);
         node = connNodeDB.FindNode(btEp->GetNode()->GetBusAddress());
         threadList.erase(eit);
     }
-    threadListLock.Unlock();
+    threadListLock.Unlock(MUTEX_CONTEXT);
 
     if (node->IsValid()) {
         if (node->DecConnCount() == 0) {
@@ -574,9 +574,9 @@ QStatus BTTransport::Connect(const BTBusAddress& addr,
     conn->GetFeatures().allowRemote = bus.GetInternal().AllowRemoteMessages();
     conn->GetFeatures().handlePassing = false;
 
-    threadListLock.Lock();
+    threadListLock.Lock(MUTEX_CONTEXT);
     threadList.insert(conn);
-    threadListLock.Unlock();
+    threadListLock.Unlock(MUTEX_CONTEXT);
     QCC_DbgPrintf(("BTTransport::Connect: Calling conn->Establish() [addr = %s via %s]",
                    addr.ToString().c_str(), connNode->GetBusAddress().ToString().c_str()));
     status = conn->Establish("ANONYMOUS", authName);
@@ -641,13 +641,13 @@ QStatus BTTransport::Disconnect(const String& busName)
 
     set<RemoteEndpoint*>::iterator eit;
 
-    threadListLock.Lock();
+    threadListLock.Lock(MUTEX_CONTEXT);
     for (eit = threadList.begin(); eit != threadList.end(); ++eit) {
         if (busName == (*eit)->GetUniqueName()) {
             status = (*eit)->Stop();
         }
     }
-    threadListLock.Unlock();
+    threadListLock.Unlock(MUTEX_CONTEXT);
     return status;
 }
 
@@ -656,7 +656,7 @@ RemoteEndpoint* BTTransport::LookupEndpoint(const qcc::String& busName)
 {
     RemoteEndpoint* ep = NULL;
     set<RemoteEndpoint*>::iterator eit;
-    threadListLock.Lock();
+    threadListLock.Lock(MUTEX_CONTEXT);
     for (eit = threadList.begin(); eit != threadList.end(); ++eit) {
         if ((*eit)->GetRemoteName() == busName) {
             ep = *eit;
@@ -664,7 +664,7 @@ RemoteEndpoint* BTTransport::LookupEndpoint(const qcc::String& busName)
         }
     }
     if (!ep) {
-        threadListLock.Unlock();
+        threadListLock.Unlock(MUTEX_CONTEXT);
     }
     return ep;
 }
@@ -672,7 +672,7 @@ RemoteEndpoint* BTTransport::LookupEndpoint(const qcc::String& busName)
 
 void BTTransport::ReturnEndpoint(RemoteEndpoint* ep) {
     if (threadList.find(ep) != threadList.end()) {
-        threadListLock.Unlock();
+        threadListLock.Unlock(MUTEX_CONTEXT);
     }
 }
 

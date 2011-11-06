@@ -67,12 +67,12 @@ void AllJoynObj::AcquireLocks()
      * this method may already have the name table lock
      */
     router.LockNameTable();
-    stateLock.Lock();
+    stateLock.Lock(MUTEX_CONTEXT);
 }
 
 void AllJoynObj::ReleaseLocks()
 {
-    stateLock.Unlock();
+    stateLock.Unlock(MUTEX_CONTEXT);
     router.UnlockNameTable();
 }
 
@@ -103,7 +103,7 @@ AllJoynObj::~AllJoynObj()
     // TODO: Unregister local object
 
     /* Wait for any outstanding JoinSessionThreads */
-    joinSessionThreadsLock.Lock();
+    joinSessionThreadsLock.Lock(MUTEX_CONTEXT);
     isStopping = true;
     vector<JoinSessionThread*>::iterator it = joinSessionThreads.begin();
     while (it != joinSessionThreads.end()) {
@@ -111,11 +111,11 @@ AllJoynObj::~AllJoynObj()
         ++it;
     }
     while (!joinSessionThreads.empty()) {
-        joinSessionThreadsLock.Unlock();
+        joinSessionThreadsLock.Unlock(MUTEX_CONTEXT);
         qcc::Sleep(50);
-        joinSessionThreadsLock.Lock();
+        joinSessionThreadsLock.Lock(MUTEX_CONTEXT);
     }
-    joinSessionThreadsLock.Unlock();
+    joinSessionThreadsLock.Unlock(MUTEX_CONTEXT);
 }
 
 QStatus AllJoynObj::Init()
@@ -972,7 +972,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
 
 void AllJoynObj::JoinSessionThread::ThreadExit(Thread* thread)
 {
-    ajObj.joinSessionThreadsLock.Lock();
+    ajObj.joinSessionThreadsLock.Lock(MUTEX_CONTEXT);
     vector<JoinSessionThread*>::iterator it = ajObj.joinSessionThreads.begin();
     JoinSessionThread* deleteMe = NULL;
     while (it != ajObj.joinSessionThreads.end()) {
@@ -983,7 +983,7 @@ void AllJoynObj::JoinSessionThread::ThreadExit(Thread* thread)
         }
         ++it;
     }
-    ajObj.joinSessionThreadsLock.Unlock();
+    ajObj.joinSessionThreadsLock.Unlock(MUTEX_CONTEXT);
     if (deleteMe) {
         delete deleteMe;
     } else {
@@ -994,7 +994,7 @@ void AllJoynObj::JoinSessionThread::ThreadExit(Thread* thread)
 void AllJoynObj::JoinSession(const InterfaceDescription::Member* member, Message& msg)
 {
     /* Handle JoinSession on another thread since JoinThread can block waiting for NameOwnerChanged */
-    joinSessionThreadsLock.Lock();
+    joinSessionThreadsLock.Lock(MUTEX_CONTEXT);
     if (!isStopping) {
         JoinSessionThread* jst = new JoinSessionThread(*this, msg, true);
         QStatus status = jst->Start(NULL, jst);
@@ -1004,13 +1004,13 @@ void AllJoynObj::JoinSession(const InterfaceDescription::Member* member, Message
             QCC_LogError(status, ("Join: Failed to start JoinSessionThread"));
         }
     }
-    joinSessionThreadsLock.Unlock();
+    joinSessionThreadsLock.Unlock(MUTEX_CONTEXT);
 }
 
 void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Message& msg)
 {
     /* Handle AttachSession on another thread since AttachSession can block when connecting through an intermediate node */
-    joinSessionThreadsLock.Lock();
+    joinSessionThreadsLock.Lock(MUTEX_CONTEXT);
     if (!isStopping) {
         JoinSessionThread* jst = new JoinSessionThread(*this, msg, false);
         QStatus status = jst->Start(NULL, jst);
@@ -1020,7 +1020,7 @@ void AllJoynObj::AttachSession(const InterfaceDescription::Member* member, Messa
             QCC_LogError(status, ("Attach: Failed to start JoinSessionThread"));
         }
     }
-    joinSessionThreadsLock.Unlock();
+    joinSessionThreadsLock.Unlock(MUTEX_CONTEXT);
 }
 
 void AllJoynObj::LeaveSession(const InterfaceDescription::Member* member, Message& msg)

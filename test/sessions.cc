@@ -172,9 +172,9 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
     void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
     {
         printf("Discovered name : \"%s\"\n", name);
-        s_lock.Lock();
+        s_lock.Lock(MUTEX_CONTEXT);
         s_discoverSet.insert(DiscoverInfo(name, transport));
-        s_lock.Unlock();
+        s_lock.Unlock(MUTEX_CONTEXT);
     }
 
     void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner)
@@ -185,15 +185,15 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
 
     void LostAdvertisedName(const char* name, TransportMask transport, const char* namePrefix) {
         printf("LostAdvertisedName name=%s, namePrefix=%s\n", name, namePrefix);
-        s_lock.Lock();
+        s_lock.Lock(MUTEX_CONTEXT);
         s_discoverSet.erase(DiscoverInfo(name, transport));
-        s_lock.Unlock();
+        s_lock.Unlock(MUTEX_CONTEXT);
     }
 
     bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
     {
         bool ret = false;
-        s_lock.Lock();
+        s_lock.Lock(MUTEX_CONTEXT);
         map<SessionPort, SessionPortInfo>::iterator it = s_sessionPortMap.find(sessionPort);
         if (it != s_sessionPortMap.end()) {
             printf("Accepting join request on %u from %s\n", sessionPort, joiner);
@@ -201,13 +201,13 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
         } else {
             printf("Rejecting join attempt to unregistered port %u from %s\n", sessionPort, joiner);
         }
-        s_lock.Unlock();
+        s_lock.Unlock(MUTEX_CONTEXT);
         return ret;
     }
 
     void SessionJoined(SessionPort sessionPort, SessionId id, const char* joiner)
     {
-        s_lock.Lock();
+        s_lock.Lock(MUTEX_CONTEXT);
         map<SessionPort, SessionPortInfo>::iterator it = s_sessionPortMap.find(sessionPort);
         if (it != s_sessionPortMap.end()) {
             s_bus->SetSessionListener(id, this);
@@ -217,10 +217,10 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
                 s_sessionMap[id] = sessionInfo;
             }
             s_sessionMap[id].peerNames.push_back(joiner);
-            s_lock.Unlock();
+            s_lock.Unlock(MUTEX_CONTEXT);
             printf("SessionJoined with %s (id=%u)\n", joiner, id);
         } else {
-            s_lock.Unlock();
+            s_lock.Unlock(MUTEX_CONTEXT);
             printf("Leaving unexpected session %u with %s\n", id, joiner);
             s_bus->LeaveSession(id);
         }
@@ -228,14 +228,14 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
 
     void SessionLost(SessionId id)
     {
-        s_lock.Lock();
+        s_lock.Lock(MUTEX_CONTEXT);
         map<SessionId, SessionInfo>::iterator it = s_sessionMap.find(id);
         if (it != s_sessionMap.end()) {
             s_sessionMap.erase(it);
-            s_lock.Unlock();
+            s_lock.Unlock(MUTEX_CONTEXT);
             printf("Session %u is lost\n", id);
         } else {
-            s_lock.Unlock();
+            s_lock.Unlock(MUTEX_CONTEXT);
             printf("SessionLost for unknown sessionId %u\n", id);
         }
     }
@@ -321,7 +321,7 @@ static SessionId NextTokAsSessionId(String& inStr)
     String tok = NextTok(inStr);
     if (tok[0] == '#') {
         uint32_t i = StringToU32(tok.substr(1), 0, 0);
-        s_lock.Lock();
+        s_lock.Lock(MUTEX_CONTEXT);
         map<SessionId, SessionInfo>::const_iterator sit = s_sessionMap.begin();
         if (i < s_sessionMap.size()) {
             while (i--) {
@@ -329,7 +329,7 @@ static SessionId NextTokAsSessionId(String& inStr)
             }
             ret = sit->first;
         }
-        s_lock.Unlock();
+        s_lock.Unlock(MUTEX_CONTEXT);
     } else {
         ret = StringToU32(tok, 0, 0);
     }
@@ -341,9 +341,9 @@ static void DoRequestName(const String& name)
 {
     QStatus status = s_bus->RequestName(name.c_str(), DBUS_NAME_FLAG_DO_NOT_QUEUE);
     if (status == ER_OK) {
-        s_lock.Lock();
+        s_lock.Lock(MUTEX_CONTEXT);
         s_requestedNames.insert(name);
-        s_lock.Unlock();
+        s_lock.Unlock(MUTEX_CONTEXT);
     } else {
         printf("RequestName(%s) failed with %s\n", name.c_str(), QCC_StatusText(status));
     }
@@ -353,9 +353,9 @@ static void DoReleaseName(const String& name)
 {
     QStatus status = s_bus->ReleaseName(name.c_str());
     if (status == ER_OK) {
-        s_lock.Lock();
+        s_lock.Lock(MUTEX_CONTEXT);
         s_requestedNames.erase(name);
-        s_lock.Unlock();
+        s_lock.Unlock(MUTEX_CONTEXT);
     } else {
         printf("ReleaseName(%s) failed with %s\n", name.c_str(), QCC_StatusText(status));
     }
@@ -377,9 +377,9 @@ static void DoBind(SessionPort port, const SessionOpts& opts)
     }
     QStatus status = s_bus->BindSessionPort(port, opts, *s_busListener);
     if (status == ER_OK) {
-        s_lock.Lock();
+        s_lock.Lock(MUTEX_CONTEXT);
         s_sessionPortMap.insert(pair<SessionPort, SessionPortInfo>(port, SessionPortInfo(port, s_bus->GetUniqueName(), opts)));
-        s_lock.Unlock();
+        s_lock.Unlock(MUTEX_CONTEXT);
     } else {
         printf("BusAttachment::BindSessionPort(%u, <>, <>) failed with %s\n", port, QCC_StatusText(status));
     }
@@ -393,9 +393,9 @@ static void DoUnbind(SessionPort port)
     }
     QStatus status = s_bus->UnbindSessionPort(port);
     if (status == ER_OK) {
-        s_lock.Lock();
+        s_lock.Lock(MUTEX_CONTEXT);
         s_sessionPortMap.erase(port);
-        s_lock.Unlock();
+        s_lock.Unlock(MUTEX_CONTEXT);
     } else {
         printf("BusAttachment::UnbindSessionPort(%u) failed with %s\n", port, QCC_StatusText(status));
     }
@@ -405,9 +405,9 @@ static void DoAdvertise(String name, TransportMask transports)
 {
     QStatus status = s_bus->AdvertiseName(name.c_str(), transports);
     if (status == ER_OK) {
-        s_lock.Lock();
+        s_lock.Lock(MUTEX_CONTEXT);
         s_advertisements.insert(name);
-        s_lock.Unlock();
+        s_lock.Unlock(MUTEX_CONTEXT);
     } else {
         printf("BusAttachment::AdvertiseName(%s, 0x%x) failed with %s\n", name.c_str(), transports, QCC_StatusText(status));
     }
@@ -421,9 +421,9 @@ static void DoCancelAdvertise(String name, TransportMask transports)
     }
     QStatus status = s_bus->CancelAdvertiseName(name.c_str(), transports);
     if (status == ER_OK) {
-        s_lock.Lock();
+        s_lock.Lock(MUTEX_CONTEXT);
         s_advertisements.erase(name);
-        s_lock.Unlock();
+        s_lock.Unlock(MUTEX_CONTEXT);
     } else {
         printf("BusAttachment::AdvertiseName(%s, 0x%x) failed with %s\n", name.c_str(), transports, QCC_StatusText(status));
     }
@@ -456,7 +456,7 @@ static void DoList()
     }
 
     printf("---------Outgoing Advertisments----------------\n");
-    s_lock.Lock();
+    s_lock.Lock(MUTEX_CONTEXT);
     set<String>::const_iterator ait = s_advertisements.begin();
     while (ait != s_advertisements.end()) {
         printf("  %s\n", ait->c_str());
@@ -501,7 +501,7 @@ static void DoList()
         }
         ++sit;
     }
-    s_lock.Unlock();
+    s_lock.Unlock(MUTEX_CONTEXT);
 }
 
 static void DoJoin(String name, SessionPort port, const SessionOpts& opts)
@@ -510,9 +510,9 @@ static void DoJoin(String name, SessionPort port, const SessionOpts& opts)
     SessionOpts optsOut = opts;
     QStatus status = s_bus->JoinSession(name.c_str(), port, s_busListener, id, optsOut);
     if (status == ER_OK) {
-        s_lock.Lock();
+        s_lock.Lock(MUTEX_CONTEXT);
         s_sessionMap.insert(pair<SessionId, SessionInfo>(id, SessionInfo(id, SessionPortInfo(port, name, optsOut))));
-        s_lock.Unlock();
+        s_lock.Unlock(MUTEX_CONTEXT);
     } else {
         printf("JoinSession(%s, %u, ...) failed with %s\n", name.c_str(), port, QCC_StatusText(status));
     }
@@ -527,9 +527,9 @@ static void DoLeave(SessionId id)
         if (status != ER_OK) {
             printf("SessionLost(%u) failed with %s\n", id, QCC_StatusText(status));
         }
-        s_lock.Lock();
+        s_lock.Lock(MUTEX_CONTEXT);
         s_sessionMap.erase(id);
-        s_lock.Unlock();
+        s_lock.Unlock(MUTEX_CONTEXT);
     } else {
         printf("Invalid session id %u specified in LeaveSession\n", id);
     }

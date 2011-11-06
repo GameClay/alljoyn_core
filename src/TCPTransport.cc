@@ -103,14 +103,14 @@ QStatus TCPTransport::Stop(void)
     /*
      * Ask any running endpoints to shut down and exit their threads.
      */
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
     m_stopping = true;
 
     for (vector<TCPEndpoint*>::iterator i = m_endpointList.begin(); i != m_endpointList.end(); ++i) {
         (*i)->Stop();
     }
 
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
     return ER_OK;
 }
@@ -125,15 +125,15 @@ QStatus TCPTransport::Join(void)
      * for the all-exited condition, yielding the CPU to let them all wake and
      * exit.
      */
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
 
     while (m_endpointList.size() > 0) {
-        m_endpointListLock.Unlock();
+        m_endpointListLock.Unlock(MUTEX_CONTEXT);
         qcc::Sleep(50);
-        m_endpointListLock.Lock();
+        m_endpointListLock.Lock(MUTEX_CONTEXT);
     }
 
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
     return ER_OK;
 }
@@ -152,12 +152,12 @@ void TCPTransport::EndpointExit(RemoteEndpoint* ep)
     QCC_DbgTrace(("TCPTransport::EndpointExit()"));
 
     /* Remove the dead endpoint from the live endpoint list */
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
     vector<TCPEndpoint*>::iterator i = find(m_endpointList.begin(), m_endpointList.end(), tep);
     if (i != m_endpointList.end()) {
         m_endpointList.erase(i);
     }
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
     /*
      * The endpoint can exit if it was asked to by us in response to a Disconnect()
@@ -262,14 +262,14 @@ QStatus TCPTransport::Connect(const char* connectSpec, const SessionOpts& opts, 
      * Check to see if we are already connected to a remote endpoint identified
      * by the address and port.  If we are we never duplicate the connection.
      */
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
     for (vector<TCPEndpoint*>::const_iterator i = m_endpointList.begin(); i != m_endpointList.end(); ++i) {
         if ((port == (*i)->GetPort()) && (((*i)->GetIPAddress() == ipAddr))) {
-            m_endpointListLock.Unlock();
+            m_endpointListLock.Unlock(MUTEX_CONTEXT);
             return ER_BUS_ALREADY_CONNECTED;
         }
     }
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
     /*
      * This is a new not previously satisfied connection request, so attempt
@@ -319,14 +319,14 @@ QStatus TCPTransport::Connect(const char* connectSpec, const SessionOpts& opts, 
      */
     TCPEndpoint* conn = NULL;
     if (status == ER_OK) {
-        m_endpointListLock.Lock();
+        m_endpointListLock.Lock(MUTEX_CONTEXT);
         if (m_stopping) {
-            m_endpointListLock.Unlock();
+            m_endpointListLock.Unlock(MUTEX_CONTEXT);
             status = ER_BUS_TRANSPORT_NOT_STARTED;
         } else {
             conn = new TCPEndpoint(this, m_bus, normSpec, sockFd, ipAddr, port);
             m_endpointList.push_back(conn);
-            m_endpointListLock.Unlock();
+            m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
             /* Initialized the features for this endpoint */
             conn->GetFeatures().isBusToBus = false;
@@ -349,12 +349,12 @@ QStatus TCPTransport::Connect(const char* connectSpec, const SessionOpts& opts, 
              */
             if (status != ER_OK) {
                 QCC_LogError(status, ("TCPTransport::Connect(): Start TCPEndpoint failed"));
-                m_endpointListLock.Lock();
+                m_endpointListLock.Lock(MUTEX_CONTEXT);
                 vector<TCPEndpoint*>::iterator i = find(m_endpointList.begin(), m_endpointList.end(), conn);
                 if (i != m_endpointList.end()) {
                     m_endpointList.erase(i);
                 }
-                m_endpointListLock.Unlock();
+                m_endpointListLock.Unlock(MUTEX_CONTEXT);
                 delete conn;
                 conn = NULL;
             }
@@ -414,16 +414,16 @@ QStatus TCPTransport::Disconnect(const char* connectSpec)
      * considered dead.
      */
     status = ER_BUS_BAD_TRANSPORT_ARGS;
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
     for (vector<TCPEndpoint*>::iterator i = m_endpointList.begin(); i != m_endpointList.end(); ++i) {
         if ((*i)->GetPort() == port && (*i)->GetIPAddress() == ipAddr) {
             TCPEndpoint* ep = *i;
             ep->SetSuddenDisconnect(false);
-            m_endpointListLock.Unlock();
+            m_endpointListLock.Unlock(MUTEX_CONTEXT);
             return ep->Stop();
         }
     }
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
     return status;
 }
 

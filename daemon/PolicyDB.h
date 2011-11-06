@@ -554,10 +554,10 @@ class NormalizedMsgHdr {
         pathID(policy->LookupStringID(msg->GetObjectPath())),
         type(msg->GetType())
     {
-        policy->bnLock.Lock();
+        policy->bnLock.Lock(MUTEX_CONTEXT);
         InitBusNameID(policy, msg->GetSender(), senderIDList);
         InitBusNameID(policy, msg->GetDestination(), destIDList);
-        policy->bnLock.Unlock();
+        policy->bnLock.Unlock(MUTEX_CONTEXT);
     }
 
   private:

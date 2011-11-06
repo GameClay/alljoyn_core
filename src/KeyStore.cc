@@ -162,25 +162,25 @@ KeyStore::KeyStore(const qcc::String& application) :
 KeyStore::~KeyStore()
 {
     /* Unblock thread that might be waiting for a store to complete */
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     if (stored) {
         stored->SetEvent();
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
         while (stored) {
             qcc::Sleep(1);
         }
-        lock.Lock();
+        lock.Lock(MUTEX_CONTEXT);
     }
     /* Unblock thread that might be waiting for a load to complete */
     if (loaded) {
         loaded->SetEvent();
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
         while (loaded) {
             qcc::Sleep(1);
         }
-        lock.Lock();
+        lock.Lock(MUTEX_CONTEXT);
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     delete defaultListener;
     delete keyStoreKey;
     delete keys;
@@ -220,29 +220,29 @@ QStatus KeyStore::Store()
     /* Don't store if not modified */
     if (storeState == MODIFIED) {
 
-        lock.Lock();
+        lock.Lock(MUTEX_CONTEXT);
         EraseExpiredKeys();
 
         /* Reload to merge keystore changes before storing */
         if (revision > 0) {
-            lock.Unlock();
+            lock.Unlock(MUTEX_CONTEXT);
             status = Reload();
-            lock.Lock();
+            lock.Lock(MUTEX_CONTEXT);
         }
         if (status == ER_OK) {
             stored = new Event();
-            lock.Unlock();
+            lock.Unlock(MUTEX_CONTEXT);
             status = listener->StoreRequest(*this);
             if (status == ER_OK) {
                 status = Event::Wait(*stored);
             }
-            lock.Lock();
+            lock.Lock(MUTEX_CONTEXT);
             delete stored;
             stored = NULL;
             /* Done tracking deletions */
             deletions.clear();
         }
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
     }
     return status;
 }
@@ -250,19 +250,19 @@ QStatus KeyStore::Store()
 QStatus KeyStore::Load()
 {
     QStatus status;
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     keys->clear();
     storeState = UNAVAILABLE;
     loaded = new Event();
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     status = listener->LoadRequest(*this);
     if (status == ER_OK) {
         status = Event::Wait(*loaded);
     }
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     delete loaded;
     loaded = NULL;
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     return status;
 }
 
@@ -290,7 +290,7 @@ QStatus KeyStore::Pull(Source& source, const qcc::String& password)
         return ER_OK;
     }
 
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
 
     uint8_t guidBuf[qcc::GUID128::SIZE];
     size_t pulled;
@@ -398,7 +398,7 @@ ExitPull:
     if (loaded) {
         loaded->SetEvent();
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     return status;
 }
 
@@ -407,12 +407,12 @@ QStatus KeyStore::Clear()
     if (storeState == UNAVAILABLE) {
         return ER_BUS_KEYSTORE_NOT_LOADED;
     }
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     keys->clear();
     storeState = MODIFIED;
     revision = 0;
     deletions.clear();
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     listener->StoreRequest(*this);
     return ER_OK;
 }
@@ -434,7 +434,7 @@ QStatus KeyStore::Reload()
         return ER_OK;
     }
 
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
 
     QStatus status;
     uint32_t currentRevision = revision;
@@ -444,9 +444,9 @@ QStatus KeyStore::Reload()
     /*
      * Load the keys so we can check for changes and merge if needed
      */
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     status = Load();
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
 
     /*
      * Check if key store has been changed since we last touched it.
@@ -494,7 +494,7 @@ QStatus KeyStore::Reload()
         revision = currentRevision;
     }
 
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 
     return status;
 }
@@ -506,7 +506,7 @@ QStatus KeyStore::Push(Sink& sink)
 
     QCC_DbgHLPrintf(("KeyStore::Push (revision %d)", revision + 1));
 
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
 
     /*
      * Pack the keys into an intermediate string sink.
@@ -575,7 +575,7 @@ ExitPush:
     if (stored) {
         stored->SetEvent();
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     return status;
 }
 
@@ -585,7 +585,7 @@ QStatus KeyStore::GetKey(const qcc::GUID128& guid, KeyBlob& key)
         return ER_BUS_KEYSTORE_NOT_LOADED;
     }
     QStatus status;
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     QCC_DbgPrintf(("KeyStore::GetKey %s", guid.ToString().c_str()));
     if (keys->find(guid) != keys->end()) {
         key = (*keys)[guid].key;
@@ -593,7 +593,7 @@ QStatus KeyStore::GetKey(const qcc::GUID128& guid, KeyBlob& key)
     } else {
         status = ER_BUS_KEY_UNAVAILABLE;
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     return status;
 }
 
@@ -603,9 +603,9 @@ bool KeyStore::HasKey(const qcc::GUID128& guid)
         return false;
     }
     bool hasKey;
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     hasKey = keys->count(guid) != 0;
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     return hasKey;
 }
 
@@ -614,14 +614,14 @@ QStatus KeyStore::AddKey(const qcc::GUID128& guid, const KeyBlob& key)
     if (storeState == UNAVAILABLE) {
         return ER_BUS_KEYSTORE_NOT_LOADED;
     }
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     QCC_DbgPrintf(("KeyStore::AddKey %s", guid.ToString().c_str()));
     KeyRecord& keyRec = (*keys)[guid];
     keyRec.revision = revision + 1;
     keyRec.key = key;
     storeState = MODIFIED;
     deletions.erase(guid);
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     return ER_OK;
 }
 
@@ -630,12 +630,12 @@ QStatus KeyStore::DelKey(const qcc::GUID128& guid)
     if (storeState == UNAVAILABLE) {
         return ER_BUS_KEYSTORE_NOT_LOADED;
     }
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     QCC_DbgPrintf(("KeyStore::DelKey %s", guid.ToString().c_str()));
     keys->erase(guid);
     storeState = MODIFIED;
     deletions.insert(guid);
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     listener->StoreRequest(*this);
     return ER_OK;
 }
@@ -646,7 +646,7 @@ QStatus KeyStore::SetKeyExpiration(const qcc::GUID128& guid, const Timespec& exp
         return ER_BUS_KEYSTORE_NOT_LOADED;
     }
     QStatus status = ER_OK;
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     QCC_DbgPrintf(("KeyStore::SetExpiration %s", guid.ToString().c_str()));
     if (keys->count(guid) != 0) {
         (*keys)[guid].key.SetExpiration(expiration);
@@ -654,7 +654,7 @@ QStatus KeyStore::SetKeyExpiration(const qcc::GUID128& guid, const Timespec& exp
     } else {
         status = ER_BUS_KEY_UNAVAILABLE;
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     if (status == ER_OK) {
         listener->StoreRequest(*this);
     }
@@ -671,14 +671,14 @@ QStatus KeyStore::GetKeyExpiration(const qcc::GUID128& guid, Timespec& expiratio
      */
     QStatus status = Reload();
     if (status == ER_OK) {
-        lock.Lock();
+        lock.Lock(MUTEX_CONTEXT);
         QCC_DbgPrintf(("KeyStore::GetExpiration %s", guid.ToString().c_str()));
         if (keys->count(guid) != 0) {
             (*keys)[guid].key.GetExpiration(expiration);
         } else {
             status = ER_BUS_KEY_UNAVAILABLE;
         }
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
     }
     return status;
 }

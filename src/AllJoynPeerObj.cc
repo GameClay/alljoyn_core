@@ -103,14 +103,14 @@ QStatus AllJoynPeerObj::Stop()
 
 QStatus AllJoynPeerObj::Join()
 {
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     std::map<qcc::String, SASLEngine*>::iterator iter = conversations.begin();
     while (iter != conversations.end()) {
         delete iter->second;
         ++iter;
     }
     conversations.clear();
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 
     dispatcher.Join();
     bus.UnregisterBusListener(*this);
@@ -407,10 +407,10 @@ void AllJoynPeerObj::AuthAdvance(Message& msg)
      *
      * Check for existing conversation and allocate a new SASL engine if we need one
      */
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     sasl = conversations[sender];
     conversations.erase(sender);
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 
     if (!sasl) {
         sasl = new SASLEngine(bus, ajn::AuthMechanism::CHALLENGER, peerAuthMechanisms.c_str(), sender.c_str(), peerAuthListener);
@@ -464,9 +464,9 @@ void AllJoynPeerObj::AuthAdvance(Message& msg)
          * If we are not done put the SASL engine back
          */
         if (authState != SASLEngine::ALLJOYN_AUTH_SUCCESS) {
-            lock.Lock();
+            lock.Lock(MUTEX_CONTEXT);
             conversations[sender] = sasl;
-            lock.Unlock();
+            lock.Unlock(MUTEX_CONTEXT);
         }
         MsgArg replyMsg("s", outStr.c_str());
         MethodReply(msg, &replyMsg, 1);
@@ -496,11 +496,11 @@ void AllJoynPeerObj::ForceAuthentication(const qcc::String& busName)
 {
     PeerStateTable* peerStateTable = bus.GetInternal().GetPeerStateTable();
     if (peerStateTable->IsKnownPeer(busName)) {
-        lock.Lock();
+        lock.Lock(MUTEX_CONTEXT);
         PeerState peerState = peerStateTable->GetPeerState(busName);
         peerState->ClearKeys();
         bus.ClearKeys(peerState->GetGuid().ToString());
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
     }
 }
 
@@ -539,17 +539,17 @@ QStatus AllJoynPeerObj::AuthenticatePeer(AllJoynMessageType msgType, const qcc::
      * unique name. Worst case we end up making a redundant ExchangeGuids method call.
      */
     if (msgType != MESSAGE_SIGNAL) {
-        lock.Lock();
+        lock.Lock(MUTEX_CONTEXT);
         if (peerState->GetAuthEvent()) {
             if (wait) {
                 Event::Wait(*peerState->GetAuthEvent(), lock);
                 return peerState->IsSecure() ? ER_OK : ER_AUTH_FAIL;
             } else {
-                lock.Unlock();
+                lock.Unlock(MUTEX_CONTEXT);
                 return ER_WOULDBLOCK;
             }
         }
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
     }
 
     ProxyBusObject remotePeerObj(bus, busName.c_str(), org::alljoyn::Bus::Peer::ObjectPath, 0);
@@ -613,13 +613,13 @@ QStatus AllJoynPeerObj::AuthenticatePeer(AllJoynMessageType msgType, const qcc::
      * Check again if the peer is being authenticated on another thread. We need to do this because
      * the check above may have used a well-known-namme and now we know the unique name.
      */
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     if (peerState->GetAuthEvent()) {
         if (wait) {
             Event::Wait(*peerState->GetAuthEvent(), lock);
             return peerState->IsSecure() ? ER_OK : ER_AUTH_FAIL;
         } else {
-            lock.Unlock();
+            lock.Unlock(MUTEX_CONTEXT);
             return ER_WOULDBLOCK;
         }
     }
@@ -643,7 +643,7 @@ QStatus AllJoynPeerObj::AuthenticatePeer(AllJoynMessageType msgType, const qcc::
         /* Record in the peer state that this peer is the local peer */
         peerState->isLocalPeer = true;
         /* We are still holding the lock */
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
         return ER_OK;
     }
     /*
@@ -653,7 +653,7 @@ QStatus AllJoynPeerObj::AuthenticatePeer(AllJoynMessageType msgType, const qcc::
      */
     if (msgType == MESSAGE_SIGNAL) {
         /* We are still holding the lock */
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
         return ER_BUS_DESTINATION_NOT_AUTHENTICATED;
     }
     /*
@@ -661,7 +661,7 @@ QStatus AllJoynPeerObj::AuthenticatePeer(AllJoynMessageType msgType, const qcc::
      */
     qcc::Event authEvent;
     peerState->SetAuthEvent(&authEvent);
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 
     KeyStore& keyStore = bus.GetInternal().GetKeyStore();
     bool firstPass = true;
@@ -788,13 +788,13 @@ QStatus AllJoynPeerObj::AuthenticatePeer(AllJoynMessageType msgType, const qcc::
     /*
      * Release any other threads waiting on the result of this authentication.
      */
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     peerState->SetAuthEvent(NULL);
     while (authEvent.GetNumBlockedThreads() > 0) {
         authEvent.SetEvent();
         qcc::Sleep(10);
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     return status;
 }
 
@@ -808,7 +808,7 @@ QStatus AllJoynPeerObj::DispatchRequest(Message& msg, RequestType reqType, const
 {
     QStatus status;
     QCC_DbgHLPrintf(("DispatchRequest %s", msg->Description().c_str()));
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     if (dispatcher.IsRunning()) {
         Request* req = new Request(msg, reqType, data);
         Alarm alarm(0, this, 0, reinterpret_cast<void*>(req));
@@ -819,7 +819,7 @@ QStatus AllJoynPeerObj::DispatchRequest(Message& msg, RequestType reqType, const
     } else {
         status = ER_BUS_STOPPING;
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     return status;
 }
 
@@ -836,9 +836,9 @@ void AllJoynPeerObj::AlarmTriggered(const Alarm& alarm, QStatus reason)
          * Push the message onto a queue of messages to be encrypted and forwarded in order when
          * the authentication completes.
          */
-        lock.Lock();
+        lock.Lock(MUTEX_CONTEXT);
         msgsPendingAuth.push_back(req->msg);
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
         /*
          * Extend timeouts so reply handlers don't expire while waiting for authentication to complete
          */
@@ -852,7 +852,7 @@ void AllJoynPeerObj::AlarmTriggered(const Alarm& alarm, QStatus reason)
              * Check each message that is queued waiting for an authentication to complete
              * to see if this is the authentication the message was waiting for.
              */
-            lock.Lock();
+            lock.Lock(MUTEX_CONTEXT);
             std::deque<Message>::iterator iter = msgsPendingAuth.begin();
             while (iter != msgsPendingAuth.end()) {
                 Message msg = *iter;
@@ -874,7 +874,7 @@ void AllJoynPeerObj::AlarmTriggered(const Alarm& alarm, QStatus reason)
                     iter++;
                 }
             }
-            lock.Unlock();
+            lock.Unlock(MUTEX_CONTEXT);
             /*
              * Report a single error for the message the triggered the authentication
              */
@@ -955,10 +955,10 @@ void AllJoynPeerObj::NameOwnerChanged(const char* busName, const char* previousO
         /*
          * We are no longer in an authentication conversation with this peer.
          */
-        lock.Lock();
+        lock.Lock(MUTEX_CONTEXT);
         delete conversations[busName];
         conversations.erase(busName);
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
     }
 }
 
@@ -970,7 +970,7 @@ void AllJoynPeerObj::AcceptSession(const InterfaceDescription::Member* member, M
         /*
          * Reenter on the BusAttachment dispatcher thread.
          */
-        lock.Lock();
+        lock.Lock(MUTEX_CONTEXT);
         if (dispatcher.IsRunning()) {
             Request* req = new Request(msg, ACCEPT_SESSION, "");
             status = bus.GetInternal().Dispatch(*this, reinterpret_cast<void*>(req), 0);
@@ -980,7 +980,7 @@ void AllJoynPeerObj::AcceptSession(const InterfaceDescription::Member* member, M
         } else {
             status = ER_BUS_STOPPING;
         }
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
         if (status != ER_OK) {
             MethodReply(msg, status);
         }

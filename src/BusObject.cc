@@ -551,15 +551,15 @@ void BusObject::Replace(BusObject& object)
 }
 
 void BusObject::InUseIncrement() {
-    components->counterLock.Lock();
+    components->counterLock.Lock(MUTEX_CONTEXT);
     qcc::IncrementAndFetch(&(components->inUseCounter));
-    components->counterLock.Unlock();
+    components->counterLock.Unlock(MUTEX_CONTEXT);
 }
 
 void BusObject::InUseDecrement() {
-    components->counterLock.Lock();
+    components->counterLock.Lock(MUTEX_CONTEXT);
     qcc::DecrementAndFetch(&(components->inUseCounter));
-    components->counterLock.Unlock();
+    components->counterLock.Unlock(MUTEX_CONTEXT);
 }
 
 BusObject::BusObject(BusAttachment& bus, const char* path, bool isPlaceholder) :
@@ -575,13 +575,13 @@ BusObject::BusObject(BusAttachment& bus, const char* path, bool isPlaceholder) :
 
 BusObject::~BusObject()
 {
-    components->counterLock.Lock();
+    components->counterLock.Lock(MUTEX_CONTEXT);
     while (components->inUseCounter != 0) {
-        components->counterLock.Unlock();
+        components->counterLock.Unlock(MUTEX_CONTEXT);
         qcc::Sleep(5);
-        components->counterLock.Lock();
+        components->counterLock.Lock(MUTEX_CONTEXT);
     }
-    components->counterLock.Unlock();
+    components->counterLock.Unlock(MUTEX_CONTEXT);
 
     QCC_DbgPrintf(("BusObject destructor for object with path = \"%s\"", GetPath()));
     /*

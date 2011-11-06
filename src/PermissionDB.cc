@@ -69,9 +69,9 @@ bool PermissionDB::VerifyPermsOnAndroid(const uint32_t userId, const std::set<qc
     if (userId == 0 || userId == BLUETOOTH_UID) {
         return true;
     }
-    permissionDbLock.Lock();
+    permissionDbLock.Lock(MUTEX_CONTEXT);
     if (unknownApps.find(userId) != unknownApps.end()) {
-        permissionDbLock.Unlock();
+        permissionDbLock.Unlock(MUTEX_CONTEXT);
         return true;
     }
     std::map<uint32_t, std::set<qcc::String> >::const_iterator uidPermsIt = uidPermsMap.find(userId);
@@ -81,7 +81,7 @@ bool PermissionDB::VerifyPermsOnAndroid(const uint32_t userId, const std::set<qc
         /* If no permission info is found because of failure to read the "/data/system/packages.xml" file, then ignore the permission check */
         if (!GetPermsAssignedByAndroid(userId, permsOwned)) {
             unknownApps.insert(userId);
-            permissionDbLock.Unlock();
+            permissionDbLock.Unlock(MUTEX_CONTEXT);
             return true;
         }
         uidPermsMap[userId] = permsOwned;
@@ -99,7 +99,7 @@ bool PermissionDB::VerifyPermsOnAndroid(const uint32_t userId, const std::set<qc
             break;
         }
     }
-    permissionDbLock.Unlock();
+    permissionDbLock.Unlock(MUTEX_CONTEXT);
     return pass;
 }
 
@@ -158,10 +158,10 @@ QStatus PermissionDB::AddAliasUnixUser(uint32_t origUID, uint32_t aliasUID)
 #endif
     /* If the same, then do nothing*/
     if (status == ER_OK && UniqueUserID(aliasUID) != origUID) {
-        permissionDbLock.Lock();
+        permissionDbLock.Lock(MUTEX_CONTEXT);
         uidPermsMap.erase(UniqueUserID(aliasUID));
         uidAliasMap[aliasUID] = origUID;
-        permissionDbLock.Unlock();
+        permissionDbLock.Unlock(MUTEX_CONTEXT);
     }
     return status;
 }
@@ -169,24 +169,24 @@ QStatus PermissionDB::AddAliasUnixUser(uint32_t origUID, uint32_t aliasUID)
 uint32_t PermissionDB::UniqueUserID(uint32_t userID)
 {
     uint32_t uid = userID;
-    permissionDbLock.Lock();
+    permissionDbLock.Lock(MUTEX_CONTEXT);
     std::map<uint32_t, uint32_t>::const_iterator it = uidAliasMap.find(userID);
     if (it != uidAliasMap.end()) {
         uid = uidAliasMap[userID];
     }
-    permissionDbLock.Unlock();
+    permissionDbLock.Unlock(MUTEX_CONTEXT);
     return uid;
 }
 
 QStatus PermissionDB::RemovePermissionCache(BusEndpoint& endpoint)
 {
     QCC_DbgTrace(("PermissionDB::RemovePermissionCache(endpoint = %s)", endpoint.GetUniqueName().c_str()));
-    permissionDbLock.Lock();
+    permissionDbLock.Lock(MUTEX_CONTEXT);
     uint32_t userId = endpoint.GetUserId();
     uidAliasMap.erase(userId);
     uidPermsMap.erase(UniqueUserID(userId));
     unknownApps.erase(UniqueUserID(userId));
-    permissionDbLock.Unlock();
+    permissionDbLock.Unlock(MUTEX_CONTEXT);
     return ER_OK;
 }
 

@@ -147,14 +147,14 @@ QStatus _ServiceDB::BusStartService(const char* serviceName, ServiceStartListene
         }
 
         if ((status == ER_OK) && (bus && cb)) {
-            it->second.lock.Lock();
+            it->second.lock.Lock(MUTEX_CONTEXT);
             if (it->second.waiting.empty()) {
                 Alarm timeout(config->GetLimit("service_start_timeout"), this, 0, new qcc::String(serviceName));
 
                 timer.AddAlarm(timeout);
             }
             it->second.waiting.push_back(cb);
-            it->second.lock.Unlock();
+            it->second.lock.Unlock(MUTEX_CONTEXT);
         }
 
     }
@@ -229,14 +229,14 @@ void _ServiceDB::NameOwnerChanged(const qcc::String& alias,
     if (!oldOwner && newOwner) {
         map<StringMapKey, ServiceInfo>::iterator it(serviceMap.find(alias));
         if (it != serviceMap.end()) {
-            it->second.lock.Lock();
+            it->second.lock.Lock(MUTEX_CONTEXT);
             list<ServiceStartListener*>::iterator cb(it->second.waiting.begin());
             while (cb != it->second.waiting.end()) {
                 (*cb)->ServiceStarted(alias, ER_OK);
                 it->second.waiting.erase(cb);
                 cb = it->second.waiting.begin();
             }
-            it->second.lock.Unlock();
+            it->second.lock.Unlock(MUTEX_CONTEXT);
         }
     }
 }
@@ -248,14 +248,14 @@ void _ServiceDB::AlarmTriggered(const Alarm& alarm, QStatus reason)
 
     map<StringMapKey, ServiceInfo>::iterator it(serviceMap.find(*serviceName));
     if (it != serviceMap.end()) {
-        it->second.lock.Lock();
+        it->second.lock.Lock(MUTEX_CONTEXT);
         list<ServiceStartListener*>::iterator cb(it->second.waiting.begin());
         while (cb != it->second.waiting.end()) {
             (*cb)->ServiceStarted(*serviceName, ER_TIMEOUT);
             it->second.waiting.erase(cb);
             cb = it->second.waiting.begin();
         }
-        it->second.lock.Unlock();
+        it->second.lock.Unlock(MUTEX_CONTEXT);
     }
     delete serviceName;
 }

@@ -195,19 +195,19 @@ QStatus LocalEndpoint::Stop(void)
     /*
      * Unregister all registered bus objects
      */
-    objectsLock.Lock();
+    objectsLock.Lock(MUTEX_CONTEXT);
     hash_map<const char*, BusObject*, hash<const char*>, PathEq>::iterator it = localObjects.begin();
     while (it != localObjects.end()) {
         BusObject* obj = it->second;
-        objectsLock.Unlock();
+        objectsLock.Unlock(MUTEX_CONTEXT);
         UnregisterBusObject(*obj);
-        objectsLock.Lock();
+        objectsLock.Lock(MUTEX_CONTEXT);
         it = localObjects.begin();
     }
     if (peerObj) {
         peerObj->Stop();
     }
-    objectsLock.Unlock();
+    objectsLock.Unlock(MUTEX_CONTEXT);
     DecrementAndFetch(&refCount);
 
     permVerifyThread.Stop();
@@ -326,7 +326,7 @@ QStatus LocalEndpoint::RegisterBusObject(BusObject& object)
         return status;
     }
 
-    objectsLock.Lock();
+    objectsLock.Lock(MUTEX_CONTEXT);
 
     /* Register placeholder parents as needed */
     size_t off = 0;
@@ -356,7 +356,7 @@ QStatus LocalEndpoint::RegisterBusObject(BusObject& object)
         status = DoRegisterBusObject(object, lastParent, false);
     }
 
-    objectsLock.Unlock();
+    objectsLock.Unlock(MUTEX_CONTEXT);
 
     return status;
 }
@@ -405,15 +405,15 @@ void LocalEndpoint::UnregisterBusObject(BusObject& object)
     methodTable.RemoveAll(&object);
 
     /* Remove from object list */
-    objectsLock.Lock();
+    objectsLock.Lock(MUTEX_CONTEXT);
     localObjects.erase(object.GetPath());
-    objectsLock.Unlock();
+    objectsLock.Unlock(MUTEX_CONTEXT);
 
     /* Notify object and detach from bus*/
     object.ObjectUnregistered();
 
     /* Detach object from parent */
-    objectsLock.Lock();
+    objectsLock.Lock(MUTEX_CONTEXT);
     if (NULL != object.parent) {
         object.parent->RemoveChild(object);
     }
@@ -437,14 +437,14 @@ void LocalEndpoint::UnregisterBusObject(BusObject& object)
             ++dit;
         }
     }
-    objectsLock.Unlock();
+    objectsLock.Unlock(MUTEX_CONTEXT);
 }
 
 BusObject* LocalEndpoint::FindLocalObject(const char* objectPath) {
-    objectsLock.Lock();
+    objectsLock.Lock(MUTEX_CONTEXT);
     hash_map<const char*, BusObject*, hash<const char*>, PathEq>::iterator iter = localObjects.find(objectPath);
     BusObject* ret = (iter == localObjects.end()) ? NULL : iter->second;
-    objectsLock.Unlock();
+    objectsLock.Unlock(MUTEX_CONTEXT);
     return ret;
 }
 
@@ -470,9 +470,9 @@ QStatus LocalEndpoint::RegisterReplyHandler(MessageReceiver* receiver,
             Alarm(timeout, this, 0, (void*)serial)
         };
         QCC_DbgPrintf(("LocalEndpoint::RegisterReplyHandler - Adding serial=%u", serial));
-        replyMapLock.Lock();
+        replyMapLock.Lock(MUTEX_CONTEXT);
         replyMap.insert(pair<uint32_t, ReplyContext>(serial, reply));
-        replyMapLock.Unlock();
+        replyMapLock.Unlock(MUTEX_CONTEXT);
 
         /* Set a timeout */
         status = bus.GetInternal().GetTimer().AddAlarm(reply.alarm);
@@ -485,16 +485,16 @@ QStatus LocalEndpoint::RegisterReplyHandler(MessageReceiver* receiver,
 
 void LocalEndpoint::UnregisterReplyHandler(uint32_t serial)
 {
-    replyMapLock.Lock();
+    replyMapLock.Lock(MUTEX_CONTEXT);
     map<uint32_t, ReplyContext>::iterator iter = replyMap.find(serial);
     if (iter != replyMap.end()) {
         QCC_DbgPrintf(("LocalEndpoint::UnregisterReplyHandler - Removing serial=%u", serial));
         ReplyContext rc = iter->second;
         replyMap.erase(iter);
-        replyMapLock.Unlock();
+        replyMapLock.Unlock(MUTEX_CONTEXT);
         bus.GetInternal().GetTimer().RemoveAlarm(rc.alarm);
     } else {
-        replyMapLock.Unlock();
+        replyMapLock.Unlock(MUTEX_CONTEXT);
     }
 }
 
@@ -562,7 +562,7 @@ QStatus LocalEndpoint::UnregisterAllHandlers(MessageReceiver* receiver)
     /*
      * Remove any reply handlers for this receiver
      */
-    replyMapLock.Lock();
+    replyMapLock.Lock(MUTEX_CONTEXT);
     bool removed;
     do {
         removed = false;
@@ -575,7 +575,7 @@ QStatus LocalEndpoint::UnregisterAllHandlers(MessageReceiver* receiver)
             }
         }
     } while (removed);
-    replyMapLock.Unlock();
+    replyMapLock.Unlock(MUTEX_CONTEXT);
     return ER_OK;
 }
 
@@ -604,23 +604,23 @@ void LocalEndpoint::AlarmTriggered(const Alarm& alarm, QStatus reason)
         HandleMethodReply(msg);
     } else {
         /* Call ObjectRegistered for any unregistered bus object */
-        objectsLock.Lock();
+        objectsLock.Lock(MUTEX_CONTEXT);
         hash_map<const char*, BusObject*, hash<const char*>, PathEq>::iterator iter = localObjects.begin();
         while (iter != localObjects.end()) {
             if (!iter->second->isRegistered) {
                 BusObject* bo = iter->second;
                 bo->isRegistered = true;
                 bo->InUseIncrement();
-                objectsLock.Unlock();
+                objectsLock.Unlock(MUTEX_CONTEXT);
                 bo->ObjectRegistered();
-                objectsLock.Lock();
+                objectsLock.Lock(MUTEX_CONTEXT);
                 bo->InUseDecrement();
                 iter = localObjects.begin();
             } else {
                 ++iter;
             }
         }
-        objectsLock.Unlock();
+        objectsLock.Unlock(MUTEX_CONTEXT);
 
         /* Decrement refcount to indicate we are done calling out */
         DecrementAndFetch(&refCount);
@@ -660,7 +660,7 @@ QStatus LocalEndpoint::HandleMethodCall(Message& message)
                 (entry->object->*entry->handler)(entry->member, message);
             } else {
                 QCC_DbgPrintf(("Method(%s::%s) requires permission %s", message->GetInterface(), message->GetMemberName(), entry->member->accessPerms.c_str()));
-                chkMsgListLock.Lock();
+                chkMsgListLock.Lock(MUTEX_CONTEXT);
                 PermCheckedEntry permChkEntry(message->GetSender(), message->GetObjectPath(), message->GetInterface(), message->GetMemberName());
                 std::map<PermCheckedEntry, bool>::const_iterator it = permCheckedCallMap.find(permChkEntry);
                 if (it != permCheckedCallMap.end()) {
@@ -684,7 +684,7 @@ QStatus LocalEndpoint::HandleMethodCall(Message& message)
                     chkPendingMsgList.push_back(msgInfo);
                     wakeEvent.SetEvent();
                 }
-                chkMsgListLock.Unlock();
+                chkMsgListLock.Unlock(MUTEX_CONTEXT);
             }
         }
     } else if (message->GetType() == MESSAGE_METHOD_CALL && !(message->GetFlags() & ALLJOYN_FLAG_NO_REPLY_EXPECTED)) {
@@ -779,7 +779,7 @@ QStatus LocalEndpoint::HandleSignal(Message& message)
         } else {
             QCC_DbgPrintf(("Signal(%s::%s) requires permission %s", message->GetInterface(), message->GetMemberName(), first->member->accessPerms.c_str()));
             PermCheckedEntry permChkEntry(message->GetSender(), message->GetObjectPath(), message->GetInterface(), message->GetMemberName());
-            chkMsgListLock.Lock();
+            chkMsgListLock.Lock(MUTEX_CONTEXT);
             std::map<PermCheckedEntry, bool>::const_iterator it = permCheckedCallMap.find(permChkEntry);
             if (it == permCheckedCallMap.end()) {
                 ChkPendingMsg msgInfo(message, callList, first->member->accessPerms);
@@ -797,7 +797,7 @@ QStatus LocalEndpoint::HandleSignal(Message& message)
                                                                       message->GetSender(), message->GetInterface(), message->GetMemberName()));
                 }
             }
-            chkMsgListLock.Unlock();
+            chkMsgListLock.Unlock(MUTEX_CONTEXT);
         }
     }
     return status;
@@ -807,12 +807,12 @@ QStatus LocalEndpoint::HandleMethodReply(Message& message)
 {
     QStatus status = ER_OK;
 
-    replyMapLock.Lock();
+    replyMapLock.Lock(MUTEX_CONTEXT);
     map<uint32_t, ReplyContext>::iterator iter = replyMap.find(message->GetReplySerial());
     if (iter != replyMap.end()) {
         ReplyContext rc = iter->second;
         replyMap.erase(iter);
-        replyMapLock.Unlock();
+        replyMapLock.Unlock(MUTEX_CONTEXT);
         bus.GetInternal().GetTimer().RemoveAlarm(rc.alarm);
         if (rc.secure && !message->IsEncrypted()) {
             /*
@@ -848,7 +848,7 @@ QStatus LocalEndpoint::HandleMethodReply(Message& message)
         }
         ((rc.object)->*(rc.handler))(message, rc.context);
     } else {
-        replyMapLock.Unlock();
+        replyMapLock.Unlock(MUTEX_CONTEXT);
         status = ER_BUS_UNMATCHED_REPLY_SERIAL;
         QCC_DbgHLPrintf(("%s does not match any current method calls: %s", message->Description().c_str(), QCC_StatusText(status)));
     }
@@ -893,7 +893,7 @@ void*  LocalEndpoint::PermVerifyThread::Run(void* arg)
             }
 
             while (!localEp->chkPendingMsgList.empty()) {
-                localEp->chkMsgListLock.Lock();
+                localEp->chkMsgListLock.Lock(MUTEX_CONTEXT);
                 ChkPendingMsg& msgInfo = localEp->chkPendingMsgList.front();
                 Message& message = msgInfo.msg;
                 qcc::String& permsStr = msgInfo.perms;
@@ -934,14 +934,14 @@ void*  LocalEndpoint::PermVerifyThread::Run(void* arg)
 #endif
 
                 QCC_DbgPrintf(("VerifyPeerPermissions result: allowed = %d", allowed));
-                localEp->chkMsgListLock.Lock();
+                localEp->chkMsgListLock.Lock(MUTEX_CONTEXT);
                 /* Be defensive. Limit the map cache size to be no more than MAX_PERM_CHECKEDCALL_SIZE */
                 if (localEp->permCheckedCallMap.size() > MAX_PERM_CHECKEDCALL_SIZE) {
                     localEp->permCheckedCallMap.clear();
                 }
                 PermCheckedEntry permChkEntry(message->GetSender(), message->GetObjectPath(), message->GetInterface(), message->GetMemberName());
                 localEp->permCheckedCallMap[permChkEntry] = allowed; /* Cache the result */
-                localEp->chkMsgListLock.Unlock();
+                localEp->chkMsgListLock.Unlock(MUTEX_CONTEXT);
 
                 /* Handle the message based on the message type. */
                 AllJoynMessageType msgType = message->GetType();
@@ -978,7 +978,7 @@ void*  LocalEndpoint::PermVerifyThread::Run(void* arg)
                     QCC_LogError(status, ("PermVerifyThread::Wrong Message Type %d", msgType));
                 }
                 localEp->chkPendingMsgList.pop_front();
-                localEp->chkMsgListLock.Unlock();
+                localEp->chkMsgListLock.Unlock(MUTEX_CONTEXT);
             }
         }
     }

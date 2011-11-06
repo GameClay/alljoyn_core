@@ -189,12 +189,12 @@ class SignalTable {
     /**
      * Get the lock that protects the signal table.
      */
-    void Lock(void) { lock.Lock(); }
+    void Lock(void) { lock.Lock(MUTEX_CONTEXT); }
 
     /**
      * Release the lock that protects the signal table.
      */
-    void Unlock(void) { lock.Unlock(); }
+    void Unlock(void) { lock.Unlock(MUTEX_CONTEXT); }
 
   private:
 

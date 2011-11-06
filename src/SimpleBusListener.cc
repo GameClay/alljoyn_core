@@ -90,10 +90,10 @@ class SimpleBusListener::Internal {
     bool waiter;
 
     void QueueEvent(BusEvent& ev) {
-        lock.Lock();
+        lock.Lock(MUTEX_CONTEXT);
         eventQueue.push(ev);
         waitEvent.SetEvent();
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
     }
 };
 
@@ -138,7 +138,7 @@ void SimpleBusListener::NameOwnerChanged(const char* busName, const char* previo
 
 void SimpleBusListener::SetFilter(uint32_t enabled)
 {
-    internal.lock.Lock();
+    internal.lock.Lock(MUTEX_CONTEXT);
     this->enabled = enabled;
     /*
      * Save all queued events that pass the filter.
@@ -155,13 +155,13 @@ void SimpleBusListener::SetFilter(uint32_t enabled)
     if (pass == 0) {
         internal.waitEvent.ResetEvent();
     }
-    internal.lock.Unlock();
+    internal.lock.Unlock(MUTEX_CONTEXT);
 }
 
 QStatus SimpleBusListener::WaitForEvent(BusEvent& busEvent, uint32_t timeout)
 {
     QStatus status = ER_OK;
-    internal.lock.Lock();
+    internal.lock.Lock(MUTEX_CONTEXT);
     busEvent.eventType = BUS_EVENT_NONE;
     if (!internal.bus) {
         status = ER_BUS_WAIT_FAILED;
@@ -180,9 +180,9 @@ QStatus SimpleBusListener::WaitForEvent(BusEvent& busEvent, uint32_t timeout)
     }
     if (internal.eventQueue.empty() && timeout) {
         internal.waiter = true;
-        internal.lock.Unlock();
+        internal.lock.Unlock(MUTEX_CONTEXT);
         status = Event::Wait(internal.waitEvent, (timeout == 0xFFFFFFFF) ? Event::WAIT_FOREVER : timeout);
-        internal.lock.Lock();
+        internal.lock.Lock(MUTEX_CONTEXT);
         internal.waitEvent.ResetEvent();
         internal.waiter = false;
     }
@@ -192,7 +192,7 @@ QStatus SimpleBusListener::WaitForEvent(BusEvent& busEvent, uint32_t timeout)
     }
 
 ExitWait:
-    internal.lock.Unlock();
+    internal.lock.Unlock(MUTEX_CONTEXT);
     return status;
 }
 
@@ -206,16 +206,16 @@ void SimpleBusListener::BusStopping()
 
 void SimpleBusListener::ListenerUnregistered()
 {
-    internal.lock.Lock();
+    internal.lock.Lock(MUTEX_CONTEXT);
     internal.bus = NULL;
-    internal.lock.Unlock();
+    internal.lock.Unlock(MUTEX_CONTEXT);
 }
 
 void SimpleBusListener::ListenerRegistered(BusAttachment* bus)
 {
-    internal.lock.Lock();
+    internal.lock.Lock(MUTEX_CONTEXT);
     internal.bus = bus;
-    internal.lock.Unlock();
+    internal.lock.Unlock(MUTEX_CONTEXT);
 }
 
 SimpleBusListener::~SimpleBusListener()
@@ -223,9 +223,9 @@ SimpleBusListener::~SimpleBusListener()
     /*
      * Unblock any threads waiting
      */
-    internal.lock.Lock();
+    internal.lock.Lock(MUTEX_CONTEXT);
     internal.waitEvent.SetEvent();
-    internal.lock.Unlock();
+    internal.lock.Unlock(MUTEX_CONTEXT);
     delete &internal;
 }
 

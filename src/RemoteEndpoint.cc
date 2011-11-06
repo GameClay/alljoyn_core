@@ -164,12 +164,12 @@ QStatus RemoteEndpoint::Stop(void)
     QCC_DbgPrintf(("RemoteEndpoint::Stop(%s) called\n", GetUniqueName().c_str()));
 
     /* Alert any threads that are on the wait queue */
-    txQueueLock.Lock();
+    txQueueLock.Lock(MUTEX_CONTEXT);
     deque<Thread*>::iterator it = txWaitQueue.begin();
     while (it != txWaitQueue.end()) {
         (*it++)->Alert(ENDPOINT_IS_DEAD_ALERTCODE);
     }
-    txQueueLock.Unlock();
+    txQueueLock.Unlock(MUTEX_CONTEXT);
 
     /*
      * Don't call txThread.Stop() here; the logic in RemoteEndpoint::ThreadExit() takes care of
@@ -190,18 +190,18 @@ QStatus RemoteEndpoint::StopAfterTxEmpty(uint32_t maxWaitMs)
     uint32_t startTime = maxWaitMs ? GetTimestamp() : 0;
 
     /* Wait for txqueue to empty before triggering stop */
-    txQueueLock.Lock();
+    txQueueLock.Lock(MUTEX_CONTEXT);
     while (true) {
         if (txQueue.empty() || (maxWaitMs && (qcc::GetTimestamp() > (startTime + maxWaitMs)))) {
             status = Stop();
             break;
         } else {
-            txQueueLock.Unlock();
+            txQueueLock.Unlock(MUTEX_CONTEXT);
             qcc::Sleep(5);
-            txQueueLock.Lock();
+            txQueueLock.Lock(MUTEX_CONTEXT);
         }
     }
-    txQueueLock.Unlock();
+    txQueueLock.Unlock(MUTEX_CONTEXT);
     return status;
 }
 
@@ -392,7 +392,7 @@ void* RemoteEndpoint::TxThread::Run(void* arg)
         if (!IsStopping() && (ER_ALERTED_THREAD == status)) {
             stopEvent.ResetEvent();
             status = ER_OK;
-            queueLock.Lock();
+            queueLock.Lock(MUTEX_CONTEXT);
             while (!queue.empty() && !IsStopping()) {
 
                 /* Get next message */
@@ -408,18 +408,18 @@ void* RemoteEndpoint::TxThread::Run(void* arg)
                     }
                 }
 
-                queueLock.Unlock();
+                queueLock.Unlock(MUTEX_CONTEXT);
 
                 /* Deliver message */
                 status = msg->Deliver(*ep);
-                queueLock.Lock();
+                queueLock.Lock(MUTEX_CONTEXT);
                 queue.pop_back();
             }
-            queueLock.Unlock();
+            queueLock.Unlock(MUTEX_CONTEXT);
         }
     }
     /* Wake any thread waiting on tx queue availability */
-    queueLock.Lock();
+    queueLock.Lock(MUTEX_CONTEXT);
     while (0 < waitQueue.size()) {
         Thread* wakeMe = waitQueue.back();
         QStatus status = wakeMe->Alert();
@@ -428,7 +428,7 @@ void* RemoteEndpoint::TxThread::Run(void* arg)
         }
         waitQueue.pop_back();
     }
-    queueLock.Unlock();
+    queueLock.Unlock(MUTEX_CONTEXT);
 
     /* On an unexpected disconnect save the status that cause the thread exit */
     if (ep->disconnectStatus == ER_OK) {
@@ -454,7 +454,7 @@ QStatus RemoteEndpoint::PushMessage(Message& msg)
         return ER_BUS_ENDPOINT_CLOSING;
     }
     IncrementAndFetch(&numWaiters);
-    txQueueLock.Lock();
+    txQueueLock.Lock(MUTEX_CONTEXT);
     size_t count = txQueue.size();
     bool wasEmpty = (count == 0);
     if (MAX_TX_QUEUE_SIZE > count) {
@@ -488,9 +488,9 @@ QStatus RemoteEndpoint::PushMessage(Message& msg)
 
                 /* This thread will have to wait for room in the queue */
                 txWaitQueue.push_front(thread);
-                txQueueLock.Unlock();
+                txQueueLock.Unlock(MUTEX_CONTEXT);
                 status = Event::Wait(Event::neverSet, maxWait);
-                txQueueLock.Lock();
+                txQueueLock.Lock(MUTEX_CONTEXT);
                 if (ER_ALERTED_THREAD == status) {
                     if (thread->GetAlertCode() == ENDPOINT_IS_DEAD_ALERTCODE) {
                         status = ER_BUS_ENDPOINT_CLOSING;
@@ -520,7 +520,7 @@ QStatus RemoteEndpoint::PushMessage(Message& msg)
             }
         }
     }
-    txQueueLock.Unlock();
+    txQueueLock.Unlock(MUTEX_CONTEXT);
 
     if (wasEmpty) {
         status = txThread.Alert();

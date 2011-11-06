@@ -404,11 +404,11 @@ void BTTransport::BTAccessor::DisconnectBlueZ()
     /*
      * Invalidate the adapters.
      */
-    adapterLock.Lock();
+    adapterLock.Lock(MUTEX_CONTEXT);
     adapterMap.clear();
     defaultAdapterObj = AdapterObject();
     anyAdapterObj = AdapterObject();
-    adapterLock.Unlock();
+    adapterLock.Unlock(MUTEX_CONTEXT);
 }
 
 
@@ -427,7 +427,7 @@ QStatus BTTransport::BTAccessor::StartDiscovery(const BDAddressSet& ignoreAddrs,
 {
     this->ignoreAddrs = ignoreAddrs;
 
-    deviceLock.Lock();
+    deviceLock.Lock(MUTEX_CONTEXT);
     set<BDAddress>::const_iterator it;
     for (it = ignoreAddrs->begin(); it != ignoreAddrs->end(); ++it) {
         FoundInfoMap::iterator devit = foundDevices.find(*it);
@@ -435,7 +435,7 @@ QStatus BTTransport::BTAccessor::StartDiscovery(const BDAddressSet& ignoreAddrs,
             foundDevices.erase(devit);
         }
     }
-    deviceLock.Unlock();
+    deviceLock.Unlock(MUTEX_CONTEXT);
 
     QCC_DbgPrintf(("Start Discovery"));
     QStatus status = DiscoveryControl(true);
@@ -952,7 +952,7 @@ QStatus BTTransport::BTAccessor::EnumerateAdapters()
         qcc::String defaultAdapterObjPath(rspArg->v_string.str, rspArg->v_string.len);
         size_t pos(defaultAdapterObjPath.find_last_of('/'));
         if (pos != qcc::String::npos) {
-            adapterLock.Lock();
+            adapterLock.Lock(MUTEX_CONTEXT);
             defaultAdapterObj = GetAdapterObject(defaultAdapterObjPath);
             if (defaultAdapterObj->IsValid()) {
                 qcc::String anyAdapterObjPath(defaultAdapterObjPath.substr(0, pos + 1) + "any");
@@ -961,7 +961,7 @@ QStatus BTTransport::BTAccessor::EnumerateAdapters()
             } else {
                 status = ER_FAIL;
             }
-            adapterLock.Unlock();
+            adapterLock.Unlock(MUTEX_CONTEXT);
         } else {
             QCC_DbgHLPrintf(("Invalid object path: \"%s\"", rspArg->v_string.str));
             status = ER_FAIL;
@@ -998,7 +998,7 @@ void BTTransport::BTAccessor::AdapterAdded(const char* adapterObjPath)
         return;
     }
 
-    adapterLock.Lock();
+    adapterLock.Lock(MUTEX_CONTEXT);
     adapterMap[newAdapterObj->GetPath()] = newAdapterObj;
 
     bzBus.RegisterSignalHandler(this,
@@ -1017,7 +1017,7 @@ void BTTransport::BTAccessor::AdapterAdded(const char* adapterObjPath)
                                 SignalHandler(&BTTransport::BTAccessor::AdapterPropertyChangedSignalHandler),
                                 org.bluez.Adapter.PropertyChanged, adapterObjPath);
 
-    adapterLock.Unlock();
+    adapterLock.Unlock(MUTEX_CONTEXT);
 
     /*
      * Configure the inquiry scan parameters the way we want them.
@@ -1050,7 +1050,7 @@ void BTTransport::BTAccessor::AdapterRemoved(const char* adapterObjPath)
                                   SignalHandler(&BTTransport::BTAccessor::AdapterPropertyChangedSignalHandler),
                                   org.bluez.Adapter.PropertyChanged, adapterObjPath);
 
-    adapterLock.Lock();
+    adapterLock.Lock(MUTEX_CONTEXT);
     AdapterMap::iterator ait(adapterMap.find(adapterObjPath));
     if (ait != adapterMap.end()) {
         if (ait->second == defaultAdapterObj) {
@@ -1060,7 +1060,7 @@ void BTTransport::BTAccessor::AdapterRemoved(const char* adapterObjPath)
         }
         adapterMap.erase(ait);
     }
-    adapterLock.Unlock();
+    adapterLock.Unlock(MUTEX_CONTEXT);
 }
 
 
@@ -1068,7 +1068,7 @@ void BTTransport::BTAccessor::DefaultAdapterChanged(const char* adapterObjPath)
 {
     QCC_DbgTrace(("BTTransport::BTAccessor::DefaultAdapterChanged(adapterObjPath = \"%s\")", adapterObjPath));
 
-    adapterLock.Lock();
+    adapterLock.Lock(MUTEX_CONTEXT);
     defaultAdapterObj = GetAdapterObject(adapterObjPath);
     if (defaultAdapterObj->IsValid()) {
         qcc::String defaultAdapterObjPath(adapterObjPath);
@@ -1082,7 +1082,7 @@ void BTTransport::BTAccessor::DefaultAdapterChanged(const char* adapterObjPath)
         bluetoothAvailable = true;
         transport->BTDeviceAvailable(true);
     }
-    adapterLock.Unlock();
+    adapterLock.Unlock(MUTEX_CONTEXT);
 
     if (discoveryCtrl == 1) {
         DiscoveryControl(org.bluez.Adapter.StartDiscovery);
@@ -1271,7 +1271,7 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
         //bool found = !eirCapable || FindAllJoynUUID(uuids, listSize, uuidRev);
 
         if (found) {
-            deviceLock.Lock();
+            deviceLock.Lock(MUTEX_CONTEXT);
             FoundInfoMap::iterator it = foundDevices.find(addr);
             bool newDevice = (it == foundDevices.end());
             FoundInfo& foundInfo = newDevice ? foundDevices[addr] : it->second;
@@ -1304,7 +1304,7 @@ void BTTransport::BTAccessor::DeviceFoundSignalHandler(const InterfaceDescriptio
                 }
             }
 
-            deviceLock.Unlock();
+            deviceLock.Unlock(MUTEX_CONTEXT);
         }
     }
 }
@@ -1388,7 +1388,7 @@ bool BTTransport::BTAccessor::FindAllJoynUUID(const MsgArg* uuids,
 
 void BTTransport::BTAccessor::ExpireFoundDevices(bool all)
 {
-    deviceLock.Lock();
+    deviceLock.Lock(MUTEX_CONTEXT);
     Timespec nowts;
     GetTimeNow(&nowts);
     uint64_t now = nowts.GetAbsoluteMillis();
@@ -1410,7 +1410,7 @@ void BTTransport::BTAccessor::ExpireFoundDevices(bool all)
     if (it != foundExpirations.end()) {
         expireAlarm = DispatchOperation(new DispatchInfo(DispatchInfo::EXPIRE_DEVICE_FOUND), it->first + EXPIRE_DEVICE_TIME_EXT);
     }
-    deviceLock.Unlock();
+    deviceLock.Unlock(MUTEX_CONTEXT);
 }
 
 
@@ -1787,11 +1787,11 @@ QStatus BTTransport::BTAccessor::GetDeviceObjPath(const BDAddress& bdAddr,
 
     // Get a copy of all the adapter objects to check.
     adapterList.reserve(adapterMap.size());
-    adapterLock.Lock();
+    adapterLock.Lock(MUTEX_CONTEXT);
     for (AdapterMap::const_iterator ait = adapterMap.begin(); ait != adapterMap.end(); ++ait) {
         adapterList.push_back(ait->second);
     }
-    adapterLock.Unlock();
+    adapterLock.Unlock(MUTEX_CONTEXT);
 
     for (vector<AdapterObject>::const_iterator it = adapterList.begin(); it != adapterList.end(); ++it) {
         if (status != ER_OK) {
@@ -1933,11 +1933,11 @@ QStatus BTTransport::BTAccessor::SetDiscoverabilityProperty()
     // Not a good idea to call a method while iterating through the list of
     // adapters since it could change during the time it takes to call the
     // method and holding the lock for that long could be problematic.
-    adapterLock.Lock();
+    adapterLock.Lock(MUTEX_CONTEXT);
     for (adapterIt = adapterMap.begin(); adapterIt != adapterMap.end(); ++adapterIt) {
         adapterList.push_back(adapterIt->second);
     }
-    adapterLock.Unlock();
+    adapterLock.Unlock(MUTEX_CONTEXT);
 
     for (list<AdapterObject>::const_iterator it = adapterList.begin(); it != adapterList.end(); ++it) {
         Message reply(bzBus);

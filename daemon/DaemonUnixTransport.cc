@@ -152,7 +152,7 @@ QStatus DaemonUnixTransport::Stop(void)
         return status;
     }
 
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
 
     /*
      * Ask any running endpoints to shut down and exit their threads.
@@ -161,7 +161,7 @@ QStatus DaemonUnixTransport::Stop(void)
         (*i)->Stop();
     }
 
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
     return ER_OK;
 }
@@ -185,13 +185,13 @@ QStatus DaemonUnixTransport::Join(void)
      * list.  We poll for the all-exited condition, yielding the CPU to let
      * the endpoint therad wake and exit.
      */
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
     while (m_endpointList.size() > 0) {
-        m_endpointListLock.Unlock();
+        m_endpointListLock.Unlock(MUTEX_CONTEXT);
         qcc::Sleep(50);
-        m_endpointListLock.Lock();
+        m_endpointListLock.Lock(MUTEX_CONTEXT);
     }
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
     m_stopping = false;
 
@@ -212,12 +212,12 @@ void DaemonUnixTransport::EndpointExit(RemoteEndpoint* ep)
     QCC_DbgTrace(("DaemonUnixTransport::EndpointExit()"));
 
     /* Remove the dead endpoint from the live endpoint list */
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
     list<DaemonUnixEndpoint*>::iterator i = find(m_endpointList.begin(), m_endpointList.end(), uep);
     if (i != m_endpointList.end()) {
         m_endpointList.erase(i);
     }
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
     delete uep;
 }
@@ -311,13 +311,13 @@ void* DaemonUnixTransport::Run(void* arg)
          * code that does the change Alert()s this thread and we wake up and
          * re-evaluate the list of SocketFds.
          */
-        m_listenFdsLock.Lock();
+        m_listenFdsLock.Lock(MUTEX_CONTEXT);
         vector<Event*> checkEvents, signaledEvents;
         checkEvents.push_back(&stopEvent);
         for (list<pair<qcc::String, SocketFd> >::const_iterator i = m_listenFds.begin(); i != m_listenFds.end(); ++i) {
             checkEvents.push_back(new Event(i->second, Event::IO_READ, false));
         }
-        m_listenFdsLock.Unlock();
+        m_listenFdsLock.Unlock(MUTEX_CONTEXT);
 
         /*
          * We have our list of events, so now wait for something to happen
@@ -376,9 +376,9 @@ void* DaemonUnixTransport::Run(void* arg)
                 conn->GetFeatures().allowRemote = false;
                 conn->GetFeatures().handlePassing = true;
 
-                m_endpointListLock.Lock();
+                m_endpointListLock.Lock(MUTEX_CONTEXT);
                 m_endpointList.push_back(conn);
-                m_endpointListLock.Unlock();
+                m_endpointListLock.Unlock(MUTEX_CONTEXT);
                 status = conn->Establish("EXTERNAL", authName);
                 if (ER_OK == status) {
                     conn->SetListener(this);
@@ -386,12 +386,12 @@ void* DaemonUnixTransport::Run(void* arg)
                 }
                 if (ER_OK != status) {
                     QCC_LogError(status, ("Error starting RemoteEndpoint"));
-                    m_endpointListLock.Lock();
+                    m_endpointListLock.Lock(MUTEX_CONTEXT);
                     list<DaemonUnixEndpoint*>::iterator ei = find(m_endpointList.begin(), m_endpointList.end(), conn);
                     if (ei != m_endpointList.end()) {
                         m_endpointList.erase(ei);
                     }
-                    m_endpointListLock.Unlock();
+                    m_endpointListLock.Unlock(MUTEX_CONTEXT);
                     delete conn;
                     conn = NULL;
                 }
@@ -517,7 +517,7 @@ QStatus DaemonUnixTransport::StartListen(const char* listenSpec)
         return status;
     }
 
-    m_listenFdsLock.Lock();
+    m_listenFdsLock.Lock(MUTEX_CONTEXT);
 
     /*
      * Check to see if the requested address is already being listened to.  The
@@ -525,7 +525,7 @@ QStatus DaemonUnixTransport::StartListen(const char* listenSpec)
      */
     for (list<pair<qcc::String, SocketFd> >::iterator i = m_listenFds.begin(); i != m_listenFds.end(); ++i) {
         if (i->first == normSpec) {
-            m_listenFdsLock.Unlock();
+            m_listenFdsLock.Unlock(MUTEX_CONTEXT);
             return ER_BUS_ALREADY_LISTENING;
         }
     }
@@ -533,12 +533,12 @@ QStatus DaemonUnixTransport::StartListen(const char* listenSpec)
     SocketFd listenFd = -1;
     status = ListenFd(serverArgs, listenFd);
     if (status != ER_OK) {
-        m_listenFdsLock.Unlock();
+        m_listenFdsLock.Unlock(MUTEX_CONTEXT);
         return status;
     }
 
     m_listenFds.push_back(pair<qcc::String, SocketFd>(normSpec, listenFd));
-    m_listenFdsLock.Unlock();
+    m_listenFdsLock.Unlock(MUTEX_CONTEXT);
 
     /*
      * Signal the (probably) waiting run thread so it will wake up and add this
@@ -570,7 +570,7 @@ QStatus DaemonUnixTransport::StopListen(const char* listenSpec)
      * Find the (single) listen spec and remove it from the list of active FDs
      * used by the server accept loop (run thread).
      */
-    m_listenFdsLock.Lock();
+    m_listenFdsLock.Lock(MUTEX_CONTEXT);
     status = ER_BUS_BAD_TRANSPORT_ARGS;
     qcc::SocketFd stopFd = -1;
     for (list<pair<qcc::String, SocketFd> >::iterator i = m_listenFds.begin(); i != m_listenFds.end(); ++i) {
@@ -581,7 +581,7 @@ QStatus DaemonUnixTransport::StopListen(const char* listenSpec)
             break;
         }
     }
-    m_listenFdsLock.Unlock();
+    m_listenFdsLock.Unlock(MUTEX_CONTEXT);
 
     /*
      * If we took a socketFD off of the list of active FDs, we need to tear it

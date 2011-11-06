@@ -305,9 +305,9 @@ class LocalTestObject : public BusObject {
             GetTimeNow(&future);
             future += delay;
             DelayedResponseInfo* respInfo = new DelayedResponseInfo(msg, args, argCount);
-            delayedResponseLock.Lock();
+            delayedResponseLock.Lock(MUTEX_CONTEXT);
             delayedResponses.insert(pair<uint64_t, DelayedResponseInfo*>(future.GetAbsoluteMillis(), respInfo));
-            delayedResponseLock.Unlock();
+            delayedResponseLock.Unlock(MUTEX_CONTEXT);
 
             if (!thread) {
                 thread = new DelayedResponse(lto);
@@ -321,18 +321,18 @@ class LocalTestObject : public BusObject {
       protected:
         ThreadReturn STDCALL Run(void* arg)
         {
-            delayedResponseLock.Lock();
+            delayedResponseLock.Lock(MUTEX_CONTEXT);
             bool done = delayedResponses.empty();
-            delayedResponseLock.Unlock();
+            delayedResponseLock.Unlock(MUTEX_CONTEXT);
 
             while (!done) {
-                delayedResponseLock.Lock();
+                delayedResponseLock.Lock(MUTEX_CONTEXT);
                 Timespec now;
                 GetTimeNow(&now);
                 uint64_t nowms = now.GetAbsoluteMillis();
                 multimap<uint64_t, DelayedResponseInfo*>::iterator it = delayedResponses.begin();
                 uint64_t nextms = it->first;
-                delayedResponseLock.Unlock();
+                delayedResponseLock.Unlock(MUTEX_CONTEXT);
 
                 if (nextms > nowms) {
                     uint64_t delay = nextms - nowms;
@@ -342,7 +342,7 @@ class LocalTestObject : public BusObject {
                     qcc::Sleep(static_cast<uint32_t>(delay));
                 }
 
-                delayedResponseLock.Lock();
+                delayedResponseLock.Lock(MUTEX_CONTEXT);
                 GetTimeNow(&now);
                 nowms = now.GetAbsoluteMillis();
                 while ((it != delayedResponses.end()) && (nextms <= nowms)) {
@@ -352,18 +352,18 @@ class LocalTestObject : public BusObject {
                     delete it->second;
                     delayedResponses.erase(it);
                     it = delayedResponses.begin();
-                    delayedResponseLock.Unlock();
+                    delayedResponseLock.Unlock(MUTEX_CONTEXT);
                     QStatus status = lto.WrappedReply(msg, args, argCount);
                     if (ER_OK != status) {
                         QCC_LogError(status, ("Error sending delayed response"));
                     }
                     delete [] args;
-                    delayedResponseLock.Lock();
+                    delayedResponseLock.Lock(MUTEX_CONTEXT);
                 }
                 if (it == delayedResponses.end()) {
                     done = true;
                 }
-                delayedResponseLock.Unlock();
+                delayedResponseLock.Unlock(MUTEX_CONTEXT);
             }
 
             return static_cast<ThreadReturn>(0);

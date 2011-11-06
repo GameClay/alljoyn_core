@@ -51,7 +51,7 @@ QStatus VirtualEndpoint::PushMessage(Message& msg, SessionId id)
 {
     QStatus status = ER_BUS_NO_ROUTE;
 
-    m_b2bEndpointsLock.Lock();
+    m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
     multimap<SessionId, RemoteEndpoint*>::iterator it = (id == 0) ? m_b2bEndpoints.begin() : m_b2bEndpoints.lower_bound(id);
     while ((it != m_b2bEndpoints.end()) && (id == it->first)) {
         status = it++->second->PushMessage(msg);
@@ -59,7 +59,7 @@ QStatus VirtualEndpoint::PushMessage(Message& msg, SessionId id)
             break;
         }
     }
-    m_b2bEndpointsLock.Unlock();
+    m_b2bEndpointsLock.Unlock(MUTEX_CONTEXT);
 
     return status;
 }
@@ -70,7 +70,7 @@ RemoteEndpoint* VirtualEndpoint::GetBusToBusEndpoint(SessionId sessionId, int* b
     if (b2bCount) {
         *b2bCount = 0;
     }
-    m_b2bEndpointsLock.Lock();
+    m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
     multimap<SessionId, RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.lower_bound(sessionId);
     while ((it != m_b2bEndpoints.end()) && (it->first == sessionId)) {
         if (!ret) {
@@ -81,7 +81,7 @@ RemoteEndpoint* VirtualEndpoint::GetBusToBusEndpoint(SessionId sessionId, int* b
         }
         ++it;
     }
-    m_b2bEndpointsLock.Unlock();
+    m_b2bEndpointsLock.Unlock(MUTEX_CONTEXT);
     return ret;
 }
 
@@ -89,7 +89,7 @@ bool VirtualEndpoint::AddBusToBusEndpoint(RemoteEndpoint& endpoint)
 {
     QCC_DbgTrace(("VirtualEndpoint::AddBusToBusEndpoint(this=%s, b2b=%s)", GetUniqueName().c_str(), endpoint.GetUniqueName().c_str()));
 
-    m_b2bEndpointsLock.Lock();
+    m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
     multimap<SessionId, RemoteEndpoint*>::iterator it = m_b2bEndpoints.begin();
     bool found = false;
     while ((it != m_b2bEndpoints.end()) && (it->first == 0)) {
@@ -102,13 +102,13 @@ bool VirtualEndpoint::AddBusToBusEndpoint(RemoteEndpoint& endpoint)
     if (!found) {
         m_b2bEndpoints.insert(pair<SessionId, RemoteEndpoint*>(0, &endpoint));
     }
-    m_b2bEndpointsLock.Unlock();
+    m_b2bEndpointsLock.Unlock(MUTEX_CONTEXT);
     return !found;
 }
 
 void VirtualEndpoint::GetSessionIdsForB2B(RemoteEndpoint& endpoint, set<SessionId>& sessionIds)
 {
-    m_b2bEndpointsLock.Lock();
+    m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
     multimap<SessionId, RemoteEndpoint*>::iterator it = m_b2bEndpoints.begin();
     while (it != m_b2bEndpoints.end()) {
         if (it->first && (it->second == &endpoint)) {
@@ -116,14 +116,14 @@ void VirtualEndpoint::GetSessionIdsForB2B(RemoteEndpoint& endpoint, set<SessionI
         }
         ++it;
     }
-    m_b2bEndpointsLock.Unlock();
+    m_b2bEndpointsLock.Unlock(MUTEX_CONTEXT);
 }
 
 bool VirtualEndpoint::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
 {
     QCC_DbgTrace(("VirtualEndpoint::RemoveBusToBusEndpoint(this=%s, b2b=%s)", GetUniqueName().c_str(), endpoint.GetUniqueName().c_str()));
 
-    m_b2bEndpointsLock.Lock();
+    m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
     multimap<SessionId, RemoteEndpoint*>::iterator it = m_b2bEndpoints.begin();
     while (it != m_b2bEndpoints.end()) {
         if (it->second == &endpoint) {
@@ -138,7 +138,7 @@ bool VirtualEndpoint::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
     }
 
     bool isEmpty = m_b2bEndpoints.empty();
-    m_b2bEndpointsLock.Unlock();
+    m_b2bEndpointsLock.Unlock(MUTEX_CONTEXT);
     return isEmpty;
 }
 
@@ -148,7 +148,7 @@ QStatus VirtualEndpoint::AddSessionRef(SessionId id, RemoteEndpoint& b2bEp)
 
     assert(id != 0);
 
-    m_b2bEndpointsLock.Lock();
+    m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
 
     /* Sanity check. Make sure b2bEp is connected to this virtual ep (with sessionId == 0) */
     bool canUse = CanUseRoute(b2bEp);
@@ -158,7 +158,7 @@ QStatus VirtualEndpoint::AddSessionRef(SessionId id, RemoteEndpoint& b2bEp)
         /* Map sessionId to b2bEp */
         m_b2bEndpoints.insert(pair<SessionId, RemoteEndpoint*>(id, &b2bEp));
     }
-    m_b2bEndpointsLock.Unlock();
+    m_b2bEndpointsLock.Unlock(MUTEX_CONTEXT);
     return canUse ? ER_OK : ER_FAIL;
 }
 
@@ -169,7 +169,7 @@ QStatus VirtualEndpoint::AddSessionRef(SessionId id, SessionOpts* opts, RemoteEn
     RemoteEndpoint* bestEp = NULL;
     //uint32_t hops = 1000;
 
-    m_b2bEndpointsLock.Lock();
+    m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
 
 #if 0
     /* Look for best B2B that matches SessionOpts */
@@ -198,7 +198,7 @@ QStatus VirtualEndpoint::AddSessionRef(SessionId id, SessionOpts* opts, RemoteEn
         AddSessionRef(id, *bestEp);
     }
     b2bEp = bestEp;
-    m_b2bEndpointsLock.Unlock();
+    m_b2bEndpointsLock.Unlock(MUTEX_CONTEXT);
     return bestEp ? ER_OK : ER_FAIL;
 }
 
@@ -206,7 +206,7 @@ void VirtualEndpoint::RemoveSessionRef(SessionId id)
 {
     QCC_DbgTrace(("VirtualEndpoint::RemoveSessionRef(this=%s, id=%u)", GetUniqueName().c_str(), id));
     assert(id != 0);
-    m_b2bEndpointsLock.Lock();
+    m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
     multimap<SessionId, RemoteEndpoint*>::iterator it = m_b2bEndpoints.find(id);
     if (it != m_b2bEndpoints.end()) {
         it->second->DecrementRef();
@@ -214,13 +214,13 @@ void VirtualEndpoint::RemoveSessionRef(SessionId id)
     } else {
         QCC_DbgPrintf(("VirtualEndpoint::RemoveSessionRef: vep=%s failed to find session = %u", m_uniqueName.c_str(), id));
     }
-    m_b2bEndpointsLock.Unlock();
+    m_b2bEndpointsLock.Unlock(MUTEX_CONTEXT);
 }
 
 bool VirtualEndpoint::CanUseRoute(const RemoteEndpoint& b2bEndpoint) const
 {
     bool isFound = false;
-    m_b2bEndpointsLock.Lock();
+    m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
     multimap<SessionId, RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
     while ((it != m_b2bEndpoints.end()) && (it->first == 0)) {
         if (it->second == &b2bEndpoint) {
@@ -229,14 +229,14 @@ bool VirtualEndpoint::CanUseRoute(const RemoteEndpoint& b2bEndpoint) const
         }
         ++it;
     }
-    m_b2bEndpointsLock.Unlock();
+    m_b2bEndpointsLock.Unlock(MUTEX_CONTEXT);
     return isFound;
 }
 
 bool VirtualEndpoint::CanRouteWithout(const qcc::GUID128& guid) const
 {
     bool canRoute = false;
-    m_b2bEndpointsLock.Lock();
+    m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
     multimap<SessionId, RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
     while (it != m_b2bEndpoints.end()) {
         if (guid != it->second->GetRemoteGUID()) {
@@ -245,7 +245,7 @@ bool VirtualEndpoint::CanRouteWithout(const qcc::GUID128& guid) const
         }
         ++it;
     }
-    m_b2bEndpointsLock.Unlock();
+    m_b2bEndpointsLock.Unlock(MUTEX_CONTEXT);
     return canRoute;
 }
 

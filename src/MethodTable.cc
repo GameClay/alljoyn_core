@@ -35,14 +35,14 @@ namespace ajn {
 
 MethodTable::~MethodTable()
 {
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     std::hash_map<Key, Entry*, Hash, Equal>::iterator iter = hashTable.begin();
     while (iter != hashTable.end()) {
         delete iter->second;
         hashTable.erase(iter);
         iter = hashTable.begin();
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 }
 
 void MethodTable::Add(BusObject* object,
@@ -50,14 +50,14 @@ void MethodTable::Add(BusObject* object,
                       const InterfaceDescription::Member* member)
 {
     Entry* entry = new Entry(object, func, member);
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     hashTable[Key(object->GetPath(), entry->ifaceStr.empty() ? NULL : entry->ifaceStr.c_str(), member->name.c_str())] = entry;
 
     /* Method calls don't require an interface so we need to add an entry with a NULL interface */
     if (!entry->ifaceStr.empty()) {
         hashTable[Key(object->GetPath(), NULL, member->name.c_str())] = new Entry(*entry);
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 }
 
 const MethodTable::Entry* MethodTable::Find(const char* objectPath,
@@ -66,12 +66,12 @@ const MethodTable::Entry* MethodTable::Find(const char* objectPath,
 {
     const Entry* entry = NULL;
     Key key(objectPath, iface, methodName);
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     std::hash_map<Key, Entry*, Hash, Equal>::iterator iter = hashTable.find(key);
     if (iter != hashTable.end()) {
         entry = iter->second;
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     return entry;
 }
 
@@ -81,7 +81,7 @@ void MethodTable::RemoveAll(BusObject* object)
     /*
      * Iterate over all entries deleting all entries that reference the object
      */
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     iter = hashTable.begin();
     while (iter != hashTable.end()) {
         if (iter->second->object == object) {
@@ -93,7 +93,7 @@ void MethodTable::RemoveAll(BusObject* object)
             ++iter;
         }
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 }
 
 void MethodTable::AddAll(BusObject* object)

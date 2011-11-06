@@ -291,27 +291,27 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
 
     /* Send global broadcast to all busToBus endpoints that aren't the sender of the message */
     if (destinationEmpty && (sessionId == 0) && msg->IsGlobalBroadcast()) {
-        m_b2bEndpointsLock.Lock();
+        m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
         set<RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin();
         while (it != m_b2bEndpoints.end()) {
             if ((*it) != &origSender) {
                 RemoteEndpoint* ep = *it;
-                m_b2bEndpointsLock.Unlock();
+                m_b2bEndpointsLock.Unlock(MUTEX_CONTEXT);
                 QStatus tStatus = SendThroughEndpoint(msg, *ep, sessionId);
                 status = (status == ER_OK) ? tStatus : status;
-                m_b2bEndpointsLock.Lock();
+                m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
                 it = m_b2bEndpoints.lower_bound(ep);
             }
             if (it != m_b2bEndpoints.end()) {
                 ++it;
             }
         }
-        m_b2bEndpointsLock.Unlock();
+        m_b2bEndpointsLock.Unlock(MUTEX_CONTEXT);
     }
 
     /* Send session multicast messages */
     if (destinationEmpty && (sessionId != 0)) {
-        sessionCastSetLock.Lock();
+        sessionCastSetLock.Lock(MUTEX_CONTEXT);
         RemoteEndpoint* lastB2b = NULL;
         SessionCastEntry sce(sessionId, msg->GetSender(), NULL, NULL);
         set<SessionCastEntry>::iterator sit = sessionCastSet.lower_bound(sce);
@@ -319,17 +319,17 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
             if (!sit->b2bEp || (sit->b2bEp != lastB2b)) {
                 lastB2b = sit->b2bEp;
                 SessionCastEntry entry = *sit;
-                sessionCastSetLock.Unlock();
+                sessionCastSetLock.Unlock(MUTEX_CONTEXT);
                 QStatus tStatus = SendThroughEndpoint(msg, *sit->destEp, sessionId);
                 status = (status == ER_OK) ? tStatus : status;
-                sessionCastSetLock.Lock();
+                sessionCastSetLock.Lock(MUTEX_CONTEXT);
                 sit = sessionCastSet.lower_bound(entry);
             }
             if (sit != sessionCastSet.end()) {
                 ++sit;
             }
         }
-        sessionCastSetLock.Unlock();
+        sessionCastSetLock.Unlock(MUTEX_CONTEXT);
     }
     return status;
 }
@@ -344,14 +344,14 @@ BusEndpoint* DaemonRouter::FindEndpoint(const qcc::String& busName)
 {
     BusEndpoint* ep = nameTable.FindEndpoint(busName);
     if (!ep) {
-        m_b2bEndpointsLock.Lock();
+        m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
         for (set<RemoteEndpoint*>::const_iterator it = m_b2bEndpoints.begin(); it != m_b2bEndpoints.end(); ++it) {
             if ((*it)->GetUniqueName() == busName) {
                 ep = *it;
                 break;
             }
         }
-        m_b2bEndpointsLock.Unlock();
+        m_b2bEndpointsLock.Unlock(MUTEX_CONTEXT);
     }
     return ep;
 }
@@ -373,9 +373,9 @@ QStatus DaemonRouter::RegisterEndpoint(BusEndpoint& endpoint, bool isLocal)
         status = busController->GetAllJoynObj().AddBusToBusEndpoint(*busToBusEndpoint);
 
         /* Add to list of bus-to-bus endpoints */
-        m_b2bEndpointsLock.Lock();
+        m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
         m_b2bEndpoints.insert(busToBusEndpoint);
-        m_b2bEndpointsLock.Unlock();
+        m_b2bEndpointsLock.Unlock(MUTEX_CONTEXT);
     } else {
         /* Bus-to-client endpoints appear directly on the bus */
         nameTable.AddUniqueName(endpoint);
@@ -400,7 +400,7 @@ void DaemonRouter::UnregisterEndpoint(BusEndpoint& endpoint)
         busController->GetAllJoynObj().RemoveBusToBusEndpoint(*busToBusEndpoint);
 
         /* Remove the bus2bus endpoint from the list */
-        m_b2bEndpointsLock.Lock();
+        m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
         set<RemoteEndpoint*>::iterator it = m_b2bEndpoints.begin();
         while (it != m_b2bEndpoints.end()) {
             if (*it == busToBusEndpoint) {
@@ -409,10 +409,10 @@ void DaemonRouter::UnregisterEndpoint(BusEndpoint& endpoint)
             }
             ++it;
         }
-        m_b2bEndpointsLock.Unlock();
+        m_b2bEndpointsLock.Unlock(MUTEX_CONTEXT);
 
         /* Remove entries from sessionCastSet with same b2bEp */
-        sessionCastSetLock.Lock();
+        sessionCastSetLock.Lock(MUTEX_CONTEXT);
         set<SessionCastEntry>::iterator sit = sessionCastSet.begin();
         while (sit != sessionCastSet.end()) {
             set<SessionCastEntry>::iterator doomed = sit;
@@ -421,7 +421,7 @@ void DaemonRouter::UnregisterEndpoint(BusEndpoint& endpoint)
                 sessionCastSet.erase(doomed);
             }
         }
-        sessionCastSetLock.Unlock();
+        sessionCastSetLock.Unlock(MUTEX_CONTEXT);
     } else {
         /* Remove any session routes */
         qcc::String uniqueName = endpoint.GetUniqueName();
@@ -471,12 +471,12 @@ QStatus DaemonRouter::AddSessionRoute(SessionId id, BusEndpoint& srcEp, RemoteEn
 
     /* Add sessionCast entries */
     if (status == ER_OK) {
-        sessionCastSetLock.Lock();
+        sessionCastSetLock.Lock(MUTEX_CONTEXT);
         SessionCastEntry entry(id, srcEp.GetUniqueName(), destB2bEp, &destEp);
         sessionCastSet.insert(entry);
         SessionCastEntry entry2(id, destEp.GetUniqueName(), srcB2bEp, &srcEp);
         sessionCastSet.insert(entry2);
-        sessionCastSetLock.Unlock();
+        sessionCastSetLock.Unlock(MUTEX_CONTEXT);
     }
     return status;
 }
@@ -504,7 +504,7 @@ QStatus DaemonRouter::RemoveSessionRoute(SessionId id, BusEndpoint& srcEp, BusEn
 
     /* Remove entries from sessionCastSet */
     if (status == ER_OK) {
-        sessionCastSetLock.Lock();
+        sessionCastSetLock.Lock(MUTEX_CONTEXT);
         SessionCastEntry entry(id, srcEp.GetUniqueName(), destB2bEp, &destEp);
         set<SessionCastEntry>::iterator it = sessionCastSet.find(entry);
         if (it != sessionCastSet.end()) {
@@ -516,7 +516,7 @@ QStatus DaemonRouter::RemoveSessionRoute(SessionId id, BusEndpoint& srcEp, BusEn
         if (it2 != sessionCastSet.end()) {
             sessionCastSet.erase(it2);
         }
-        sessionCastSetLock.Unlock();
+        sessionCastSetLock.Unlock(MUTEX_CONTEXT);
     }
     return status;
 }
@@ -530,7 +530,7 @@ void DaemonRouter::RemoveSessionRoutes(const char* src, SessionId id)
         return;
     }
 
-    sessionCastSetLock.Lock();
+    sessionCastSetLock.Lock(MUTEX_CONTEXT);
     set<SessionCastEntry>::iterator it = sessionCastSet.begin();
     while (it != sessionCastSet.end()) {
         if (((it->id == id) || (id == 0)) && ((it->src == src) || (it->destEp == ep))) {
@@ -542,7 +542,7 @@ void DaemonRouter::RemoveSessionRoutes(const char* src, SessionId id)
             ++it;
         }
     }
-    sessionCastSetLock.Unlock();
+    sessionCastSetLock.Unlock(MUTEX_CONTEXT);
 }
 
 }

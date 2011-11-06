@@ -515,7 +515,7 @@ qcc::ThreadReturn STDCALL BTTransport::BTAccessor::DiscoveryThread::Run(void* ar
 
             deviceInfo.dwSize = sizeof(deviceInfo);
 
-            btAccessor.deviceLock.Lock();
+            btAccessor.deviceLock.Lock(MUTEX_CONTEXT);
             if (duration < DISCOVERY_TIME_IN_MILLISECONDS) {
                 deviceSearchParms.cTimeoutMultiplier = MillisecondsToTicks(duration);
                 duration = 1;
@@ -523,7 +523,7 @@ qcc::ThreadReturn STDCALL BTTransport::BTAccessor::DiscoveryThread::Run(void* ar
                 deviceSearchParms.cTimeoutMultiplier = MillisecondsToTicks(DISCOVERY_TIME_IN_MILLISECONDS);
                 duration -= DISCOVERY_TIME_IN_MILLISECONDS;
             }
-            btAccessor.deviceLock.Unlock();
+            btAccessor.deviceLock.Unlock(MUTEX_CONTEXT);
 
             deviceFindHandle = BluetoothFindFirstDevice(&deviceSearchParms, &deviceInfo);
             // Report found devices unless duration has gone to zero
@@ -534,9 +534,9 @@ qcc::ThreadReturn STDCALL BTTransport::BTAccessor::DiscoveryThread::Run(void* ar
 
                     QCC_DbgHLPrintf(("BTTransport::BTAccessor::DiscoveryThread::Run found %s", address.ToString().c_str()));
 
-                    btAccessor.deviceLock.Lock();
+                    btAccessor.deviceLock.Lock(MUTEX_CONTEXT);
                     bool ignoreThisOne = btAccessor.discoveryIgnoreAddrs->count(address) != 0;
-                    btAccessor.deviceLock.Unlock();
+                    btAccessor.deviceLock.Unlock(MUTEX_CONTEXT);
 
                     if (!ignoreThisOne) {
                         btAccessor.DeviceFound(address);
@@ -548,7 +548,7 @@ qcc::ThreadReturn STDCALL BTTransport::BTAccessor::DiscoveryThread::Run(void* ar
             }
             BluetoothFindDeviceClose(deviceFindHandle);
             // Figure out how long to wait
-            btAccessor.deviceLock.Lock();
+            btAccessor.deviceLock.Lock(MUTEX_CONTEXT);
             if (duration < DISCOVERY_PAUSE_IN_MILLISECONDS) {
                 timeout = Event::WAIT_FOREVER;
                 duration = 0;
@@ -556,7 +556,7 @@ qcc::ThreadReturn STDCALL BTTransport::BTAccessor::DiscoveryThread::Run(void* ar
                 timeout = DISCOVERY_PAUSE_IN_MILLISECONDS;
                 duration -= DISCOVERY_PAUSE_IN_MILLISECONDS;
             }
-            btAccessor.deviceLock.Unlock();
+            btAccessor.deviceLock.Unlock(MUTEX_CONTEXT);
         }
     }
     QCC_DbgHLPrintf(("BTTransport::BTAccessor::DiscoveryThread::Run exit"));
@@ -575,10 +575,10 @@ QStatus BTTransport::BTAccessor::StartDiscovery(const BDAddressSet& ignoreAddrs,
     QCC_DbgTrace(("BTTransport::BTAccessor::StartDiscovery()"));
 
     if (radioHandle) {
-        deviceLock.Lock();
+        deviceLock.Lock(MUTEX_CONTEXT);
         discoveryIgnoreAddrs = ignoreAddrs;
         discoveryThread.StartDiscovery(duration ? duration : 0xFFFFFFFF);
-        deviceLock.Unlock();
+        deviceLock.Unlock(MUTEX_CONTEXT);
         return ER_OK;
     } else {
         return ER_FAIL;
@@ -588,9 +588,9 @@ QStatus BTTransport::BTAccessor::StartDiscovery(const BDAddressSet& ignoreAddrs,
 QStatus BTTransport::BTAccessor::StopDiscovery()
 {
     QCC_DbgHLPrintf(("BTTransport::BTAccessor::StopDiscovery"));
-    deviceLock.Lock();
+    deviceLock.Lock(MUTEX_CONTEXT);
     discoveryThread.StopDiscovery();
-    deviceLock.Unlock();
+    deviceLock.Unlock(MUTEX_CONTEXT);
     return ER_OK;
 }
 
@@ -1839,13 +1839,13 @@ void BTTransport::BTAccessor::EndPointsInit(void)
 
     // This shouldn't be necessary because it should only be called at constructor time
     // but we do it anyway just to be consistent.
-    deviceLock.Lock();
+    deviceLock.Lock(MUTEX_CONTEXT);
 
     do {
         activeEndPoints[i] = NULL;
     } while (--i >= 0);
 
-    deviceLock.Unlock();
+    deviceLock.Unlock(MUTEX_CONTEXT);
 }
 
 bool BTTransport::BTAccessor::EndPointsAdd(WindowsBTEndpoint* endpoint)
@@ -1859,7 +1859,7 @@ bool BTTransport::BTAccessor::EndPointsAdd(WindowsBTEndpoint* endpoint)
 
         int i = _countof(activeEndPoints) - 1;
 
-        deviceLock.Lock();
+        deviceLock.Lock(MUTEX_CONTEXT);
 
         do {
             if (NULL == activeEndPoints[i]) {
@@ -1869,7 +1869,7 @@ bool BTTransport::BTAccessor::EndPointsAdd(WindowsBTEndpoint* endpoint)
             }
         } while (--i >= 0);
 
-        deviceLock.Unlock();
+        deviceLock.Unlock(MUTEX_CONTEXT);
 
         QCC_DbgPrintf(("EndPointsAdd(%p) into slot %d", endpoint, i));
     }
@@ -1888,7 +1888,7 @@ void BTTransport::BTAccessor::EndPointsRemove(WindowsBTEndpoint* endpoint)
 
         int i = _countof(activeEndPoints) - 1;
 
-        deviceLock.Lock();
+        deviceLock.Lock(MUTEX_CONTEXT);
 
         do {
             if (activeEndPoints[i] == endpoint) {
@@ -1897,7 +1897,7 @@ void BTTransport::BTAccessor::EndPointsRemove(WindowsBTEndpoint* endpoint)
             }
         } while (--i >= 0);
 
-        deviceLock.Unlock();
+        deviceLock.Unlock(MUTEX_CONTEXT);
 
         QCC_DbgPrintf(("EndPointsRemove(%p) from slot %d", endpoint, i));
 
@@ -1922,7 +1922,7 @@ void BTTransport::BTAccessor::EndPointsRemoveAll(void)
 
     int i = _countof(activeEndPoints) - 1;
 
-    deviceLock.Lock();
+    deviceLock.Lock(MUTEX_CONTEXT);
 
     do {
         if (NULL != this->activeEndPoints[i]) {
@@ -1934,7 +1934,7 @@ void BTTransport::BTAccessor::EndPointsRemoveAll(void)
         }
     } while (--i >= 0);
 
-    deviceLock.Unlock();
+    deviceLock.Unlock(MUTEX_CONTEXT);
 }
 
 WindowsBTEndpoint* BTTransport::BTAccessor::EndPointsFind(BTH_ADDR address,
@@ -1943,7 +1943,7 @@ WindowsBTEndpoint* BTTransport::BTAccessor::EndPointsFind(BTH_ADDR address,
     WindowsBTEndpoint* returnValue = NULL;
     int i = _countof(activeEndPoints) - 1;
 
-    deviceLock.Lock();
+    deviceLock.Lock(MUTEX_CONTEXT);
 
     do {
         if (NULL != activeEndPoints[i] &&
@@ -1973,7 +1973,7 @@ WindowsBTEndpoint* BTTransport::BTAccessor::EndPointsFind(BTH_ADDR address,
     }
 #endif
 
-    deviceLock.Unlock();
+    deviceLock.Unlock(MUTEX_CONTEXT);
 
     return returnValue;
 }
@@ -1996,7 +1996,7 @@ QStatus BTTransport::BTAccessor::ConnectRequestsGet(struct _KRNUSRCMD_L2CAP_EVEN
 
     QCC_DbgPrintf(("BTTransport::BTAccessor::ConnectRequestsGet() from index %d", connectRequestsHead));
 
-    deviceLock.Lock();
+    deviceLock.Lock(MUTEX_CONTEXT);
 
     *request = connectRequests[connectRequestsHead++];
 
@@ -2009,7 +2009,7 @@ QStatus BTTransport::BTAccessor::ConnectRequestsGet(struct _KRNUSRCMD_L2CAP_EVEN
         l2capEvent->ResetEvent();
     }
 
-    deviceLock.Unlock();
+    deviceLock.Unlock(MUTEX_CONTEXT);
 
 Error:
     return status;
@@ -2028,7 +2028,7 @@ QStatus BTTransport::BTAccessor::ConnectRequestsPut(const struct _KRNUSRCMD_L2CA
                   request->address, request->channelHandle));
     QCC_DbgPrintf(("BTTransport::BTAccessor::ConnectRequestsPut() into index %d", connectRequestsTail));
 
-    deviceLock.Lock();
+    deviceLock.Lock(MUTEX_CONTEXT);
     connectRequests[connectRequestsTail++] = *request;
 
     if (connectRequestsTail >= _countof(connectRequests)) {
@@ -2048,7 +2048,7 @@ QStatus BTTransport::BTAccessor::ConnectRequestsPut(const struct _KRNUSRCMD_L2CA
         l2capEvent->SetEvent();
     }
 
-    deviceLock.Unlock();
+    deviceLock.Unlock(MUTEX_CONTEXT);
 
 Error:
     return status;

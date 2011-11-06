@@ -577,9 +577,9 @@ void TestDriver::TestBTDeviceAvailable(bool available)
     detail += available ? "available" : "unavailable";
     detail += " indication from BTAccessor.";
     ReportTestDetail(detail);
-    btDevAvailLock.Lock();
+    btDevAvailLock.Lock(MUTEX_CONTEXT);
     btDevAvailQueue.push_back(available);
-    btDevAvailLock.Unlock();
+    btDevAvailLock.Unlock(MUTEX_CONTEXT);
     btDevAvailEvent.SetEvent();
 }
 
@@ -636,9 +636,9 @@ void ClientTestDriver::TestDeviceChange(const BDAddress& bdAddr,
     }
     ReportTestDetail(detail);
 
-    devChangeLock.Lock();
+    devChangeLock.Lock(MUTEX_CONTEXT);
     devChangeQueue.push_back(DeviceChange(bdAddr, uuidRev, eirCapable));
-    devChangeLock.Unlock();
+    devChangeLock.Unlock(MUTEX_CONTEXT);
     devChangeEvent.SetEvent();
 }
 
@@ -670,9 +670,9 @@ bool TestDriver::TC_StartBTAccessor()
 {
     bool available = false;
 
-    btDevAvailLock.Lock();
+    btDevAvailLock.Lock(MUTEX_CONTEXT);
     btDevAvailQueue.clear();
-    btDevAvailLock.Unlock();
+    btDevAvailLock.Unlock(MUTEX_CONTEXT);
     btDevAvailEvent.ResetEvent();
 
     QStatus status = btAccessor->Start();
@@ -696,12 +696,12 @@ bool TestDriver::TC_StartBTAccessor()
 
         btDevAvailEvent.ResetEvent();
 
-        btDevAvailLock.Lock();
+        btDevAvailLock.Lock(MUTEX_CONTEXT);
         while (!btDevAvailQueue.empty()) {
             available = btDevAvailQueue.front();
             btDevAvailQueue.pop_front();
         }
-        btDevAvailLock.Unlock();
+        btDevAvailLock.Unlock(MUTEX_CONTEXT);
 
         if (!available) {
             fprintf(stderr, "Please enable system's Bluetooth.\n");
@@ -731,12 +731,12 @@ bool TestDriver::TC_StopBTAccessor()
 
         btDevAvailEvent.ResetEvent();
 
-        btDevAvailLock.Lock();
+        btDevAvailLock.Lock(MUTEX_CONTEXT);
         while (!btDevAvailQueue.empty()) {
             available = btDevAvailQueue.front();
             btDevAvailQueue.pop_front();
         }
-        btDevAvailLock.Unlock();
+        btDevAvailLock.Unlock(MUTEX_CONTEXT);
     } while (available);
 
 exit:
@@ -814,10 +814,10 @@ bool ClientTestDriver::TC_StartDiscovery()
         now = tsNow.GetAbsoluteMillis();
         stop = now + 35000;
 
-        devChangeLock.Lock();
+        devChangeLock.Lock(MUTEX_CONTEXT);
         devChangeQueue.clear();
         devChangeEvent.ResetEvent();
-        devChangeLock.Unlock();
+        devChangeLock.Unlock(MUTEX_CONTEXT);
 
         ReportTestDetail("Starting discovery for 30 seconds.");
         status = btAccessor->StartDiscovery(ignoreAddrs, 30);
@@ -845,7 +845,7 @@ bool ClientTestDriver::TC_StartDiscovery()
 
             devChangeEvent.ResetEvent();
 
-            devChangeLock.Lock();
+            devChangeLock.Lock(MUTEX_CONTEXT);
             while (!devChangeQueue.empty()) {
                 fit = foundInfo.find(devChangeQueue.front().addr);
                 if (fit == foundInfo.end()) {
@@ -859,7 +859,7 @@ bool ClientTestDriver::TC_StartDiscovery()
                 }
                 devChangeQueue.pop_front();
             }
-            devChangeLock.Unlock();
+            devChangeLock.Unlock(MUTEX_CONTEXT);
 
             GetTimeNow(&tsNow);
             now = tsNow.GetAbsoluteMillis();
@@ -889,20 +889,20 @@ bool ClientTestDriver::TC_StartDiscovery()
 
         ::Sleep(5000);
 
-        devChangeLock.Lock();
+        devChangeLock.Lock(MUTEX_CONTEXT);
         devChangeQueue.clear();
         devChangeEvent.ResetEvent();
-        devChangeLock.Unlock();
+        devChangeLock.Unlock(MUTEX_CONTEXT);
 
         ReportTestDetail("Waiting for 30 seconds after discovery should have stopped for late found device indications.");
         status = Event::Wait(devChangeEvent, 30000);
         if (status != ER_TIMEOUT) {
             ReportTestDetail("Received device found notification long after discovery should have stopped.");
             tcSuccess = false;
-            devChangeLock.Lock();
+            devChangeLock.Lock(MUTEX_CONTEXT);
             devChangeQueue.clear();
             devChangeEvent.ResetEvent();
-            devChangeLock.Unlock();
+            devChangeLock.Unlock(MUTEX_CONTEXT);
             goto exit;
         }
     }
@@ -943,21 +943,21 @@ bool ClientTestDriver::TC_StopDiscovery()
     if (!opts.fastDiscovery) {
         ::Sleep(5000);
 
-        devChangeLock.Lock();
+        devChangeLock.Lock(MUTEX_CONTEXT);
         count = devChangeQueue.size();
         devChangeQueue.clear();
         devChangeEvent.ResetEvent();
-        devChangeLock.Unlock();
+        devChangeLock.Unlock(MUTEX_CONTEXT);
 
         ReportTestDetail("Waiting for 30 seconds after stopping discovery for late found device indications.");
         status = Event::Wait(devChangeEvent, 30000);
         if (status != ER_TIMEOUT) {
             ReportTestDetail("Received device found notification long after discovery should have stopped.");
             tcSuccess = false;
-            devChangeLock.Lock();
+            devChangeLock.Lock(MUTEX_CONTEXT);
             devChangeQueue.clear();
             devChangeEvent.ResetEvent();
-            devChangeLock.Unlock();
+            devChangeLock.Unlock(MUTEX_CONTEXT);
         }
     }
 
@@ -1025,7 +1025,7 @@ bool ClientTestDriver::TC_GetDeviceInfo()
 
             devChangeEvent.ResetEvent();
 
-            devChangeLock.Lock();
+            devChangeLock.Lock(MUTEX_CONTEXT);
             while (!devChangeQueue.empty()) {
                 fit = foundInfo.find(devChangeQueue.front().addr);
                 if (fit == foundInfo.end()) {
@@ -1039,7 +1039,7 @@ bool ClientTestDriver::TC_GetDeviceInfo()
                 }
                 devChangeQueue.pop_front();
             }
-            devChangeLock.Unlock();
+            devChangeLock.Unlock(MUTEX_CONTEXT);
 
             GetTimeNow(&tsNow);
             now = tsNow.GetAbsoluteMillis();

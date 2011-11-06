@@ -61,21 +61,21 @@ void CompressionRules::Add(const HeaderFields& hdrFields, uint32_t token)
 void CompressionRules::AddExpansion(const HeaderFields& hdrFields, uint32_t token)
 {
     if (token) {
-        lock.Lock();
+        lock.Lock(MUTEX_CONTEXT);
         if (fieldMap.count(&hdrFields) == 0) {
             Add(hdrFields, token);
         } else {
             QCC_LogError(ER_FAIL, ("Compression token collision %u", token));
         }
         pending.erase(token);
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
     }
 }
 
 uint32_t CompressionRules::GetToken(const HeaderFields& hdrFields)
 {
     uint32_t token;
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     hash_map<const HeaderFields*, uint32_t, HdrFieldHash, HdrFieldsEq>::iterator iter = fieldMap.find(&hdrFields);
     if (iter != fieldMap.end()) {
         token = iter->second;
@@ -86,7 +86,7 @@ uint32_t CompressionRules::GetToken(const HeaderFields& hdrFields)
         do { token = Rand32(); } while (token && GetExpansion(token));
         Add(hdrFields, token);
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     return token;
 }
 
@@ -94,10 +94,10 @@ const HeaderFields* CompressionRules::GetExpansion(uint32_t token)
 {
     const HeaderFields* expansion = NULL;
     if (token) {
-        lock.Lock();
+        lock.Lock(MUTEX_CONTEXT);
         map<uint32_t, const HeaderFields*>::iterator iter = tokenMap.find(token);
         expansion = (iter != tokenMap.end()) ? iter->second : NULL;
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
     }
     return expansion;
 }

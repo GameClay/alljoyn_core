@@ -89,10 +89,10 @@ PeerStateTable::PeerStateTable()
 
 PeerState PeerStateTable::GetPeerState(const qcc::String& busName)
 {
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     QCC_DbgHLPrintf(("PeerStateTable::GetPeerState() %s state for %s", peerMap.count(busName) ? "got" : "no", busName.c_str()));
     PeerState result = peerMap[busName];
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 
     return result;
 }
@@ -101,7 +101,7 @@ PeerState PeerStateTable::GetPeerState(const qcc::String& uniqueName, const qcc:
 {
     assert(uniqueName[0] == ':');
     PeerState result;
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     std::map<const qcc::String, PeerState>::iterator iter = peerMap.find(uniqueName);
     if (iter == peerMap.end()) {
         QCC_DbgHLPrintf(("PeerStateTable::GetPeerState() no state stored for %s aka %s", uniqueName.c_str(), aliasName.c_str()));
@@ -112,16 +112,16 @@ PeerState PeerStateTable::GetPeerState(const qcc::String& uniqueName, const qcc:
         result = iter->second;
         peerMap[aliasName] = result;
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
     return result;
 }
 
 void PeerStateTable::DelPeerState(const qcc::String& busName)
 {
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     QCC_DbgHLPrintf(("PeerStateTable::DelPeerState() %s for %s", peerMap.count(busName) ? "remove state" : "no state to remove", busName.c_str()));
     peerMap.erase(busName);
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 }
 
 void PeerStateTable::GetGroupKey(qcc::KeyBlob& key)
@@ -136,7 +136,7 @@ void PeerStateTable::GetGroupKey(qcc::KeyBlob& key)
 void PeerStateTable::Clear()
 {
     qcc::KeyBlob key;
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     peerMap.clear();
     PeerState nullPeer;
     QCC_DbgHLPrintf(("Allocating group key"));
@@ -144,14 +144,14 @@ void PeerStateTable::Clear()
     key.SetTag("GroupKey", KeyBlob::NO_ROLE);
     nullPeer->SetKey(key, PEER_SESSION_KEY);
     peerMap[""] = nullPeer;
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 }
 
 PeerStateTable::~PeerStateTable()
 {
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     peerMap.clear();
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 }
 
 }

@@ -47,9 +47,9 @@ void SignalTable::Add(MessageReceiver* receiver,
                   sourcePath.c_str()));
     Entry entry(handler, receiver, member);
     Key key(sourcePath, member->iface->GetName(), member->name);
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     hashTable.insert(pair<const Key, Entry>(key, entry));
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 }
 
 void SignalTable::Remove(MessageReceiver* receiver,
@@ -61,7 +61,7 @@ void SignalTable::Remove(MessageReceiver* receiver,
     iterator iter;
     pair<iterator, iterator> range;
 
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     range = hashTable.equal_range(key);
     iter = range.first;
     while (iter != range.second) {
@@ -72,13 +72,13 @@ void SignalTable::Remove(MessageReceiver* receiver,
             ++iter;
         }
     }
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 }
 
 void SignalTable::RemoveAll(MessageReceiver* receiver)
 {
     bool removed;
-    lock.Lock();
+    lock.Lock(MUTEX_CONTEXT);
     do {
         removed = false;
         for (iterator iter = hashTable.begin(); iter != hashTable.end(); ++iter) {
@@ -89,7 +89,7 @@ void SignalTable::RemoveAll(MessageReceiver* receiver)
             }
         }
     } while (removed);
-    lock.Unlock();
+    lock.Unlock(MUTEX_CONTEXT);
 }
 
 pair<SignalTable::const_iterator, SignalTable::const_iterator> SignalTable::Find(const char* sourcePath,

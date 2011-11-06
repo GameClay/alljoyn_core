@@ -290,9 +290,9 @@ class PeerStateTable {
      * @return  Returns true if the peer is known.
      */
     bool IsKnownPeer(const qcc::String& busName) {
-        lock.Lock();
+        lock.Lock(MUTEX_CONTEXT);
         bool known = peerMap.count(busName) > 0;
-        lock.Unlock();
+        lock.Unlock(MUTEX_CONTEXT);
         return known;
     }
 

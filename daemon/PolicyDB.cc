@@ -341,19 +341,19 @@ void _PolicyDB::NameOwnerChanged(const qcc::String& alias,
         if (oldOwner) {
             UniqueNameIDMap::iterator unit = uniqueNameMap.find(*oldOwner);
             if (unit != uniqueNameMap.end()) {
-                bnLock.Lock();
+                bnLock.Lock(MUTEX_CONTEXT);
                 unit->second.erase(bnit->second);
                 if (unit->second.empty()) {
                     uniqueNameMap.erase(unit);
                 }
-                bnLock.Unlock();
+                bnLock.Unlock(MUTEX_CONTEXT);
             }
         }
         if (newOwner) {
             if (bnit != busNameMap.end()) {
-                bnLock.Lock();
+                bnLock.Lock(MUTEX_CONTEXT);
                 uniqueNameMap[*newOwner].insert(bnit->second);
-                bnLock.Unlock();
+                bnLock.Unlock(MUTEX_CONTEXT);
             }
         }
     }

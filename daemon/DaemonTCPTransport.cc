@@ -257,12 +257,12 @@ DaemonTCPTransport::~DaemonTCPTransport()
 void DaemonTCPTransport::Authenticated(DaemonTCPEndpoint* conn)
 {
     QCC_DbgTrace(("TCPTransport::Authenticated()"));
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
     list<DaemonTCPEndpoint*>::iterator i = find(m_authList.begin(), m_authList.end(), conn);
     assert(i != m_authList.end() && "TCPTransportBase::Authenticated(): Can't find connection");
     m_authList.erase(i);
     m_endpointList.push_back(conn);
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
 }
 
 QStatus DaemonTCPTransport::Start()
@@ -331,7 +331,7 @@ QStatus DaemonTCPTransport::Stop(void)
         return status;
     }
 
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
 
     /*
      * Ask any running endpoints to shut down and exit their threads.
@@ -354,7 +354,7 @@ QStatus DaemonTCPTransport::Stop(void)
         delete ep;
     }
 
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
     /*
      * The use model for DaemonTCPTransport is that it works like a thread.
@@ -394,11 +394,11 @@ QStatus DaemonTCPTransport::Join(void)
      * list.  We poll for the all-exited condition, yielding the CPU to let
      * the endpoint therad wake and exit.
      */
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
     while (m_endpointList.size() > 0) {
-        m_endpointListLock.Unlock();
+        m_endpointListLock.Unlock(MUTEX_CONTEXT);
         qcc::Sleep(50);
-        m_endpointListLock.Lock();
+        m_endpointListLock.Lock(MUTEX_CONTEXT);
     }
 
     /*
@@ -407,7 +407,7 @@ QStatus DaemonTCPTransport::Join(void)
      */
     assert(m_authList.size() == 0);
 
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
     /*
      * The use model for DaemonTCPTransport is that it works like a thread.
@@ -637,12 +637,12 @@ void DaemonTCPTransport::EndpointExit(RemoteEndpoint* ep)
     QCC_DbgTrace(("DaemonTCPTransport::EndpointExit()"));
 
     /* Remove the dead endpoint from the live endpoint list */
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
     list<DaemonTCPEndpoint*>::iterator i = find(m_endpointList.begin(), m_endpointList.end(), tep);
     if (i != m_endpointList.end()) {
         m_endpointList.erase(i);
     }
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
     /*
      * The endpoint can exit if it was asked to by us in response to a Disconnect()
@@ -702,13 +702,13 @@ void* DaemonTCPTransport::Run(void* arg)
          * code that does the change Alert()s this thread and we wake up and
          * re-evaluate the list of SocketFds.
          */
-        m_listenFdsLock.Lock();
+        m_listenFdsLock.Lock(MUTEX_CONTEXT);
         vector<Event*> checkEvents, signaledEvents;
         checkEvents.push_back(&stopEvent);
         for (list<pair<qcc::String, SocketFd> >::const_iterator i = m_listenFds.begin(); i != m_listenFds.end(); ++i) {
             checkEvents.push_back(new Event(i->second, Event::IO_READ, false));
         }
-        m_listenFdsLock.Unlock();
+        m_listenFdsLock.Unlock(MUTEX_CONTEXT);
 
         /*
          * We have our list of events, so now wait for something to happen
@@ -772,7 +772,7 @@ void* DaemonTCPTransport::Run(void* arg)
 
                 QCC_DbgHLPrintf(("DaemonTCPTransport connect request"));
 
-                m_endpointListLock.Lock();
+                m_endpointListLock.Lock(MUTEX_CONTEXT);
 
                 /*
                  * See if there are any connections with failed authentications
@@ -832,7 +832,7 @@ void* DaemonTCPTransport::Run(void* arg)
                     QCC_LogError(status, ("DaemonTCPTransport::Run(): No slot for new connection"));
                 }
 
-                m_endpointListLock.Unlock();
+                m_endpointListLock.Unlock(MUTEX_CONTEXT);
             } else if (ER_WOULDBLOCK == status) {
                 status = ER_OK;
             }
@@ -1033,7 +1033,7 @@ QStatus DaemonTCPTransport::Connect(const char* connectSpec, const SessionOpts& 
      * either explicitly or via the INADDR_ANY address.
      */
     QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Checking for connection to self"));
-    m_listenFdsLock.Lock();
+    m_listenFdsLock.Lock(MUTEX_CONTEXT);
     bool anyEncountered = false;
     for (list<pair<qcc::String, SocketFd> >::iterator i = m_listenFds.begin(); i != m_listenFds.end(); ++i) {
         QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Checking listenSpec %s", i->first.c_str()));
@@ -1043,7 +1043,7 @@ QStatus DaemonTCPTransport::Connect(const char* connectSpec, const SessionOpts& 
          * an error.
          */
         if (i->first == normSpec) {
-            m_listenFdsLock.Unlock();
+            m_listenFdsLock.Unlock(MUTEX_CONTEXT);
             QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Exlicit connection to self"));
             return ER_BUS_ALREADY_LISTENING;
         }
@@ -1058,7 +1058,7 @@ QStatus DaemonTCPTransport::Connect(const char* connectSpec, const SessionOpts& 
             anyEncountered = true;
         }
     }
-    m_listenFdsLock.Unlock();
+    m_listenFdsLock.Unlock(MUTEX_CONTEXT);
 
     /*
      * If we are listening to INADDR_ANY, we are going to have to see if any
@@ -1148,9 +1148,9 @@ QStatus DaemonTCPTransport::Connect(const char* connectSpec, const SessionOpts& 
     DaemonTCPEndpoint* conn = NULL;
     if (status == ER_OK) {
         conn = new DaemonTCPEndpoint(this, m_bus, false, normSpec, sockFd, ipAddr, port);
-        m_endpointListLock.Lock();
+        m_endpointListLock.Lock(MUTEX_CONTEXT);
         m_endpointList.push_back(conn);
-        m_endpointListLock.Unlock();
+        m_endpointListLock.Unlock(MUTEX_CONTEXT);
 
         /* Initialized the features for this endpoint */
         conn->GetFeatures().isBusToBus = true;
@@ -1174,12 +1174,12 @@ QStatus DaemonTCPTransport::Connect(const char* connectSpec, const SessionOpts& 
         if (status != ER_OK && conn) {
             QCC_LogError(status, ("DaemonTCPTransport::Connect(): Start TCPEndpoint failed"));
 
-            m_endpointListLock.Lock();
+            m_endpointListLock.Lock(MUTEX_CONTEXT);
             list<DaemonTCPEndpoint*>::iterator i = find(m_endpointList.begin(), m_endpointList.end(), conn);
             if (i != m_endpointList.end()) {
                 m_endpointList.erase(i);
             }
-            m_endpointListLock.Unlock();
+            m_endpointListLock.Unlock(MUTEX_CONTEXT);
             delete conn;
             conn = NULL;
         }
@@ -1238,16 +1238,16 @@ QStatus DaemonTCPTransport::Disconnect(const char* connectSpec)
      * considered dead.
      */
     status = ER_BUS_BAD_TRANSPORT_ARGS;
-    m_endpointListLock.Lock();
+    m_endpointListLock.Lock(MUTEX_CONTEXT);
     for (list<DaemonTCPEndpoint*>::iterator i = m_endpointList.begin(); i != m_endpointList.end(); ++i) {
         if ((*i)->GetPort() == port && (*i)->GetIPAddress() == ipAddr) {
             DaemonTCPEndpoint* ep = *i;
             ep->SetSuddenDisconnect(false);
-            m_endpointListLock.Unlock();
+            m_endpointListLock.Unlock(MUTEX_CONTEXT);
             return ep->Stop();
         }
     }
-    m_endpointListLock.Unlock();
+    m_endpointListLock.Unlock(MUTEX_CONTEXT);
     return status;
 }
 
@@ -1276,7 +1276,7 @@ QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
     QCC_DbgPrintf(("DaemonTCPTransport::StartListen(): addr = \"%s\", port = \"%s\"",
                    argMap["addr"].c_str(), argMap["port"].c_str()));
 
-    m_listenFdsLock.Lock();
+    m_listenFdsLock.Lock(MUTEX_CONTEXT);
 
     /*
      * Check to see if the requested address and port is already being listened
@@ -1285,7 +1285,7 @@ QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
      */
     for (list<pair<qcc::String, SocketFd> >::iterator i = m_listenFds.begin(); i != m_listenFds.end(); ++i) {
         if (i->first == normSpec) {
-            m_listenFdsLock.Unlock();
+            m_listenFdsLock.Unlock(MUTEX_CONTEXT);
             return ER_BUS_ALREADY_LISTENING;
         }
     }
@@ -1357,7 +1357,7 @@ QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
     SocketFd listenFd = -1;
     status = Socket(QCC_AF_INET, QCC_SOCK_STREAM, listenFd);
     if (status != ER_OK) {
-        m_listenFdsLock.Unlock();
+        m_listenFdsLock.Unlock(MUTEX_CONTEXT);
         QCC_LogError(status, ("DaemonTCPTransport::StartListen(): Socket() failed"));
         return status;
     }
@@ -1369,7 +1369,7 @@ QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
     uint32_t yes = 1;
     if (setsockopt(listenFd, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast<const char*>(&yes), sizeof(yes)) < 0) {
         status = ER_OS_ERROR;
-        m_listenFdsLock.Unlock();
+        m_listenFdsLock.Unlock(MUTEX_CONTEXT);
         QCC_LogError(status, ("DaemonTCPTransport::StartListen(): setsockopt(SO_REUSEPORT) failed"));
         return status;
     }
@@ -1414,7 +1414,7 @@ QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
      */
     assert(m_ns);
     m_ns->SetEndpoints("", "", listenPort);
-    m_listenFdsLock.Unlock();
+    m_listenFdsLock.Unlock(MUTEX_CONTEXT);
 
     /*
      * Signal the (probably) waiting run thread so it will wake up and add this
@@ -1446,7 +1446,7 @@ QStatus DaemonTCPTransport::StopListen(const char* listenSpec)
      * Find the (single) listen spec and remove it from the list of active FDs
      * used by the server accept loop (run thread).
      */
-    m_listenFdsLock.Lock();
+    m_listenFdsLock.Lock(MUTEX_CONTEXT);
     status = ER_BUS_BAD_TRANSPORT_ARGS;
     qcc::SocketFd stopFd = -1;
     for (list<pair<qcc::String, SocketFd> >::iterator i = m_listenFds.begin(); i != m_listenFds.end(); ++i) {
@@ -1457,7 +1457,7 @@ QStatus DaemonTCPTransport::StopListen(const char* listenSpec)
             break;
         }
     }
-    m_listenFdsLock.Unlock();
+    m_listenFdsLock.Unlock(MUTEX_CONTEXT);
 
     /*
      * If we took a socketFD off of the list of active FDs, we need to tear it
