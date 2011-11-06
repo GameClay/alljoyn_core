@@ -53,9 +53,8 @@ QStatus WindowsBTEndpoint::WaitForConnectionComplete(bool incoming)
     connectionStatus = ER_INIT_FAILED;
 
     if (connectionCompleteEvent) {
-        const DWORD waitTimeInMilliseconds = 5000;
-        DWORD waitStatus =
-            WaitForSingleObject(connectionCompleteEvent, waitTimeInMilliseconds);
+        const DWORD waitTimeInMilliseconds = 30000;
+        DWORD waitStatus = WaitForSingleObject(connectionCompleteEvent, waitTimeInMilliseconds);
 
         switch (waitStatus) {
         case WAIT_OBJECT_0:
@@ -97,10 +96,14 @@ void WindowsBTEndpoint::SetConnectionComplete(QStatus status)
 
     connectionStatus = status;
 
-    if (connectionCompleteEvent) {
-        ::SetEvent(connectionCompleteEvent);
+    if (GetChannelHandle()) {
+        if (connectionCompleteEvent) {
+            ::SetEvent(connectionCompleteEvent);
+        } else {
+            QCC_LogError(ER_INIT_FAILED, ("connectionCompleteEvent is NULL!"));
+        }
     } else {
-        QCC_LogError(ER_INIT_FAILED, ("connectionCompleteEvent is NULL!"));
+        QCC_LogError(ER_INIT_FAILED, ("connectionCompleteEvent orphaned (channel is NULL)"));
     }
 }
 
