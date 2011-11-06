@@ -680,37 +680,15 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
                                               BTSESSION_OPTS,
                                               this);
                 if (status != ER_OK) {
-                    joinSessionNode = BTNodeInfo();
-                    QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->GetBusAddress().ToString().c_str()));
-                    bt.Disconnect(remoteName);
-                    int ic = DecrementAndFetch(&incompleteConnections);
-                    QCC_DbgPrintf(("incompleteConnections = %d", ic));
-                    assert(ic >= 0);
-                    if (ic > 0) {
-                        connectCompleted.SetEvent();
-                    }
+                    ClearJoinSessionNode();
                 }
             } else {
-                joinSessionNode = BTNodeInfo();
-                QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->GetBusAddress().ToString().c_str()));
-                int ic = DecrementAndFetch(&incompleteConnections);
-                QCC_DbgPrintf(("incompleteConnections = %d", ic));
-                assert(ic >= 0);
-                if (ic > 0) {
-                    connectCompleted.SetEvent();
-                }
+                ClearJoinSessionNode();
             }
         }
     } else {
         if ((node == joinSessionNode) && (node->GetConnectionCount() == 0)) {
-            joinSessionNode = BTNodeInfo();
-            QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->GetBusAddress().ToString().c_str()));
-            int ic = DecrementAndFetch(&incompleteConnections);
-            QCC_DbgPrintf(("incompleteConnections = %d", ic));
-            assert(ic >= 0);
-            if (ic > 0) {
-                connectCompleted.SetEvent();
-            }
+            ClearJoinSessionNode();
         }
     }
 }
@@ -919,14 +897,7 @@ void BTController::JoinSessionCB(QStatus status, SessionId sessionID, const Sess
             bus.LeaveSession(sessionID);
         }
 
-        joinSessionNode = BTNodeInfo();
-        QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->GetBusAddress().ToString().c_str()));
-        int ic = DecrementAndFetch(&incompleteConnections);
-        QCC_DbgPrintf(("incompleteConnections = %d", ic));
-        assert(ic >= 0);
-        if (ic > 0) {
-            connectCompleted.SetEvent();
-        }
+        ClearJoinSessionNode();
     }
 }
 
@@ -1633,14 +1604,7 @@ QStatus BTController::DeferredSendSetState()
 exit:
 
     if (status != ER_OK) {
-        joinSessionNode = BTNodeInfo();
-        QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->GetBusAddress().ToString().c_str()));
-        int ic = DecrementAndFetch(&incompleteConnections);
-        QCC_DbgPrintf(("incompleteConnections = %d", ic));
-        assert(ic >= 0);
-        if (ic > 0) {
-            connectCompleted.SetEvent();
-        }
+        ClearJoinSessionNode();
     }
 
     return status;
@@ -1775,16 +1739,9 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
     }
 
 exit:
-    lock.Unlock();
 
-    joinSessionNode = BTNodeInfo();
-    QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->GetBusAddress().ToString().c_str()));
-    int ic = DecrementAndFetch(&incompleteConnections);
-    QCC_DbgPrintf(("incompleteConnections = %d", ic));
-    assert(ic >= 0);
-    if (ic > 0) {
-        connectCompleted.SetEvent();
-    }
+    ClearJoinSessionNode();
+    lock.Unlock();
 }
 
 
@@ -2693,6 +2650,23 @@ void BTController::ResetExpireNameAlarm()
     if (dispatchTime < (numeric_limits<uint64_t>::max() - LOST_DEVICE_TIMEOUT_EXT)) {
         expireAlarm = DispatchOperation(new ExpireCachedNodesDispatchInfo(), dispatchTime + LOST_DEVICE_TIMEOUT_EXT);
     }
+}
+
+
+void BTController::ClearJoinSessionNode()
+{
+    lock.Lock(MUTEX_CONTEXT);
+    if (joinSessionNode->IsValid()) {
+        joinSessionNode = BTNodeInfo();
+        QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->GetBusAddress().ToString().c_str()));
+        int ic = DecrementAndFetch(&incompleteConnections);
+        QCC_DbgPrintf(("incompleteConnections = %d", ic));
+        assert(ic >= 0);
+        if (ic > 0) {
+            connectCompleted.SetEvent();
+        }
+    }
+    lock.Unlock(MUTEX_CONTEXT);
 }
 
 

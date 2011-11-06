@@ -830,6 +830,8 @@ class BTController :
 
     void ResetExpireNameAlarm();
     void RemoveExpireNameAlarm() { dispatcher.RemoveAlarm(expireAlarm); }
+    void ClearJoinSessionNode();
+
 
     void AlarmTriggered(const qcc::Alarm& alarm, QStatus reason);
 
