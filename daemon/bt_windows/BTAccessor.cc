@@ -31,6 +31,7 @@
 #include <qcc/StringSource.h>
 #include <qcc/Timer.h>
 #include <qcc/XmlElement.h>
+#include <qcc/Util.h>
 
 #include <alljoyn/BusAttachment.h>
 #include <alljoyn/DBusStd.h>
@@ -1577,47 +1578,63 @@ static HANDLE BeginDeviceInquiry(const BDAddress* address, QStatus* status)
     }
 
     DWORD controlFlags = LUP_FLUSHCACHE | LUP_RETURN_BLOB;
+    uint32_t retryCount = 4;
 
-    if (WSALookupServiceBegin(&querySet, controlFlags, &returnValue) == 0) {
-        QCC_DbgTrace(("BeginDeviceInquiry() found device handle=%u", returnValue));
-    } else {
+    while (retryCount--) {
+        if (WSALookupServiceBegin(&querySet, controlFlags, &returnValue) == 0) {
+            QCC_DbgTrace(("BeginDeviceInquiry() found device handle=%u", returnValue));
+            break;
+        }
         // If not successful make sure the returned handle is 0.
         returnValue = 0;
 
-        if (status) {
-            int wsaError = WSAGetLastError();
+        int wsaError = WSAGetLastError();
+        QStatus error;
 
-            switch (wsaError) {
-            case WSA_NOT_ENOUGH_MEMORY:
-                *status = ER_OUT_OF_MEMORY;
-                QCC_LogError(*status, ("WSA_NOT_ENOUGH_MEMORY"));
-                break;
+        switch (wsaError) {
+        case WSA_NOT_ENOUGH_MEMORY:
+            error = ER_OUT_OF_MEMORY;
+            QCC_LogError(error, ("WSA_NOT_ENOUGH_MEMORY"));
+            retryCount = 0;
+            break;
 
-            case WSAEINVAL:
-                *status = ER_INVALID_DATA;
-                QCC_LogError(*status, ("WSAEINVAL"));
-                break;
+        case WSAEINVAL:
+            error = ER_INVALID_DATA;
+            QCC_LogError(error, ("WSAEINVAL"));
+            retryCount = 0;
+            break;
 
-            case WSANO_DATA:
-                *status = ER_INVALID_DATA;
-                QCC_LogError(*status, ("WSANO_DATA"));
-                break;
+        case WSANO_DATA:
+            error = ER_INVALID_DATA;
+            QCC_LogError(error, ("WSANO_DATA"));
+            retryCount = 0;
+            break;
 
-            case WSANOTINITIALISED:
-                *status = ER_INIT_FAILED;
-                QCC_LogError(*status, ("WSANOTINITIALISED"));
-                break;
+        case WSANOTINITIALISED:
+            error = ER_INIT_FAILED;
+            QCC_LogError(error, ("WSANOTINITIALISED"));
+            retryCount = 0;
+            break;
 
-            case WSASERVICE_NOT_FOUND:  // No service found on remote device.
-                *status = ER_FAIL;
-                QCC_LogError(*status, ("WSASERVICE_NOT_FOUND"));
-                break;
-
-            default:
-                *status = ER_FAIL;
-                QCC_LogError(*status, ("wsaError=%#x", wsaError));
-                break;
+        case WSASERVICE_NOT_FOUND:
+            if (retryCount) {
+                uint32_t delay = 3000 + qcc::Rand8() * 20;
+                QCC_LogError(error, ("WSASERVICE_NOT_FOUND retrying in %d seconds", delay / 1000));
+                qcc::Sleep(delay);
+            } else {
+                error = ER_FAIL;
+                QCC_LogError(error, ("WSASERVICE_NOT_FOUND"));
             }
+            break;
+
+        default:
+            error = ER_FAIL;
+            QCC_LogError(error, ("wsaError=%#x", wsaError));
+            retryCount = 0;
+            break;
+        }
+        if (status) {
+            *status = error;
         }
     }
     return returnValue;
@@ -1936,7 +1953,11 @@ WindowsBTEndpoint* BTTransport::BTAccessor::EndPointsFind(BTH_ADDR address,
             break;
         }
     } while (--i >= 0);
-
+#if 0
+    // GB - this doesn't look right to me - the only time handle is NULL is for an outgoing 
+    // connect request that has not yet completed. In this case there should be a corresponding
+    // endpoint with a NULL handle and that should have matched above.
+    //
     // If not found and the handle is 0 then we don't care what the handle is. Just
     // return any endpoint with this address.
     if (NULL == returnValue && 0 == handle) {
@@ -1950,6 +1971,7 @@ WindowsBTEndpoint* BTTransport::BTAccessor::EndPointsFind(BTH_ADDR address,
             }
         } while (--i >= 0);
     }
+#endif
 
     deviceLock.Unlock();
 
