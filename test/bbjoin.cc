@@ -77,11 +77,10 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
   public:
     MyBusListener(BusAttachment* bus = NULL) : leaveSessionThread(bus, *this) { }
 
-    class LeaveSessionThread : public Thread
-    {
+    class LeaveSessionThread : public Thread {
       public:
         LeaveSessionThread(BusAttachment* bus, MyBusListener& listener) : Thread("LSThread"), bus(bus), listener(listener) { }
-        
+
       protected:
         ThreadReturn STDCALL Run(void* arg)
         {
@@ -94,7 +93,7 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
             QCC_SyncPrintf("Calling LeaveSession(%u)\n", sessionId);
             QStatus status = bus->LeaveSession(sessionId);
             QCC_SyncPrintf("LeaveSession(%u) returned %s\n", sessionId, QCC_StatusText(status));
-            
+
             if (status == ER_OK) {
                 status = bus->JoinSessionAsync(name.c_str(), 26, &listener, opts, &listener, ::strdup(name.c_str()));
                 if (status != ER_OK) {
@@ -105,14 +104,13 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
             }
             return 0;
         }
-        
+
       private:
         BusAttachment* bus;
         MyBusListener& listener;
     };
 
-    struct AsyncJoinCBCtx
-    {
+    struct AsyncJoinCBCtx {
         SessionId id;
         String name;
         SessionOpts opts;
