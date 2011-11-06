@@ -848,7 +848,7 @@ RemoteEndpoint* BTTransport::BTAccessor::Connect(BusAttachment& alljoyn,
             sockFd = -1;
             QCC_DbgHLPrintf(("Connect failed - %s (errno: %d - %s)",
                              connAddr.ToString().c_str(), errno, strerror(errno)));
-            qcc::Sleep(Rand32() % 5000);
+            qcc::Sleep(500 + Rand32() % 5000);
         } else {
             status = ER_OK;
             break;

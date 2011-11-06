@@ -635,6 +635,7 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
                 }
             } else {
                 joinSessionNode = node->GetConnectNode();
+                QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->GetBusAddress().ToString().c_str()));
             }
         }
     } while (repeat);
@@ -655,8 +656,7 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
 
 void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& remoteName)
 {
-
-    bool callJoinSession = node == joinSessionNode && (node->GetConnectionCount() == 1);
+    QCC_DbgPrintf(("Connect to %s resulted in status %s, remoteName = \"%s\"", node->GetBusAddress().ToString().c_str(), QCC_StatusText(status), remoteName.c_str()));
 
     if (status == ER_OK) {
         QCC_DEBUG_ONLY(connectTimer.RecordTime(node->GetBusAddress().addr, connectStartTimes[node->GetBusAddress().addr]));
@@ -670,7 +670,7 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
         /* Only call JoinSessionAsync for new outgoing connections where we
          * didn't already start the join session process.
          */
-        if (callJoinSession) {
+        if ((node == joinSessionNode) && (node->GetConnectionCount() == 1)) {
             assert(node.iden(joinSessionNode));
             if (IsMaster() && !inNodeDB) {
                 QCC_DbgPrintf(("Joining BT topology manager session for %s", node->GetBusAddress().ToString().c_str()));
@@ -681,6 +681,7 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
                                               this);
                 if (status != ER_OK) {
                     joinSessionNode = BTNodeInfo();
+                    QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->GetBusAddress().ToString().c_str()));
                     bt.Disconnect(remoteName);
                     int ic = DecrementAndFetch(&incompleteConnections);
                     QCC_DbgPrintf(("incompleteConnections = %d", ic));
@@ -691,6 +692,7 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
                 }
             } else {
                 joinSessionNode = BTNodeInfo();
+                QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->GetBusAddress().ToString().c_str()));
                 int ic = DecrementAndFetch(&incompleteConnections);
                 QCC_DbgPrintf(("incompleteConnections = %d", ic));
                 assert(ic >= 0);
@@ -700,8 +702,9 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
             }
         }
     } else {
-        if (callJoinSession) {
+        if ((node == joinSessionNode) && (node->GetConnectionCount() == 0)) {
             joinSessionNode = BTNodeInfo();
+            QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->GetBusAddress().ToString().c_str()));
             int ic = DecrementAndFetch(&incompleteConnections);
             QCC_DbgPrintf(("incompleteConnections = %d", ic));
             assert(ic >= 0);
@@ -917,6 +920,7 @@ void BTController::JoinSessionCB(QStatus status, SessionId sessionID, const Sess
         }
 
         joinSessionNode = BTNodeInfo();
+        QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->GetBusAddress().ToString().c_str()));
         int ic = DecrementAndFetch(&incompleteConnections);
         QCC_DbgPrintf(("incompleteConnections = %d", ic));
         assert(ic >= 0);
@@ -1630,6 +1634,7 @@ exit:
 
     if (status != ER_OK) {
         joinSessionNode = BTNodeInfo();
+        QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->GetBusAddress().ToString().c_str()));
         int ic = DecrementAndFetch(&incompleteConnections);
         QCC_DbgPrintf(("incompleteConnections = %d", ic));
         assert(ic >= 0);
@@ -1773,6 +1778,7 @@ exit:
     lock.Unlock();
 
     joinSessionNode = BTNodeInfo();
+    QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->GetBusAddress().ToString().c_str()));
     int ic = DecrementAndFetch(&incompleteConnections);
     QCC_DbgPrintf(("incompleteConnections = %d", ic));
     assert(ic >= 0);
