@@ -670,7 +670,8 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
         /* Only call JoinSessionAsync for new outgoing connections where we
          * didn't already start the join session process.
          */
-
+        QCC_DbgPrintf(("inNodeDB = %d   (node == joinSessionNode) => %d   node->GetSessionState() = %d",
+                       inNodeDB, (node == joinSessionNode), node->GetSessionState()));
         if ((node == joinSessionNode) && (node->GetSessionState() == _BTNodeInfo::NO_SESSION)) {
             assert(node.iden(joinSessionNode));
             if (IsMaster() && !inNodeDB) {

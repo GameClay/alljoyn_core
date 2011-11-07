@@ -189,6 +189,7 @@ void* BTTransport::Run(void* arg)
                     }
 
                     node->IncConnCount();
+                    QCC_DbgPrintf(("Increment connection count for %s to %u: ACCEPT", node->GetBusAddress().ToString().c_str(), node->GetConnectionCount()));
                 } else {
                     QCC_LogError(status, ("Error starting RemoteEndpoint"));
                     EndpointExit(conn);
@@ -423,6 +424,7 @@ void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
 
     if (node->IsValid()) {
         uint32_t connCount = node->DecConnCount();
+        QCC_DbgPrintf(("Decrement connection count for %s to %u: ENDPOINT_EXIT", node->GetBusAddress().ToString().c_str(), node->GetConnectionCount()));
         if (connCount == 0) {
             connNodeDB.RemoveNode(node);
 
@@ -606,13 +608,20 @@ exit:
             if (!node->IsValid() || (node->GetBusAddress().psm == bt::INCOMING_PSM)) {
                 if (node->GetBusAddress().psm == bt::INCOMING_PSM) {
                     connNode->SetConnectionCount(node->GetConnectionCount());
+                    if ((connNode->GetSessionState() != _BTNodeInfo::SESSION_UP) &&
+                        (node->GetSessionState() != _BTNodeInfo::NO_SESSION)) {
+                        connNode->SetSessionState(node->GetSessionState());
+                    }
                     connNodeDB.RemoveNode(node);
+
+                    QCC_DbgPrintf(("Set connection count for %s to %u: CONNECT", connNode->GetBusAddress().ToString().c_str(), connNode->GetConnectionCount()));
                 }
                 node = connNode;
                 connNodeDB.AddNode(node);
             }
 
             node->IncConnCount();
+            QCC_DbgPrintf(("Increment connection count for %s to %u: CONNECT", node->GetBusAddress().ToString().c_str(), node->GetConnectionCount()));
         }
     } else {
         if (newep) {
