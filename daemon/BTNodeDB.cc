@@ -481,6 +481,7 @@ void BTNodeDB::NodeSessionLost(SessionId sessionID)
 
         sessionIDMap.erase(sessionID);
         lnode->SetSessionID(0);
+        lnode->SetSessionState(_BTNodeInfo::NO_SESSION);
     }
     Unlock();
 }
@@ -499,6 +500,7 @@ void BTNodeDB::UpdateNodeSessionID(SessionId sessionID, const BTNodeInfo& node)
         }
 
         lnode->SetSessionID(sessionID);
+        lnode->SetSessionState(_BTNodeInfo::SESSION_UP);
 
         sessionIDMap[sessionID] = lnode;
     }

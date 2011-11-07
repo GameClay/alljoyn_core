@@ -670,7 +670,8 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
         /* Only call JoinSessionAsync for new outgoing connections where we
          * didn't already start the join session process.
          */
-        if ((node == joinSessionNode) && (node->GetConnectionCount() == 1)) {
+
+        if ((node == joinSessionNode) && (node->GetSessionState() == _BTNodeInfo::NO_SESSION)) {
             assert(node.iden(joinSessionNode));
             if (IsMaster() && !inNodeDB) {
                 QCC_DbgPrintf(("Joining BT topology manager session for %s", node->GetBusAddress().ToString().c_str()));
@@ -679,7 +680,9 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
                                               NULL,
                                               BTSESSION_OPTS,
                                               this);
-                if (status != ER_OK) {
+                if (status == ER_OK) {
+                    node->SetSessionState(_BTNodeInfo::JOINING_SESSION);
+                } else {
                     ClearJoinSessionNode();
                 }
             } else {
@@ -851,7 +854,6 @@ bool BTController::AcceptSessionJoiner(SessionPort sessionPort,
                    accept ? "Accepting" : "Rejecting",
                    node->IsValid() ? node->GetBusAddress().ToString().c_str() : uniqueName.c_str()));
 
-
     return accept;
 }
 
@@ -889,6 +891,7 @@ void BTController::JoinSessionCB(QStatus status, SessionId sessionID, const Sess
             bus.LeaveSession(sessionID);
         } else {
             joinSessionNode->SetSessionID(sessionID);
+            joinSessionNode->SetSessionState(_BTNodeInfo::SESSION_UP);
             DispatchOperation(new SendSetStateDispatchInfo());
         }
     } else {
@@ -1118,6 +1121,11 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     vector<MsgArg> nodeStateArgsStorage;
     vector<MsgArg> foundNodeArgsStorage;
 
+    BTNodeInfo connectingNode(addr, sender);
+    connectingNode->SetUUIDRev(otherUUIDRev);
+    connectingNode->SetSessionID(msg->GetSessionId());
+    connectingNode->SetEIRCapable(remoteEIRCapable);
+
     if (addr == self->GetBusAddress()) {
         // We should never get a connection from a device with the same address as our own.
         // Don't send a response as punishment >:)
@@ -1169,11 +1177,9 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
         ((slaveFactor == remoteSlaveFactor) && !isMaster)) {
         // We are now a minion (or a drone if we have more than one direct connection)
         master = new ProxyBusObject(bus, sender.c_str(), bluetoothObjPath, 0);
-        masterNode = BTNodeInfo(addr, sender);
-        masterNode->SetUUIDRev(otherUUIDRev);
-        masterNode->SetSessionID(msg->GetSessionId());
+
+        masterNode = connectingNode;
         masterNode->SetRelationship(_BTNodeInfo::MASTER);
-        masterNode->SetEIRCapable(remoteEIRCapable);
 
         if (advertise.active) {
             advertise.StopOp(true);
@@ -1209,9 +1215,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
         FillFoundNodesMsgArgs(foundNodeArgsStorage, nodeDB);
 
         bool noRotateMinions = !RotateMinions();
-        BTNodeInfo connectingNode(addr, sender);
-        connectingNode->SetUUIDRev(otherUUIDRev);
-        connectingNode->SetSessionID(msg->GetSessionId());
+
         connectingNode->SetRelationship(_BTNodeInfo::DIRECT_MINION);
 
         status = ImportState(connectingNode, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs);
@@ -1297,6 +1301,8 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
         bt.Disconnect(sender);
         return;
     }
+
+    connectingNode->SetSessionState(_BTNodeInfo::SESSION_UP);  // Just in case it wasn't set before
 
     if (updateDelegations) {
         DispatchOperation(new UpdateDelegationsDispatchInfo());
@@ -1618,6 +1624,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
                   newMaster, joinSessionNode->GetBusAddress().ToString().c_str()));
 
     lock.Lock(MUTEX_CONTEXT);
+    QStatus status = ER_FAIL;;
 
     if (reply->GetType() == MESSAGE_METHOD_RET) {
         size_t numNodeStateArgs;
@@ -1628,11 +1635,11 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
         uint16_t psm;
         uint32_t otherUUIDRev;
         bool remoteEIRCapable;
-        QStatus status;
 
         if (nodeDB.FindNode(joinSessionNode->GetBusAddress())->IsValid()) {
             QCC_DbgHLPrintf(("Already got node state information."));
             delete newMaster;
+            status = ER_FAIL;
             goto exit;
         }
 
@@ -1658,6 +1665,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
                 SessionId sessionID = joinSessionNode->GetSessionID();
                 joinSessionNode->SetSessionID(0);
                 bus.LeaveSession(sessionID);
+                status = ER_FAIL;
                 goto exit;
             }
 
@@ -1739,6 +1747,12 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
     }
 
 exit:
+
+    if (status == ER_OK) {
+        joinSessionNode->SetSessionState(_BTNodeInfo::SESSION_UP);  // Just in case
+    } else {
+        joinSessionNode->SetSessionState(_BTNodeInfo::NO_SESSION);  // Just in case
+    }
 
     ClearJoinSessionNode();
     lock.Unlock(MUTEX_CONTEXT);

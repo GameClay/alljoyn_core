@@ -58,6 +58,12 @@ class _BTNodeInfo {
         MASTER
     };
 
+    enum SessionState {
+        NO_SESSION,
+        JOINING_SESSION,
+        SESSION_UP
+    };
+
     /**
      * Default constructor.
      */
@@ -89,7 +95,8 @@ class _BTNodeInfo {
         expireTime(std::numeric_limits<uint64_t>::max()),
         eirCapable(false),
         connectionCount(0),
-        sessionID(0)
+        sessionID(0),
+        sessionState(NO_SESSION)
     { }
 
     /**
@@ -108,7 +115,8 @@ class _BTNodeInfo {
         expireTime(std::numeric_limits<uint64_t>::max()),
         eirCapable(false),
         connectionCount(0),
-        sessionID(0)
+        sessionID(0),
+        sessionState(NO_SESSION)
     { }
 
     /**
@@ -128,7 +136,8 @@ class _BTNodeInfo {
         expireTime(std::numeric_limits<uint64_t>::max()),
         eirCapable(false),
         connectionCount(0),
-        sessionID(0)
+        sessionID(0),
+        sessionState(NO_SESSION)
     { }
 
     /**
@@ -505,6 +514,9 @@ class _BTNodeInfo {
      */
     void SetSessionID(SessionId sessionID) { this->sessionID = sessionID; }
 
+    SessionState GetSessionState() const { return sessionState; }
+    void SetSessionState(SessionState state) { sessionState = state; }
+
     /**
      * Equivalence operator.
      *
@@ -549,7 +561,7 @@ class _BTNodeInfo {
      */
     _BTNodeInfo& operator=(const _BTNodeInfo& other) { return *this; }
 
-    qcc::GUID128 guid;                 /**< Bus GUID of the node. */
+    qcc::GUID128 guid;              /**< Bus GUID of the node. */
     qcc::String uniqueName;         /**< Unique bus name of the daemon on the node. */
     BTBusAddress nodeAddr;          /**< Bus address of the node. */
     NodeRelationships relationship; /**< Relationship of node with respect to self. */
@@ -562,6 +574,7 @@ class _BTNodeInfo {
     bool eirCapable;                /**< Indicates if device is EIR capable or not. */
     uint16_t connectionCount;       /**< Number of connections with this node. */
     SessionId sessionID;            /**< BT controller session ID. */
+    SessionState sessionState;      /**< BT topology manager session state with this node. (Only valid for MASTER and DIRECT_MINION) */
 };
 
 }
