@@ -573,17 +573,15 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
                         }
                         if (status == ER_OK) {
                             ajObj.AcquireLocks();
-                            if (sme.opts.isMultipoint) {
-                                /* Add (local) joiner to list of session members since no AttachSession will be sent */
-                                multimap<pair<String, SessionId>, SessionMapEntry>::iterator sit = ajObj.sessionMap.find(pair<String, SessionId>(sme.endpointName, newSessionId));
-                                if (sit != ajObj.sessionMap.end()) {
-                                    sit->second.memberNames.push_back(sender);
-                                    sme = sit->second;
-                                } else {
-                                    replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                                    status = ER_FAIL;
-                                    QCC_LogError(status, ("Failed to find sessionMap entry"));
-                                }
+                            /* Add (local) joiner to list of session members since no AttachSession will be sent */
+                            multimap<pair<String, SessionId>, SessionMapEntry>::iterator sit = ajObj.sessionMap.find(pair<String, SessionId>(sme.endpointName, newSessionId));
+                            if (sit != ajObj.sessionMap.end()) {
+                                sit->second.memberNames.push_back(sender);
+                                sme = sit->second;
+                            } else {
+                                replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+                                status = ER_FAIL;
+                                QCC_LogError(status, ("Failed to find sessionMap entry"));
                             }
 
                             /* Create a joiner side entry in sessionMap */
@@ -2870,11 +2868,11 @@ void AllJoynObj::NameOwnerChanged(const qcc::String& alias, const qcc::String* o
                  * Preserve raw sessions until GetSessionFd is called.
                  */
                 /*
-                 * If the session is not Multipoint the memberNames will be empty.
-                 * if the sessionHost is empty and there are no member names send
+                 * If the session is point-to-point and the memberNames are empty.
+                 * if the sessionHost is not empty (implied) and there are no member names send
                  * the  sessionLost signal as long as the session is not a raw session
                  */
-                bool noMemberNoHost = (it->second.sessionHost.empty() && it->second.memberNames.empty());
+                bool noMemberSingleHost = it->second.memberNames.empty();
                 /*
                  * If the session is a Multipoint session it will list its own unique
                  * name in the list of memberNames. If There is only one name in the
@@ -2887,7 +2885,7 @@ void AllJoynObj::NameOwnerChanged(const qcc::String& alias, const qcc::String* o
                  * as long as the file descriptor is -1 this is not a raw session
                  */
                 bool noRawSession = (it->second.fd == -1);
-                if ((noMemberNoHost || singleMemberNoHost) && noRawSession) {
+                if ((noMemberSingleHost || singleMemberNoHost) && noRawSession) {
                     SendSessionLost(it->second);
                     if (!it->second.isInitializing) {
                         sessionMap.erase(it++);
