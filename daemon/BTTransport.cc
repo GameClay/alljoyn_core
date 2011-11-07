@@ -416,29 +416,22 @@ void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
     set<RemoteEndpoint*>::iterator eit = threadList.find(endpoint);
     if (eit != threadList.end()) {
         BTEndpoint* btEp = reinterpret_cast<BTEndpoint*>(endpoint);
-        node = connNodeDB.FindNode(btEp->GetNode()->GetBusAddress());
+        node = connNodeDB.FindNode(btEp->GetNode()->GetBusAddress().addr);
         threadList.erase(eit);
     }
     threadListLock.Unlock(MUTEX_CONTEXT);
 
     if (node->IsValid()) {
-        if (node->DecConnCount() == 0) {
+        uint32_t connCount = node->DecConnCount();
+        if (connCount == 0) {
             connNodeDB.RemoveNode(node);
-        }
 
-        BTNodeDB::const_iterator it;
-        BTNodeDB::const_iterator end;
-        uint32_t connCount = 0;
-        BDAddress addr = node->GetBusAddress().addr;
-
-        connNodeDB.FindNodes(addr, it, end);
-
-        for (; it != end; ++it) {
-            connCount += (*it)->GetConnectionCount();
+            // There should only ever have been one.
+            assert(!connNodeDB.FindNode(node->GetBusAddress().addr)->IsValid());
         }
 
         if (connCount == 1) {
-            btController->LostLastConnection(addr);
+            btController->LostLastConnection(node->GetBusAddress().addr);
         }
     }
 
