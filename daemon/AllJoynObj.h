@@ -26,6 +26,7 @@
 #include <vector>
 
 #include <qcc/String.h>
+#include <qcc/StringUtil.h>
 #include <qcc/StringMapKey.h>
 #include <qcc/Thread.h>
 #include <qcc/time.h>
@@ -451,7 +452,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     class JoinSessionThread : public qcc::Thread, public qcc::ThreadListener {
       public:
         JoinSessionThread(AllJoynObj& ajObj, const Message& msg, bool isJoin) :
-            Thread(String("JoinS-") + IncrementAndFetch(&jstCount)),
+            qcc::Thread(qcc::String("JoinS-") + qcc::U32ToString(IncrementAndFetch(&jstCount))),
             ajObj(ajObj),
             msg(msg),
             isJoin(isJoin) { }
