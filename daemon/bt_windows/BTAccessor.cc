@@ -1954,7 +1954,7 @@ WindowsBTEndpoint* BTTransport::BTAccessor::EndPointsFind(BTH_ADDR address,
         }
     } while (--i >= 0);
 #if 0
-    // GB - this doesn't look right to me - the only time handle is NULL is for an outgoing 
+    // GB - this doesn't look right to me - the only time handle is NULL is for an outgoing
     // connect request that has not yet completed. In this case there should be a corresponding
     // endpoint with a NULL handle and that should have matched above.
     //
