@@ -170,6 +170,7 @@ static void usage(void)
     printf("   -ta                   = Like -t except calls asynchronously\n");
     printf("   -rt [run time]        = Round trip timer (optional run time in ms)\n");
     printf("   -w                    = Don't wait for service\n");
+    printf("   -s                    = Wait for SIGINT (Control-C) at the end of the tests\n");
     printf("\n");
 }
 
@@ -347,6 +348,7 @@ int main(int argc, char** argv)
     bool asyncPing = false;
     uint32_t pingDelay = 0;
     uint32_t pingInterval = 0;
+    bool waitForSigint = false;
     bool roundtrip = false;
 
 #ifdef _WIN32
@@ -491,6 +493,8 @@ int main(int argc, char** argv)
             } else if (pingCount == 1) {
                 pingCount = 1000;
             }
+        } else if (0 == strcmp("-s", argv[i])) {
+            waitForSigint = true;
         } else {
             status = ER_FAIL;
             printf("Unknown option %s\n", argv[i]);
@@ -813,6 +817,12 @@ int main(int argc, char** argv)
                 } else {
                     QCC_LogError(status, ("GetProperty on %s failed", g_wellKnownName.c_str()));
                 }
+            }
+        }
+
+        if (status == ER_OK && waitForSigint) {
+            while (g_interrupt == false) {
+                qcc::Sleep(100);
             }
         }
 
