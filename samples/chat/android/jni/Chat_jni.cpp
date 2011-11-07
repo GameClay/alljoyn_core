@@ -63,13 +63,9 @@ static ChatObject* s_chatObj = NULL;
 static qcc::String s_advertisedName;
 static MyBusListener* s_busListener = NULL;
 static SessionId s_sessionId = 0;
-static qcc::String sessionName;
-
 
 class MyBusListener : public BusListener, public SessionPortListener, public SessionListener {
   public:
-    MyBusListener(JavaVM* vm, jobject& jobj) : vm(vm), jobj(jobj) { }
-
     void FoundAdvertisedName(const char* name, TransportMask transport, const char* namePrefix)
     {
         const char* convName = name + strlen(NAME_PREFIX);
@@ -111,9 +107,6 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
     void NameOwnerChanged(const char* busName, const char* previousOwner, const char* newOwner)
     {
     }
-  private:
-    JavaVM* vm;
-    jobject jobj;
 };
 
 
@@ -145,8 +138,17 @@ class ChatObject : public BusObject {
         }
     }
 
+    ~ChatObject()
+    {
+        JNIEnv* env;
+        jint jret = vm->GetEnv((void**)&env, JNI_VERSION_1_2);
+        assert(JNI_OK == jret);
+        env->DeleteGlobalRef(jobj);
+    }
+
     /** Send a Chat signal */
-    QStatus SendChatSignal(const char* msg) {
+    QStatus SendChatSignal(const char* msg)
+    {
         MsgArg chatArg("s", msg);
         uint8_t flags = 0;
         return Signal(NULL, s_sessionId, *chatSignalMember, &chatArg, 1, 0, flags);
@@ -168,10 +170,19 @@ class ChatObject : public BusObject {
         } else {
 
             jstring jSender = env->NewStringUTF(msg->GetSender());
+            if (!jSender) {
+                LOGE("NewStringUTF failed");
+                return;
+            }
             jstring jChatStr = env->NewStringUTF(msg->GetArg(0)->v_string.str);
+            if (!jChatStr) {
+                LOGE("NewStringUTF failed");
+                return;
+            }
             env->CallVoidMethod(jobj, mid, jSender, jChatStr);
-            env->DeleteLocalRef(jSender);
-            env->DeleteLocalRef(jChatStr);
+            if (env->ExceptionCheck()) {
+                env->ExceptionClear();
+            }
         }
         if (JNI_EDETACHED == jret) {
             vm->DetachCurrentThread();
@@ -224,66 +235,108 @@ extern "C" {
 JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_chat_Chat_jniOnCreate(JNIEnv* env, jobject jobj,
                                                                           jstring packageNameStrObj)
 {
+    QStatus status = ER_OK;
+    const char* packageNameStr = NULL;
+    InterfaceDescription* chatIntf = NULL;
+    const char* daemonAddr = "unix:abstract=alljoyn";
+    JavaVM* vm;
+    jobject jglobalObj = NULL;
 
-
-    /* Set AllJoyn logging */
-    //QCC_SetLogLevels("ALLJOYN=7;ALL=1");
-    QCC_UseOSLogging(true);
-
-    jboolean iscopy;
-    const char* packageNameStr = env->GetStringUTFChars(packageNameStrObj, &iscopy);
+    packageNameStr = env->GetStringUTFChars(packageNameStrObj, NULL);
+    if (!packageNameStr) {
+        LOGE("GetStringUTFChars failed");
+        status = ER_FAIL;
+        goto exit;
+    }
     /* Create message bus */
     s_bus = new BusAttachment(packageNameStr, true);
-
-    QStatus status = ER_OK;
-    const char* daemonAddr = "unix:abstract=alljoyn";
-
-    /* Create org.alljoyn.bus.samples.chat interface */
-    InterfaceDescription* chatIntf = NULL;
-    status = s_bus->CreateInterface(CHAT_SERVICE_INTERFACE_NAME, chatIntf);
-    if (ER_OK == status) {
-        chatIntf->AddSignal("Chat", "s",  "str", 0);
-        chatIntf->Activate();
-    } else {
-        LOGE("Failed to create interface \"%s\" (%s)", CHAT_SERVICE_INTERFACE_NAME, QCC_StatusText(status));
+    if (!s_bus) {
+        LOGE("new BusAttachment failed");
+        status = ER_FAIL;
+        goto exit;
     }
 
+    /* Create org.alljoyn.bus.samples.chat interface */
+    status = s_bus->CreateInterface(CHAT_SERVICE_INTERFACE_NAME, chatIntf);
+    if (ER_OK != status) {
+        LOGE("Failed to create interface \"%s\" (%s)", CHAT_SERVICE_INTERFACE_NAME, QCC_StatusText(status));
+        goto exit;
+    }
+    status = chatIntf->AddSignal("Chat", "s",  "str", 0);
+    if (ER_OK != status) {
+        LOGE("Failed to AddSignal \"Chat\" (%s)", QCC_StatusText(status));
+        goto exit;
+    }
+    chatIntf->Activate();
+
     /* Start the msg bus */
-    if (ER_OK == status) {
-        status = s_bus->Start();
-        if (ER_OK != status) {
-            LOGE("BusAttachment::Start failed (%s)", QCC_StatusText(status));
-        }
+    status = s_bus->Start();
+    if (ER_OK != status) {
+        LOGE("BusAttachment::Start failed (%s)", QCC_StatusText(status));
+        goto exit;
     }
 
     /* Connect to the daemon */
-    if (ER_OK == status) {
-        status = s_bus->Connect(daemonAddr);
-        if (ER_OK != status) {
-            LOGE("BusAttachment::Connect(\"%s\") failed (%s)", daemonAddr, QCC_StatusText(status));
-        }
+    status = s_bus->Connect(daemonAddr);
+    if (ER_OK != status) {
+        LOGE("BusAttachment::Connect(\"%s\") failed (%s)", daemonAddr, QCC_StatusText(status));
+        goto exit;
     }
 
     /* Create and register the bus object that will be used to send out signals */
-    JavaVM* vm;
-    env->GetJavaVM(&vm);
-    s_chatObj = new ChatObject(*s_bus, CHAT_SERVICE_OBJECT_PATH, vm, jobj);
-    s_bus->RegisterBusObject(*s_chatObj);
+    if (0 != env->GetJavaVM(&vm)) {
+        LOGE("GetJavaVM failed");
+        status = ER_FAIL;
+        goto exit;
+    }
+    jglobalObj = env->NewGlobalRef(jobj);
+    if (!jglobalObj) {
+        LOGE("NewGlobalRef failed");
+        status = ER_FAIL;
+        goto exit;
+    }
+    s_chatObj = new ChatObject(*s_bus, CHAT_SERVICE_OBJECT_PATH, vm, jglobalObj);
+    if (!s_chatObj) {
+        LOGE("new ChatObject failed");
+        status = ER_FAIL;
+        goto exit;
+    }
+    jglobalObj = NULL; /* ChatObject owns global reference now */
+    status = s_bus->RegisterBusObject(*s_chatObj);
+    if (ER_OK != status) {
+        LOGE("BusAttachment::RegisterBusObject() failed (%s)", QCC_StatusText(status));
+        goto exit;
+    }
     LOGD("\n Bus Object created and registered \n");
 
     /* Register a bus listener in order to get discovery indications */
-    if (ER_OK == status) {
-        s_busListener = new MyBusListener(vm, jobj);
-        s_bus->RegisterBusListener(*s_busListener);
+    s_busListener = new MyBusListener();
+    if (!s_busListener) {
+        LOGE("new BusListener failed");
+        status = ER_FAIL;
+        goto exit;
     }
+    s_bus->RegisterBusListener(*s_busListener);
 
-    env->ReleaseStringUTFChars(packageNameStrObj, packageNameStr);
+exit:
+    if (ER_OK != status) {
+        delete s_bus;
+        s_bus = NULL;
 
-    if (NULL == s_bus) {
-        return jboolean(false);
+        delete s_chatObj;
+        s_chatObj = NULL;
+
+        delete s_busListener;
+        s_busListener = NULL;
+
+        if (jglobalObj) {
+            env->DeleteGlobalRef(jglobalObj);
+        }
     }
-
-    return (int) ER_OK;
+    if (packageNameStr) {
+        env->ReleaseStringUTFChars(packageNameStrObj, packageNameStr);
+    }
+    return (jint) status;
 }
 
 
@@ -293,57 +346,74 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_advertise(JNIE
                                                                             jobject jobj,
                                                                             jstring advertiseStrObj)
 {
+    const char* advertisedNameStr = NULL;
+    QStatus status;
+    SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+    SessionPort sp = CHAT_PORT;
 
-    jboolean iscopy;
-
-    const char* advertisedNameStr = env->GetStringUTFChars(advertiseStrObj, &iscopy);
     s_advertisedName = "";
+    advertisedNameStr = env->GetStringUTFChars(advertiseStrObj, NULL);
+    if (!advertisedNameStr) {
+        LOGE("GetStringUTFChars failed");
+        status = ER_FAIL;
+        goto exit;
+    }
     s_advertisedName += NAME_PREFIX;
     s_advertisedName += ".";
     s_advertisedName += advertisedNameStr;
 
     /* Request name */
-    QStatus status = s_bus->RequestName(s_advertisedName.c_str(), DBUS_NAME_FLAG_DO_NOT_QUEUE);
+    status = s_bus->RequestName(s_advertisedName.c_str(), DBUS_NAME_FLAG_DO_NOT_QUEUE);
     if (ER_OK != status) {
         LOGE("RequestName(%s) failed (status=%s)\n", s_advertisedName.c_str(), QCC_StatusText(status));
-    } else {
-        LOGD("\n Request Name was successful");
+        goto exit;
     }
+    LOGD("\n Request Name was successful");
 
     /* Bind the session port*/
-    SessionOpts opts(SessionOpts::TRAFFIC_MESSAGES, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
-    if (ER_OK == status) {
-        SessionPort sp = CHAT_PORT;
-        status = s_bus->BindSessionPort(sp, opts, *s_busListener);
-        if (ER_OK != status) {
-            LOGE("BindSessionPort failed (%s)\n", QCC_StatusText(status));
-        } else {
-            LOGD("\n Bind Session Port to %u was successful \n", CHAT_PORT);
-        }
+    status = s_bus->BindSessionPort(sp, opts, *s_busListener);
+    if (ER_OK != status) {
+        LOGE("BindSessionPort failed (%s)\n", QCC_StatusText(status));
+        goto exit;
     }
+    LOGD("\n Bind Session Port to %u was successful \n", CHAT_PORT);
 
     /* Advertise the name */
-    if (ER_OK == status) {
-        status = s_bus->AdvertiseName(s_advertisedName.c_str(), opts.transports);
-        if (status != ER_OK) {
-            LOGD("Failed to advertise name %s (%s) \n", s_advertisedName.c_str(), QCC_StatusText(status));
-        } else {
-            LOGD("\n Name %s was successfully advertised", s_advertisedName.c_str());
-        }
+    status = s_bus->AdvertiseName(s_advertisedName.c_str(), opts.transports);
+    if (status != ER_OK) {
+        LOGD("Failed to advertise name %s (%s) \n", s_advertisedName.c_str(), QCC_StatusText(status));
+        goto exit;
     }
+    LOGD("\n Name %s was successfully advertised", s_advertisedName.c_str());
 
-    env->ReleaseStringUTFChars(advertiseStrObj, advertisedNameStr);
-    return (jboolean) true;
+exit:
+    if (ER_OK != status) {
+        s_bus->CancelAdvertiseName(s_advertisedName.c_str(), opts.transports);
+        s_bus->UnbindSessionPort(sp);
+        s_bus->ReleaseName(s_advertisedName.c_str());
+    }
+    if (advertisedNameStr) {
+        env->ReleaseStringUTFChars(advertiseStrObj, advertisedNameStr);
+    }
+    return (jboolean) (ER_OK == status);
 }
 
 JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_joinSession(JNIEnv* env,
                                                                               jobject jobj,
-                                                                              jstring joinSessionObj) {
+                                                                              jstring joinSessionObj)
+{
+    const char* sessionNameStr = NULL;
+    qcc::String sessionName;
+    QStatus status = ER_OK;
 
     LOGD("\n Inside Join session");
 
-    jboolean iscopy;
-    const char* sessionNameStr = env->GetStringUTFChars(joinSessionObj, &iscopy);
+    sessionNameStr = env->GetStringUTFChars(joinSessionObj, NULL);
+    if (!sessionNameStr) {
+        LOGE("GetStringUTFChars failed");
+        status = ER_FAIL;
+        goto exit;
+    }
     sessionName = "";
     sessionName += NAME_PREFIX;
     sessionName += ".";
@@ -351,19 +421,17 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_joinSession(JN
     LOGD("\n Name of the session to be joined %s ", sessionName.c_str());
 
     /* Call joinSession method since we have the name */
-    QStatus status = s_bus->FindAdvertisedName(sessionName.c_str());
+    status = s_bus->FindAdvertisedName(sessionName.c_str());
     if (ER_OK != status) {
         LOGE("\n Error while calling FindAdvertisedName \n");
+        goto exit;
     }
 
-
-
-/*
-        while(!s_joinComplete){
-                sleep(1);
-        }
- */
-    return (jboolean) true;
+exit:
+    if (sessionNameStr) {
+        env->ReleaseStringUTFChars(joinSessionObj, sessionNameStr);
+    }
+    return (jboolean) (ER_OK == status);
 }
 
 
@@ -373,21 +441,15 @@ JNIEXPORT jboolean JNICALL Java_org_alljoyn_bus_samples_chat_Chat_joinSession(JN
 JNIEXPORT void JNICALL Java_org_alljoyn_bus_samples_chat_Chat_jniOnDestroy(JNIEnv* env, jobject jobj)
 {
     /* Deallocate bus */
-    if (NULL != s_bus) {
-        delete s_bus;
-        s_bus = NULL;
-    }
+    delete s_bus;
+    s_bus = NULL;
 
     /* Deregister the ServiceObject. */
-    if (s_chatObj) {
-        delete s_chatObj;
-        s_chatObj = NULL;
-    }
+    delete s_chatObj;
+    s_chatObj = NULL;
 
-    if (NULL != s_busListener) {
-        delete s_busListener;
-        s_busListener = NULL;
-    }
+    delete s_busListener;
+    s_busListener = NULL;
 }
 
 
@@ -398,21 +460,37 @@ JNIEXPORT jint JNICALL Java_org_alljoyn_bus_samples_chat_Chat_sendChatMsg(JNIEnv
                                                                           jobject jobj,
                                                                           jstring chatMsgObj)
 {
+    const char* chatMsg = NULL;
+    QStatus status = ER_OK;
+
     /* Send a signal */
-    jboolean iscopy;
-    const char* chatMsg = env->GetStringUTFChars(chatMsgObj, &iscopy);
-    QStatus status = s_chatObj->SendChatSignal(chatMsg);
+    chatMsg = env->GetStringUTFChars(chatMsgObj, NULL);
+    if (!chatMsg) {
+        LOGE("GetStringUTFChars failed");
+        status = ER_FAIL;
+        goto exit;
+    }
+
+    status = s_chatObj->SendChatSignal(chatMsg);
     if (ER_OK != status) {
         LOGE("Chat", "Sending signal failed (%s)", QCC_StatusText(status));
+        goto exit;
     }
-    env->ReleaseStringUTFChars(chatMsgObj, chatMsg);
+
+exit:
+    if (chatMsg) {
+        env->ReleaseStringUTFChars(chatMsgObj, chatMsg);
+    }
     return (jint) status;
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm,
                                   void* reserved)
 {
+    /* Set AllJoyn logging */
+    //QCC_SetLogLevels("ALLJOYN=7;ALL=1");
     QCC_UseOSLogging(true);
+
     return JNI_VERSION_1_2;
 }
 
