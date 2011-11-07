@@ -450,7 +450,11 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
     /** JoinSessionThread handles a JoinSession request from a local client on a separate thread */
     class JoinSessionThread : public qcc::Thread, public qcc::ThreadListener {
       public:
-        JoinSessionThread(AllJoynObj& ajObj, const Message& msg, bool isJoin) : Thread("JoinSessionThread"), ajObj(ajObj), msg(msg), isJoin(isJoin) { }
+        JoinSessionThread(AllJoynObj& ajObj, const Message& msg, bool isJoin) :
+            Thread(String("JoinS-") + IncrementAndFetch(&jstCount)),
+            ajObj(ajObj),
+            msg(msg),
+            isJoin(isJoin) { }
 
         void ThreadExit(Thread* thread);
 
@@ -458,6 +462,7 @@ class AllJoynObj : public BusObject, public NameListener, public TransportListen
         qcc::ThreadReturn STDCALL Run(void* arg);
 
       private:
+        static int jstCount;
         qcc::ThreadReturn STDCALL RunJoin();
         qcc::ThreadReturn STDCALL RunAttach();
 

@@ -60,6 +60,8 @@ using namespace qcc;
 
 namespace ajn {
 
+int AllJoynObj::JoinSessionThread::jstCount = 0;
+
 void AllJoynObj::AcquireLocks()
 {
     /*
