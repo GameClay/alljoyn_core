@@ -39,34 +39,6 @@
 
 #include "NsProtocol.h"
 
-/**
- * @brief Experimental Feature to allow broadcast of Name Service packets
- *
- * Some Access Points, notably Cisco Aironet 1140s, are configured to throw away
- * IPv4 multicast packets by default.  There doesn't seem to be a configuration
- * item available to convince these APs to forward IPv4 multicast.  They do,
- * however, consider support of broadcast to be mandatory since many protocols
- * depend on it.  Because of this we allow the NameService to broadcast its
- * WHO-HAS and IS-AT packets.  We do this over a subnet directed broadcast so
- * we have control over which links the packets go out.
- *
- * Somewhat counter-intuitively, it is the higher-end access points that tend
- * to be more restrictive about multicast, and the more you pay for your access
- * point, the more knobs you get to turn that will give AllJoyn heartburn.  For
- * example, the Cisco Unified Wireless Network (CUWN) Wireless Lan Controllers
- * (WLCs) include settings to turn on or off IPv4 muticast, limit the rate at
- * which IGMP packets are forwarded, and limit the rate at which multicast
- * packets in general are forwarded.
- *
- * This can result in strangely unpredictable discovery behavior as viewed by a
- * user so we are experimenting with just falling back to broadcast for IPv4
- * discovery packets even though networking gurus may be shocked at seeing such
- * "old-fashioned" point to multi-point packets on a modern network.
- *
- * To enable this feature define NS_BROADCAST to be non-zero.
- */
-#define NS_BROADCAST 1
-
 namespace ajn {
 
 /**
@@ -105,13 +77,11 @@ class NameService : public qcc::Thread {
      */
     static const char* INTERFACES_WILDCARD;
 
-#if NS_BROADCAST
     /**
      * @brief The property name used to define the interfaces (e.g., eth0) used
      * in discovery.
      */
     static const char* BROADCAST_PROPERTY;
-#endif
 
     /**
      * @brief The maximum size of a name, in general.
@@ -245,9 +215,7 @@ class NameService : public qcc::Thread {
       public:
         qcc::String m_name;
         qcc::String m_addr;
-#if NS_BROADCAST
         uint32_t m_prefixlen;
-#endif
         uint32_t m_family;
 
         static const uint32_t UP = 1;
@@ -300,12 +268,10 @@ class NameService : public qcc::Thread {
      * @see OpenInterface()
      */
     QStatus Init(
-        const qcc::String & guid,
+        const qcc::String& guid,
         bool enableIPv4,
         bool enableIPv6,
-#if NS_BROADCAST
         bool disableBroadcast,
-#endif
         bool loopback = false);
 
     /**
@@ -704,7 +670,6 @@ class NameService : public qcc::Thread {
      */
     static const uint16_t MULTICAST_PORT;
 
-#if NS_BROADCAST
     /**
      * @brief The IPv4 broadcast address for the fallback case when Access
      * Points disable multicast.
@@ -717,7 +682,6 @@ class NameService : public qcc::Thread {
      * different (with a litle work).
      */
     static const uint16_t BROADCAST_PORT;
-#endif
 
     /**
      * @brief
@@ -746,12 +710,11 @@ class NameService : public qcc::Thread {
     class LiveInterface : public InterfaceSpecifier {
       public:
         qcc::IPAddress m_address;           /**< The address of the interface we are talking to */
-#if NS_BROADCAST
         uint32_t m_prefixlen;               /**< The address prefix (cf netmask) of the interface we are talking to */
-#endif
         qcc::SocketFd m_sockFd;             /**< The socket we are using to talk over */
         uint32_t m_mtu;                     /**< The MTU of the protocol/device we are using */
         uint32_t m_index;                   /**< The interface index of the protocol/device we are using if IPv6 */
+        uint32_t m_flags;                   /**< The interface flags we found during the ifconfig that found us */
     };
 
     /**
@@ -798,16 +761,13 @@ class NameService : public qcc::Thread {
      * @internal
      * @brief Send a protocol message out on the multicast group.
      */
-#if NS_BROADCAST
     void SendProtocolMessage(
         qcc::SocketFd sockFd,
         qcc::IPAddress interfaceAddress,
         uint32_t interfaceAddressPrefixLen,
+        uint32_t flags,
         bool sockFdIsIPv4,
         Header& header);
-#else
-    void SendProtocolMessage(qcc::SocketFd sockFd, bool sockFdIsIpv4, Header& header);
-#endif
 
     /**
      * @internal
@@ -911,14 +871,12 @@ class NameService : public qcc::Thread {
      */
     bool m_loopback;
 
-#if NS_BROADCAST
     /**
      * @internal
      * @brief Send name service packets via IPv4 subnet directed broadcast if
      * true.
      */
     bool m_broadcast;
-#endif
 
     /**
      * @internal

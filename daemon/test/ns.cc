@@ -201,11 +201,7 @@ int main(int argc, char** argv)
     //
     bool enableIPv4, enableIPv6, loopback;
     enableIPv4 = enableIPv6 = loopback = true;
-    status = ns.Init(qcc::GUID128().ToString(), enableIPv4, enableIPv6,
-#if NS_BROADCAST
-                     false,
-#endif
-                     loopback);
+    status = ns.Init(qcc::GUID128().ToString(), enableIPv4, enableIPv6, false, loopback);
     if (status != ER_OK) {
         QCC_LogError(status, ("Init failed"));
         ERROR_EXIT;
@@ -234,20 +230,18 @@ int main(int argc, char** argv)
         printf("0x%x = ", entries[i].m_flags);
         PrintFlags(entries[i].m_flags);
         if (entries[i].m_flags & NameService::IfConfigEntry::UP) {
-            if (entries[i].m_flags & NameService::IfConfigEntry::MULTICAST) {
-                printf(", MTU = %d, address = %s", entries[i].m_mtu, entries[i].m_addr.c_str());
-                if ((entries[i].m_flags & NameService::IfConfigEntry::LOOPBACK) == 0) {
-                    printf(" <--- Let's use this one");
-                    overrideInterface = entries[i].m_name;
-                    //
-                    // Tell the name service to talk and listen over the interface we chose
-                    // above.
-                    //
-                    status = ns.OpenInterface(entries[i].m_name);
-                    if (status != ER_OK) {
-                        QCC_LogError(status, ("OpenInterface failed"));
-                        ERROR_EXIT;
-                    }
+            printf(", MTU = %d, address = %s", entries[i].m_mtu, entries[i].m_addr.c_str());
+            if ((entries[i].m_flags & NameService::IfConfigEntry::LOOPBACK) == 0) {
+                printf(" <--- Let's use this one");
+                overrideInterface = entries[i].m_name;
+                //
+                // Tell the name service to talk and listen over the interface we chose
+                // above.
+                //
+                status = ns.OpenInterface(entries[i].m_name);
+                if (status != ER_OK) {
+                    QCC_LogError(status, ("OpenInterface failed"));
+                    ERROR_EXIT;
                 }
             }
         }

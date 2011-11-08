@@ -274,22 +274,16 @@ QStatus DaemonTCPTransport::Start()
      * GUID we think we are and whether or not to advertise over IPv4 and or
      * IPv6 and whether or not to use subnet directed broadcasts.
      */
-#if NS_BROADCAST
     bool disable = false;
     if (ConfigDB::GetConfigDB()->GetProperty(NameService::MODULE_NAME, NameService::BROADCAST_PROPERTY) == "true") {
         disable = true;
     }
-#endif
 
     assert(m_ns == NULL);
     m_ns = new NameService;
     assert(m_ns);
     qcc::String guidStr = m_bus.GetInternal().GetGlobalGUID().ToString();
-    QStatus status = m_ns->Init(guidStr, true, true
-#if NS_BROADCAST
-                                , disable
-#endif
-                                );
+    QStatus status = m_ns->Init(guidStr, true, true, disable);
     if (status != ER_OK) {
         QCC_LogError(status, ("DaemonTCPTransport::Start(): Error starting name service"));
         return status;
@@ -543,16 +537,13 @@ QStatus DaemonTCPTransport::GetListenAddresses(const SessionOpts& opts, std::vec
              * To match a configuration entry, the name of the interface must:
              *
              *   - match the name in the currentInterface (or be wildcarded);
-             *   - support multicast and so plausibly be the source of an advert;
              *   - be UP which means it has an IP address assigned;
              *   - not be the LOOPBACK device and therefore be remotely available.
              */
             uint32_t mask = NameService::IfConfigEntry::UP |
-                            NameService::IfConfigEntry::MULTICAST |
                             NameService::IfConfigEntry::LOOPBACK;
 
-            uint32_t state = NameService::IfConfigEntry::UP |
-                             NameService::IfConfigEntry::MULTICAST;
+            uint32_t state = NameService::IfConfigEntry::UP;
 
             if ((entries[i].m_flags & mask) == state) {
                 QCC_DbgTrace(("DaemonTCPTransport::GetListenAddresses(): %s has correct state", entries[i].m_name.c_str()));
@@ -565,7 +556,7 @@ QStatus DaemonTCPTransport::GetListenAddresses(const SessionOpts& opts, std::vec
                      * already in a string, so we can easily put together the
                      * desired busAddr.
                      *
-                     * Currently, however, the daemon caan't handle IPv6
+                     * Currently, however, the daemon can't handle IPv6
                      * addresses, so we filter them out and only let IPv4
                      * addresses (address family is AF_INET) escape.
                      */
