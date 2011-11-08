@@ -26,6 +26,7 @@
 #include <sys/ioctl.h>
 
 #include <qcc/Socket.h>
+#include <qcc/time.h>
 
 #include "BlueZ.h"
 #include "BlueZHCIUtils.h"
@@ -444,6 +445,7 @@ QStatus RequestBTRole(uint16_t deviceId, const BDAddress& bdAddr, bt::BluetoothR
     bool gotRoleSwitchEvent = false;
     int ret;
     struct hci_filter evtFilter;
+    uint64_t timeout;
 
     // HCI command sent via raw sockets (must have privileges for this)
     hciFd = (SocketFd)socket(AF_BLUETOOTH, QCC_SOCK_RAW, 1);
@@ -493,6 +495,8 @@ QStatus RequestBTRole(uint16_t deviceId, const BDAddress& bdAddr, bt::BluetoothR
         goto exit;
     }
 
+    timeout = GetTimestamp64() + 10000;
+
     do {
         status = Event::Wait(hciRxEvent, 5000);  // 5 second timeout
         if (status != ER_OK) {
@@ -535,7 +539,12 @@ QStatus RequestBTRole(uint16_t deviceId, const BDAddress& bdAddr, bt::BluetoothR
                                bdAddr.ToString().c_str()));
             }
         }
-    } while (!gotRoleSwitchEvent);
+    } while (!gotRoleSwitchEvent && (timeout > GetTimestamp64()));
+
+    if (!gotRoleSwitchEvent) {
+        status = ER_TIMEOUT;
+        QCC_LogError(status, ("Timed out waiting for role switch confirmation"));
+    }
 
 exit:
     close(hciFd);
