@@ -738,7 +738,8 @@ class BTController :
                         MsgArg* nodeStateEntries,
                         size_t numNodeStates,
                         MsgArg* foundNodeArgs,
-                        size_t numFoundNodes);
+                        size_t numFoundNodes,
+                        bool skipNodeDB = false);
 
     /**
      * Updates the find/advertise name information on the minion assigned to

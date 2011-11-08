@@ -1687,7 +1687,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
                     dispatcher.RemoveAlarm(expireAlarm);
                 }
 
-                status = ImportState(masterNode, NULL, 0, foundNodeArgs, numFoundNodeArgs);
+                status = ImportState(masterNode, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs, true);
                 if (status != ER_OK) {
                     QCC_LogError(status, ("Dropping %s due to import state error", joinSessionNode->GetBusAddress().ToString().c_str()));
                     bt.Disconnect(joinSessionNode->GetUniqueName());
@@ -2130,7 +2130,8 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
                                   MsgArg* nodeStateArgs,
                                   size_t numNodeStates,
                                   MsgArg* foundNodeArgs,
-                                  size_t numFoundNodes)
+                                  size_t numFoundNodes,
+                                  bool skipNodeDB)
 {
     QCC_DbgTrace(("BTController::ImportState(addr = (%s), nodeStateArgs = <>, numNodeStates = %u, foundNodeArgs = <>, numFoundNodes = %u)",
                   connectingNode->GetBusAddress().ToString().c_str(), numNodeStates, numFoundNodes));
@@ -2239,7 +2240,9 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
         }
 
         incomingDB.AddNode(node);
-        nodeDB.AddNode(node);
+        if (!skipNodeDB) {
+            nodeDB.AddNode(node);
+        }
     }
 
     // At this point nodeDB now has all the nodes that have connected to us
