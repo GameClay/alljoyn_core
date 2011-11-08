@@ -423,10 +423,11 @@ void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
     threadListLock.Unlock(MUTEX_CONTEXT);
 
     if (node->IsValid()) {
-        uint32_t connCount = node->DecConnCount();
-        QCC_DbgPrintf(("Decrement connection count for %s to %u: ENDPOINT_EXIT", node->GetBusAddress().ToString().c_str(), node->GetConnectionCount()));
+        BTNodeInfo rnode = connNodeDB.FindNode(node->GetBusAddress().addr);
+        uint32_t connCount = rnode->DecConnCount();
+        QCC_DbgPrintf(("Decrement connection count for %s to %u: ENDPOINT_EXIT", node->GetBusAddress().ToString().c_str(), connCount));
         if (connCount == 0) {
-            connNodeDB.RemoveNode(node);
+            connNodeDB.RemoveNode(rnode);
 
             // There should only ever have been one.
             assert(!connNodeDB.FindNode(node->GetBusAddress().addr)->IsValid());

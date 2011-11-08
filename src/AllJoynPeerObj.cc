@@ -507,7 +507,7 @@ void AllJoynPeerObj::ForceAuthentication(const qcc::String& busName)
 /*
  * A long timeout to allow for possible PIN entry
  */
-#define AUTH_TIMEOUT      60000
+#define AUTH_TIMEOUT      120000
 #define DEFAULT_TIMEOUT   10000
 
 QStatus AllJoynPeerObj::AuthenticatePeer(AllJoynMessageType msgType, const qcc::String& busName, bool wait)
