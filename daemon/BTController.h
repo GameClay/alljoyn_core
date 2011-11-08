@@ -664,10 +664,8 @@ class BTController :
 
     /**
      * Send the SetState method call to the Master node we are connecting to.
-     *
-     * @return ER_OK if successful.
      */
-    QStatus DeferredSendSetState();
+    void DeferredSendSetState();
 
     void DeferredProcessSetStateReply(Message& reply,
                                       ProxyBusObject* newMaster);
@@ -830,7 +828,7 @@ class BTController :
 
     void ResetExpireNameAlarm();
     void RemoveExpireNameAlarm() { dispatcher.RemoveAlarm(expireAlarm); }
-    void ClearJoinSessionNode();
+    void JoinSessionNodeComplete();
 
 
     void AlarmTriggered(const qcc::Alarm& alarm, QStatus reason);

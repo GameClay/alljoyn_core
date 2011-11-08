@@ -641,6 +641,30 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
     } while (repeat);
 
 
+    if (newDevice) {
+        if ((find.minion == self) && find.active) {
+            /*
+             * Gotta shut down the local find operation since the exchange of
+             * the SetState method call and response which will result in one
+             * side or the other taking control of who performs the find
+             * operation.
+             */
+            QCC_DbgPrintf(("Stopping local find..."));
+            find.StopLocal();
+        }
+        if ((advertise.minion == self) && advertise.active) {
+            /*
+             * Gotta shut down the local advertise operation since the
+             * exchange for the SetState method call and response which will
+             * result in one side or the other taking control of who performs
+             * the advertise operation.
+             */
+            QCC_DbgPrintf(("Stopping local advertise..."));
+            advertise.StopLocal();
+        }
+    }
+
+
     QCC_DEBUG_ONLY(connectStartTimes[node->GetBusAddress().addr] = connectTimer.StartTime());
 
     QCC_DbgPrintf(("Connect address %s for %s is %s",
@@ -684,15 +708,15 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
                 if (status == ER_OK) {
                     node->SetSessionState(_BTNodeInfo::JOINING_SESSION);
                 } else {
-                    ClearJoinSessionNode();
+                    JoinSessionNodeComplete();
                 }
             } else {
-                ClearJoinSessionNode();
+                JoinSessionNodeComplete();
             }
         }
     } else {
         if ((node == joinSessionNode) && (node->GetConnectionCount() == 0)) {
-            ClearJoinSessionNode();
+            JoinSessionNodeComplete();
         }
     }
 }
@@ -901,7 +925,7 @@ void BTController::JoinSessionCB(QStatus status, SessionId sessionID, const Sess
             bus.LeaveSession(sessionID);
         }
 
-        ClearJoinSessionNode();
+        JoinSessionNodeComplete();
     }
 }
 
@@ -1528,7 +1552,7 @@ void BTController::DeferredBTDeviceAvailable(bool on)
 }
 
 
-QStatus BTController::DeferredSendSetState()
+void BTController::DeferredSendSetState()
 {
     QCC_DbgTrace(("BTController::DeferredSendSetState()  [joinSessionNode = %s]", joinSessionNode->GetBusAddress().ToString().c_str()));
     assert(!master);
@@ -1540,32 +1564,13 @@ QStatus BTController::DeferredSendSetState()
     size_t numArgs = ArraySize(args);
     Message reply(bus);
     ProxyBusObject* newMaster = new ProxyBusObject(bus, joinSessionNode->GetUniqueName().c_str(), bluetoothObjPath, joinSessionNode->GetSessionID());
+    uint8_t slaveFactor;
+
 
     lock.Lock(MUTEX_CONTEXT);
-    if ((find.minion == self) && find.active) {
-        /*
-         * Gotta shut down the local find operation since the exchange
-         * of the SetState method call and response which will result
-         * in one side or the other taking control of who performs the
-         * find operation.
-         */
-        QCC_DbgPrintf(("Stopping local find..."));
-        find.StopLocal();
-    }
-    if ((advertise.minion == self) && advertise.active) {
-        /*
-         * Gotta shut down the local advertise operation since the
-         * exchange for the SetState method call and response which
-         * will result in one side or the other taking control of who
-         * performs the advertise operation.
-         */
-        QCC_DbgPrintf(("Stopping local advertise..."));
-        advertise.StopLocal();
-    }
-
     newMaster->AddInterface(*org.alljoyn.Bus.BTController.interface);
 
-    uint8_t slaveFactor = ComputeSlaveFactor();
+    slaveFactor = ComputeSlaveFactor();
 
     QCC_DbgPrintf(("SendSetState prep args"));
     FillNodeStateMsgArgs(nodeStateArgsStorage);
@@ -1581,10 +1586,9 @@ QStatus BTController::DeferredSendSetState()
                          nodeStateArgsStorage.size(), &nodeStateArgsStorage.front(),
                          foundNodeArgsStorage.size(), &foundNodeArgsStorage.front());
     lock.Unlock(MUTEX_CONTEXT);
+
     if (status != ER_OK) {
-        delete newMaster;
         QCC_LogError(status, ("Dropping %s due to internal error", joinSessionNode->GetBusAddress().ToString().c_str()));
-        bt.Disconnect(joinSessionNode->GetUniqueName());
         goto exit;
     }
 
@@ -1603,18 +1607,16 @@ QStatus BTController::DeferredSendSetState()
                                         newMaster);
 
     if (status != ER_OK) {
-        delete newMaster;
         QCC_LogError(status, ("Dropping %s due to internal error", joinSessionNode->GetBusAddress().ToString().c_str()));
-        bt.Disconnect(joinSessionNode->GetUniqueName());
     }
 
 exit:
 
     if (status != ER_OK) {
-        ClearJoinSessionNode();
+        delete newMaster;
+        bt.Disconnect(joinSessionNode->GetUniqueName());
+        JoinSessionNodeComplete();
     }
-
-    return status;
 }
 
 
@@ -1673,8 +1675,6 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
             if (numNodeStateArgs == 0) {
                 // We are now a minion (or a drone if we have more than one direct connection)
                 master = newMaster;
-                assert(foundNodeDB.FindNode(joinSessionNode->GetBusAddress())->IsValid());
-                assert(&(*foundNodeDB.FindNode(joinSessionNode->GetBusAddress())) == &(*joinSessionNode));
                 masterNode = joinSessionNode;
                 masterNode->SetUUIDRev(otherUUIDRev);
                 masterNode->SetRelationship(_BTNodeInfo::MASTER);
@@ -1730,9 +1730,6 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
                     masterUUIDRev = qcc::Rand32();
                 }
 
-                UpdateDelegations(advertise);
-                UpdateDelegations(find);
-
                 ResetExpireNameAlarm();
             } else {
                 RemoveExpireNameAlarm();
@@ -1755,7 +1752,7 @@ exit:
         joinSessionNode->SetSessionState(_BTNodeInfo::NO_SESSION);  // Just in case
     }
 
-    ClearJoinSessionNode();
+    JoinSessionNodeComplete();
     lock.Unlock(MUTEX_CONTEXT);
 }
 
@@ -2672,7 +2669,7 @@ void BTController::ResetExpireNameAlarm()
 }
 
 
-void BTController::ClearJoinSessionNode()
+void BTController::JoinSessionNodeComplete()
 {
     lock.Lock(MUTEX_CONTEXT);
     if (joinSessionNode->IsValid()) {
@@ -2685,6 +2682,11 @@ void BTController::ClearJoinSessionNode()
             connectCompleted.SetEvent();
         }
     }
+
+    if (IsMaster()) {
+        DispatchOperation(new UpdateDelegationsDispatchInfo());
+    }
+
     lock.Unlock(MUTEX_CONTEXT);
 }
 
