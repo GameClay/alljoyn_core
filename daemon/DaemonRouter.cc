@@ -449,11 +449,12 @@ QStatus DaemonRouter::AddSessionRoute(SessionId id, BusEndpoint& srcEp, RemoteEn
     }
 
     if (destEp.GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL) {
-        assert(destB2bEp || optsHint);
         if (destB2bEp) {
             status = static_cast<VirtualEndpoint&>(destEp).AddSessionRef(id, *destB2bEp);
         } else if (optsHint) {
             status = static_cast<VirtualEndpoint&>(destEp).AddSessionRef(id, optsHint, destB2bEp);
+        } else {
+            status = ER_BUS_NO_SESSION;
         }
         if (status != ER_OK) {
             QCC_LogError(status, ("AddSessionRef(this=%s, %u, %s%s) failed", destEp.GetUniqueName().c_str(),

@@ -485,6 +485,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
         QCC_DbgTrace(("JoinSession(%d, <%u, 0x%x, 0x%x>)", sessionPort, optsIn.traffic, optsIn.proximity, optsIn.transports));
 
         /* Decide how to proceed based on the session endpoint existence/type */
+        ajObj.AcquireLocks();
         RemoteEndpoint* b2bEp = NULL;
         BusEndpoint* ep = sessionHost ? ajObj.router.FindEndpoint(sessionHost) : NULL;
         VirtualEndpoint* vSessionEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
@@ -494,7 +495,6 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
             /* Session is with another locally connected attachment */
 
             /* Find creator in session map */
-            ajObj.AcquireLocks();
             String creatorName = rSessionEp->GetUniqueName();
             bool foundSessionMapEntry = false;
             multimap<pair<String, SessionId>, SessionMapEntry>::iterator sit = ajObj.sessionMap.lower_bound(pair<String, SessionId>(creatorName, 0));
@@ -520,7 +520,6 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
                 }
                 ++sit;
             }
-            ajObj.ReleaseLocks();
 
             BusEndpoint* joinerEp = ajObj.router.FindEndpoint(sender);
             if (joinerEp && foundSessionMapEntry) {
@@ -541,25 +540,31 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
                     bool hasSessionMapPlaceholder = false;
                     sme.id = newSessionId;
                     pair<String, SessionId> sKey(sme.endpointName, sme.id);
-                    ajObj.AcquireLocks();
                     if (ajObj.sessionMap.find(sKey) == ajObj.sessionMap.end()) {
                         ajObj.sessionMap.insert(pair<pair<String, SessionId>, SessionMapEntry>(sKey, sme));
                         hasSessionMapPlaceholder = true;
                     }
-                    ajObj.ReleaseLocks();
 
                     /* Ask creator to accept session */
+                    ajObj.ReleaseLocks();
                     status = ajObj.SendAcceptSession(sme.sessionPort, newSessionId, sessionHost, sender.c_str(), optsIn, isAccepted);
                     if (status != ER_OK) {
                         QCC_LogError(status, ("SendAcceptSession failed"));
                         replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
                     }
 
+                    /* Re-lock and reacquire */
+                    ajObj.AcquireLocks();
+                    if (status == ER_OK) {
+                        joinerEp = ajObj.router.FindEndpoint(sender);
+                        if (!joinerEp) {
+                            replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+                        }
+                    }
+
                     /* Cleanup failed raw session entry in sessionMap */
                     if (hasSessionMapPlaceholder && ((status != ER_OK) || !isAccepted)) {
-                        ajObj.AcquireLocks();
                         ajObj.sessionMap.erase(sKey);
-                        ajObj.ReleaseLocks();
                     }
                 }
                 if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
@@ -571,10 +576,9 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
                         status = ajObj.router.AddSessionRoute(newSessionId, *joinerEp, NULL, *rSessionEp, tEp);
                         if (status != ER_OK) {
                             replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                            QCC_LogError(status, ("AddSessionRoute(%u, %s, NULL, %s, NULL) failed", newSessionId, sender.c_str(), rSessionEp->GetUniqueName().c_str()));
+                            QCC_LogError(status, ("AddSessionRoute(%u, %s, NULL, %s, tEp) failed", newSessionId, sender.c_str(), rSessionEp->GetUniqueName().c_str()));
                         }
                         if (status == ER_OK) {
-                            ajObj.AcquireLocks();
                             /* Add (local) joiner to list of session members since no AttachSession will be sent */
                             multimap<pair<String, SessionId>, SessionMapEntry>::iterator sit = ajObj.sessionMap.find(pair<String, SessionId>(sme.endpointName, newSessionId));
                             if (sit != ajObj.sessionMap.end()) {
@@ -591,13 +595,14 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
                             joinerSme.endpointName = sender;
                             joinerSme.id = newSessionId;
                             ajObj.sessionMap.insert(pair<pair<String, SessionId>, SessionMapEntry>(pair<String, SessionId>(joinerSme.endpointName, joinerSme.id), joinerSme));
-                            ajObj.ReleaseLocks();
                             id = joinerSme.id;
                             optsOut = sme.opts;
 
                             /* Send session changed notification */
                             if (sme.opts.isMultipoint && (status == ER_OK)) {
+                                ajObj.ReleaseLocks();
                                 ajObj.SendMPSessionChanged(newSessionId, sender.c_str(), true, sme.endpointName.c_str());
+                                ajObj.AcquireLocks();
                             }
                         }
                     } else if ((sme.opts.traffic != SessionOpts::TRAFFIC_MESSAGES) && !sme.opts.isMultipoint) {
@@ -607,7 +612,6 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
                         if (status == ER_OK) {
                             /* Update the creator-side entry in sessionMap */
                             pair<String, SessionId> sKey(sme.endpointName, sme.id);
-                            ajObj.AcquireLocks();
                             multimap<pair<String, SessionId>, SessionMapEntry>::iterator it = ajObj.sessionMap.find(sKey);
                             if (it != ajObj.sessionMap.end()) {
                                 it->second.fd = fds[0];
@@ -628,7 +632,6 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
                                 QCC_LogError(status, ("Failed to find sessionMap entry"));
                                 replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
                             }
-                            ajObj.ReleaseLocks();
                         } else {
                             QCC_LogError(status, ("SocketPair failed"));
                             replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
@@ -648,7 +651,6 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
             MsgArg membersArg;
 
             /* Check for existing multipoint session */
-            ajObj.AcquireLocks();
             if (vSessionEp) {
                 const String& vSessionEpName = vSessionEp->GetUniqueName();
                 multimap<pair<String, SessionId>, SessionMapEntry>::iterator it = ajObj.sessionMap.begin();
@@ -668,12 +670,10 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
                     ++it;
                 }
             }
-            ajObj.ReleaseLocks();
 
             String busAddr;
             if (!b2bEp) {
                 /* Step 1: If there is a busAddr from advertsement use it to (possibly) create a physical connection */
-                ajObj.AcquireLocks();
                 vector<String> busAddrs;
                 multimap<String, NameMapEntry>::iterator nmit = ajObj.nameMap.lower_bound(sessionHost);
                 while (nmit != ajObj.nameMap.end() && (nmit->first == sessionHost)) {
@@ -730,10 +730,10 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
                 if (busAddr.empty()) {
                     replyCode = ALLJOYN_JOINSESSION_REPLY_UNREACHABLE;
                 }
+                ajObj.AcquireLocks();
             }
 
             /* Step 2: Wait for the new b2b endpoint to have a virtual ep for our destination */
-            ajObj.AcquireLocks();
             uint32_t startTime = GetTimestamp();
             b2bEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
             while (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
@@ -844,7 +844,6 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
             if (b2bEp) {
                 b2bEp->DecrementRef();
             }
-            ajObj.ReleaseLocks();
         }
     }
 
@@ -856,7 +855,6 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
             if (member == sender) {
                 continue;
             }
-            ajObj.AcquireLocks();
             BusEndpoint* joinerEp = ajObj.router.FindEndpoint(sender.c_str());
             BusEndpoint* memberEp = ajObj.router.FindEndpoint(member.c_str());
             RemoteEndpoint* memberB2BEp = NULL;
@@ -907,6 +905,9 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
                     } else if (id != tId) {
                         status = ER_FAIL;
                         QCC_LogError(status, ("Session id mismatch (expected=%u, actual=%u)", id, tId));
+                    } else if (!joinerEp || !memberB2BEp || !memberB2BEp) {
+                        status = ER_FAIL;
+                        QCC_LogError(status, ("joiner, memberEp or memberB2BEp disappeared during join"));
                     }
                 } else {
                     status = ER_BUS_BAD_SESSION_OPTS;
@@ -932,9 +933,9 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
                     QCC_LogError(status, ("AddSessionRoute(%u, %s, NULL, %s, %s) failed", id, sender.c_str(), memberEp->GetUniqueName().c_str(), memberB2BEp ? memberB2BEp->GetUniqueName().c_str() : "<none>"));
                 }
             }
-            ajObj.ReleaseLocks();
         }
     }
+    ajObj.ReleaseLocks();
 
     /* Reply to request */
     MsgArg replyArgs[3];
@@ -3249,10 +3250,8 @@ void AllJoynObj::BusConnectionLost(const qcc::String& busAddr)
 {
     /* Clear the connection map of this busAddress */
     AcquireLocks();
-    bool foundName = false;
     multimap<String, String>::iterator it = connectMap.lower_bound(busAddr);
     while ((it != connectMap.end()) && (0 == busAddr.compare(it->first))) {
-        foundName = true;
         connectMap.erase(it++);
     }
     ReleaseLocks();
