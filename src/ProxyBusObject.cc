@@ -867,11 +867,9 @@ ProxyBusObject& ProxyBusObject::operator=(const ProxyBusObject& other)
     return *this;
 }
 
-QStatus ProxyBusObject::SetB2BEndpoint(const char* b2bEpName)
+void ProxyBusObject::SetB2BEndpoint(RemoteEndpoint* b2bEp)
 {
-    BusEndpoint* ep =  bus->GetInternal().GetRouter().FindEndpoint(b2bEpName);
-    b2bEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
-    return b2bEp ? ER_OK : ER_BUS_NO_ENDPOINT;
+    this->b2bEp = b2bEp;
 }
 
 }

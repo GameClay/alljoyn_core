@@ -25,6 +25,7 @@
 
 #include <deque>
 
+#include <qcc/atomic.h>
 #include <qcc/String.h>
 #include <qcc/GUID.h>
 #include <qcc/Mutex.h>
@@ -305,15 +306,27 @@ class RemoteEndpoint : public BusEndpoint, public qcc::ThreadListener {
 
     /**
      * Increment the reference count for this remote endpoint.
-     * RemoteEndpoints are destroyed when the number of references reaches zero.
+     * RemoteEndpoints are stopped when the number of references reaches zero.
      */
     void IncrementRef();
 
     /**
      * Decremeent the reference count for this remote endpoing.
-     * RemoteEndpoints are destroyed when the number of refereneces reaches zero.
+     * RemoteEndpoints are stopped when the number of refereneces reaches zero.
      */
     void DecrementRef();
+
+    /**
+     * Increment numWaiters count for this endpoint.
+     * Endpoint will not be deleted until this count goes to zero.
+     */
+    void IncrementWaiters() { IncrementAndFetch(&numWaiters); }
+
+    /**
+     * Decremeent numWaiters count for this endpoint.
+     * Endpoint will not be deleted until this count goes to zero.
+     */
+    void DecrementWaiters() { DecrementAndFetch(&numWaiters); }
 
   protected:
 

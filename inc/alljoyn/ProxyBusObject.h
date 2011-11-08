@@ -654,7 +654,7 @@ class ProxyBusObject : public MessageReceiver {
      * Set the B2B endpoint to use for all communication with remote object.
      * This method is for internal use only.
      */
-    QStatus SetB2BEndpoint(const char* b2bEpName);
+    void SetB2BEndpoint(RemoteEndpoint* b2bEp);
 
     /**
      * @internal

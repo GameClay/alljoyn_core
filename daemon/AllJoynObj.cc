@@ -1666,6 +1666,7 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
                                       SessionOpts& optsOut,
                                       MsgArg& members)
 {
+    QStatus status = ER_OK;
     Message reply(bus);
     MsgArg attachArgs[7];
     attachArgs[0].Set("q", sessionPort);
@@ -1677,19 +1678,22 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
     SetSessionOpts(optsIn, attachArgs[6]);
     ProxyBusObject controllerObj(bus, remoteControllerName, org::alljoyn::Daemon::ObjectPath, outgoingSessionId);
     controllerObj.AddInterface(*daemonIface);
-    QStatus status = controllerObj.SetB2BEndpoint(remoteB2BName);
 
+    /* Get a stable reference to the b2bEp */
+    AcquireLocks();
+    BusEndpoint* ep = router.FindEndpoint(remoteB2BName);
+    RemoteEndpoint* b2bEp = (ep && ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS) ?  static_cast<RemoteEndpoint*>(ep) : NULL;
+    if (b2bEp) {
+        b2bEp->IncrementWaiters();
+    } else {
+        status = ER_BUS_NO_ENDPOINT;
+        QCC_LogError(status, ("Cannot find B2BEp for %s", remoteB2BName));
+    }
+    ReleaseLocks();
 
     /* If the new session is raw, then arm the endpoint's RX thread to stop after reading one more message */
     if ((status == ER_OK) && (optsIn.traffic != SessionOpts::TRAFFIC_MESSAGES)) {
-        BusEndpoint* ep = router.FindEndpoint(remoteB2BName);
-        RemoteEndpoint* b2bEp = (ep && ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS) ?  static_cast<RemoteEndpoint*>(ep) : NULL;
-        if (b2bEp) {
-            status = b2bEp->PauseAfterRxReply();
-        } else {
-            status = ER_BUS_NO_ENDPOINT;
-            QCC_LogError(status, ("Cannot find B2BEp for %s", remoteB2BName));
-        }
+        status = b2bEp->PauseAfterRxReply();
     }
 
     /* Make the method call */
@@ -1704,11 +1708,17 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
                        optsIn.proximity, optsIn.traffic, optsIn.transports,
                        remoteControllerName));
 
+        controllerObj.SetB2BEndpoint(b2bEp);
         status = controllerObj.MethodCall(org::alljoyn::Daemon::InterfaceName,
                                           "AttachSession",
                                           attachArgs,
                                           ArraySize(attachArgs),
                                           reply);
+    }
+
+    /* Free the stable reference */
+    if (b2bEp) {
+        b2bEp->DecrementWaiters();
     }
 
     if (status != ER_OK) {
