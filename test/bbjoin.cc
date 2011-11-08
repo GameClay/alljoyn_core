@@ -63,6 +63,7 @@ static String g_wellKnownName = ::org::alljoyn::alljoyn_test::DefaultWellKnownNa
 static bool g_acceptSession = true;
 static bool g_stressTest = false;
 static char* g_findPrefix = NULL;
+static int g_sleepBeforeRejoin = 0;
 SessionPort SESSION_PORT_MESSAGES_MP1 = 26;
 
 static volatile sig_atomic_t g_interrupt = false;
@@ -95,6 +96,9 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
             QCC_SyncPrintf("LeaveSession(%u) returned %s\n", sessionId, QCC_StatusText(status));
 
             if (status == ER_OK) {
+                if (g_sleepBeforeRejoin) {
+                    qcc::Sleep(g_sleepBeforeRejoin);
+                }
                 status = bus->JoinSessionAsync(name.c_str(), 26, &listener, opts, &listener, ::strdup(name.c_str()));
                 if (status != ER_OK) {
                     QCC_LogError(status, ("JoinSessionAsync failed"));
@@ -203,6 +207,7 @@ static void usage(void)
     printf("   -f <prefix>  = FindAdvertisedName prefix\n");
     printf("   -b           = Advertise over Bluetooth (enables selective advertising)\n");
     printf("   -t           = Advertise over TCP (enables selective advertising)\n");
+    printf("   -dj <ms>     = Number of ms to delay between leaving and re-joining\n");
     printf("\n");
 }
 
@@ -247,6 +252,8 @@ int main(int argc, char** argv)
             transportOpts |= TRANSPORT_BLUETOOTH;
         } else if (0 == strcmp("-t", argv[i])) {
             transportOpts |= TRANSPORT_WLAN;
+        } else if (0 == strcmp("-dj", argv[i])) {
+            g_sleepBeforeRejoin = qcc::StringToU32(argv[++i], 0);
         } else {
             status = ER_FAIL;
             printf("Unknown option %s\n", argv[i]);

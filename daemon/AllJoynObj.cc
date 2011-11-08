@@ -1518,6 +1518,8 @@ void AllJoynObj::RemoveSessionRefs(BusEndpoint& endpoint, SessionId id)
                     SendSessionLost(it->second);
                     if (!it->second.isInitializing) {
                         sessionMap.erase(it++);
+                    } else {
+                        ++it;
                     }
                 } else {
                     ++it;
