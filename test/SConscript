@@ -30,6 +30,7 @@ progs = [
     env.Program('bbsig',         ['bbsig.cc']),
     env.Program('bbclient',      ['bbclient.cc']),
     env.Program('bbjoin',        ['bbjoin.cc']),
+    env.Program('bbjitter',      ['bbjitter.cc']),
     env.Program('bttimingclient', ['bttimingclient.cc']),
     env.Program('marshal',       ['marshal.cc']),
     env.Program('names',         ['names.cc']),
