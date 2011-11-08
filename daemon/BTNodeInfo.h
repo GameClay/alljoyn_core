@@ -77,7 +77,8 @@ class _BTNodeInfo {
         expireTime(std::numeric_limits<uint64_t>::max()),
         eirCapable(false),
         connectionCount(0),
-        sessionID(0)
+        sessionID(0),
+        sessionState(NO_SESSION)
     { }
 
     /**
