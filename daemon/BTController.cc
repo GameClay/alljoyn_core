@@ -1875,6 +1875,8 @@ void BTController::DeferredNameLostHander(const String& name)
         QCC_DbgPrintf(("Our master left us: %s", masterNode->GetBusAddress().ToString().c_str()));
         // We are the master now.
 
+        masterNode->SetSessionState(_BTNodeInfo::NO_SESSION);
+
         if (advertise.minion == self) {
             if (advertise.active) {
                 QCC_DbgPrintf(("Stopping local advertise..."));
@@ -1944,6 +1946,8 @@ void BTController::DeferredNameLostHander(const String& name)
             // We are a master or a drone and one of our minions has left.
 
             QCC_DbgPrintf(("One of our minions left us: %s", minion->GetBusAddress().ToString().c_str()));
+
+            minion->SetSessionState(_BTNodeInfo::NO_SESSION);
 
             bool wasAdvertiseMinion = minion == advertise.minion;
             bool wasFindMinion = minion == find.minion;
