@@ -488,7 +488,7 @@ qcc::ThreadReturn STDCALL BTTransport::BTAccessor::DiscoveryThread::Run(void* ar
 
     while (!IsStopping() && (status == ER_OK)) {
 
-        QCC_DbgHLPrintf(("BTTransport::BTAccessor::DiscoveryThread::Run waiting=%u mS", timeout));
+        QCC_DbgHLPrintf(("BTTransport::BTAccessor::DiscoveryThread::Run waiting=%I32u mS", timeout));
 
         status = Event::Wait(Event::neverSet, timeout);
         if (!IsStopping()) {
@@ -508,7 +508,7 @@ qcc::ThreadReturn STDCALL BTTransport::BTAccessor::DiscoveryThread::Run(void* ar
             // We don't have a radio handle initially
             deviceSearchParms.hRadio = btAccessor.radioHandle;
 
-            QCC_DbgHLPrintf(("BTTransport::BTAccessor::DiscoveryThread::Run duration=%d mS", duration));
+            QCC_DbgHLPrintf(("BTTransport::BTAccessor::DiscoveryThread::Run duration=%I32u mS", duration));
 
             HBLUETOOTH_DEVICE_FIND deviceFindHandle;
             BLUETOOTH_DEVICE_INFO deviceInfo;
@@ -1578,7 +1578,7 @@ static HANDLE BeginDeviceInquiry(const BDAddress* address, QStatus* status)
     }
 
     DWORD controlFlags = LUP_FLUSHCACHE | LUP_RETURN_BLOB;
-    uint32_t retryCount = 4;
+    uint32_t retryCount = 8;
 
     while (retryCount--) {
         if (WSALookupServiceBegin(&querySet, controlFlags, &returnValue) == 0) {
@@ -1618,7 +1618,7 @@ static HANDLE BeginDeviceInquiry(const BDAddress* address, QStatus* status)
 
         case WSASERVICE_NOT_FOUND:
             if (retryCount) {
-                uint32_t delay = 3000 + qcc::Rand8() * 20;
+                uint32_t delay = 3000 + qcc::Rand8() * 50;
                 QCC_LogError(error, ("WSASERVICE_NOT_FOUND retrying in %d seconds", delay / 1000));
                 qcc::Sleep(delay);
             } else {
@@ -1673,7 +1673,7 @@ QStatus BTTransport::BTAccessor::IsMaster(const BDAddress& addr, bool& master) c
     USER_KERNEL_MESSAGE messageOut = { USRKRNCMD_ISMASTER };
     QStatus status = ER_BAD_ARG_1;  // If the endpoint isn't found for this address.
     BTH_ADDR address = addr.GetRaw();
-    WindowsBTEndpoint* endpoint = EndPointsFind(address);
+    WindowsBTEndpoint* endpoint = EndPointsFindAnyHandle(address);
 
     if (endpoint) {
         messageIn.messageData.isMasterData.address = address;
@@ -1706,7 +1706,7 @@ void BTTransport::BTAccessor::RequestBTRole(const BDAddress& addr, ajn::bt::Blue
     USER_KERNEL_MESSAGE messageIn = { USRKRNCMD_REQUESTROLECHANGE };
     USER_KERNEL_MESSAGE messageOut = { USRKRNCMD_REQUESTROLECHANGE };
     BTH_ADDR address = addr.GetRaw();
-    WindowsBTEndpoint* endpoint = EndPointsFind(address);
+    WindowsBTEndpoint* endpoint = EndPointsFindAnyHandle(address);
 
     if (endpoint) {
         messageIn.messageData.requestRoleData.address = address;
@@ -1953,25 +1953,30 @@ WindowsBTEndpoint* BTTransport::BTAccessor::EndPointsFind(BTH_ADDR address,
             break;
         }
     } while (--i >= 0);
-#if 0
-    // GB - this doesn't look right to me - the only time handle is NULL is for an outgoing
-    // connect request that has not yet completed. In this case there should be a corresponding
-    // endpoint with a NULL handle and that should have matched above.
-    //
-    // If not found and the handle is 0 then we don't care what the handle is. Just
-    // return any endpoint with this address.
-    if (NULL == returnValue && 0 == handle) {
-        i = _countof(activeEndPoints) - 1;
 
-        do {
-            if (NULL != activeEndPoints[i] &&
-                activeEndPoints[i]->GetRemoteDeviceAddress() == address) {
-                returnValue = activeEndPoints[i];
-                break;
-            }
-        } while (--i >= 0);
-    }
-#endif
+    deviceLock.Unlock(MUTEX_CONTEXT);
+
+    return returnValue;
+}
+
+WindowsBTEndpoint* BTTransport::BTAccessor::EndPointsFindAnyHandle(BTH_ADDR address) const
+{
+    WindowsBTEndpoint* returnValue = NULL;
+    int i = _countof(activeEndPoints) - 1;
+
+    deviceLock.Lock(MUTEX_CONTEXT);
+
+    // We don't care what the handle is as long as it is non-NULL. Just return any endpoint
+    // with this address.
+    do {
+        WindowsBTEndpoint* point = activeEndPoints[i];
+
+        if (NULL != point && point->GetRemoteDeviceAddress() == address &&
+            NULL != point->GetChannelHandle()) {
+            returnValue = point;
+            break;
+        }
+    } while (--i >= 0);
 
     deviceLock.Unlock(MUTEX_CONTEXT);
 

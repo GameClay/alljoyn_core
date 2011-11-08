@@ -337,12 +337,22 @@ class BTTransport::BTAccessor : public MessageReceiver, public qcc::AlarmListene
     /**
      * This finds the WindowsBTEndpoint associated with the given address and channel handle.
      *
+     * @param address Bluetooth device address for the connection of interest.
      * @param handle Bluetooth device channel handle for the connection of interest.
-     * @param addr Bluetooth device address for the connection of interest.
      *
      * @return  The endpoint connection to the remote device.
      */
     WindowsBTEndpoint* EndPointsFind(BTH_ADDR address, L2CAP_CHANNEL_HANDLE handle = 0) const;
+
+    /**
+     * This finds a WindowsBTEndpoint associated with the given address. Any endpoint that
+     * matches the address and has a non-NULL handle qualifies as a match.
+     *
+     * @param addr Bluetooth device address for the connection of interest.
+     *
+     * @return  The endpoint connection to the remote device.
+     */
+    WindowsBTEndpoint* EndPointsFindAnyHandle(BTH_ADDR address) const;
 
     /**
      * Initializes the circular queue for incoming connection requests.
