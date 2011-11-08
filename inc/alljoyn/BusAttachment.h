@@ -242,25 +242,22 @@ class BusAttachment : public MessageReceiver {
     QStatus Start();
 
     /**
-     * Stop() is deprecated.  A bus attachment should be torn down simply by
-     * using its destructor, which does an implied Stop().
+     * @deprecated
+     * Stop the threaded activities in the message bus.
+     *
+     * %Stop() is deprecated.  A bus attachment should be torn down simply by
+     * using its destructor, which does an implied %Stop().
+     *
+     * @see Start()
+     * @see WaitStop()
+     *
+     * @param blockUntilStopped   Block the caller until the bus is stopped
+     *
+     * @return
+     *      - #ER_OK if successful.
+     *      - An error status if unable to stop the message bus
      */
-    QCC_DEPRECATED(
-        /**
-         * @deprecated
-         * Stop the threaded activities in the message bus.
-         *
-         * @see Start()
-         * @see WaitStop()
-         *
-         * @param blockUntilStopped   Block the caller until the bus is stopped
-         *
-         * @return
-         *      - #ER_OK if successful.
-         *      - An error status if unable to stop the message bus
-         */
-        QStatus Stop(bool blockUntilStopped = true)
-        );
+    QCC_DEPRECATED(QStatus Stop(bool blockUntilStopped = true));
 
     /**
      * Returns true if the message bus has been Start()ed.
@@ -273,22 +270,18 @@ class BusAttachment : public MessageReceiver {
     bool IsStopping() { return isStopping; }
 
     /**
-     * WaitStop() is deprecated.  A bus attachment should be torn down simply by
-     * using its destructor, which does an implied WaitStop().
+     * @deprecated
+     * Wait for the message bus to be stopped. This method blocks the calling
+     * thread until another thread calls the Stop() method. Return immediately
+     * if the message bus has not been started.
+     *
+     * %WaitStop() is deprecated.  A bus attachment should be torn down simply by
+     * using its destructor, which does an implied %WaitStop().
+     *
+     * @see Start()
+     * @see Stop()
      */
-    QCC_DEPRECATED(
-        /**
-         * @deprecated
-         *
-         * Wait for the message bus to be stopped. This method blocks the calling
-         * thread until another thread calls the Stop() method. Return immediately
-         * if the message bus has not been started.
-         *
-         * @see Start()
-         * @see Stop()
-         */
-        void WaitStop()
-        );
+    QCC_DEPRECATED(void WaitStop());
 
     /**
      * Connect to a remote bus address.
