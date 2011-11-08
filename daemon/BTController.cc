@@ -47,7 +47,7 @@ using namespace qcc;
 #define ReplyHander(_a) static_cast<MessageReceiver::ReplyHandler>(_a)
 
 static const uint32_t ABSOLUTE_MAX_CONNECTIONS = 7; /* BT can't have more than 7 direct connections */
-static const uint32_t DEFAULT_MAX_CONNECTIONS =  6; /* Gotta allow 1 connection for car-kit/headset/headphones */
+static const uint32_t DEFAULT_MAX_CONNECTIONS =  4; /* Gotta allow 1 connection for car-kit/headset/headphones */
 
 /*
  * Timeout for detecting lost devices.  The nominal timeout is 60 seconds.
@@ -601,7 +601,7 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
         lock.Lock(MUTEX_CONTEXT);
         if (!IsMinion()) {
             node = nodeDB.FindNode(addr);
-            if (IsMaster() && !node->IsValid() && (directMinions < maxConnections)) {
+            if (IsMaster() && !node->IsValid() && ((nodeDB.Size() - 1) < maxConnections)) {
                 node = foundNodeDB.FindNode(addr);
                 newDevice = node->IsValid() && (node != joinSessionNode);
             }
@@ -778,6 +778,9 @@ bool BTController::CheckIncomingAddress(const BDAddress& addr) const
             }
         } else if (node->IsValid() && !node->IsDirectMinion()) {
             QCC_DbgPrintf(("Rejecting incoming connections from indirect minions as master."));
+            return false;
+        } else if ((nodeDB.Size() - 1) >= maxConnections) {
+            QCC_DbgPrintf(("Rejecting incomming connection from new device since we've reached our max connections."));
             return false;
         } else {
             QCC_DbgPrintf(("Accepting incoming connection as Master."));
@@ -2312,7 +2315,7 @@ void BTController::UpdateDelegations(NameArgInfo& nameInfo)
     QCC_DbgTrace(("BTController::UpdateDelegations(nameInfo = <%s>)",
                   advertiseOp ? "advertise" : "find"));
 
-    const bool allowConn = (!advertiseOp | listening) && IsMaster() && (directMinions < maxConnections);
+    const bool allowConn = (!advertiseOp | listening) && IsMaster() && ((nodeDB.Size() - 1) < maxConnections);
     const bool changed = nameInfo.Changed();
     const bool empty = nameInfo.Empty();
     const bool active = nameInfo.active;
