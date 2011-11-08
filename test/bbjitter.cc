@@ -80,27 +80,6 @@ static void SigIntHandler(int sig)
     g_interrupt = true;
 }
 
-static uint32_t log2(uint32_t n)
-{
-    uint32_t l = 0;
-    if (n & 0xFFFF0000) {
-        n >>= 16; l += 16;
-    }
-    if (n & 0x0000FF00) {
-        n >>= 8;  l += 8;
-    }
-    if (n & 0x000000F0) {
-        n >>= 4;  l += 4;
-    }
-    if (n & 0x0000000C) {
-        n >>= 2;  l += 2;
-    }
-    if (n & 0x00000002) {
-        n >>= 1;  l += 1;
-    }
-    return l;
-}
-
 class PingObject : public BusObject {
   public:
     PingObject() : BusObject(*g_msgBus, ::org::alljoyn::jitter_test::Path) { }
@@ -150,7 +129,7 @@ class PingThread : public qcc::Thread, BusObject {
 
     qcc::ThreadReturn STDCALL Run(void* arg)
     {
-        SessionId sessionId = (SessionId)arg;
+        SessionId sessionId = (SessionId)(ptrdiff_t)arg;
 
         QCC_SyncPrintf("Start ping thread\n");
 
@@ -230,7 +209,7 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
         QStatus status = g_msgBus->SetSessionListener(sessionId, this);
         if (ER_OK == status) {
             pingThread.remoteName = joiner;
-            pingThread.Start((void*)sessionId);
+            pingThread.Start((void*)(ptrdiff_t)sessionId);
         } else {
             QCC_LogError(status, ("Failed to SetSessionListener(%u)", sessionId));
         }
@@ -252,8 +231,6 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
 
     void JoinSessionCB(QStatus status, SessionId sessionId, const SessionOpts& opts, void* context)
     {
-        const char* name = reinterpret_cast<const char*>(context);
-
         if (status == ER_OK) {
             QCC_SyncPrintf("JoinSessionAsync succeeded. SessionId=%u\n", sessionId);
         } else {
