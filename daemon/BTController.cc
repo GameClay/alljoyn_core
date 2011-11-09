@@ -1363,6 +1363,14 @@ void BTController::HandleDelegateOp(const InterfaceDescription::Member* member,
     }
 
     DispatchOperation(new HandleDelegateOpDispatchInfo(msg, findOp));
+
+    // It is possible for multiple delegate operation singals to be received
+    // in the same millisecond.  Since the alarm/timer mechanism does not
+    // guarantee that registered alarms will be called in the same order in
+    // which they are registered if they are registered to trigger at the
+    // exact same time, we do a 1 ms sleep to force each delegate opeation to
+    // be scheduled to run in the same sequence in which they were received.
+    qcc::Sleep(1);
 }
 
 
