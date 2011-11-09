@@ -1224,7 +1224,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
 
         FillNodeStateMsgArgs(nodeStateArgsStorage);
 
-        status = ImportState(masterNode, NULL, 0, foundNodeArgs, numFoundNodeArgs);
+        status = ImportState(masterNode, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs, true);
         if (status != ER_OK) {
             lock.Unlock(MUTEX_CONTEXT);
             MethodReply(msg, "org.alljoyn.Bus.BTController.InternalError", QCC_StatusText(status));
