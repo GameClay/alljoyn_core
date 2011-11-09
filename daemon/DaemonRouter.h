@@ -64,7 +64,7 @@ class DaemonRouter : public Router {
      *
      * @param busController   The bus controller.
      */
-    void SetBusController(BusController& busController) { this->busController = &busController; }
+    void SetBusController(BusController* busController) { this->busController = busController; }
 
     /**
      * Add a bus name listener.

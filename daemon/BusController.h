@@ -55,6 +55,11 @@ class BusController {
     BusController(Bus& bus, QStatus& status);
 
     /**
+     * Destructor
+     */
+    virtual ~BusController();
+
+    /**
      * Return the daemon bus object responsible for org.alljoyn.Bus.
      *
      * @return The AllJoynObj.
@@ -69,6 +74,7 @@ class BusController {
     void ObjectRegistered(BusObject* obj);
 
   private:
+    Bus& bus;
 
 #ifndef NDEBUG
     /** BusObject responsible for org.alljoyn.Debug */

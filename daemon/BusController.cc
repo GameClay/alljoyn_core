@@ -36,7 +36,8 @@ using namespace qcc;
 
 namespace ajn {
 
-BusController::BusController(Bus& bus, QStatus& status) :
+BusController::BusController(Bus& alljoynBus, QStatus& status) :
+    bus(alljoynBus),
 #ifndef NDEBUG
     alljoynDebugObj(bus),
 #endif
@@ -44,13 +45,18 @@ BusController::BusController(Bus& bus, QStatus& status) :
     alljoynObj(bus, this)
 {
     DaemonRouter& router(reinterpret_cast<DaemonRouter&>(bus.GetInternal().GetRouter()));
-    router.SetBusController(*this);
+    router.SetBusController(this);
     status = dbusObj.Init();
     if (ER_OK != status) {
         QCC_LogError(status, ("DBusObj::Init failed"));
     }
 }
 
+BusController::~BusController()
+{
+    DaemonRouter& router(reinterpret_cast<DaemonRouter&>(bus.GetInternal().GetRouter()));
+    router.SetBusController(NULL);
+}
 
 #ifndef NDEBUG
 debug::AllJoynDebugObj* debug::AllJoynDebugObj::self = NULL;
