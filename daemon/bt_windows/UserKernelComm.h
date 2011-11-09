@@ -49,17 +49,22 @@ DEFINE_GUID(WINDOWS_BLUETOOTH_DEVICE_INTERFACE, 0xb88b4034, 0xde8b, 0x45a3, 0xb5
 #define IOCTL_ALLJOYN_MESSAGE CTL_CODE(ALLJOYN_TYPE, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
 /**
- * This is the complete set of message types that an individual L2CAP channel could have
- * waiting for user mode.
+ * This is the different states an individual L2CAP channel context could be in.
  */
-typedef enum _L2CAP_CHANNEL_MESSAGE_TYPE {
-    CHAN_MESS_NONE,
-    CHAN_MESS_READ_READY,
-    CHAN_MESS_L2CAP_EVENT,
-    CHAN_MESS_ACCEPT_COMPLETE,
-    CHAN_MESS_CONNECT_COMPLETE,
-    CHAN_MESS_CLOSED
-} L2CAP_CHANNEL_MESSAGE_TYPE;
+typedef enum _L2CAP_CHANNEL_STATE_TYPE {
+    CHAN_STATE_NONE,             // The channel context is not in use and may be allocated.
+    CHAN_STATE_NONE_PENDING,     // The L2CAP channel is in the process of being disconnected.
+    CHAN_STATE_READ_READY,       // There was a change in number of bytes of data in the buffer.
+    CHAN_STATE_L2CAP_EVENT,      // An incoming L2CAP connection request has been received.
+    CHAN_STATE_ACCEPT_COMPLETE,  // The acceptance of an incoming L2CAP connection request is
+                                 // complete.
+    CHAN_STATE_CONNECT_COMPLETE, // The outgoing connection request has been completed.
+    CHAN_STATE_CLOSED,           // The L2CAP channel has being disconnected but user mode has
+                                 // not been informed.
+    CHAN_STATE_CLOSE_PENDING     // The L2CAP channel is in the process of being disconnected
+                                 // and the state will be changed to CHAN_STATE_CLOSED after the
+                                 // disconnect is completed.
+} L2CAP_CHANNEL_STATE_TYPE;
 
 /**
  * This is the complete set of all commands sent to/from user mode from/to kernel mode.
@@ -93,11 +98,19 @@ typedef enum {
 typedef  void*L2CAP_CHANNEL_HANDLE;
 #endif
 
+// This will increment with driver changes that are incompatiable with the current user mode
+// code.
+const int DRIVER_VERSION = 1;
+
 /**
  * This structure is used for sending the message event handle to the kernel.
  */
 struct _USRKRNCMD_SETMESSAGEEVENT {
     HANDLE eventHandle;
+
+    // As an input message this is the version expected by user mode code.
+    // As an output message this is the negative of the version expected by kernel mode code.
+    int version;
 };
 
 /**
@@ -213,13 +226,8 @@ typedef struct _L2CAP_CHANNEL_STATE {
     USHORT outgoingMtus;
     USHORT incomingMtus;
 
-    // This indicates the type of message waiting for this channel.
-    // The KRNUSRCMD_READ_READY messages are handled differently because only
-    // the most recent message is important and the buffer closest to being full
-    // is the one of most concern. This flag is set everytime a buffer is updated
-    // but the actual message sent back to user mode is created at the time user mode
-    // retrieves the message.
-    L2CAP_CHANNEL_MESSAGE_TYPE messageType;
+    // This indicates the state type for this channel.
+    L2CAP_CHANNEL_STATE_TYPE stateType;
 
     // Used for Accept and Connect completion status.
     // Set to ER_OK if the connection was successful.
