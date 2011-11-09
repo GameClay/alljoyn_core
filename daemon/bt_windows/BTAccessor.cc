@@ -502,7 +502,7 @@ qcc::ThreadReturn STDCALL BTTransport::BTAccessor::DiscoveryThread::Run(void* ar
 
     while (!IsStopping() && (status == ER_OK)) {
 
-        QCC_DbgHLPrintf(("BTTransport::BTAccessor::DiscoveryThread::Run waiting=%I32u mS", timeout));
+        QCC_DbgHLPrintf((":DiscoveryThread waiting=%I32u mS", timeout));
 
         status = Event::Wait(Event::neverSet, timeout);
         if (!IsStopping()) {
@@ -522,7 +522,7 @@ qcc::ThreadReturn STDCALL BTTransport::BTAccessor::DiscoveryThread::Run(void* ar
             // We don't have a radio handle initially
             deviceSearchParms.hRadio = btAccessor.radioHandle;
 
-            QCC_DbgHLPrintf(("BTTransport::BTAccessor::DiscoveryThread::Run duration=%I32u mS", duration));
+            QCC_DbgHLPrintf(("DiscoveryThread duration=%I32u mS", duration));
 
             HBLUETOOTH_DEVICE_FIND deviceFindHandle;
             BLUETOOTH_DEVICE_INFO deviceInfo;
@@ -542,19 +542,23 @@ qcc::ThreadReturn STDCALL BTTransport::BTAccessor::DiscoveryThread::Run(void* ar
             deviceFindHandle = BluetoothFindFirstDevice(&deviceSearchParms, &deviceInfo);
             // Report found devices unless duration has gone to zero
             while (deviceFindHandle && duration) {
+                BDAddress address(deviceInfo.Address.ullLong);
                 // Filter out devices that don't have the INFORMATION bit set
                 if (GET_COD_SERVICE(deviceInfo.ulClassofDevice) & COD_SERVICE_INFORMATION) {
-                    BDAddress address(deviceInfo.Address.ullLong);
 
-                    QCC_DbgHLPrintf(("BTTransport::BTAccessor::DiscoveryThread::Run found %s", address.ToString().c_str()));
+                    QCC_DbgHLPrintf(("DiscoveryThread found AllJoyn %s", address.ToString().c_str()));
 
                     btAccessor.deviceLock.Lock(MUTEX_CONTEXT);
                     bool ignoreThisOne = btAccessor.discoveryIgnoreAddrs->count(address) != 0;
                     btAccessor.deviceLock.Unlock(MUTEX_CONTEXT);
 
-                    if (!ignoreThisOne) {
+                    if (ignoreThisOne) {
+                        QCC_DbgHLPrintf(("DiscoveryThread %s is black-listed", address.ToString().c_str()));
+                    } else {
                         btAccessor.DeviceFound(address);
                     }
+                } else {
+                    QCC_DbgHLPrintf(("DiscoveryThread non-AllJoyn %s", address.ToString().c_str()));
                 }
                 if (!BluetoothFindNextDevice(deviceFindHandle, &deviceInfo)) {
                     break;
