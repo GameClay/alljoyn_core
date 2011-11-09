@@ -129,6 +129,10 @@ class PingThread : public qcc::Thread, BusObject {
 
     qcc::ThreadReturn STDCALL Run(void* arg)
     {
+        if (iterations == 0) {
+            return (qcc::ThreadReturn)0;
+        }
+
         SessionId sessionId = (SessionId)(ptrdiff_t)arg;
 
         QCC_SyncPrintf("Start ping thread\n");
@@ -329,23 +333,23 @@ int main(int argc, char** argv)
             }
         } else if (0 == strcmp("-c", argv[i])) {
             if (++i == argc) {
-                iterations = 0;
+                iterations = -1;
             } else {
                 iterations = strtoul(argv[i], NULL, 0);
             }
-            if (!iterations) {
-                printf("option %s requires an integer parameter > 0\n", argv[i - 1]);
+            if ((int32_t)iterations < 0) {
+                printf("option %s requires an integer parameter >= 0\n", argv[i - 1]);
                 usage();
                 exit(1);
             }
         } else if (0 == strcmp("-d", argv[i])) {
             if (++i == argc) {
-                delay = 0;
+                delay = -1;
             } else {
                 delay = strtoul(argv[i], NULL, 0);
             }
-            if (!delay) {
-                printf("option %s requires an integer parameter > 0\n", argv[i - 1]);
+            if ((int32_t)delay < 0) {
+                printf("option %s requires an integer parameter >= 0\n", argv[i - 1]);
                 usage();
                 exit(1);
             }
@@ -447,6 +451,8 @@ int main(int argc, char** argv)
     while (g_interrupt == false) {
         qcc::Sleep(100);
     }
+
+    g_msgBus->UnregisterBusListener(*myBusListener);
 
     delete myBusListener;
 
