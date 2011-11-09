@@ -363,6 +363,10 @@ void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool rem
             NodeAddrMap::iterator it = addrMap.find(anode->GetBusAddress());
             if (it == addrMap.end()) {
                 // New node
+                BTNodeInfo connNode = FindNode(anode->GetConnectNode()->GetBusAddress());
+                if (connNode->IsValid()) {
+                    anode->SetConnectNode(connNode);
+                }
                 AddNode(anode);
             } else {
                 // Add names to existing node
