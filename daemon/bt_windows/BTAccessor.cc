@@ -353,6 +353,7 @@ QStatus BTTransport::BTAccessor::Start()
     QStatus status = ER_OK;
 
     USER_KERNEL_MESSAGE messageIn = { USRKRNCMD_SETMESSAGEEVENT };
+    USER_KERNEL_MESSAGE messageOut = { USRKRNCMD_SETMESSAGEEVENT };
     WSADATA wsaData;
     WORD version = MAKEWORD(2, 2);
     int error = WSAStartup(version, &wsaData);
@@ -389,12 +390,25 @@ QStatus BTTransport::BTAccessor::Start()
         goto Error;
     }
 
-    USER_KERNEL_MESSAGE messageOut;
     messageIn.messageData.setMessageEventData.eventHandle = getMessageEvent.GetHandle();
+    messageIn.messageData.setMessageEventData.version = DRIVER_VERSION;
     status = DeviceSendMessage(&messageIn, &messageOut);
 
     if (ER_OK == status) {
         status = messageOut.commandStatus.status;
+
+        if (ER_OK != status) {
+            QCC_LogError(status,
+                         ("BTTransport::BTAccessor::Start(): Unable to connect to Bluetooth driver"));
+        }
+
+        // Expect the negative of the version from the kernel.
+        if (DRIVER_VERSION != -messageOut.messageData.setMessageEventData.version) {
+            status = ER_INIT_FAILED;
+            QCC_LogError(status,
+                         ("BTTransport::BTAccessor::Start() user mode expects version %d but driver was version %d",
+                          DRIVER_VERSION, -messageOut.messageData.setMessageEventData.version));
+        }
     }
 
     // If we were not successful in giving the event to the kernel no messages are coming back.
@@ -2098,16 +2112,19 @@ bool BTTransport::BTAccessor::DeviceIo(void* messageIn, size_t inSize,
     return returnValue;
 }
 
-const char* ChannelMessageText(L2CAP_CHANNEL_MESSAGE_TYPE mess)
+const char* ChannelStateText(L2CAP_CHANNEL_STATE_TYPE state)
 {
-#define CASE(_mess) case _mess: return # _mess
+#define CASE(_state) case _state: return # _state
 
-    switch (mess) {
-        CASE(CHAN_MESS_NONE);
-        CASE(CHAN_MESS_READ_READY);
-        CASE(CHAN_MESS_L2CAP_EVENT);
-        CASE(CHAN_MESS_ACCEPT_COMPLETE);
-        CASE(CHAN_MESS_CONNECT_COMPLETE);
+    switch (state) {
+        CASE(CHAN_STATE_NONE);
+        CASE(CHAN_STATE_NONE_PENDING);
+        CASE(CHAN_STATE_READ_READY);
+        CASE(CHAN_STATE_L2CAP_EVENT);
+        CASE(CHAN_STATE_ACCEPT_COMPLETE);
+        CASE(CHAN_STATE_CONNECT_COMPLETE);
+        CASE(CHAN_STATE_CLOSED);
+        CASE(CHAN_STATE_CLOSE_PENDING);
 
     default:
         return "<unknown>";
@@ -2140,7 +2157,7 @@ void BTTransport::BTAccessor::DebugDumpKernelState(void) const
             QCC_DbgPrintf(("    Channel %d:", i));
             QCC_DbgPrintf(("        status: %s", QCC_StatusText(channel->status)));
             QCC_DbgPrintf(("        ntStatus: 0x%08X", channel->ntStatus));
-            QCC_DbgPrintf(("        messageType: %s", ChannelMessageText(channel->messageType)));
+            QCC_DbgPrintf(("        messageType: %s", ChannelStateText(channel->stateType)));
             QCC_DbgPrintf(("        address: 0x%012I64X", channel->address));
             QCC_DbgPrintf(("        bytesInBuffer: %Iu", channel->bytesInBuffer));
             QCC_DbgPrintf(("        channelHandle: %p", channel->channelHandle));
