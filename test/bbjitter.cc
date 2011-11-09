@@ -115,11 +115,15 @@ class PingThread : public qcc::Thread, BusObject {
     PingThread(uint32_t iterations, uint32_t delay) :
         qcc::Thread("PingThread"),
         BusObject(*g_msgBus, ::org::alljoyn::jitter_test::Path),
+        sessionId(0),
         iterations(iterations),
         delay(delay)
-    { }
+    {
+        Start(NULL);
+    }
 
 
+    SessionId sessionId;
     qcc::String remoteName;
 
   private:
@@ -133,64 +137,80 @@ class PingThread : public qcc::Thread, BusObject {
             return (qcc::ThreadReturn)0;
         }
 
-        SessionId sessionId = (SessionId)(ptrdiff_t)arg;
-
         QCC_SyncPrintf("Start ping thread\n");
 
-        /* Create the proxy object */
-        ProxyBusObject remoteObj(*g_msgBus, remoteName.c_str(), ::org::alljoyn::jitter_test::Path, sessionId);
-        QStatus status = remoteObj.ParseXml(ifcXML, "jitter_test");
-        if (status != ER_OK) {
-            QCC_LogError(status, ("Failed to parse XML"));
-            return (qcc::ThreadReturn)status;
-        }
+        while (!IsStopping()) {
 
-        const uint32_t bucketSize = 5;
-        const uint32_t numBuckets = 200;
-        uint32_t histogram[numBuckets];
-        uint32_t avg = 0;
+            // Wait until alerted
+            QStatus status = Event::Wait(Event::neverSet);
 
-        memset(histogram, 0, sizeof(histogram));
-
-        /* Let all the joining etc. settle down before we start */
-        qcc::Sleep(2000);
-
-        for (size_t i = 0; i < iterations; ++i) {
-            Message reply(*g_msgBus);
-            MsgArg arg("u", g_msgBus->GetTimestamp());
-            status = remoteObj.MethodCall(::org::alljoyn::jitter_test::Interface, "TimedPing", &arg, 1, reply);
+            // Clear stop event if we were just alerted
+            if (status == ER_ALERTED_THREAD) {
+                GetStopEvent().ResetEvent();
+                status = ER_OK;
+            }
             if (status != ER_OK) {
-                String errMsg;
-                const char* errName = reply->GetErrorName(&errMsg);
-                QCC_LogError(status, ("TimedPing returned ERROR_MESSAGE (error=%s, \"%s\")", errName, errMsg.c_str()));
                 break;
             }
-            uint32_t timestamp;
-            reply->GetArgs("u", &timestamp);
-            uint32_t rt = g_msgBus->GetTimestamp() - timestamp;
-            avg += rt;
-            uint32_t bucket = rt / bucketSize;
-            if (bucket >= numBuckets) {
-                bucket = numBuckets - 1;
+
+            QCC_SyncPrintf("Ping thread alerted\n");
+
+            /* Create the proxy object */
+            ProxyBusObject remoteObj(*g_msgBus, remoteName.c_str(), ::org::alljoyn::jitter_test::Path, sessionId);
+            status = remoteObj.ParseXml(ifcXML, "jitter_test");
+            if (status != ER_OK) {
+                QCC_LogError(status, ("Failed to parse XML"));
+                return (qcc::ThreadReturn)status;
             }
-            histogram[bucket] += 1;
-            qcc::Sleep(delay);
+
+            const uint32_t bucketSize = 5;
+            const uint32_t numBuckets = 200;
+            uint32_t histogram[numBuckets];
+            uint32_t avg = 0;
+
+            memset(histogram, 0, sizeof(histogram));
+
+            /* Let all the joining etc. settle down before we start */
+            qcc::Sleep(2000);
+
+            for (size_t i = 0; i < iterations; ++i) {
+                Message reply(*g_msgBus);
+                MsgArg arg("u", g_msgBus->GetTimestamp());
+                status = remoteObj.MethodCall(::org::alljoyn::jitter_test::Interface, "TimedPing", &arg, 1, reply);
+                if (status != ER_OK) {
+                    String errMsg;
+                    const char* errName = reply->GetErrorName(&errMsg);
+                    QCC_LogError(status, ("TimedPing returned ERROR_MESSAGE (error=%s, \"%s\")", errName, errMsg.c_str()));
+                    break;
+                }
+                uint32_t timestamp;
+                reply->GetArgs("u", &timestamp);
+                uint32_t rt = g_msgBus->GetTimestamp() - timestamp;
+                avg += rt;
+                uint32_t bucket = rt / bucketSize;
+                if (bucket >= numBuckets) {
+                    bucket = numBuckets - 1;
+                }
+                histogram[bucket] += 1;
+                qcc::Sleep(delay);
+            }
+            avg /= iterations;
+            QCC_SyncPrintf("Round trip avg=%u\n", avg);
+            QCC_SyncPrintf("\n=================================\n");
+            size_t last = numBuckets - 1;
+            while ((last > 0) && (histogram[last] == 0)) {
+                --last;
+            }
+            for (size_t i = 0; i <= last; ++i) {
+                QCC_SyncPrintf("%3u ", (i + 1) * bucketSize);
+            }
+            QCC_SyncPrintf("\n");
+            for (size_t i = 0; i <= last; ++i) {
+                QCC_SyncPrintf("%3u ", histogram[i]);
+            }
+            QCC_SyncPrintf("\n=================================\n");
+
         }
-        avg /= iterations;
-        QCC_SyncPrintf("Round trip avg=%u\n", avg);
-        QCC_SyncPrintf("\n=================================\n");
-        size_t last = numBuckets - 1;
-        while ((last > 0) && (histogram[last] == 0)) {
-            --last;
-        }
-        for (size_t i = 0; i <= last; ++i) {
-            QCC_SyncPrintf("%3u ", (i + 1) * bucketSize);
-        }
-        QCC_SyncPrintf("\n");
-        for (size_t i = 0; i <= last; ++i) {
-            QCC_SyncPrintf("%3u ", histogram[i]);
-        }
-        QCC_SyncPrintf("\n=================================\n");
 
         QCC_SyncPrintf("Exit ping thread\n");
         return 0;
@@ -212,8 +232,9 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
         QCC_SyncPrintf("Session Established: joiner=%s, sessionId=%u\n", joiner, sessionId);
         QStatus status = g_msgBus->SetSessionListener(sessionId, this);
         if (ER_OK == status) {
+            pingThread.sessionId = sessionId;
             pingThread.remoteName = joiner;
-            pingThread.Start((void*)(ptrdiff_t)sessionId);
+            pingThread.Alert();
         } else {
             QCC_LogError(status, ("Failed to SetSessionListener(%u)", sessionId));
         }
@@ -306,12 +327,6 @@ int main(int argc, char** argv)
     uint32_t iterations = 500;
     uint32_t delay = 100;
 
-#ifdef _WIN32
-    WSADATA wsaData;
-    WORD version = MAKEWORD(2, 0);
-    int error = WSAStartup(version, &wsaData);
-#endif
-
     printf("AllJoyn Library version: %s\n", ajn::GetVersion());
     printf("AllJoyn Library build info: %s\n", ajn::GetBuildInfo());
 
@@ -385,7 +400,7 @@ int main(int argc, char** argv)
     }
 
     /* Create message bus */
-    g_msgBus = new BusAttachment("bbjoin", true);
+    g_msgBus = new BusAttachment("bbjitter", true);
 
     /* Start the msg bus */
     if (ER_OK == status) {
