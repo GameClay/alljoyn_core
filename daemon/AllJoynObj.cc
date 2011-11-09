@@ -478,6 +478,7 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
         status = ajObj.CheckTransportsPermission(sender, optsIn.transports, "JoinSessionThread.Run");
     }
 
+    ajObj.AcquireLocks();
     if (status != ER_OK) {
         replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
         QCC_DbgTrace(("JoinSession(<bad_args>"));
@@ -485,7 +486,6 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
         QCC_DbgTrace(("JoinSession(%d, <%u, 0x%x, 0x%x>)", sessionPort, optsIn.traffic, optsIn.proximity, optsIn.transports));
 
         /* Decide how to proceed based on the session endpoint existence/type */
-        ajObj.AcquireLocks();
         RemoteEndpoint* b2bEp = NULL;
         BusEndpoint* ep = sessionHost ? ajObj.router.FindEndpoint(sessionHost) : NULL;
         VirtualEndpoint* vSessionEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
