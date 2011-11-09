@@ -156,6 +156,9 @@ void BTNodeDB::RemoveNode(const BTNodeInfo& node)
     if (it != addrMap.end()) {
         BTNodeInfo lnode = it->second;
 
+        // Remove from the master set
+        nodes.erase(lnode);
+
         // Remove from the address map
         addrMap.erase(it);
 
@@ -181,12 +184,16 @@ void BTNodeDB::RemoveNode(const BTNodeInfo& node)
         }
 
         // Remove from the exipiration set
-        expireSet.erase(lnode);
-
-        // Remove from the master set
-        nodes.erase(lnode);
-        assert(connMap.size() == expireSet.size());
+        NodeExpireSet::iterator expit = expireSet.find(lnode);
+        if (expit == expireSet.end()) {
+            // expireSet is out of order
+            expireSet.clear();
+            expireSet.insert(nodes.begin(), nodes.end());
+        } else {
+            expireSet.erase(expit);
+        }
     }
+    assert(connMap.size() == expireSet.size());
     assert(expireSet.size() == nodes.size());
     Unlock();
 }
