@@ -288,7 +288,6 @@ QStatus BTTransport::BTAccessor::Start()
         const InterfaceDescription* ifc(bzBus.GetInterface(ajn::org::freedesktop::DBus::InterfaceName));
         const InterfaceDescription::Member* addMatch;
         const InterfaceDescription::Member* nameHasOwner;
-        const InterfaceDescription::Member* nameOwnerChanged;
 
         /* Get environment variable for the system bus */
         Environ* env(Environ::GetAppEnviron());
@@ -307,7 +306,6 @@ QStatus BTTransport::BTAccessor::Start()
 
         addMatch = ifc->GetMember("AddMatch");
         nameHasOwner = ifc->GetMember("NameHasOwner");
-        nameOwnerChanged = ifc->GetMember("NameOwnerChanged");
 
         /* Create the endpoint for talking to the Bluetooth subsystem */
         status = bzBus.Connect(connectArgs.c_str());
