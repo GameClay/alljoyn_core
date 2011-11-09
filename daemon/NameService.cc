@@ -254,7 +254,7 @@ NameService::NameService()
     m_loopback(false), m_enableIPv4(false), m_enableIPv6(false),
     m_any(false), m_wakeEvent(), m_forceLazyUpdate(false)
 {
-    QCC_DbgPrintf(("NameService::NameService()\n"));
+    QCC_DbgPrintf(("NameService::NameService()"));
 
 #if defined(QCC_OS_WINDOWS)
     //
@@ -623,7 +623,7 @@ static std::list<AddrEntry> NetlinkGetAddresses(uint32_t family)
 
 QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
 {
-    QCC_DbgPrintf(("NameService::IfConfig(): The Linux way\n"));
+    QCC_DbgPrintf(("NameService::IfConfig(): The Linux way"));
 
     std::list<IfEntry> ifEntries = NetlinkGetInterfaces();
     std::list<AddrEntry> entriesIpv4 = NetlinkGetAddresses(AF_INET);
@@ -733,7 +733,7 @@ std::vector<qcc::String> GetInterfaces(void)
 
 void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& entries)
 {
-    QCC_DbgPrintf(("IfConfigIpv4()\n"));
+    QCC_DbgPrintf(("IfConfigIpv4()"));
 
     //
     // Windows is from another planet, but we can't blame multiple calls to get
@@ -956,7 +956,7 @@ void IfConfigByFamily(uint32_t family, std::vector<NameService::IfConfigEntry>& 
 
 QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
 {
-    QCC_DbgPrintf(("NameService::IfConfig(): The Windows way\n"));
+    QCC_DbgPrintf(("NameService::IfConfig(): The Windows way"));
     IfConfigByFamily(AF_INET, entries);
     IfConfigByFamily(AF_INET6, entries);
     return ER_OK;
@@ -966,7 +966,7 @@ QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
 
 QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
 {
-    QCC_DbgPrintf(("NameService::IfConfig(): The Darwin way\n"));
+    QCC_DbgPrintf(("NameService::IfConfig(): The Darwin way"));
 
     int sck;
     struct ifaddrs* iflist = NULL;
@@ -1038,7 +1038,7 @@ QStatus NameService::Init(
     bool disableBroadcast,
     bool loopback)
 {
-    QCC_DbgHLPrintf(("NameService::Init()\n"));
+    QCC_DbgHLPrintf(("NameService::Init()"));
 
     //
     // Can only call Init() if the object is not running or in the process
@@ -1065,7 +1065,7 @@ QStatus NameService::Init(
 
 NameService::~NameService()
 {
-    QCC_DbgPrintf(("NameService::~NameService()\n"));
+    QCC_DbgPrintf(("NameService::~NameService()"));
 
     //
     // Stop the worker thread to get things calmed down.
@@ -1280,13 +1280,13 @@ NameService::~NameService()
 
 QStatus NameService::OpenInterface(const qcc::String& name)
 {
-    QCC_DbgPrintf(("NameService::OpenInterface(%s)\n", name.c_str()));
+    QCC_DbgPrintf(("NameService::OpenInterface(%s)", name.c_str()));
 
     //
     // Can only call OpenInterface() if the object is running.
     //
     if (m_state != IMPL_RUNNING) {
-        QCC_DbgPrintf(("NameService::OpenInterface(): Not running\n"));
+        QCC_DbgPrintf(("NameService::OpenInterface(): Not running"));
         return ER_FAIL;
     }
 
@@ -1307,7 +1307,7 @@ QStatus NameService::OpenInterface(const qcc::String& name)
 
     for (uint32_t i = 0; i < m_requestedInterfaces.size(); ++i) {
         if (m_requestedInterfaces[i].m_interfaceName == name) {
-            QCC_DbgPrintf(("NameService::OpenInterface(): Already opened.\n"));
+            QCC_DbgPrintf(("NameService::OpenInterface(): Already opened."));
             m_mutex.Unlock();
             return ER_OK;
         }
@@ -1326,13 +1326,13 @@ QStatus NameService::OpenInterface(const qcc::String& name)
 
 QStatus NameService::OpenInterface(const qcc::IPAddress& addr)
 {
-    QCC_DbgPrintf(("NameService::OpenInterface(%s)\n", addr.ToString().c_str()));
+    QCC_DbgPrintf(("NameService::OpenInterface(%s)", addr.ToString().c_str()));
 
     //
     // Can only call OpenInterface() if the object is running.
     //
     if (m_state != IMPL_RUNNING) {
-        QCC_DbgPrintf(("NameService::OpenInterface(): Not running\n"));
+        QCC_DbgPrintf(("NameService::OpenInterface(): Not running"));
         return ER_FAIL;
     }
 
@@ -1355,7 +1355,7 @@ QStatus NameService::OpenInterface(const qcc::IPAddress& addr)
     if (addr == qcc::IPAddress("0.0.0.0") ||
         addr == qcc::IPAddress("0::0") ||
         addr == qcc::IPAddress("::")) {
-        QCC_DbgPrintf(("NameService::OpenInterface(): Wildcard address\n"));
+        QCC_DbgPrintf(("NameService::OpenInterface(): Wildcard address"));
         m_any = true;
         m_mutex.Unlock();
         return ER_OK;
@@ -1363,7 +1363,7 @@ QStatus NameService::OpenInterface(const qcc::IPAddress& addr)
 
     for (uint32_t i = 0; i < m_requestedInterfaces.size(); ++i) {
         if (m_requestedInterfaces[i].m_interfaceAddr == addr) {
-            QCC_DbgPrintf(("NameService::OpenInterface(): Already opened.\n"));
+            QCC_DbgPrintf(("NameService::OpenInterface(): Already opened."));
             m_mutex.Unlock();
             return ER_OK;
         }
@@ -1382,13 +1382,13 @@ QStatus NameService::OpenInterface(const qcc::IPAddress& addr)
 
 QStatus NameService::CloseInterface(const qcc::String& name)
 {
-    QCC_DbgPrintf(("NameService::CloseInterface(%s)\n", name.c_str()));
+    QCC_DbgPrintf(("NameService::CloseInterface(%s)", name.c_str()));
 
     //
     // Can only call CloseInterface() if the object is running.
     //
     if (m_state != IMPL_RUNNING) {
-        QCC_DbgPrintf(("NameService::CloseInterface(): Not running\n"));
+        QCC_DbgPrintf(("NameService::CloseInterface(): Not running"));
         return ER_FAIL;
     }
 
@@ -1419,13 +1419,13 @@ QStatus NameService::CloseInterface(const qcc::String& name)
 
 QStatus NameService::CloseInterface(const qcc::IPAddress& addr)
 {
-    QCC_DbgPrintf(("NameService::CloseInterface(%s)\n", addr.ToString().c_str()));
+    QCC_DbgPrintf(("NameService::CloseInterface(%s)", addr.ToString().c_str()));
 
     //
     // Can only call CloseInterface() if the object is running.
     //
     if (m_state != IMPL_RUNNING) {
-        QCC_DbgPrintf(("NameService::CloseInterface(): Not running\n"));
+        QCC_DbgPrintf(("NameService::CloseInterface(): Not running"));
         return ER_FAIL;
     }
 
@@ -1445,7 +1445,7 @@ QStatus NameService::CloseInterface(const qcc::IPAddress& addr)
     if (addr == qcc::IPAddress("0.0.0.0") ||
         addr == qcc::IPAddress("0::0") ||
         addr == qcc::IPAddress("::")) {
-        QCC_DbgPrintf(("NameService::CloseInterface(): Wildcard address\n"));
+        QCC_DbgPrintf(("NameService::CloseInterface(): Wildcard address"));
         m_any = false;
         m_mutex.Unlock();
         return ER_OK;
@@ -1472,7 +1472,7 @@ QStatus NameService::CloseInterface(const qcc::IPAddress& addr)
 
 void NameService::ClearLiveInterfaces(void)
 {
-    QCC_DbgPrintf(("NameService::ClearLiveInterfaces()\n"));
+    QCC_DbgPrintf(("NameService::ClearLiveInterfaces()"));
 
     for (uint32_t i = 0; i < m_liveInterfaces.size(); ++i) {
         if (m_liveInterfaces[i].m_sockFd == -1) {
@@ -1497,7 +1497,7 @@ void NameService::ClearLiveInterfaces(void)
 
             if (setsockopt(m_liveInterfaces[i].m_sockFd, IPPROTO_IP, IP_DROP_MEMBERSHIP,
                            reinterpret_cast<const char*>(&mreq), sizeof(mreq)) < 0) {
-                QCC_DbgPrintf(("NameService::ClearLiveInterfaces(void): setsockopt(IP_DROP_MEMBERSHIP) failed\n"));
+                QCC_DbgPrintf(("NameService::ClearLiveInterfaces(void): setsockopt(IP_DROP_MEMBERSHIP) failed"));
             }
         } else if (m_liveInterfaces[i].m_address.IsIPv6()) {
             struct ipv6_mreq mreq;
@@ -1509,7 +1509,7 @@ void NameService::ClearLiveInterfaces(void)
             //
             qcc::String mcGroup = qcc::String(IPV6_MULTICAST_GROUP);
             if (INET_PTON(AF_INET6, mcGroup.c_str(), &mreq.ipv6mr_multiaddr) == 0) {
-                QCC_DbgPrintf(("NameService::ClearLiveInterfaces(void): INET_PTON failed\n"));
+                QCC_DbgPrintf(("NameService::ClearLiveInterfaces(void): INET_PTON failed"));
                 continue;
             }
 
@@ -1524,7 +1524,7 @@ void NameService::ClearLiveInterfaces(void)
 
             if (getsockopt(m_liveInterfaces[i].m_sockFd, IPPROTO_IPV6, IPV6_MULTICAST_IF,
                            reinterpret_cast<char*>(&index), &indexLen) < 0) {
-                QCC_DbgPrintf(("NameService::ClearLiveInterfaces(void): getsockopt(IPV6_MULTICAST_IF) failed\n"));
+                QCC_DbgPrintf(("NameService::ClearLiveInterfaces(void): getsockopt(IPV6_MULTICAST_IF) failed"));
                 continue;
             }
 
@@ -1542,7 +1542,7 @@ void NameService::ClearLiveInterfaces(void)
             //
             if (setsockopt(m_liveInterfaces[i].m_sockFd, IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP,
                            reinterpret_cast<const char*>(&mreq), sizeof(mreq)) < 0) {
-                QCC_DbgPrintf(("NameService::ClearLiveInterfaces(void): setsockopt(IPV6_DROP_MEMBERSHIP) failed\n"));
+                QCC_DbgPrintf(("NameService::ClearLiveInterfaces(void): setsockopt(IPV6_DROP_MEMBERSHIP) failed"));
                 continue;
             }
         } else {
@@ -1563,7 +1563,7 @@ void NameService::ClearLiveInterfaces(void)
 //
 void NameService::LazyUpdateInterfaces(void)
 {
-    QCC_DbgPrintf(("NameService::LazyUpdateInterfaces()\n"));
+    QCC_DbgPrintf(("NameService::LazyUpdateInterfaces()"));
 
     //
     // However desirable it may be, the decision to simply use an existing
@@ -1599,7 +1599,7 @@ void NameService::LazyUpdateInterfaces(void)
     // can't get the system interfaces, we give up for now and hope the error
     // is transient.
     //
-    QCC_DbgPrintf(("NameService::LazyUpdateInterfaces(): IfConfig()\n"));
+    QCC_DbgPrintf(("NameService::LazyUpdateInterfaces(): IfConfig()"));
     std::vector<IfConfigEntry> entries;
     QStatus status = IfConfig(entries);
     if (status != ER_OK) {
@@ -1623,7 +1623,7 @@ void NameService::LazyUpdateInterfaces(void)
         // a name.
         //
         assert(entries[i].m_name.size());
-        QCC_DbgPrintf(("NameService::LazyUpdateInterfaces(): Checking out interface %s\n", entries[i].m_name.c_str()));
+        QCC_DbgPrintf(("NameService::LazyUpdateInterfaces(): Checking out interface %s", entries[i].m_name.c_str()));
 
         //
         // We are never interested in interfaces that are not UP or are LOOPBACK
@@ -1633,7 +1633,7 @@ void NameService::LazyUpdateInterfaces(void)
         //
         if ((entries[i].m_flags & IfConfigEntry::UP) == 0 ||
             (entries[i].m_flags & IfConfigEntry::LOOPBACK) != 0) {
-            QCC_DbgPrintf(("NameService::LazyUpdateInterfaces(): not UP or LOOPBACK\n"));
+            QCC_DbgPrintf(("NameService::LazyUpdateInterfaces(): not UP or LOOPBACK"));
             continue;
         }
 
@@ -1646,7 +1646,7 @@ void NameService::LazyUpdateInterfaces(void)
         //
         if ((m_enableIPv4 == false && entries[i].m_family == AF_INET) ||
             (m_enableIPv6 == false && entries[i].m_family == AF_INET6)) {
-            QCC_DbgPrintf(("NameService::LazyUpdateInterfaces(): family %d not enabled\n", entries[i].m_family));
+            QCC_DbgPrintf(("NameService::LazyUpdateInterfaces(): family %d not enabled", entries[i].m_family));
             continue;
         }
 
@@ -1659,7 +1659,7 @@ void NameService::LazyUpdateInterfaces(void)
         bool useEntry = false;
 
         if (m_any) {
-            QCC_DbgPrintf(("NameService::LazyUpdateInterfaces(): Use because wildcard mode\n"));
+            QCC_DbgPrintf(("NameService::LazyUpdateInterfaces(): Use because wildcard mode"));
             useEntry = true;
         } else {
             for (uint32_t j = 0; j < m_requestedInterfaces.size(); ++j) {
@@ -1669,7 +1669,7 @@ void NameService::LazyUpdateInterfaces(void)
                 //
                 if (m_requestedInterfaces[j].m_interfaceName.size() != 0 &&
                     m_requestedInterfaces[j].m_interfaceName == entries[i].m_name) {
-                    QCC_DbgPrintf(("NameService::LazyUpdateInterfaces(): Found matching requestedInterface name\n"));
+                    QCC_DbgPrintf(("NameService::LazyUpdateInterfaces(): Found matching requestedInterface name"));
                     useEntry = true;
                     break;
                 }
@@ -1680,7 +1680,7 @@ void NameService::LazyUpdateInterfaces(void)
                 //
                 if (m_requestedInterfaces[j].m_interfaceName.size() == 0 &&
                     m_requestedInterfaces[j].m_interfaceAddr == qcc::IPAddress(entries[i].m_addr)) {
-                    QCC_DbgPrintf(("NameService::LazyUpdateInterfaces(): Found matching requestedInterface address\n"));
+                    QCC_DbgPrintf(("NameService::LazyUpdateInterfaces(): Found matching requestedInterface address"));
                     useEntry = true;
                     break;
                 }
@@ -1692,7 +1692,7 @@ void NameService::LazyUpdateInterfaces(void)
         // this entry (not AF_INET or AF_INET6), try the next one.
         //
         if (useEntry == false || (entries[i].m_family != AF_INET && entries[i].m_family != AF_INET6)) {
-            QCC_DbgPrintf(("NameService::LazyUpdateInterfaces(): Won't use this IfConfig entry\n"));
+            QCC_DbgPrintf(("NameService::LazyUpdateInterfaces(): Won't use this IfConfig entry"));
             continue;
         }
 
@@ -1713,7 +1713,7 @@ void NameService::LazyUpdateInterfaces(void)
         //
         if ((entries[i].m_flags & IfConfigEntry::MULTICAST) == 0) {
             if ((entries[i].m_family != AF_INET) || (m_broadcast == false)) {
-                QCC_DbgPrintf(("LazyUpdateInterfaces:  Not MULTICAST, or broadcast not enabled and AF_INET.  Ignoring\n"));
+                QCC_DbgPrintf(("LazyUpdateInterfaces:  Not MULTICAST, or broadcast not enabled and AF_INET.  Ignoring"));
                 continue;
             }
         }
@@ -1925,7 +1925,7 @@ void NameService::LazyUpdateInterfaces(void)
 
 QStatus NameService::Locate(const qcc::String& wkn, LocatePolicy policy)
 {
-    QCC_DbgHLPrintf(("NameService::Locate(): %s with policy %d\n", wkn.c_str(), policy));
+    QCC_DbgHLPrintf(("NameService::Locate(): %s with policy %d", wkn.c_str(), policy));
 
     //
     // Send a request to the network over our multicast channel,
@@ -1972,7 +1972,7 @@ void NameService::SetCriticalParameters(
 
 void NameService::SetCallback(Callback<void, const qcc::String&, const qcc::String&, vector<qcc::String>&, uint8_t>* cb)
 {
-    QCC_DbgPrintf(("NameService::SetCallback()\n"));
+    QCC_DbgPrintf(("NameService::SetCallback()"));
 
     delete m_callback;
     m_callback = cb;
@@ -1983,7 +1983,7 @@ QStatus NameService::SetEndpoints(
     const qcc::String& ipv6address,
     uint16_t port)
 {
-    QCC_DbgHLPrintf(("NameService::SetEndpoints(%s, %s, %d)\n", ipv4address.c_str(), ipv6address.c_str(), port));
+    QCC_DbgHLPrintf(("NameService::SetEndpoints(%s, %s, %d)", ipv4address.c_str(), ipv6address.c_str(), port));
 
     m_mutex.Lock();
 
@@ -1992,17 +1992,17 @@ QStatus NameService::SetEndpoints(
     //
     if (ipv4address.size()) {
         if (ipv4address == "0.0.0.0") {
-            QCC_DbgPrintf(("NameService::SetEndpoints(): IPv4 address looks like INADDR_ANY\n"));
+            QCC_DbgPrintf(("NameService::SetEndpoints(): IPv4 address looks like INADDR_ANY"));
             return ER_FAIL;
         }
 
         if (WildcardMatch(ipv4address, "*255") == 0) {
-            QCC_DbgPrintf(("NameService::SetEndpoints(): IPv4 address looks like a broadcast address\n"));
+            QCC_DbgPrintf(("NameService::SetEndpoints(): IPv4 address looks like a broadcast address"));
             return ER_FAIL;
         }
 
         if (WildcardMatch(ipv4address, "127*") == 0) {
-            QCC_DbgPrintf(("NameService::SetEndpoints(): IPv4 address looks like a loopback address\n"));
+            QCC_DbgPrintf(("NameService::SetEndpoints(): IPv4 address looks like a loopback address"));
             return ER_FAIL;
         }
     }
@@ -2012,27 +2012,27 @@ QStatus NameService::SetEndpoints(
     //
     if (ipv6address.size()) {
         if (ipv6address == "0:0:0:0:0:0:0:1") {
-            QCC_DbgPrintf(("NameService::SetEndpoints(): IPv6 address looks like a loopback address\n"));
+            QCC_DbgPrintf(("NameService::SetEndpoints(): IPv6 address looks like a loopback address"));
             return ER_FAIL;
         }
 
         if (ipv6address == "::1") {
-            QCC_DbgPrintf(("NameService::SetEndpoints(): IPv6 address looks like a loopback address\n"));
+            QCC_DbgPrintf(("NameService::SetEndpoints(): IPv6 address looks like a loopback address"));
             return ER_FAIL;
         }
 
         if (ipv6address == "::") {
-            QCC_DbgPrintf(("NameService::SetEndpoints(): IPv6 address looks like in6addr_any\n"));
+            QCC_DbgPrintf(("NameService::SetEndpoints(): IPv6 address looks like in6addr_any"));
             return ER_FAIL;
         }
 
         if (ipv6address == "0::0") {
-            QCC_DbgPrintf(("NameService::SetEndpoints(): IPv6 address looks like in6addr_any\n"));
+            QCC_DbgPrintf(("NameService::SetEndpoints(): IPv6 address looks like in6addr_any"));
             return ER_FAIL;
         }
 
         if (ipv6address == "ff*") {
-            QCC_DbgPrintf(("NameService::SetEndpoints(): IPv6 address looks like a multicast address\n"));
+            QCC_DbgPrintf(("NameService::SetEndpoints(): IPv6 address looks like a multicast address"));
             return ER_FAIL;
         }
     }
@@ -2041,7 +2041,7 @@ QStatus NameService::SetEndpoints(
     // You must provide a reasonable port.
     //
     if (port == 0) {
-        QCC_DbgPrintf(("NameService::SetEndpoints(): Must provide non-zero port\n"));
+        QCC_DbgPrintf(("NameService::SetEndpoints(): Must provide non-zero port"));
         return ER_FAIL;
     }
 
@@ -2061,7 +2061,7 @@ QStatus NameService::GetEndpoints(
     qcc::String& ipv6address,
     uint16_t& port)
 {
-    QCC_DbgHLPrintf(("NameService::GetEndpoints(%s, %s, %d)\n", ipv4address.c_str(), ipv6address.c_str(), port));
+    QCC_DbgHLPrintf(("NameService::GetEndpoints(%s, %s, %d)", ipv4address.c_str(), ipv6address.c_str(), port));
 
     m_mutex.Lock();
     ipv4address = m_ipv4address;
@@ -2074,7 +2074,7 @@ QStatus NameService::GetEndpoints(
 
 QStatus NameService::Advertise(const qcc::String& wkn)
 {
-    QCC_DbgHLPrintf(("NameService::Advertise(): %s\n", wkn.c_str()));
+    QCC_DbgHLPrintf(("NameService::Advertise(): %s", wkn.c_str()));
 
     vector<qcc::String> wknVector;
     wknVector.push_back(wkn);
@@ -2084,10 +2084,10 @@ QStatus NameService::Advertise(const qcc::String& wkn)
 
 QStatus NameService::Advertise(vector<qcc::String>& wkn)
 {
-    QCC_DbgHLPrintf(("NameService::Advertise()\n"));
+    QCC_DbgHLPrintf(("NameService::Advertise()"));
 
     if (m_state != IMPL_RUNNING) {
-        QCC_DbgPrintf(("NameService::Advertise(): Not IMPL_RUNNING\n"));
+        QCC_DbgPrintf(("NameService::Advertise(): Not IMPL_RUNNING"));
         return ER_FAIL;
     }
 
@@ -2096,7 +2096,7 @@ QStatus NameService::Advertise(vector<qcc::String>& wkn)
     // be if they are not set, but we absolutely need a port.
     //
     if (m_port == 0) {
-        QCC_DbgPrintf(("NameService::Advertise(): Port not set\n"));
+        QCC_DbgPrintf(("NameService::Advertise(): Port not set"));
         return ER_FAIL;
     }
 
@@ -2120,7 +2120,7 @@ QStatus NameService::Advertise(vector<qcc::String>& wkn)
             //
             // Nothing has changed, so don't bother.
             //
-            QCC_DbgPrintf(("NameService::Advertise(): Duplicate advertisement\n"));
+            QCC_DbgPrintf(("NameService::Advertise(): Duplicate advertisement"));
             m_mutex.Unlock();
             return ER_OK;
         }
@@ -2197,7 +2197,7 @@ QStatus NameService::Advertise(vector<qcc::String>& wkn)
 
 QStatus NameService::Cancel(const qcc::String& wkn)
 {
-    QCC_DbgPrintf(("NameService::Cancel(): %s\n", wkn.c_str()));
+    QCC_DbgPrintf(("NameService::Cancel(): %s", wkn.c_str()));
 
     vector<qcc::String> wknVector;
     wknVector.push_back(wkn);
@@ -2207,10 +2207,10 @@ QStatus NameService::Cancel(const qcc::String& wkn)
 
 QStatus NameService::Cancel(vector<qcc::String>& wkn)
 {
-    QCC_DbgPrintf(("NameService::Cancel()\n"));
+    QCC_DbgPrintf(("NameService::Cancel()"));
 
     if (m_state != IMPL_RUNNING) {
-        QCC_DbgPrintf(("NameService::Advertise(): Not IMPL_RUNNING\n"));
+        QCC_DbgPrintf(("NameService::Advertise(): Not IMPL_RUNNING"));
         return ER_FAIL;
     }
 
@@ -2219,7 +2219,7 @@ QStatus NameService::Cancel(vector<qcc::String>& wkn)
     // be if they are not set, but we absolutely need a port.
     //
     if (m_port == 0) {
-        QCC_DbgPrintf(("NameService::Advertise(): Port not set\n"));
+        QCC_DbgPrintf(("NameService::Advertise(): Port not set"));
         return ER_FAIL;
     }
 
@@ -2322,7 +2322,7 @@ QStatus NameService::Cancel(vector<qcc::String>& wkn)
 
 void NameService::QueueProtocolMessage(Header& header)
 {
-    QCC_DbgPrintf(("NameService::QueueProtocolMessage()\n"));
+    QCC_DbgPrintf(("NameService::QueueProtocolMessage()"));
     m_mutex.Lock();
     m_outbound.push_back(header);
     m_wakeEvent.SetEvent();
@@ -2424,7 +2424,7 @@ void NameService::SendProtocolMessage(
     bool sockFdIsIPv4,
     Header& header)
 {
-    QCC_DbgHLPrintf(("NameService::SendProtocolMessage()\n"));
+    QCC_DbgHLPrintf(("NameService::SendProtocolMessage()"));
 
     //
     // Legacy 802.11 MACs do not do backoff and retransmission of packets
@@ -2468,11 +2468,11 @@ void NameService::SendProtocolMessage(
         // the packet out on our IPv4 multicast group.
         //
         if (flags & IfConfigEntry::MULTICAST) {
-            QCC_DbgPrintf(("NameService::SendProtocolMessage():  Sending to IPv4 multicast group\n"));
+            QCC_DbgPrintf(("NameService::SendProtocolMessage():  Sending to IPv4 multicast group"));
             qcc::IPAddress ipv4Multicast(IPV4_MULTICAST_GROUP);
             QStatus status = qcc::SendTo(sockFd, ipv4Multicast, MULTICAST_PORT, buffer, size, sent);
             if (status != ER_OK) {
-                QCC_LogError(ER_FAIL, ("NameService::SendProtocolMessage():  Error sending to IPv4 (multicast)\n"));
+                QCC_LogError(ER_FAIL, ("NameService::SendProtocolMessage():  Error sending to IPv4 (multicast)"));
             }
         }
 
@@ -2493,7 +2493,7 @@ void NameService::SendProtocolMessage(
             // have to form a subnet directed broadcast.  To do this we need
             // the IP address and netmask.
             //
-            QCC_DbgPrintf(("NameService::SendProtocolMessage():  InterfaceAddress %s, prefix %d\n",
+            QCC_DbgPrintf(("NameService::SendProtocolMessage():  InterfaceAddress %s, prefix %d",
                            interfaceAddress.ToString().c_str(), interfaceAddressPrefixLen));
 
             //
@@ -2513,23 +2513,23 @@ void NameService::SendProtocolMessage(
             //
             uint32_t addr = (interfaceAddress.GetIPv4AddressCPUOrder() & mask) | ~mask;
             qcc::IPAddress ipv4Broadcast(addr);
-            QCC_DbgPrintf(("NameService::SendProtocolMessage():  Sending to subnet directed broadcast address %s\n",
+            QCC_DbgPrintf(("NameService::SendProtocolMessage():  Sending to subnet directed broadcast address %s",
                            ipv4Broadcast.ToString().c_str()));
 
             QStatus status = qcc::SendTo(sockFd, ipv4Broadcast, BROADCAST_PORT, buffer, size, sent);
             if (status != ER_OK) {
-                QCC_LogError(ER_FAIL, ("NameService::SendProtocolMessage():  Error sending to IPv4 (broadcast)\n"));
+                QCC_LogError(ER_FAIL, ("NameService::SendProtocolMessage():  Error sending to IPv4 (broadcast)"));
             }
         } else {
-            QCC_DbgPrintf(("NameService::SendProtocolMessage():  subnet directed broadcasts are disabled\n"));
+            QCC_DbgPrintf(("NameService::SendProtocolMessage():  subnet directed broadcasts are disabled"));
         }
     } else {
         if (flags & IfConfigEntry::MULTICAST) {
-            QCC_DbgPrintf(("NameService::SendProtocolMessage():  Sending to IPv6 multicast\n"));
+            QCC_DbgPrintf(("NameService::SendProtocolMessage():  Sending to IPv6 multicast"));
             qcc::IPAddress ipv6(IPV6_MULTICAST_GROUP);
             QStatus status = qcc::SendTo(sockFd, ipv6, MULTICAST_PORT, buffer, size, sent);
             if (status != ER_OK) {
-                QCC_LogError(ER_FAIL, ("NameService::SendProtocolMessage():  Error sending to IPv6\n"));
+                QCC_LogError(ER_FAIL, ("NameService::SendProtocolMessage():  Error sending to IPv6"));
             }
         }
     }
@@ -2539,7 +2539,7 @@ void NameService::SendProtocolMessage(
 
 void* NameService::Run(void* arg)
 {
-    QCC_DbgPrintf(("NameService::Run()\n"));
+    QCC_DbgPrintf(("NameService::Run()"));
 
     //
     // This method is executed by the name service main thread and becomes the
@@ -2793,14 +2793,14 @@ void* NameService::Run(void* arg)
         //
         for (vector<qcc::Event*>::iterator i = signaledEvents.begin(); i != signaledEvents.end(); ++i) {
             if (*i == &stopEvent) {
-                QCC_DbgPrintf(("NameService::Run(): Stop event fired\n"));
+                QCC_DbgPrintf(("NameService::Run(): Stop event fired"));
                 //
                 // We heard the stop event, so reset it.  We'll pop out of the
                 // server loop when we run through it again (above).
                 //
                 stopEvent.ResetEvent();
             } else if (*i == &timerEvent) {
-                // QCC_DbgPrintf(("NameService::Run(): Timer event fired\n"));
+                // QCC_DbgPrintf(("NameService::Run(): Timer event fired"));
                 //
                 // This is an event that fires every second to give us a chance
                 // to do any protocol maintenance, like retransmitting queued
@@ -2808,7 +2808,7 @@ void* NameService::Run(void* arg)
                 //
                 DoPeriodicMaintenance();
             } else if (*i == &m_wakeEvent) {
-                QCC_DbgPrintf(("NameService::Run(): Wake event fired\n"));
+                QCC_DbgPrintf(("NameService::Run(): Wake event fired"));
                 //
                 // This is an event that fires whenever a message has been
                 // queued on the outbound name service message queue.  We
@@ -2818,13 +2818,13 @@ void* NameService::Run(void* arg)
                 //
                 m_wakeEvent.ResetEvent();
             } else {
-                QCC_DbgPrintf(("NameService::Run(): Socket event fired\n"));
+                QCC_DbgPrintf(("NameService::Run(): Socket event fired"));
                 //
                 // This must be activity on one of our multicast listener sockets.
                 //
                 qcc::SocketFd sockFd = (*i)->GetFD();
 
-                QCC_DbgPrintf(("NameService::Run(): Call qcc::RecvFrom()\n"));
+                QCC_DbgPrintf(("NameService::Run(): Call qcc::RecvFrom()"));
 
                 qcc::IPAddress address;
                 uint16_t port;
@@ -2922,13 +2922,13 @@ void NameService::Retry(void)
 
 void NameService::Retransmit(void)
 {
-    QCC_DbgPrintf(("NameService::Retransmit()\n"));
+    QCC_DbgPrintf(("NameService::Retransmit()"));
 
     //
     // We need a valid port before we send something out to the local subnet.
     //
     if (m_port == 0) {
-        QCC_DbgPrintf(("NameService::Retransmit(): Port not set\n"));
+        QCC_DbgPrintf(("NameService::Retransmit(): Port not set"));
         return;
     }
 
@@ -3004,7 +3004,7 @@ void NameService::DoPeriodicMaintenance(void)
     if (m_timer) {
         --m_timer;
         if (m_timer == m_tRetransmit) {
-            QCC_DbgPrintf(("NameService::DoPeriodicMaintenance(): Retransmit()\n"));
+            QCC_DbgPrintf(("NameService::DoPeriodicMaintenance(): Retransmit()"));
             Retransmit();
             m_timer = m_tDuration;
         }
@@ -3015,7 +3015,7 @@ void NameService::DoPeriodicMaintenance(void)
 
 void NameService::HandleProtocolQuestion(WhoHas whoHas, qcc::IPAddress address)
 {
-    QCC_DbgHLPrintf(("NameService::HandleProtocolQuestion()\n"));
+    QCC_DbgHLPrintf(("NameService::HandleProtocolQuestion()"));
 
     //
     // There are at least two threads wandering through the advertised list.
@@ -3051,7 +3051,7 @@ void NameService::HandleProtocolQuestion(WhoHas whoHas, qcc::IPAddress address)
             // allow wildcards there.
             //
             if (WildcardMatch((*j), wkn)) {
-                QCC_DbgHLPrintf(("NameService::HandleProtocolQuestion(): request for %s does not match my %s\n",
+                QCC_DbgHLPrintf(("NameService::HandleProtocolQuestion(): request for %s does not match my %s",
                                  wkn.c_str(), (*j).c_str()));
                 continue;
             } else {
@@ -3082,7 +3082,7 @@ void NameService::HandleProtocolQuestion(WhoHas whoHas, qcc::IPAddress address)
 
 void NameService::HandleProtocolAnswer(IsAt isAt, uint32_t timer, qcc::IPAddress address)
 {
-    QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer()\n"));
+    QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer()"));
 
     //
     // If there are no callbacks we can't tell the user anything about what is
@@ -3090,14 +3090,14 @@ void NameService::HandleProtocolAnswer(IsAt isAt, uint32_t timer, qcc::IPAddress
     //
 
     if (m_callback == 0) {
-        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): No callback, so nothing to do\n"));
+        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): No callback, so nothing to do"));
         return;
     }
 
     vector<qcc::String> wkn;
 
     for (uint8_t i = 0; i < isAt.GetNumberNames(); ++i) {
-        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got well-known name %s\n", isAt.GetName(i).c_str()));
+        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got well-known name %s", isAt.GetName(i).c_str()));
         wkn.push_back(isAt.GetName(i));
     }
 
@@ -3108,7 +3108,7 @@ void NameService::HandleProtocolAnswer(IsAt isAt, uint32_t timer, qcc::IPAddress
     sort(wkn.begin(), wkn.end());
 
     qcc::String guid = isAt.GetGuid();
-    QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got GUID %s\n", guid.c_str()));
+    QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got GUID %s", guid.c_str()));
 
     //
     // We always get an address since we got the message over a call to
@@ -3127,20 +3127,20 @@ void NameService::HandleProtocolAnswer(IsAt isAt, uint32_t timer, qcc::IPAddress
     qcc::String recvfromAddress, ipv4address, ipv6address;
 
     recvfromAddress = address.ToString();
-    QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got IP %s from protocol\n", recvfromAddress.c_str()));
+    QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got IP %s from protocol", recvfromAddress.c_str()));
 
     if (isAt.GetIPv4Flag()) {
         ipv4address = isAt.GetIPv4();
-        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got IPv4 %s from message\n", ipv4address.c_str()));
+        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got IPv4 %s from message", ipv4address.c_str()));
     }
 
     if (isAt.GetIPv6Flag()) {
         ipv6address = isAt.GetIPv6();
-        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got IPv6 %s from message\n", ipv6address.c_str()));
+        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got IPv6 %s from message", ipv6address.c_str()));
     }
 
     uint16_t port = isAt.GetPort();
-    QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got port %d from message\n", port));
+    QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Got port %d from message", port));
 
     //
     // The longest bus address we can generate is going to be the larger
@@ -3160,7 +3160,7 @@ void NameService::HandleProtocolAnswer(IsAt isAt, uint32_t timer, qcc::IPAddress
     //
     if ((address.IsIPv4() && !ipv4address.size()) || (address.IsIPv6() && !ipv6address.size())) {
         snprintf(addrbuf, sizeof(addrbuf), "tcp:addr=%s,port=%d", recvfromAddress.c_str(), port);
-        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Calling back with %s\n", addrbuf));
+        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Calling back with %s", addrbuf));
         qcc::String busAddress(addrbuf);
 
         if (m_callback) {
@@ -3173,7 +3173,7 @@ void NameService::HandleProtocolAnswer(IsAt isAt, uint32_t timer, qcc::IPAddress
     //
     if (ipv4address.size()) {
         snprintf(addrbuf, sizeof(addrbuf), "tcp:addr=%s,port=%d", ipv4address.c_str(), port);
-        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Calling back with %s\n", addrbuf));
+        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Calling back with %s", addrbuf));
         qcc::String busAddress(addrbuf);
 
         if (m_callback) {
@@ -3186,7 +3186,7 @@ void NameService::HandleProtocolAnswer(IsAt isAt, uint32_t timer, qcc::IPAddress
     //
     if (ipv6address.size()) {
         snprintf(addrbuf, sizeof(addrbuf), "tcp:addr=%s,port=%d", ipv6address.c_str(), port);
-        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Calling back with %s\n", addrbuf));
+        QCC_DbgHLPrintf(("NameService::HandleProtocolAnswer(): Calling back with %s", addrbuf));
         qcc::String busAddress(addrbuf);
 
         if (m_callback) {
@@ -3197,7 +3197,7 @@ void NameService::HandleProtocolAnswer(IsAt isAt, uint32_t timer, qcc::IPAddress
 
 void NameService::HandleProtocolMessage(uint8_t const* buffer, uint32_t nbytes, qcc::IPAddress address)
 {
-    QCC_DbgHLPrintf(("NameService::HandleProtocolMessage(0x%x, %d, %s)\n", buffer, nbytes, address.ToString().c_str()));
+    QCC_DbgHLPrintf(("NameService::HandleProtocolMessage(0x%x, %d, %s)", buffer, nbytes, address.ToString().c_str()));
 
 #if HAPPY_WANDERER
     if (Wander() == false) {
@@ -3211,7 +3211,7 @@ void NameService::HandleProtocolMessage(uint8_t const* buffer, uint32_t nbytes, 
     Header header;
     size_t bytesRead = header.Deserialize(buffer, nbytes);
     if (bytesRead != nbytes) {
-        QCC_DbgPrintf(("NameService::HandleProtocolMessage(): Deserialize(): Error\n"));
+        QCC_DbgPrintf(("NameService::HandleProtocolMessage(): Deserialize(): Error"));
         return;
     }
 
@@ -3219,7 +3219,7 @@ void NameService::HandleProtocolMessage(uint8_t const* buffer, uint32_t nbytes, 
     // We only understand version zero packets for now.
     //
     if (header.GetVersion() != 0) {
-        QCC_DbgPrintf(("NameService::HandleProtocolMessage(): Unknown version: Error\n"));
+        QCC_DbgPrintf(("NameService::HandleProtocolMessage(): Unknown version: Error"));
         return;
     }
 
