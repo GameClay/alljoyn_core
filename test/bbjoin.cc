@@ -101,7 +101,9 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
                 if (g_sleepBeforeRejoin) {
                     qcc::Sleep(g_sleepBeforeRejoin);
                 }
-                status = bus->JoinSessionAsync(name.c_str(), 26, &listener, opts, &listener, ::strdup(name.c_str()));
+                do {
+                    status = bus->JoinSessionAsync(name.c_str(), 26, &listener, opts, &listener, ::strdup(name.c_str()));
+                } while (status == ER_ALLJOYN_JOINSESSION_REPLY_ALREADY_JOINED);
                 if (status != ER_OK) {
                     QCC_LogError(status, ("JoinSessionAsync failed"));
                 }
@@ -146,6 +148,7 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
             SessionOpts::TrafficType traffic = SessionOpts::TRAFFIC_MESSAGES;
             SessionOpts opts(traffic, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
 
+            QCC_SyncPrintf("Calling JoinSessionAsync(%s)\n", name);
             QStatus status = g_msgBus->JoinSessionAsync(name, 26, this, opts, this, ::strdup(name));
             if (ER_OK != status) {
                 QCC_LogError(status, ("JoinSessionAsync(%s) failed \n", name));

@@ -185,13 +185,9 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
                         msg->ErrorMsg(msg, "org.alljoyn.Bus.Blocked", "Method reply would be blocked because caller does not allow remote messages");
                         PushMessage(msg, *localEndpoint);
                     } else {
-                        if (destEndpoint == localEndpoint) {
-                            nameTable.Unlock();
-                            status = SendThroughEndpoint(msg, *destEndpoint, sessionId);
-                            nameTable.Lock();
-                        } else {
-                            status = SendThroughEndpoint(msg, *destEndpoint, sessionId);
-                        }
+                        nameTable.Unlock();
+                        status = SendThroughEndpoint(msg, *destEndpoint, sessionId);
+                        nameTable.Lock();
                     }
                 } else {
                     QCC_DbgPrintf(("Blocking message from %s to %s (serial=%d) because receiver does not allow remote messages",
@@ -272,15 +268,20 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
                                                (msg->GetType() == MESSAGE_METHOD_RET ? "method reply" : "error reply"))),
                                              msg->GetSender()));
                 }
+                BusEndpoint* ep = it->first;
                 if (allow) {
                     // Broadcast status must not trump directed message
                     // status, especially for eavesdropped messages.
                     if (policydb->EavesdropEnabled() || !((sender->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS) && !dest->AllowRemoteMessages())) {
+                        ruleTable.Unlock();
+                        nameTable.Unlock();
                         QStatus tStatus = SendThroughEndpoint(msg, *dest, sessionId);
                         status = (status == ER_OK) ? tStatus : status;
+                        nameTable.Lock();
+                        ruleTable.Lock();
                     }
                 }
-                ruleTable.AdvanceToNextEndpoint(it);
+                it = ruleTable.AdvanceToNextEndpoint(ep);
             } else {
                 ++it;
             }

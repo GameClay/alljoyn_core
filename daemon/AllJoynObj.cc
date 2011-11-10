@@ -658,9 +658,11 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
                     if ((it->second.sessionHost == vSessionEpName) && (it->second.sessionPort == sessionPort)) {
                         if (it->second.opts.IsCompatible(optsIn)) {
                             b2bEp = vSessionEp->GetBusToBusEndpoint(it->second.id);
-                            b2bEpName = b2bEp ? b2bEp->GetUniqueName() : "";
-                            replyCode = ALLJOYN_JOINSESSION_REPLY_SUCCESS;
-                            b2bEp->IncrementRef();
+                            if (b2bEp) {
+                                b2bEp->IncrementRef();
+                                b2bEpName = b2bEp->GetUniqueName();
+                                replyCode = ALLJOYN_JOINSESSION_REPLY_SUCCESS;
+                            }
                         } else {
                             /* Cannot support more than one connection to the same destination with the same sessionId */
                             replyCode = ALLJOYN_JOINSESSION_REPLY_BAD_SESSION_OPTS;
@@ -923,7 +925,12 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
 
                 /* Multipoint session member is local to this daemon. Send MPSessionChanged */
                 if (optsOut.isMultipoint) {
+                    ajObj.ReleaseLocks();
                     ajObj.SendMPSessionChanged(id, sender.c_str(), true, member.c_str());
+                    ajObj.AcquireLocks();
+                    joinerEp = ajObj.router.FindEndpoint(sender);
+                    memberEp = ajObj.router.FindEndpoint(member);
+                    memberB2BEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
                 }
             }
             /* Add session routing */
@@ -950,22 +957,26 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
         QCC_LogError(status, ("Failed to respond to org.alljoyn.Bus.JoinSession"));
     }
 
-    /* Send a series of MPSessionChanged to "catch up" the newly joiner */
+    /* Send a series of MPSessionChanged to "catch up" the new joiner */
     if ((replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) && optsOut.isMultipoint) {
         ajObj.AcquireLocks();
         pair<String, SessionId> key(sender, id);
         multimap<pair<String, SessionId>, SessionMapEntry>::iterator it = ajObj.sessionMap.find(key);
         if (it != ajObj.sessionMap.end()) {
-            ajObj.SendMPSessionChanged(id, it->second.sessionHost.c_str(), true, sender.c_str());
-            vector<String>::const_iterator mit = it->second.memberNames.begin();
-            while (mit != it->second.memberNames.end()) {
+            String sessionHost = it->second.sessionHost;
+            vector<String> memberVector = it->second.memberNames;
+            ajObj.ReleaseLocks();
+            ajObj.SendMPSessionChanged(id, sessionHost.c_str(), true, sender.c_str());
+            vector<String>::const_iterator mit = memberVector.begin();
+            while (mit != memberVector.end()) {
                 if (sender != *mit) {
                     ajObj.SendMPSessionChanged(id, mit->c_str(), true, sender.c_str());
                 }
                 mit++;
             }
+        } else {
+            ajObj.ReleaseLocks();
         }
-        ajObj.ReleaseLocks();
     }
 
     return 0;
@@ -1394,6 +1405,10 @@ qcc::ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunAttach()
      */
     srcB2BEp = srcB2B ? static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(srcB2B)) : NULL;
     if (srcB2BEp) {
+        srcB2BEp->IncrementWaiters();
+    }
+    ajObj.ReleaseLocks();
+    if (srcB2BEp) {
         status = msg->ReplyMsg(msg, replyArgs, ArraySize(replyArgs));
         if (status == ER_OK) {
             status = srcB2BEp->PushMessage(msg);
@@ -1401,6 +1416,11 @@ qcc::ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunAttach()
     } else {
         status = ajObj.MethodReply(msg, replyArgs, ArraySize(replyArgs));
     }
+    if (srcB2BEp) {
+        srcB2BEp->DecrementWaiters();
+    }
+    ajObj.AcquireLocks();
+    srcB2BEp  = srcB2B ? static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(srcB2B)) : NULL;
 
     /* Log error if reply could not be sent */
     if (ER_OK != status) {
@@ -1587,6 +1607,8 @@ void AllJoynObj::RemoveSessionRefs(const VirtualEndpoint& vep, const RemoteEndpo
                     SendSessionLost(it->second);
                     if (!it->second.isInitializing) {
                         sessionMap.erase(it++);
+                    } else {
+                        ++it;
                     }
                 } else {
                     ++it;
@@ -2492,7 +2514,7 @@ void AllJoynObj::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
             /* Let directly connected daemons know that this virtual endpoint is gone. */
             map<qcc::StringMapKey, RemoteEndpoint*>::iterator it2 = b2bEndpoints.begin();
             const qcc::GUID128& otherSideGuid = endpoint.GetRemoteGUID();
-            while (it2 != b2bEndpoints.end()) {
+            while ((it2 != b2bEndpoints.end()) && (it != virtualEndpoints.end())) {
                 if ((it2->second != &endpoint) && (it2->second->GetRemoteGUID() != otherSideGuid)) {
                     Message sigMsg(bus);
                     MsgArg args[3];
@@ -2511,13 +2533,28 @@ void AllJoynObj::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
                                                        0,
                                                        0);
                     if (ER_OK == status) {
-                        status = it2->second->PushMessage(sigMsg);
+                        String key = it->first;
+                        StringMapKey key2 = it2->first;
+                        RemoteEndpoint*ep = it2->second;
+                        ep->IncrementWaiters();
+                        ReleaseLocks();
+                        status = ep->PushMessage(sigMsg);
+                        if (ER_OK != status) {
+                            QCC_LogError(status, ("Failed to send NameChanged to %s", ep->GetUniqueName().c_str()));
+                        }
+                        ep->DecrementWaiters();
+                        AcquireLocks();
+                        it2 = b2bEndpoints.lower_bound(key2);
+                        if (it2->first == key2) {
+                            ++it2;
+                        }
+                        it = virtualEndpoints.lower_bound(key);
+                    } else {
+                        ++it2;;
                     }
-                    if (ER_OK != status) {
-                        QCC_LogError(status, ("Failed to send NameChanged to %s", it2->second->GetUniqueName().c_str()));
-                    }
+                } else {
+                    ++it2;
                 }
-                ++it2;
             }
         } else {
             ++it;
@@ -2589,7 +2626,11 @@ QStatus AllJoynObj::ExchangeNames(RemoteEndpoint& endpoint)
                                         0,
                                         0);
         if (ER_OK == status) {
+            endpoint.IncrementWaiters();
+            ReleaseLocks();
             status = endpoint.PushMessage(exchangeMsg);
+            endpoint.DecrementWaiters();
+            AcquireLocks();
         }
     }
     if (status != ER_OK) {
@@ -2673,12 +2714,23 @@ void AllJoynObj::ExchangeNamesSignalHandler(const InterfaceDescription::Member* 
                 QCC_DbgPrintf(("Propagating ExchangeName signal to %s", it->second->GetUniqueName().c_str()));
                 Message m2(msg, true);
                 m2->ReMarshal(bus.GetInternal().GetLocalEndpoint().GetUniqueName().c_str(), true);
-                QStatus status = it->second->PushMessage(m2);
+                StringMapKey key = it->first;
+                RemoteEndpoint*ep = it->second;
+                ep->IncrementWaiters();
+                ReleaseLocks();
+                QStatus status = ep->PushMessage(m2);
                 if (ER_OK != status) {
-                    QCC_LogError(status, ("Failed to forward ExchangeNames to %s", it->second->GetUniqueName().c_str()));
+                    QCC_LogError(status, ("Failed to forward ExchangeNames to %s", ep->GetUniqueName().c_str()));
                 }
+                ep->DecrementWaiters();
+                AcquireLocks();
+                it = b2bEndpoints.lower_bound(key);
+                if ((it != b2bEndpoints.end()) && (it->first == key)) {
+                    ++it;
+                }
+            } else {
+                ++it;
             }
-            ++it;
         }
         ReleaseLocks();
     }
@@ -2752,12 +2804,24 @@ void AllJoynObj::NameChangedSignalHandler(const InterfaceDescription::Member* me
                 QCC_DbgPrintf(("Propagating NameChanged signal to %s", it->second->GetUniqueName().c_str()));
                 Message m2(msg, true);
                 m2->ReMarshal(bus.GetInternal().GetLocalEndpoint().GetUniqueName().c_str(), true);
-                QStatus status = it->second->PushMessage(m2);
+
+                StringMapKey key = it->first;
+                RemoteEndpoint*ep = it->second;
+                ep->IncrementWaiters();
+                ReleaseLocks();
+                QStatus status = ep->PushMessage(m2);
                 if (ER_OK != status) {
-                    QCC_LogError(status, ("Failed to forward NameChanged to %s", it->second->GetUniqueName().c_str()));
+                    QCC_LogError(status, ("Failed to forward NameChanged to %s", ep->GetUniqueName().c_str()));
                 }
+                ep->DecrementWaiters();
+                AcquireLocks();
+                it = b2bEndpoints.lower_bound(key);
+                if (it->first == key) {
+                    ++it;
+                }
+            } else {
+                ++it;
             }
-            ++it;
         }
         ReleaseLocks();
     }
@@ -2931,7 +2995,6 @@ void AllJoynObj::NameOwnerChanged(const qcc::String& alias, const qcc::String* o
         AcquireLocks();
         map<qcc::StringMapKey, RemoteEndpoint*>::iterator it = b2bEndpoints.begin();
         while (it != b2bEndpoints.end()) {
-            const qcc::String& un = it->second->GetUniqueName();
             Message sigMsg(bus);
             MsgArg args[3];
             args[0].Set("s", alias.c_str());
@@ -2949,12 +3012,23 @@ void AllJoynObj::NameOwnerChanged(const qcc::String& alias, const qcc::String* o
                                        0,
                                        0);
             if (ER_OK == status) {
-                status = it->second->PushMessage(sigMsg);
+                StringMapKey key = it->first;
+                RemoteEndpoint*ep = it->second;
+                ep->IncrementWaiters();
+                ReleaseLocks();
+                status = ep->PushMessage(sigMsg);
+                ep->DecrementWaiters();
+                AcquireLocks();
+                it = b2bEndpoints.lower_bound(key);
+                if ((it != b2bEndpoints.end()) && (it->first == key)) {
+                    ++it;
+                }
+            } else {
+                ++it;
             }
             if (ER_OK != status) {
-                QCC_LogError(status, ("Failed to send NameChanged to %s", un.c_str()));
+                QCC_LogError(status, ("Failed to send NameChanged"));
             }
-            ++it;
         }
 
         /* If a local well-known name dropped, then remove any nameMap entry */

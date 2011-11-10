@@ -197,19 +197,29 @@ class RuleTable {
     }
 
     /**
+     * lower_bound algorithm for rule table.
+     *
+     * @param ep     BusEndpoint that rule applies to.
+     * @param rule   Rule
+     * @return       lower_bound itertor for ep, rule.
+     */
+    RuleIterator LowerBound(BusEndpoint* endpoint, const Rule& rule);
+
+    /**
      * Advance iterator to next endpoint.
      *
-     * @param it  Iterator to be advanced
+     * @param endpoint   Endpoint before advance.
+     * @return   Iterator to next endpoint in ruleTable or end.
+     *
      */
-    void AdvanceToNextEndpoint(RuleIterator& it) const {
-        BusEndpoint* ep = it->first;
-        while ((++it != rules.end()) && (it->first == ep)) { }
+    RuleIterator AdvanceToNextEndpoint(BusEndpoint* endpoint) {
+        std::multimap<BusEndpoint*, Rule>::iterator ret = rules.upper_bound(endpoint);
+        return ret;
     }
 
   private:
-    qcc::Mutex lock;                                /**< Lock protecting rule table */
+    qcc::Mutex lock;                            /**< Lock protecting rule table */
     std::multimap<BusEndpoint*, Rule> rules;    /**< Rule table */
-
 };
 
 }

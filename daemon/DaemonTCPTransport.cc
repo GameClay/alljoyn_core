@@ -79,7 +79,7 @@ class DaemonTCPEndpoint : public RemoteEndpoint {
         m_port(port),
         m_wasSuddenDisconnect(!incoming) { }
 
-    ~DaemonTCPEndpoint() { }
+    virtual ~DaemonTCPEndpoint() { }
 
     void SetStartTime(qcc::Timespec tStart) { m_tStart = tStart; }
     qcc::Timespec GetStartTime(void) { return m_tStart; }
@@ -1274,7 +1274,7 @@ QStatus DaemonTCPTransport::Connect(const char* connectSpec, const SessionOpts& 
          */
         if (i->first == normSpec) {
             m_listenFdsLock.Unlock(MUTEX_CONTEXT);
-            QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Exlicit connection to self"));
+            QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Explicit connection to self"));
             return ER_BUS_ALREADY_LISTENING;
         }
 
