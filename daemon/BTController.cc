@@ -185,6 +185,7 @@ BTController::BTController(BusAttachment& bus, BluetoothDeviceInterface& bt) :
                        ABSOLUTE_MAX_CONNECTIONS)),
     listening(false),
     devAvailable(false),
+    foundNodeDB(true),
     advertise(*this),
     find(*this),
     dispatcher("BTC-Dispatcher"),

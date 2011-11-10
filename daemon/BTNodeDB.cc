@@ -133,18 +133,21 @@ void BTNodeDB::AddNode(const BTNodeInfo& node)
         nameMap[node->GetUniqueName()] = node;
     }
 
-    // Add to the expiration set
-    expireSet.insert(node);
+    if (useExpirations) {
+        // Add to the expiration set
+        expireSet.insert(node);
+    }
 
     // Add to the connect address multimap
     connMap.insert(std::pair<BTNodeInfo, BTNodeInfo>(node->GetConnectNode(), node));
-    assert(connMap.size() == expireSet.size());
-    assert(expireSet.size() == nodes.size());
 
     // Add to the session ID map
     if (node->GetSessionID() != 0) {
         sessionIDMap[node->GetSessionID()] = node;
     }
+
+    assert(connMap.size() == nodes.size());
+    assert(!useExpirations || (expireSet.size() == nodes.size()));
     Unlock();
 }
 
@@ -183,18 +186,21 @@ void BTNodeDB::RemoveNode(const BTNodeInfo& node)
             nameMap.erase(lnode->GetUniqueName());
         }
 
-        // Remove from the exipiration set
-        NodeExpireSet::iterator expit = expireSet.find(lnode);
-        if (expit == expireSet.end()) {
-            // expireSet is out of order
-            expireSet.clear();
-            expireSet.insert(nodes.begin(), nodes.end());
-        } else {
-            expireSet.erase(expit);
+        if (useExpirations) {
+            // Remove from the exipiration set
+            NodeExpireSet::iterator expit = expireSet.find(lnode);
+            if (expit == expireSet.end()) {
+                // expireSet is out of order
+                expireSet.clear();
+                expireSet.insert(nodes.begin(), nodes.end());
+            } else {
+                expireSet.erase(expit);
+            }
         }
     }
-    assert(connMap.size() == expireSet.size());
-    assert(expireSet.size() == nodes.size());
+
+    assert(connMap.size() == nodes.size());
+    assert(!useExpirations || (expireSet.size() == nodes.size()));
     Unlock();
 }
 
@@ -400,11 +406,12 @@ void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool rem
                 connMap.insert(pair<BTNodeInfo, BTNodeInfo>(node->GetConnectNode(), node));
                 // Update the UUIDRev
                 node->SetUUIDRev(anode->GetUUIDRev());
-                // Update the expire time
-                expireSet.erase(node);
-                node->SetExpireTime(anode->GetExpireTime());
-                expireSet.insert(node);
-                assert(connMap.size() == expireSet.size());
+                if (useExpirations) {
+                    // Update the expire time
+                    expireSet.erase(node);
+                    node->SetExpireTime(anode->GetExpireTime());
+                    expireSet.insert(node);
+                }
                 if ((node->GetUniqueName() != anode->GetUniqueName()) && !anode->GetUniqueName().empty()) {
                     if (!node->GetUniqueName().empty()) {
                         nameMap.erase(node->GetUniqueName());
@@ -416,70 +423,86 @@ void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool rem
         }
     }
 
-    assert(expireSet.size() == nodes.size());
+    assert(connMap.size() == nodes.size());
+    assert(!useExpirations || (expireSet.size() == nodes.size()));
     Unlock();
 }
 
 
 void BTNodeDB::RemoveExpiration()
 {
-    Lock();
-    uint64_t expireTime = numeric_limits<uint64_t>::max();
-    expireSet.clear();
-    iterator it = nodes.begin();
-    while (it != nodes.end()) {
-        BTNodeInfo node = *it;
-        node->SetExpireTime(expireTime);
-        expireSet.insert(node);
-        ++it;
+    if (useExpirations) {
+        Lock();
+        uint64_t expireTime = numeric_limits<uint64_t>::max();
+        expireSet.clear();
+        iterator it = nodes.begin();
+        while (it != nodes.end()) {
+            BTNodeInfo node = *it;
+            node->SetExpireTime(expireTime);
+            expireSet.insert(node);
+            ++it;
+        }
+        assert(expireSet.size() == nodes.size());
+        Unlock();
+    } else {
+        QCC_LogError(ER_FAIL, ("Called RemoveExpiration on BTNodeDB instance initialized without expiration support."));
+        assert(false);
     }
-    assert(expireSet.size() == nodes.size());
-    Unlock();
 }
 
 
 void BTNodeDB::RefreshExpiration(uint32_t expireDelta)
 {
-    Lock();
-    Timespec now;
-    GetTimeNow(&now);
-    uint64_t expireTime = now.GetAbsoluteMillis() + expireDelta;
-    expireSet.clear();
-    iterator it = nodes.begin();
-    while (it != nodes.end()) {
-        BTNodeInfo node = *it;
-        node->SetExpireTime(expireTime);
-        expireSet.insert(node);
-        ++it;
+    if (useExpirations) {
+        Lock();
+        Timespec now;
+        GetTimeNow(&now);
+        uint64_t expireTime = now.GetAbsoluteMillis() + expireDelta;
+        expireSet.clear();
+        iterator it = nodes.begin();
+        while (it != nodes.end()) {
+            BTNodeInfo node = *it;
+            node->SetExpireTime(expireTime);
+            expireSet.insert(node);
+            ++it;
+        }
+        assert(expireSet.size() == nodes.size());
+        Unlock();
+    } else {
+        QCC_LogError(ER_FAIL, ("Called RefreshExpiration on BTNodeDB instance initialized without expiration support."));
+        assert(false);
     }
-    assert(expireSet.size() == nodes.size());
-    Unlock();
 }
 
 
 void BTNodeDB::RefreshExpiration(const BTNodeInfo& connNode, uint32_t expireDelta)
 {
-    Lock();
-    ConnAddrMap::iterator cmit = connMap.lower_bound(connNode);
-    ConnAddrMap::iterator end = connMap.upper_bound(connNode);
+    if (useExpirations) {
+        Lock();
+        ConnAddrMap::iterator cmit = connMap.lower_bound(connNode);
+        ConnAddrMap::iterator end = connMap.upper_bound(connNode);
 
-    Timespec now;
-    GetTimeNow(&now);
-    uint64_t expireTime = now.GetAbsoluteMillis() + expireDelta;
+        Timespec now;
+        GetTimeNow(&now);
+        uint64_t expireTime = now.GetAbsoluteMillis() + expireDelta;
 
-    while (cmit != end) {
-        assert(cmit->first == cmit->second->GetConnectNode());
-        expireSet.erase(cmit->second);
-        cmit->second->SetExpireTime(expireTime);
-        cmit->second->SetUUIDRev(connNode->GetUUIDRev());
-        expireSet.insert(cmit->second);
-        ++cmit;
+        while (cmit != end) {
+            assert(cmit->first == cmit->second->GetConnectNode());
+            expireSet.erase(cmit->second);
+            cmit->second->SetExpireTime(expireTime);
+            cmit->second->SetUUIDRev(connNode->GetUUIDRev());
+            expireSet.insert(cmit->second);
+            ++cmit;
+        }
+
+        assert((end == connMap.end()) || (connNode < (end->second->GetConnectNode())));
+        assert(connMap.size() == nodes.size());
+        assert(expireSet.size() == nodes.size());
+        Unlock();
+    } else {
+        QCC_LogError(ER_FAIL, ("Called RefreshExpiration on BTNodeDB instance initialized without expiration support."));
+        assert(false);
     }
-
-    assert((end == connMap.end()) || (connNode < (end->second->GetConnectNode())));
-    assert(connMap.size() == expireSet.size());
-    assert(expireSet.size() == nodes.size());
-    Unlock();
 }
 
 

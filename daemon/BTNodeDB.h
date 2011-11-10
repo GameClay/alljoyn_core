@@ -49,6 +49,9 @@ class BTNodeDB {
     /** Convenience const_iterator typedef. */
     typedef std::set<BTNodeInfo>::const_iterator const_iterator;
 
+
+    BTNodeDB(bool useExpirations = false) : useExpirations(useExpirations) { }
+
     /**
      * Find a node given a Bluetooth device address and a PSM.
      *
@@ -324,6 +327,7 @@ class BTNodeDB {
 
     mutable qcc::Mutex lock;        /**< Mutext to protect the DB. */
 
+    const bool useExpirations;
 };
 
 } // namespace ajn
