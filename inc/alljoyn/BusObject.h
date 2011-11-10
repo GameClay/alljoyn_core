@@ -95,7 +95,9 @@ class BusObject : public MessageReceiver {
     BusAttachment& bus;
 
     /**
-     * Reply to a method call
+     * Reply to a method call. Note that this function transforms the method call message into the
+     * appropriate method reply message so the MsgArgs and related data received in the method call
+     * are invalid after this function returns.
      *
      * @param msg      The method call message
      * @param args     The reply arguments (can be NULL)
@@ -107,7 +109,9 @@ class BusObject : public MessageReceiver {
     QStatus MethodReply(Message& msg, const MsgArg* args = NULL, size_t numArgs = 0);
 
     /**
-     * Reply to a method call with an error message
+     * Reply to a method call with an error message. Note that this function transforms the method
+     * call message into the appropriate method reply message so the MsgArgs and related data
+     * received in the method call are invalid after this function returns.
      *
      * @param msg              The method call message
      * @param error            The name of the error
@@ -119,7 +123,9 @@ class BusObject : public MessageReceiver {
     QStatus MethodReply(Message& msg, const char* error, const char* errorMessage = NULL);
 
     /**
-     * Reply to a method call with an error message
+     * Reply to a method call with an error message. Note that this function transforms the method
+     * call message into the appropriate method reply message so the MsgArgs and related data
+     * received in the method call are invalid after this function returns.
      *
      * @param msg        The method call message
      * @param status     The status code for the error
