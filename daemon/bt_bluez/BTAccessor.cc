@@ -1863,7 +1863,7 @@ QStatus BTTransport::BTAccessor::DiscoveryControl(bool start)
     }
 
     QCC_DbgPrintf(("discovery control: %d", ctrl));
-    assert((ctrl >= -20) && (ctrl <= 1));
+    assert((ctrl >= -20) && (ctrl <= 2));
 
     if (method) {
         status = DiscoveryControl(method);
