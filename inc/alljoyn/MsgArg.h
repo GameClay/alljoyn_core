@@ -181,12 +181,13 @@ typedef struct {
  * Type for a handle. An handle is an abstraction of a platform-specific socket or file descriptor.
  *
  * @note Handles associated with in a message received by the application will be closed when the
- * message destructor is called. If the application code needs to continue using the handle the
- * handle must be duplicated by calling qcc:SocketDup() or the appropriate platform-specific APIs.
- * Handles that are passed in when creating a message to be sent are duplicated internally and can
- * be closed by the caller after the message has been created. Handles that have been duplicated
- * using qcc::SocketDup() must be closed by calling qcc::Close(). Handles duplicated by calling a
- * native platform "dup" API must be closed using the native "close" API.
+ * message destructor is called or when a method call is converted into a method reply. If the
+ * application code needs to continue using the handle the handle must be duplicated by calling
+ * qcc:SocketDup() or the appropriate platform-specific APIs.  Handles that are passed in when
+ * creating a message to be sent are duplicated internally and can be closed by the caller after the
+ * message has been created. Handles that have been duplicated using qcc::SocketDup() must be closed
+ * by calling qcc::Close(). Handles duplicated by calling a native platform "dup" API must be closed
+ * using the native "close" API.
  */
 typedef struct {
     qcc::SocketFd fd;          /**< A platform-specific socket file descriptor */
