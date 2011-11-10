@@ -908,7 +908,7 @@ void BTController::SessionLost(SessionId id)
 
 void BTController::JoinSessionCB(QStatus status, SessionId sessionID, const SessionOpts& opts, void* context)
 {
-    QCC_DbgTrace(("BTController::JoinSessionCB(status = %s, sessionID = %x, opts = <>, context = %p",
+    QCC_DbgTrace(("BTController::JoinSessionCB(status = %s, sessionID = %x, opts = <>, context = %p)",
                   QCC_StatusText(status), sessionID, context));
     if ((status == ER_OK) &&
         (joinSessionNode != masterNode) &&
@@ -918,6 +918,7 @@ void BTController::JoinSessionCB(QStatus status, SessionId sessionID, const Sess
 
         if (connCnt == 1) {
             bus.LeaveSession(sessionID);
+            JoinSessionNodeComplete();
         } else {
             joinSessionNode->SetSessionID(sessionID);
             joinSessionNode->SetSessionState(_BTNodeInfo::SESSION_UP);
