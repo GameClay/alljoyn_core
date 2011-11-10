@@ -440,12 +440,14 @@ QStatus RequestBTRole(uint16_t deviceId, const BDAddress& bdAddr, bt::BluetoothR
     SocketFd hciFd;
     size_t sent;
     uint8_t rxBuf[260];
+    size_t pos;
     size_t recvd;
     bool gotCmdStatus = false;
     bool gotRoleSwitchEvent = false;
     int ret;
     struct hci_filter evtFilter;
     uint64_t timeout;
+    int flags;
 
     // HCI command sent via raw sockets (must have privileges for this)
     hciFd = (SocketFd)socket(AF_BLUETOOTH, QCC_SOCK_RAW, 1);
@@ -495,8 +497,12 @@ QStatus RequestBTRole(uint16_t deviceId, const BDAddress& bdAddr, bt::BluetoothR
         goto exit;
     }
 
+    flags = fcntl(hciFd, F_GETFL);
+    ret = fcntl(hciFd, F_SETFL, flags | O_NONBLOCK);
+
     timeout = GetTimestamp64() + 10000;
 
+    pos = 0;
     do {
         status = Event::Wait(hciRxEvent, 5000);  // 5 second timeout
         if (status != ER_OK) {
@@ -504,40 +510,48 @@ QStatus RequestBTRole(uint16_t deviceId, const BDAddress& bdAddr, bt::BluetoothR
             goto exit;
         }
 
-        status = Recv(hciFd, rxBuf, sizeof(rxBuf), recvd);
+        status = Recv(hciFd, rxBuf + pos, sizeof(rxBuf) - pos, recvd);
+        if (status == ER_WOULDBLOCK) {
+            continue;
+        }
         if (status != ER_OK) {
             QCC_LogError(status, ("Failed to receive HCI event (errno %d)", errno));
             goto exit;
         }
 
-        if (!gotCmdStatus) {
-            if ((rxBuf[0] == 0x04) &&
-                (rxBuf[1] == 0x0f) &&
-                (rxBuf[2] == 0x04) &&
-                memcmp(rxBuf + 4, hciRoleSwitch, 3) == 0) {
-                if (rxBuf[3] != 0x00) {
-                    status = ER_FAIL;
-                    QCC_LogError(status, ("HCI role switch command failed with HCI status 0x%02x", rxBuf[3]));
-                    goto exit;
-                }
-                gotCmdStatus = true;
-            }
+        pos += recvd;
 
-        } else if (!gotRoleSwitchEvent) {
-            if ((rxBuf[0] == 0x04) &&
-                (rxBuf[1] == 0x12) &&
-                (rxBuf[2] == 0x08) &&
-                memcmp(rxBuf + 4, cmd + 4, sizeof(hciRoleSwitch) - 5) == 0) {
-                if (rxBuf[3] != 0x00) {
-                    status = ER_FAIL;
-                    QCC_LogError(status, ("HCI role switch event received with HCI fail code 0x%02x", rxBuf[3]));
-                    goto exit;
+        if ((pos > 2) && (pos > rxBuf[2])) {
+            if (!gotCmdStatus) {
+                if ((rxBuf[0] == 0x04) &&
+                    (rxBuf[1] == 0x0f) &&
+                    (rxBuf[2] == 0x04) &&
+                    memcmp(rxBuf + 4, hciRoleSwitch, 3) == 0) {
+                    if (rxBuf[3] != 0x00) {
+                        status = ER_FAIL;
+                        QCC_LogError(status, ("HCI role switch command failed with HCI status 0x%02x", rxBuf[3]));
+                        goto exit;
+                    }
+                    gotCmdStatus = true;
                 }
-                gotRoleSwitchEvent = true;
-                QCC_DbgPrintf(("BT role switched to %s for connection to %s",
-                               (rxBuf[9] == 0x00) ? "MASTER" : "SLAVE",
-                               bdAddr.ToString().c_str()));
+
+            } else if (!gotRoleSwitchEvent) {
+                if ((rxBuf[0] == 0x04) &&
+                    (rxBuf[1] == 0x12) &&
+                    (rxBuf[2] == 0x08) &&
+                    memcmp(rxBuf + 4, cmd + 4, sizeof(hciRoleSwitch) - 5) == 0) {
+                    if (rxBuf[3] != 0x00) {
+                        status = ER_FAIL;
+                        QCC_LogError(status, ("HCI role switch event received with HCI fail code 0x%02x", rxBuf[3]));
+                        goto exit;
+                    }
+                    gotRoleSwitchEvent = true;
+                    QCC_DbgPrintf(("BT role switched to %s for connection to %s",
+                                   (rxBuf[9] == 0x00) ? "MASTER" : "SLAVE",
+                                   bdAddr.ToString().c_str()));
+                }
             }
+            pos = 0;
         }
     } while (!gotRoleSwitchEvent && (timeout > GetTimestamp64()));
 
