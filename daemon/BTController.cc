@@ -918,6 +918,7 @@ void BTController::JoinSessionCB(QStatus status, SessionId sessionID, const Sess
 
         if (connCnt == 1) {
             bus.LeaveSession(sessionID);
+            joinSessionNode->SetSessionState(_BTNodeInfo::NO_SESSION);
             JoinSessionNodeComplete();
         } else {
             joinSessionNode->SetSessionID(sessionID);
@@ -930,6 +931,7 @@ void BTController::JoinSessionCB(QStatus status, SessionId sessionID, const Sess
             bus.LeaveSession(sessionID);
         }
 
+        joinSessionNode->SetSessionState(_BTNodeInfo::NO_SESSION);
         JoinSessionNodeComplete();
     }
 }
@@ -1628,6 +1630,7 @@ exit:
     if (status != ER_OK) {
         delete newMaster;
         bt.Disconnect(joinSessionNode->GetUniqueName());
+        joinSessionNode->SetSessionState(_BTNodeInfo::NO_SESSION);
         JoinSessionNodeComplete();
     }
 }
