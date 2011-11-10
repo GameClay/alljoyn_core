@@ -491,40 +491,41 @@ class _Message {
     /// @cond ALLJOYN_DEV
     /**
      * @internal
-     * Turn a method call message into a method reply message
+     * Generate an method reply message from a method call.
      *
+     * @param call        The call message - can be this message.
      * @param args        The arguments for the reply (can be NULL)
      * @param numArgs     The number of arguments
      * @return
      *      - #ER_OK if successful
      *      - An error status otherwise
      */
-    QStatus ReplyMsg(const MsgArg* args,
-                     size_t numArgs);
+    QStatus ReplyMsg(const Message& call, const MsgArg* args, size_t numArgs);
 
     /**
      * @internal
-     * Turn a method call message into an error message
+     * Generate an error message from a method call.
      *
+     * @param call        The call message - can be this message.
      * @param errorName   The name of this error
      * @param description Informational string describing details of the error
      * @return
      *      - #ER_OK if successful
      *      - An error status otherwise
      */
-    QStatus ErrorMsg(const char* errorName,
-                     const char* description);
+    QStatus ErrorMsg(const Message& call, const char* errorName, const char* description);
 
     /**
      * @internal
-     * Turn a method call message into an error message
+     * Generate an error message from a method call.
      *
+     * @param call        The call message - can be this message.
      * @param status      The status code for this error
      * @return
      *      - #ER_OK if successful
      *      - An error status otherwise
      */
-    QStatus ErrorMsg(QStatus status);
+    QStatus ErrorMsg(const Message& call, QStatus status);
 
     /**
      * @internal

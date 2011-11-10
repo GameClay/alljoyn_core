@@ -87,6 +87,7 @@ static const char ifcXML[] =
     "  <interface name=\"org.alljoyn.sock_test\">"
     "    <method name=\"PutSock\">"
     "      <arg name=\"sock\" type=\"h\" direction=\"in\"/>"
+    "      <arg name=\"sockOut\" type=\"h\" direction=\"out\"/>"
     "    </method>"
     "    <method name=\"GetSock\">"
     "      <arg name=\"sock\" type=\"h\" direction=\"out\"/>"
@@ -135,7 +136,9 @@ class SockService : public BusObject {
         if (status == ER_OK) {
             status = qcc::SocketDup(handle, handle);
             if (status == ER_OK) {
-                status = MethodReply(msg);
+                status = MethodReply(msg, msg->GetArg(0), 1);
+            } else {
+                status = MethodReply(msg, status);
             }
         }
         if (status == ER_OK) {

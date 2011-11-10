@@ -449,22 +449,23 @@ QStatus BusObject::Signal(const char* destination,
     return status;
 }
 
-QStatus BusObject::MethodReply(Message& msg, const MsgArg* args, size_t numArgs)
+QStatus BusObject::MethodReply(const Message& msg, const MsgArg* args, size_t numArgs)
 {
     QStatus status;
 
     if (msg->GetType() != MESSAGE_METHOD_CALL) {
         status = ER_BUS_NO_CALL_FOR_REPLY;
     } else {
-        status = msg->ReplyMsg(args, numArgs);
+        Message reply(bus);
+        status = reply->ReplyMsg(msg, args, numArgs);
         if (status == ER_OK) {
-            status = bus.GetInternal().GetRouter().PushMessage(msg, bus.GetInternal().GetLocalEndpoint());
+            status = bus.GetInternal().GetRouter().PushMessage(reply, bus.GetInternal().GetLocalEndpoint());
         }
     }
     return status;
 }
 
-QStatus BusObject::MethodReply(Message& msg, const char* errorName, const char* errorMessage)
+QStatus BusObject::MethodReply(const Message& msg, const char* errorName, const char* errorMessage)
 {
     QStatus status;
 
@@ -472,15 +473,16 @@ QStatus BusObject::MethodReply(Message& msg, const char* errorName, const char* 
         status = ER_BUS_NO_CALL_FOR_REPLY;
         return status;
     } else {
-        status = msg->ErrorMsg(errorName, errorMessage ? errorMessage : "");
+        Message error(bus);
+        status = error->ErrorMsg(msg, errorName, errorMessage ? errorMessage : "");
         if (status == ER_OK) {
-            status = bus.GetInternal().GetRouter().PushMessage(msg, bus.GetInternal().GetLocalEndpoint());
+            status = bus.GetInternal().GetRouter().PushMessage(error, bus.GetInternal().GetLocalEndpoint());
         }
     }
     return status;
 }
 
-QStatus BusObject::MethodReply(Message& msg, QStatus status)
+QStatus BusObject::MethodReply(const Message& msg, QStatus status)
 {
     if (status == ER_OK) {
         return MethodReply(msg);
@@ -488,8 +490,9 @@ QStatus BusObject::MethodReply(Message& msg, QStatus status)
         if (msg->GetType() != MESSAGE_METHOD_CALL) {
             return ER_BUS_NO_CALL_FOR_REPLY;
         } else {
-            msg->ErrorMsg(status);
-            return bus.GetInternal().GetRouter().PushMessage(msg, bus.GetInternal().GetLocalEndpoint());
+            Message error(bus);
+            error->ErrorMsg(msg, status);
+            return bus.GetInternal().GetRouter().PushMessage(error, bus.GetInternal().GetLocalEndpoint());
         }
     }
 }

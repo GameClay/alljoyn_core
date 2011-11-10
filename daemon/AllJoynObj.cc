@@ -1394,7 +1394,7 @@ qcc::ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunAttach()
      */
     srcB2BEp = srcB2B ? static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(srcB2B)) : NULL;
     if (srcB2BEp) {
-        status = msg->ReplyMsg(replyArgs, ArraySize(replyArgs));
+        status = msg->ReplyMsg(msg, replyArgs, ArraySize(replyArgs));
         if (status == ER_OK) {
             status = srcB2BEp->PushMessage(msg);
         }

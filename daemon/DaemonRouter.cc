@@ -72,7 +72,7 @@ void DeferredMsg::ServiceStarted(const qcc::String& serviceName, QStatus result)
         BusEndpoint* destEndpoint(router.FindEndpoint(msg->GetSender()));
         qcc::String description("Failed to start service for bus name: ");
         description += msg->GetDestination();
-        msg->ErrorMsg("org.freedesktop.DBus.Error.ServiceUnknown", description.c_str());
+        msg->ErrorMsg(msg, "org.freedesktop.DBus.Error.ServiceUnknown", description.c_str());
         destEndpoint->PushMessage(msg);
     }
 
@@ -182,7 +182,7 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
                                        msg->GetSender(),
                                        destEndpoint->GetUniqueName().c_str(),
                                        msg->GetCallSerial()));
-                        msg->ErrorMsg("org.alljoyn.Bus.Blocked", "Method reply would be blocked because caller does not allow remote messages");
+                        msg->ErrorMsg(msg, "org.alljoyn.Bus.Blocked", "Method reply would be blocked because caller does not allow remote messages");
                         PushMessage(msg, *localEndpoint);
                     } else {
                         if (destEndpoint == localEndpoint) {
@@ -202,7 +202,7 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
                     if (replyExpected) {
                         qcc::String description("Remote method calls blocked for bus name: ");
                         description += destination;
-                        msg->ErrorMsg("org.alljoyn.Bus.Blocked", description.c_str());
+                        msg->ErrorMsg(msg, "org.alljoyn.Bus.Blocked", description.c_str());
                         PushMessage(msg, *localEndpoint);
                     }
                 }
@@ -225,7 +225,7 @@ QStatus DaemonRouter::PushMessage(Message& msg, BusEndpoint& origSender)
                 /* Need to let the sender know its reply message cannot be passed on. */
                 qcc::String description("Unknown bus name: ");
                 description += destination;
-                msg->ErrorMsg("org.freedesktop.DBus.Error.ServiceUnknown", description.c_str());
+                msg->ErrorMsg(msg, "org.freedesktop.DBus.Error.ServiceUnknown", description.c_str());
                 PushMessage(msg, *localEndpoint);
             } else {
                 QCC_LogError(ER_BUS_NO_ROUTE, ("Discarding %s no route to %s:%d", msg->Description().c_str(), destination, sessionId));

@@ -251,7 +251,7 @@ QStatus LocalEndpoint::PeerInterface(Message& message)
         if (ER_OK != status) {
             return status;
         }
-        message->ReplyMsg(NULL, 0);
+        message->ReplyMsg(message, NULL, 0);
         return bus.GetInternal().GetRouter().PushMessage(message, *this);
     }
     if (strcmp(message->GetMemberName(), "GetMachineId") == 0) {
@@ -264,7 +264,7 @@ QStatus LocalEndpoint::PeerInterface(Message& message)
         qcc::String guidStr = bus.GetInternal().GetGlobalGUID().ToString();
         replyArg.v_string.str = guidStr.c_str();
         replyArg.v_string.len = guidStr.size();
-        message->ReplyMsg(&replyArg, 1);
+        message->ReplyMsg(message, &replyArg, 1);
         return bus.GetInternal().GetRouter().PushMessage(message, *this);
     }
     return ER_BUS_OBJECT_NO_SUCH_MEMBER;
@@ -675,7 +675,7 @@ QStatus LocalEndpoint::HandleMethodCall(Message& message)
                             errStr += "org.alljoyn.Bus.";
                             errStr += QCC_StatusText(ER_ALLJOYN_ACCESS_PERMISSION_ERROR);
                             errMsg = message->Description();
-                            message->ErrorMsg(errStr.c_str(), errMsg.c_str());
+                            message->ErrorMsg(message, errStr.c_str(), errMsg.c_str());
                             bus.GetInternal().GetRouter().PushMessage(message, *this);
                         }
                     }
@@ -717,7 +717,7 @@ QStatus LocalEndpoint::HandleMethodCall(Message& message)
             errMsg = message->Description();
             break;
         }
-        message->ErrorMsg(errStr.c_str(), errMsg.c_str());
+        message->ErrorMsg(message, errStr.c_str(), errMsg.c_str());
         status = bus.GetInternal().GetRouter().PushMessage(message, *this);
     } else {
         QCC_LogError(status, ("Ignoring message %s", message->Description().c_str()));
@@ -959,7 +959,7 @@ void*  LocalEndpoint::PermVerifyThread::Run(void* arg)
                             errStr += "org.alljoyn.Bus.";
                             errStr += QCC_StatusText(status);
                             errMsg = message->Description();
-                            message->ErrorMsg(errStr.c_str(), errMsg.c_str());
+                            message->ErrorMsg(message, errStr.c_str(), errMsg.c_str());
                             localEp->bus.GetInternal().GetRouter().PushMessage(message, *localEp);
                         }
                     }

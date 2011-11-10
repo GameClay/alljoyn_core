@@ -1148,18 +1148,17 @@ ExitSignalMsg:
 }
 
 
-QStatus _Message::ReplyMsg(const MsgArg* args,
-                           size_t numArgs)
+QStatus _Message::ReplyMsg(const Message& call, const MsgArg* args, size_t numArgs)
 {
     QStatus status;
-    SessionId sessionId = GetSessionId();
+    SessionId sessionId = call->GetSessionId();
 
     /*
      * Destination is sender of method call
      */
-    qcc::String destination = hdrFields.field[ALLJOYN_HDR_FIELD_SENDER].v_string.str;
+    qcc::String destination = call->hdrFields.field[ALLJOYN_HDR_FIELD_SENDER].v_string.str;
 
-    assert(msgHeader.msgType == MESSAGE_METHOD_CALL);
+    assert(call->msgHeader.msgType == MESSAGE_METHOD_CALL);
 
     /*
      * Clear any stale header fields
@@ -1170,24 +1169,24 @@ QStatus _Message::ReplyMsg(const MsgArg* args,
      */
     hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].Clear();
     hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].typeId = ALLJOYN_UINT32;
-    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].v_uint32 = msgHeader.serialNum;
+    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].v_uint32 = call->msgHeader.serialNum;
     /*
      * Build method return message (encrypted if the method call was encrypted)
      */
-    status = MarshalMessage(replySignature, destination, MESSAGE_METHOD_RET, args,
-                            numArgs, msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED, sessionId);
+    status = MarshalMessage(call->replySignature, destination, MESSAGE_METHOD_RET, args,
+                            numArgs, call->msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED, sessionId);
+
     return status;
 }
 
 
-QStatus _Message::ErrorMsg(const char* errorName,
-                           const char* description)
+QStatus _Message::ErrorMsg(const Message& call, const char* errorName, const char* description)
 {
     QStatus status;
-    qcc::String destination = hdrFields.field[ALLJOYN_HDR_FIELD_SENDER].v_string.str;
-    SessionId sessionId = GetSessionId();
+    qcc::String destination = call->hdrFields.field[ALLJOYN_HDR_FIELD_SENDER].v_string.str;
+    SessionId sessionId = call->GetSessionId();
 
-    assert(msgHeader.msgType == MESSAGE_METHOD_CALL);
+    assert(call->msgHeader.msgType == MESSAGE_METHOD_CALL);
 
     /*
      * Clear any stale header fields
@@ -1204,15 +1203,15 @@ QStatus _Message::ErrorMsg(const char* errorName,
     /*
      * Return serial number
      */
-    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].Set("u", msgHeader.serialNum);
+    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].Set("u", call->msgHeader.serialNum);
     /*
      * Build error message
      */
     if ('\0' == description[0]) {
-        status = MarshalMessage("", destination, MESSAGE_ERROR, NULL, 0, msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED, sessionId);
+        status = MarshalMessage("", destination, MESSAGE_ERROR, NULL, 0, call->msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED, sessionId);
     } else {
         MsgArg arg("s", description);
-        status = MarshalMessage("s", destination, MESSAGE_ERROR, &arg, 1, msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED, sessionId);
+        status = MarshalMessage("s", destination, MESSAGE_ERROR, &arg, 1, call->msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED, sessionId);
     }
 
 ExitErrorMsg:
@@ -1220,13 +1219,13 @@ ExitErrorMsg:
 }
 
 
-QStatus _Message::ErrorMsg(QStatus status)
+QStatus _Message::ErrorMsg(const Message& call, QStatus status)
 {
-    qcc::String destination = hdrFields.field[ALLJOYN_HDR_FIELD_SENDER].v_string.str;
+    qcc::String destination = call->hdrFields.field[ALLJOYN_HDR_FIELD_SENDER].v_string.str;
     qcc::String msg = QCC_StatusText(status);
     uint16_t msgStatus = status;
 
-    assert(msgHeader.msgType == MESSAGE_METHOD_CALL);
+    assert(call->msgHeader.msgType == MESSAGE_METHOD_CALL);
     /*
      * Clear any stale header fields
      */
@@ -1238,21 +1237,20 @@ QStatus _Message::ErrorMsg(QStatus status)
     /*
      * Return serial number
      */
-    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].Set("u", msgHeader.serialNum);
+    hdrFields.field[ALLJOYN_HDR_FIELD_REPLY_SERIAL].Set("u", call->msgHeader.serialNum);
     /*
      * Build error message
      */
     MsgArg args[2];
     size_t numArgs = 2;
     MsgArg::Set(args, numArgs, "sq", msg.c_str(), msgStatus);
-    return MarshalMessage("sq", destination, MESSAGE_ERROR, args, numArgs, msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED, GetSessionId());
+    return MarshalMessage("sq", destination, MESSAGE_ERROR, args, numArgs, call->msgHeader.flags & ALLJOYN_FLAG_ENCRYPTED, GetSessionId());
 }
 
 
 void _Message::ErrorMsg(const char* errorName,
                         uint32_t replySerial)
 {
-    SessionId sessionId = GetSessionId();
     /*
      * Clear any stale header fields
      */
@@ -1271,7 +1269,7 @@ void _Message::ErrorMsg(const char* errorName,
     /*
      * Build error message
      */
-    MarshalMessage("", "", MESSAGE_ERROR, NULL, 0, 0, sessionId);
+    MarshalMessage("", "", MESSAGE_ERROR, NULL, 0, 0, 0);
 }
 
 void _Message::ErrorMsg(QStatus status,
@@ -1279,7 +1277,6 @@ void _Message::ErrorMsg(QStatus status,
 {
     qcc::String msg = QCC_StatusText(status);
     uint16_t msgStatus = status;
-    SessionId sessionId = GetSessionId();
 
     /*
      * Clear any stale header fields
@@ -1292,7 +1289,7 @@ void _Message::ErrorMsg(QStatus status,
     MsgArg args[2];
     size_t numArgs = 2;
     MsgArg::Set(args, numArgs, "sq", msg.c_str(), msgStatus);
-    MarshalMessage("sq", "", MESSAGE_ERROR, args, numArgs, 0, sessionId);
+    MarshalMessage("sq", "", MESSAGE_ERROR, args, numArgs, 0, 0);
 }
 
 QStatus _Message::GetExpansion(uint32_t token, MsgArg& replyArg)
