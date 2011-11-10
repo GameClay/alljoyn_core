@@ -107,10 +107,6 @@ BTTransport::BTAccessor::~BTAccessor()
         ::CloseHandle(radioHandle);
         radioHandle = 0;
     }
-    if (INVALID_HANDLE_VALUE != deviceHandle) {
-        ::CloseHandle(deviceHandle);
-        deviceHandle = INVALID_HANDLE_VALUE;
-    }
 
     Stop();
 }
