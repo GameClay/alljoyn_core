@@ -64,6 +64,8 @@ static bool g_acceptSession = true;
 static bool g_stressTest = false;
 static char* g_findPrefix = NULL;
 static int g_sleepBeforeRejoin = 0;
+static int g_useCount = 0;
+
 SessionPort SESSION_PORT_MESSAGES_MP1 = 26;
 
 static volatile sig_atomic_t g_interrupt = false;
@@ -106,6 +108,7 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
             } else {
                 QCC_LogError(status, ("LeaveSession failed"));
             }
+            DecrementAndFetch(&g_useCount);
             return 0;
         }
 
@@ -165,10 +168,11 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
         /* LeaveSession on a non-callback thread since this call can block when tx queues are full */
         if ((status == ER_OK) && g_stressTest) {
             leaveSessionThread.Join();
+            IncrementAndFetch(&g_useCount);
             status = leaveSessionThread.Start(new AsyncJoinCBCtx(sessionId, name, opts));
             if (status != ER_OK) {
                 QCC_LogError(status, ("LeaveSessionThread::Start failed"));
-                exit(1);
+                g_interrupt = 1;
             }
         }
         free(context);
@@ -330,7 +334,7 @@ int main(int argc, char** argv)
         }
     }
 
-    while (g_interrupt == false) {
+    while ((g_interrupt == false) || (g_useCount > 0)) {
         qcc::Sleep(100);
     }
 

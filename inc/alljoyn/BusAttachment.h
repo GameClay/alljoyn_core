@@ -955,7 +955,7 @@ class BusAttachment : public MessageReceiver {
     /**
      * Copy constructor is private.
      */
-    BusAttachment(const BusAttachment& other) { }
+    BusAttachment(const BusAttachment& other) : joinObj(this) { }
 
     /**
      * Stop the bus, optionally blocking until all of the threads join
@@ -983,6 +983,18 @@ class BusAttachment : public MessageReceiver {
     bool isStarted;           /**< Indicates if the bus has been started */
     bool isStopping;          /**< Indicates Stop has been called */
     Internal* busInternal;    /**< Internal state information */
+
+    class JoinObj {
+      public:
+        JoinObj(BusAttachment* bus) : bus(bus) { }
+        ~JoinObj() {
+            bus->WaitStopInternal();
+        }
+      private:
+        BusAttachment* bus;
+    };
+
+    JoinObj joinObj;          /**< MUST BE LAST MEMBER. Ensure all threads are joined before BusAttachment destruction */
 };
 
 }

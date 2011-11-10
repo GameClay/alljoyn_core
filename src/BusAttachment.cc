@@ -138,7 +138,8 @@ class LocalTransportFactoryContainer : public TransportFactoryContainer {
 BusAttachment::BusAttachment(const char* applicationName, bool allowRemoteMessages) :
     isStarted(false),
     isStopping(false),
-    busInternal(new Internal(applicationName, *this, localTransportsContainer, NULL, allowRemoteMessages, NULL))
+    busInternal(new Internal(applicationName, *this, localTransportsContainer, NULL, allowRemoteMessages, NULL)),
+    joinObj(this)
 {
     QCC_DbgTrace(("BusAttachment client constructor (%p)", this));
 }
@@ -146,7 +147,8 @@ BusAttachment::BusAttachment(const char* applicationName, bool allowRemoteMessag
 BusAttachment::BusAttachment(Internal* busInternal) :
     isStarted(false),
     isStopping(false),
-    busInternal(busInternal)
+    busInternal(busInternal),
+    joinObj(this)
 {
     QCC_DbgTrace(("BusAttachment daemon constructor"));
 }
