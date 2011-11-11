@@ -2238,7 +2238,11 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
             }
             QCC_DbgPrintf(("    Ad Name: %s", n));
             qcc::String name(n);
-            advertise.AddName(name, node);
+            if (!skipNodeDB) {
+                advertise.AddName(name, node);
+            } else {
+                node->AddAdvertiseName(name);
+            }
         }
 
         for (j = 0; j < fnSize; ++j) {
@@ -2249,7 +2253,9 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
             }
             QCC_DbgPrintf(("    Find Name: %s", n));
             qcc::String name(n);
-            find.AddName(name, node);
+            if (!skipNodeDB) {
+                find.AddName(name, node);
+            }
         }
 
         incomingDB.AddNode(node);
