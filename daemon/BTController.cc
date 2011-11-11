@@ -1231,6 +1231,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
         FillNodeStateMsgArgs(nodeStateArgsStorage);
 
         status = ImportState(masterNode, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs, true);
+        //status = ImportState(masterNode, NULL, 0, foundNodeArgs, numFoundNodeArgs);
         if (status != ER_OK) {
             lock.Unlock(MUTEX_CONTEXT);
             MethodReply(msg, "org.alljoyn.Bus.BTController.InternalError", QCC_StatusText(status));
@@ -1705,6 +1706,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
                 }
 
                 status = ImportState(masterNode, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs, true);
+                //status = ImportState(masterNode, NULL, 0, foundNodeArgs, numFoundNodeArgs);
                 if (status != ER_OK) {
                     QCC_LogError(status, ("Dropping %s due to import state error", joinSessionNode->GetBusAddress().ToString().c_str()));
                     bt.Disconnect(joinSessionNode->GetUniqueName());
@@ -2318,8 +2320,12 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
 
     addedDB.UpdateDB(&newFoundDB, NULL);
 
-    foundNodeDB.UpdateDB(&newFoundDB, &staleDB);
-    foundNodeDB.UpdateDB(NULL, &incomingDB);
+    if (skipNodeDB) {
+        foundNodeDB.UpdateDB(&addedDB, &staleDB);
+    } else {
+        foundNodeDB.UpdateDB(&newFoundDB, &staleDB);
+        foundNodeDB.UpdateDB(NULL, &incomingDB);
+    }
     foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices from imported state information from new connection");
 
     if (IsMaster()) {
