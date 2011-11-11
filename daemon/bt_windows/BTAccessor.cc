@@ -244,6 +244,9 @@ QStatus BTTransport::BTAccessor::DeviceSendMessage(USER_KERNEL_MESSAGE* messageI
         size_t bytesReturned = 0;
         size_t outBufferSize = messageOut ? sizeof(*messageOut) : 0;
 
+        messageIn->version = DRIVER_VERSION;
+        messageIn->is64Bit = IS_64BIT;
+
         bool result = DeviceIo(messageIn, sizeof(*messageIn),
                                messageOut, outBufferSize, &bytesReturned);
 
@@ -387,7 +390,6 @@ QStatus BTTransport::BTAccessor::Start()
     }
 
     messageIn.messageData.setMessageEventData.eventHandle = getMessageEvent.GetHandle();
-    messageIn.messageData.setMessageEventData.version = DRIVER_VERSION;
     status = DeviceSendMessage(&messageIn, &messageOut);
 
     if (ER_OK == status) {
@@ -399,11 +401,12 @@ QStatus BTTransport::BTAccessor::Start()
         }
 
         // Expect the negative of the version from the kernel.
-        if (DRIVER_VERSION != -messageOut.messageData.setMessageEventData.version) {
+        if (DRIVER_VERSION != -messageOut.version || messageOut.is64Bit != IS_64BIT) {
             status = ER_INIT_FAILED;
             QCC_LogError(status,
-                         ("BTTransport::BTAccessor::Start() user mode expects version %d but driver was version %d",
-                          DRIVER_VERSION, -messageOut.messageData.setMessageEventData.version));
+                         ("BTTransport::BTAccessor::Start() user mode expects version %d %s but driver was version %d %s",
+                          DRIVER_VERSION, IS_64BIT ? "64-bit" : "32-bit",
+                          -messageOut.version, messageOut.is64Bit ? "64-bit" : "32-bit"));
         }
     }
 

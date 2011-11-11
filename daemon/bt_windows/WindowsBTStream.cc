@@ -51,6 +51,9 @@ QStatus WindowsBTStream::PushBytes(const void* buf, size_t numBytes, size_t& num
             USER_KERNEL_MESSAGE messageOut;
             size_t bytesReturned = 0;
 
+            messageIn->version = DRIVER_VERSION;
+            messageIn->is64Bit = IS_64BIT;
+
             messageIn->commandStatus.command = USRKRNCMD_WRITE;
             messageIn->messageData.write.channelHandle = channelHandle;
             messageIn->messageData.write.bytesOfData = numBytes;
@@ -98,6 +101,8 @@ QStatus WindowsBTStream::PullBytes(void* buf,
 
     //QCC_DbgPrintf(("PullBytes() expects %ld bytes in %d mS from handle %p.", reqBytes, timeout, GetChannelHandle()));
 
+    message.version = DRIVER_VERSION;
+    message.is64Bit = IS_64BIT;
     actualBytes = 0;
 
     if (!btAccessor) {

@@ -100,17 +100,14 @@ typedef  void*L2CAP_CHANNEL_HANDLE;
 
 // This will increment with driver changes that are incompatiable with the current user mode
 // code.
-const int DRIVER_VERSION = 1;
+const int DRIVER_VERSION = 2;
+const BOOLEAN IS_64BIT = sizeof(void*) == 8;
 
 /**
  * This structure is used for sending the message event handle to the kernel.
  */
 struct _USRKRNCMD_SETMESSAGEEVENT {
     HANDLE eventHandle;
-
-    // As an input message this is the version expected by user mode code.
-    // As an output message this is the negative of the version expected by kernel mode code.
-    int version;
 };
 
 /**
@@ -336,10 +333,20 @@ struct _KRNUSRCMD_BAD_MESSAGE {
  * The command, USRKRNCMD_XXXX, determines which member of the union is valid.
  */
 typedef struct _USER_KERNEL_MESSAGE {
+    // The first three members are at the beginning of the structure to be compatiable
+    // for mixed 32/64-bit user/kernel combinations.
     union {
         USER_KERNEL_COMMAND command;    // Valid as an input message.
         QStatus status;                 // Valid as an output message.
     } commandStatus;
+
+    // As an input message this is the version expected by user mode code.
+    // As an output message this is the negative of the version expected by kernel mode code.
+    int version;
+
+    // On input true if user mode is 64-bit.
+    // On output true if kernel mode is 64-bit.
+    BOOLEAN is64Bit;
 
     // Which structure is valid depends on the command and whether it is
     // on the input to a command or the return from a command.
