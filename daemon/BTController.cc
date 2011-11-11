@@ -701,14 +701,15 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
             assert(node.iden(joinSessionNode));
             if (IsMaster() && !inNodeDB) {
                 QCC_DbgPrintf(("Joining BT topology manager session for %s", node->GetBusAddress().ToString().c_str()));
+                node->SetSessionState(_BTNodeInfo::JOINING_SESSION);
+
                 status = bus.JoinSessionAsync(remoteName.c_str(),
                                               ALLJOYN_BTCONTROLLER_SESSION_PORT,
                                               NULL,
                                               BTSESSION_OPTS,
                                               this);
-                if (status == ER_OK) {
-                    node->SetSessionState(_BTNodeInfo::JOINING_SESSION);
-                } else {
+                if (status != ER_OK) {
+                    joinSessionNode->SetSessionState(_BTNodeInfo::NO_SESSION);
                     JoinSessionNodeComplete();
                 }
             } else {
