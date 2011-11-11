@@ -40,6 +40,9 @@ if env['OS_GROUP'] == 'windows':
                                                                             if ((basename(str(o)) != 'BTTransport.obj') and
                                                                                 (basename(str(o)) != 'BTController.obj'))]))
 
+if env['OS_GROUP'] == 'windows':
+   progs.append(env.Program('WinBtDiscovery.exe', ['WinBtDiscovery.cc']))
+
 #
 # On Android, build a static library that can be linked into a JNI dynamic 
 # library to implement the daemon as a Service
