@@ -165,75 +165,88 @@ class BusAttachment : public MessageReceiver {
     QStatus DeleteInterface(InterfaceDescription& iface);
 
     /**
-     * Start the message bus.
+     * @brief Start the process of spinning up the independent threads used in
+     * the bus attachment, preparing it for action.
      *
-     * This method only begins the process of starting the bus. Sending and receiving messages
-     * cannot begin until the bus is connected.
+     * This method only begins the process of starting the bus. Sending and
+     * receiving messages cannot begin until the bus is Connect()ed.
      *
-     * There are two ways to determine whether the bus is currently connected:
-     *    -# BusAttachment::IsConnected() returns true
-     *    -# BusObject::ObjectRegistered() is called by the bus
+     * In most cases, it is not required to understand the threading model of
+     * the bus attachment, with one important exception: The bus attachment may
+     * send callbacks to registered listeners using its own internal threads.
+     * This means that any time a listener of any kind is used in a program, the
+     * implication is that a the overall program is multithreaded, irrespective
+     * of whether or not threads are explicilty used.  This, in turn, means that
+     * any time shared state is accessed in listener methods, that state must be
+     * protected.
      *
-     * Start(), Stop() and WaitStop() all work together to manage the autonomous
-     * activities that can happen in a BusAttachment.  The activities are
-     * carried out by so-called hardware threads.  POSIX defines functions used
-     * to control hardware threads, which it calls pthreads.  Many threading
-     * packages use similar constructs.
+     * As soon as Start() is called, clients of a bus attachment with listeners
+     * must be prepared to recieve callbacks on those listeners in the context
+     * of a thread that will be different from the thread running the main
+     * program or any other thread in the client.
+     *
+     * Although intimate knowledge of the details of the threading model are not
+     * required to use a bus attachment (beyond the caveat above) we do provide
+     * methods on the bus attachment that help users reason abount more complex
+     * threading situations.  This will apply to situations where clients of the
+     * bus attachment are multithreaded and need to interact with the
+     * multithreaded bus attachment.  These methods can be especially useful
+     * during shutdown, when the two separate threading systems need to be
+     * gracefully brought down together.
+     *
+     * The BusAttachment methods Start(), Stop() and Join() all work together to
+     * manage the autonomous activities that can happen in a BusAttachment.
+     * These activities are carried out by so-called hardware threads.  POSIX
+     * defines functions used to control hardware threads, which it calls
+     * pthreads.  Many threading packages use similar constructs.
      *
      * In a threading package, a start method asks the underlying system to
-     * arrange for the start of thread execution; and a stop method asks the
-     * underlying system to arrange for a thread to stop its execution.  Note
-     * that neither of these functions is synchronous in the sense that one has
-     * actually accomplished the desired effect upon the return from a call into
-     * the threads package.  Of particular interest is the fact that after a
-     * call to Stop(), threads will still be running.  These threads have been
-     * asked to stop, but they have not necessarily stopped.
+     * arrange for the start of thread execution.  Threads are not necessarily
+     * running when the start method returns, but they are being *started*.  Some time later,
+     * a thread of execution appears in a thread run function, at which point the
+     * thread is considered *running*.  At some later time, executing a stop method asks the
+     * underlying system to arrange for a thread to end its execution.  The system
+     * typically sends a message to the thread to ask it to stop doing what it is doing.
+     * The thread is running until it responds to the stop message, at which time the
+     * run method exits and the thread is considered *stopping*.
      *
-     * In order to wait until all of the threads have actually stopped, another
+     * Note that neither of Start() nor Stop() are synchronous in the sense that
+     * one has actually accomplished the desired effect upon the return from a
+     * call.  Of particular interest is the fact that after a call to Stop(),
+     * threads will still be *running* for some non-deterministic time.
+     *
+     * In order to wait until all of the threads have actually stopped, a
      * blocking call is required.  In threading packages this is typically
-     * called join.
+     * called join, and our corresponding method is called Join().
      *
      * A Start() method call should be thought of as mapping to a threading
      * package start function.  it causes the activity threads in the
      * BusAttachment to be spun up and gets the attachment ready to do its main
-     * job.
+     * job.  As soon as Start() is called, the user should be prepared for one
+     * or more of these threads of execution to pop out of the bus attachment
+     * and into a listener callback.
      *
-     * A Stop(false) method call should be thought of as mapping to a threading
-     * packet stop function.  It asks the BusAttachment to begin shutting down
-     * but does not wait for any threads to exit.  It is an asynchronous request.
+     * The Stop() method call should be thought of as mapping to a threading
+     * package stop function.  It asks the BusAttachment to begin shutting down
+     * its various threads of execution, but does not wait for any threads to exit.
      *
-     * A Stop(true) method call should be thoughf of as mapping to a threading
-     * package stop function call followed by a threading package join function
-     * call.  It asks the BusAttachment to begin shutting down, but waits for all
-     * of its activity threads to exit before running.  It is a synchronous
-     * request.
+     * A call to the Join() method should be thought of as mapping to a
+     * threading package join function call.  It blocks and waits until all of
+     * the threads in the BusAttachment have in fact exited their Run functions,
+     * gone throught the stopping state and have returned their status.  When
+     * the Join() method returns, one may be assured that no threads are running
+     * in the bus attachment, and therefore there will be no callbacks in
+     * progress and no further callbacks will ever come out of a particular
+     * instance of a bus attachment.
      *
-     * A WaitStop() method call should be thought of as mapping to a threading
-     * package join function call.  It waits until all of the threads in the
-     * BusAttachment have exited.  If called without a prior Stop(), it acts as
-     * a convenient place to park a main thread in a long-running program.
-     *
-     * Since Start(), Stop() and WaitStop() conceptually map to threads
-     * functions, one should not expect them to clean up any state when they are
-     * called.  For example, if there is state in an object, one can repeatedly
-     * send threads through the object without resetting the state of the object.
-     * That is the case with Start(), Stop() and WaitStop().  If one uses these
-     * functions in a loop, one must explicitly undo everything that was done
-     * in the loop.  For example,
-     *
-     *   Start()
-     *   Connect()
-     *   RegisterBusObject()
-     *   ... work with a bus object
-     *   UnregisterBusObject()
-     *   Disconnect()
-     *   Stop()
-     *
-     * Just because you call Stop(), there is no cleanup implied.
+     * It is important to understand that since Start(), Stop() and Join() map
+     * to threads concepts and functions, one should not expect them to clean up
+     * any bus attachment state when they are called.  These functions are only
+     * present to help in orderly termination of complex threading systems.
      *
      * @see Stop()
-     * @see WaitStop()
-
+     * @see Join()
+     *
      * @return
      *      - #ER_OK if successful.
      *      - #ER_BUS_BUS_ALREADY_STARTED if already started
@@ -242,46 +255,83 @@ class BusAttachment : public MessageReceiver {
     QStatus Start();
 
     /**
-     * @deprecated
-     * Stop the threaded activities in the message bus.
+     * @brief Ask the threading subsystem in the bus attachment to begin the
+     * process of ending the execution of its threads.
      *
-     * %Stop() is deprecated.  A bus attachment should be torn down simply by
-     * using its destructor, which does an implied %Stop().
+     * The Stop() method call on a bus atatchment should be thought of as
+     * mapping to a threading package stop function.  It asks the BusAttachment
+     * to begin shutting down its various threads of execution, but does not
+     * wait for any threads to exit.
+     *
+     * A call to Stop() is implied as one of the first steps in the destruction
+     * of a bus attachment.
+     *
+     * @warning There is no guarantee that a listener callback may begin executing
+     * after a call to Stop().  To achieve that efffect, the Stop() must be followed
+     * by a Join().
      *
      * @see Start()
-     * @see WaitStop()
+     * @see Join()
      *
-     * @param blockUntilStopped   Block the caller until the bus is stopped
+     * @return
+     *     - #ER_OK if successful.
+     *     - An error QStatus if unable to begin the process of stopping the
+     *       message bus threads.
+     */
+    QStatus Stop();
+
+    /**
+     * @brief Wait for all of the threads spawned by the bus attachment to be
+     * completely exited.
+     *
+     * A call to the Join() method should be thought of as mapping to a
+     * threading package join function call.  It blocks and waits until all of
+     * the threads in the BusAttachment have, in fact, exited their Run functions,
+     * gone throught the stopping state and have returned their status.  When
+     * the Join() method returns, one may be assured that no threads are running
+     * in the bus attachment, and therefore there will be no callbacks in
+     * progress and no further callbacks will ever come out of the instance of a
+     * bus attachment on which Join() was called.
+     *
+     * A call to Join() is implied as one of the first steps in the destruction
+     * of a bus attachment.  Thus, when a bus attachemnt is destroyed, it is
+     * guaranteed that before it completes its destruction process, there will be
+     * no callbacks in process.
+     *
+     * @warning If Join() is called without a previous Stop() it will result in
+     * blocking "forever."
+     *
+     * @see Start()
+     * @see Stop()
      *
      * @return
      *      - #ER_OK if successful.
-     *      - An error status if unable to stop the message bus
+     *      - #ER_BUS_BUS_ALREADY_STARTED if already started
+     *      - Other error status codes indicating a failure
      */
-    QCC_DEPRECATED(QStatus Stop(bool blockUntilStopped = true));
+    QStatus Join();
 
     /**
-     * Returns true if the message bus has been Start()ed.
+     * @brief Determine if the bus attachment has been Start()ed.
+     *
+     * @see Start()
+     * @see Stop()
+     * @see Join()
+     *
+     * @return true if the message bus has been Start()ed.
      */
     bool IsStarted() { return isStarted; }
 
     /**
-     * Returns true if the mesage bus has been requested to stop.
-     */
-    bool IsStopping() { return isStopping; }
-
-    /**
-     * @deprecated
-     * Wait for the message bus to be stopped. This method blocks the calling
-     * thread until another thread calls the Stop() method. Return immediately
-     * if the message bus has not been started.
-     *
-     * %WaitStop() is deprecated.  A bus attachment should be torn down simply by
-     * using its destructor, which does an implied %WaitStop().
+     * @brief Determine if the bus attachment has been Stop()ed.
      *
      * @see Start()
      * @see Stop()
+     * @see Join()
+     *
+     * @return true if the message bus has been Start()ed.
      */
-    QCC_DEPRECATED(void WaitStop());
+    bool IsStopping() { return isStopping; }
 
     /**
      * Connect to a remote bus address.

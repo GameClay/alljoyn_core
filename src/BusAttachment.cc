@@ -160,11 +160,22 @@ BusAttachment::~BusAttachment(void)
     StopInternal(true);
 
     /*
-     * Other threads may be attempting to stop the bus. We need to wait for
-     * ALL callers of BusAttachment::StopInternal() to exit before deleting the object
+     * Other threads may be attempting to stop the bus. We need to wait for ALL
+     * callers of BusAttachment::StopInternal() to exit before deleting the
+     * object
      */
     while (busInternal->stopCount) {
-        qcc::Sleep(5);
+        /*
+         * We want to allow other calling threads to complete.  This means we
+         * need to yield the CPU.  Sleep(0) yields the CPU to all threads of
+         * equal or greater priority.  Other callers may be of lesser priority
+         * so We need to yield the CPU to them, too.  We need to get ourselves
+         * off of the ready queue, so we need to really execute a sleep.  The
+         * Sleep(1) will translate into a mimimum sleep of one scheduling quantum
+         * which is, for example, one Jiffy in Liux which is 1/250 second or
+         * 4 ms.  It's not as arbitrary as it might seem.
+         */
+        qcc::Sleep(1);
     }
 
     delete busInternal;
@@ -518,9 +529,9 @@ QStatus BusAttachment::Disconnect(const char* connectSpec)
     return status;
 }
 
-QStatus BusAttachment::Stop(bool blockUntilStopped)
+QStatus BusAttachment::Stop(void)
 {
-    return StopInternal(blockUntilStopped);
+    return StopInternal(false);
 }
 
 /*
@@ -565,10 +576,11 @@ QStatus BusAttachment::StopInternal(bool blockUntilStopped)
     return status;
 }
 
-void BusAttachment::WaitStop()
+QStatus BusAttachment::Join()
 {
-    QCC_DbgTrace(("BusAttachment::WaitStop"));
+    QCC_DbgTrace(("BusAttachment::Join"));
     WaitStopInternal();
+    return ER_OK;
 }
 
 void BusAttachment::WaitStopInternal()

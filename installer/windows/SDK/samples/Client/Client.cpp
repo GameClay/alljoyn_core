@@ -50,16 +50,9 @@ static const SessionPort SERVICE_PORT = 25;
 static bool s_joinComplete = false;
 static SessionId s_sessionId = 0;
 
-/** Signal handler */
 static void SigIntHandler(int sig)
 {
-    if (NULL != g_msgBus) {
-        QStatus status = g_msgBus->Stop(false);
-        if (ER_OK != status) {
-            printf("BusAttachment::Stop() failed\n");
-        }
-    }
-    exit(0);
+    g_interrupt = true;
 }
 
 /** AllJoynListener receives discovery events from AllJoyn */
@@ -166,15 +159,15 @@ int main(int argc, char** argv, char** envArg)
     }
 
     /* Wait for join session to complete */
-    while (!s_joinComplete) {
+    while (!s_joinComplete  && !g_interrupt) {
 #ifdef _WIN32
-        Sleep(10);
+        Sleep(1000);
 #else
-        sleep(1);
+        usleep(100 * 1000);
 #endif
     }
 
-    if (status == ER_OK) {
+    if (status == ER_OK && g_interrupt == false) {
         ProxyBusObject remoteObj(*g_msgBus, SERVICE_NAME, SERVICE_PATH, s_sessionId);
         const InterfaceDescription* alljoynTestIntf = g_msgBus->GetInterface(INTERFACE_NAME);
         assert(alljoynTestIntf);
@@ -190,14 +183,6 @@ int main(int argc, char** argv, char** envArg)
                    SERVICE_PATH, reply->GetArg(0)->v_string.str);
         } else {
             printf("MethodCall on %s.%s failed", SERVICE_NAME, "cat");
-        }
-    }
-
-    /* Stop the bus (not strictly necessary since we are going to delete it anyways) */
-    if (g_msgBus) {
-        QStatus s = g_msgBus->Stop();
-        if (ER_OK != s) {
-            printf("BusAttachment::Stop failed\n");
         }
     }
 

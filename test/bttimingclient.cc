@@ -66,7 +66,6 @@ namespace values {
 }
 
 /** Static data */
-static BusAttachment* g_msgBus = NULL;
 static Event g_discoverEvent;
 static Event g_lostAdvertisementsEvent;
 static String g_wellKnownName = ::org::alljoyn::alljoyn_test::DefaultWellKnownName;
@@ -128,19 +127,12 @@ class MyBusListener : public BusListener, public SessionListener {
     set<String> adnames;
 };
 
-/** Signal handler */
+static volatile sig_atomic_t g_interrupt = false;
+
 static void SigIntHandler(int sig)
 {
-    if (g_msgBus) {
-        QStatus status = g_msgBus->Stop(false);
-        if (status != ER_OK) {
-            QCC_LogError(status, ("BusAttachment::Stop() failed"));
-        }
-    } else {
-        exit(0);
-    }
+    g_interrupt = true;
 }
-
 
 struct Sample {
     uint64_t discover;
@@ -239,7 +231,11 @@ class Stat {
     }
     String Avg(uint64_t sum, size_t padding = 7) const
     {
-        return Time2String((sum / sampleCount) + ((sum % sampleCount) > (sampleCount / 2) ? 1 : 0), padding);
+        if (sampleCount) {
+            return Time2String((sum / sampleCount) + ((sum % sampleCount) > (sampleCount / 2) ? 1 : 0), padding);
+        } else {
+            return "0";
+        }
     }
     String FormatStdOut() const
     {
@@ -419,7 +415,12 @@ int main(int argc, char** argv)
         if (true) {
             String report;
 
-            /* Create message bus */
+            /*
+             * Create message bus on the stack.  We rely on C++ scoping rules to
+             * ensure the object is destroyed when execution leaves the
+             * enclosing context, in this case the opening brace on the if
+             * (true) statement above.
+             */
             BusAttachment msgBus("bttimingclient", true);
             ProxyBusObject btTimingObj;
 
@@ -454,7 +455,6 @@ int main(int argc, char** argv)
                 QCC_LogError(status, ("BusAttachment::Start failed"));
                 goto exit;
             }
-            g_msgBus = &msgBus;
 
             btTimingObj = msgBus.GetAllJoynDebugObj();  // make a copy
             btTimingObj.AddInterface(*testIntf);
@@ -475,6 +475,7 @@ int main(int argc, char** argv)
             startTime = nowts.GetAbsoluteMillis();
 
             /* Begin discovery on the well-known name of the service to be called */
+            g_discoverEvent.ResetEvent();
             status = msgBus.FindAdvertisedName(g_wellKnownName.c_str());
             if (status != ER_OK) {
                 QCC_LogError(status, ("FindAdvertisedName failed"));
@@ -482,15 +483,45 @@ int main(int argc, char** argv)
             }
 
             /*
-             * If discovering, wait for the "FoundAdvertisedName" signal that tells us that we are connected to a
-             * remote bus that is advertising bbservice's well-known name.
+             * Wait for the "FoundAdvertisedName" signal that will cause our
+             * discover_event to be set.
              */
-            status = Event::Wait(g_discoverEvent);
-            if (status != ER_OK) {
-                QCC_LogError(status, ("Event::Wait failed"));
-                goto exit;
+            for (;;) {
+                qcc::Event timerEvent(100, 100);
+                vector<qcc::Event*> checkEvents, signaledEvents;
+                checkEvents.push_back(&g_discoverEvent);
+                checkEvents.push_back(&timerEvent);
+                status = qcc::Event::Wait(checkEvents, signaledEvents);
+                if (status != ER_OK && status != ER_TIMEOUT) {
+                    break;
+                }
+
+                /*
+                 * Don't continue waiting if someone has pressed Control-C.
+                 */
+                if (g_interrupt) {
+                    break;
+                }
+
+                /*
+                 * If it was the g_discoverEvent becoming signalled that caused
+                 * us to wake up, then we're done here.
+                 */
+                for (vector<qcc::Event*>::iterator i = signaledEvents.begin(); i != signaledEvents.end(); ++i) {
+                    if (*i == &g_discoverEvent) {
+                        break;
+                    }
+                }
             }
-            g_discoverEvent.ResetEvent();
+
+            /*
+             * If someone pressed Control-C, we're done here.  This break will
+             * cause the bus to go out of scope and be destroyed, and we will
+             * then print stats and exit.
+             */
+            if (g_interrupt) {
+                break;
+            }
 
             if (!stat.AddSample(startTime, btTimingObj)) {
                 --i; // retry getting the sample
@@ -529,14 +560,6 @@ int main(int argc, char** argv)
                 fflush(gpFile);
             }
 
-            g_msgBus = NULL;
-
-            /* Stop the bus */
-            status = msgBus.Stop();
-            if (status != ER_OK) {
-                QCC_LogError(status, ("BusAttachment::Stop failed"));
-                goto exit;
-            }
         }
 
         if (i < (repCount - 1)) {
@@ -545,7 +568,6 @@ int main(int argc, char** argv)
             // A small random delay helps simulate more real world activity.
             qcc::Sleep(Rand32() % 2000 + 4000);
         }
-
     }
 
 exit:
@@ -616,7 +638,5 @@ exit:
         }
     }
 
-
-    g_msgBus = NULL;
     return (int) status;
 }
