@@ -985,16 +985,18 @@ void Usage(_TCHAR* arg0)
         _tprintf_s(TEXT("WinBtDiscovery "));
     }
 
-    _tprintf_s(TEXT("[-k] [-d]\n\n"));
+    _tprintf_s(TEXT("[-d] [-h] [-k]\n\n"));
     _tprintf_s(TEXT("Options:\n"));
+    _tprintf_s(TEXT("   -d = Do discovery of all visible Bluetooth devices. Default is true.\n"));
+    _tprintf_s(TEXT("   -h = Display the host information. Default is true.\n"));
     _tprintf_s(TEXT("   -k = Show kernel driver state. Default is true.\n"));
-    _tprintf_s(TEXT("   -d = Do discovery of all visible Bluetooth devices. Default is true."));
 
     exit(EXIT_FAILURE);
 }
 
 bool doKernelDump = true;
 bool doDiscovery = true;
+bool doHostInfo = true;
 
 void ParseArgs(int argc, _TCHAR* argv[])
 {
@@ -1003,7 +1005,7 @@ void ParseArgs(int argc, _TCHAR* argv[])
     // If no arguments then use the defaults of true.
     for (i = 1; i < argc; i++) {
         // We have arguments set everything to false then pick and choose.
-        doKernelDump = doDiscovery = false;
+        doKernelDump = doDiscovery = doHostInfo = false;
 
         _TCHAR c = argv[i][0];
 
@@ -1014,6 +1016,10 @@ void ParseArgs(int argc, _TCHAR* argv[])
         switch (argv[i][1]) {
         case TEXT('d'):
             doDiscovery = true;
+            break;
+
+        case TEXT('h'):
+            doHostInfo = true;
             break;
 
         case TEXT('k'):
@@ -1038,20 +1044,23 @@ int _tmain(int argc, _TCHAR* argv[])
         returnValue = EXIT_SUCCESS;
     }
 
-    if (doDiscovery) {
-        returnValue = EXIT_FAILURE;
+    returnValue = EXIT_FAILURE;
 
-        if (Startup()) {
-            if (BluetoothExists()) {
+    if ((doHostInfo || doDiscovery) && Startup()) {
+        if (BluetoothExists()) {
+            if (doHostInfo) {
                 ReportHostInfo();
-                ReportDeviceAndServiceInfo();
-            } else {
-                _tprintf_s(TEXT("No Bluetooth radio found."));
             }
 
-            Shutdown();
-            returnValue = EXIT_SUCCESS;
+            if (doDiscovery) {
+                ReportDeviceAndServiceInfo();
+            }
+        } else {
+            _tprintf_s(TEXT("No Bluetooth radio found."));
         }
+
+        Shutdown();
+        returnValue = EXIT_SUCCESS;
     }
 
     return returnValue;
