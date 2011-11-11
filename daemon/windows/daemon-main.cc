@@ -93,7 +93,7 @@ static const char defaultConfig[] =
 
 static volatile sig_atomic_t g_interrupt = false;
 
-static void SigIntHandler(int sig)
+static void SignalHandler(int sig)
 {
     g_interrupt = true;
 }
@@ -324,7 +324,7 @@ int daemon(OptParse& opts)
      * Wait until we find a Control-C happening.
      */
     while (g_interrupt == false) {
-        Sleep(100);
+        qcc::Sleep(100);
     }
 
     /*
