@@ -40,7 +40,7 @@ if env['OS_GROUP'] == 'windows':
                                                                             if ((basename(str(o)) != 'BTTransport.obj') and
                                                                                 (basename(str(o)) != 'BTController.obj'))]))
 
-if env['OS_GROUP'] == 'windows':
+if env['OS'] == 'win7':
    progs.append(env.Program('WinBtDiscovery.exe', ['WinBtDiscovery.cc']))
 
 #
