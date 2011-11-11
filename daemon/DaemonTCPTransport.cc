@@ -351,21 +351,70 @@ QStatus DaemonTCPTransport::Start()
 {
     QCC_DbgTrace(("DaemonTCPTransport::Start()"));
 
+    /*
+     * We rely on the status of the server accept thead as the primary
+     * gatekeeper.
+     *
+     * A true response from IsRunning tells us that the server accept thread is
+     * STARTED, RUNNING or STOPPING.
+     *
+     * When a thread is created it is in state INITIAL.  When an actual tread is
+     * spun up as a result of Start(), it becomes STARTED.  Just before the
+     * user's Run method is called, the thread becomes RUNNING.  If the Run
+     * method exits, the thread becomes STOPPING.  When the thread is Join()ed
+     * it becomes DEAD.
+     *
+     * IsRunning means that someone has called Thread::Start() and the process
+     * has progressed enough that the thread has begun to execute.  If we get
+     * multiple Start() calls calls on multiple threads, this test may fail to
+     * detect multiple starts in a failsafe way and we may end up with multiple
+     * server accept threads running.  We assume that since Start() requests
+     * come in from our containing transport list it will not allow concurrent
+     * start requests.
+     */
+    if (IsRunning()) {
+        QCC_LogError(ER_BUS_BUS_ALREADY_STARTED, ("DaemonTCPTransport::Start(): Already started"));
+        return ER_BUS_BUS_ALREADY_STARTED;
+    }
+
+    /*
+     * In order to pass the IsRunning() gate above, there must be no server
+     * accept thread running.  Running includes a thread that has been asked to
+     * stop but has not been Join()ed yet.  So we know that there is no thread
+     * and that either a Start() has never happened, or a Start() followed by a
+     * Stop() and a Join() has happened.  Since Join() does a Thread::Join and
+     * then deletes the name service, it is possible that a Join() done on one
+     * thread is done enough to pass the gate above, but has not yet finished
+     * deleting the name service instance when a Start() comes in on another
+     * thread.  Because of this (rare and unusual) possibility we also check the
+     * name service instance and return an error if we find it non-zero.  If the
+     * name service is NULL, the Stop() and Join() is totally complete and we
+     * can safely proceed.
+     */
+    if (m_ns != NULL) {
+        QCC_LogError(ER_BUS_BUS_ALREADY_STARTED, ("DaemonTCPTransport::Start(): Name service already started"));
+        return ER_BUS_BUS_ALREADY_STARTED;
+    }
+
+    m_ns = new NameService;
+    assert(m_ns);
+
     m_stopping = false;
 
     /*
-     * Start up an instance of the lightweight name service and tell it what
-     * GUID we think we are and whether or not to advertise over IPv4 and or
-     * IPv6 and whether or not to use subnet directed broadcasts.
+     * We have a configuration item that controls whether or not to use IPv4
+     * broadcasts, so we need to check it now and give it to the name service as
+     * we bring it up.
      */
     bool disable = false;
     if (ConfigDB::GetConfigDB()->GetProperty(NameService::MODULE_NAME, NameService::BROADCAST_PROPERTY) == "true") {
         disable = true;
     }
 
-    assert(m_ns == NULL);
-    m_ns = new NameService;
-    assert(m_ns);
+    /*
+     * Get the guid from the bus attachment which will act as the globally unique
+     * ID of the daemon.
+     */
     qcc::String guidStr = m_bus.GetInternal().GetGlobalGUID().ToString();
     QStatus status = m_ns->Init(guidStr, true, true, disable);
     if (status != ER_OK) {
@@ -382,7 +431,9 @@ QStatus DaemonTCPTransport::Start()
             (&m_foundCallback, &FoundCallback::Found));
 
     /*
-     * Start the server accept loop through the thread base class
+     * Start the server accept loop through the thread base class.  This will
+     * close or open the IsRunning() gate we use to control access to our
+     * public API.
      */
     return Thread::Start();
 }
@@ -391,11 +442,16 @@ QStatus DaemonTCPTransport::Stop(void)
 {
     QCC_DbgTrace(("DaemonTCPTransport::Stop()"));
 
+    /*
+     * It is legal to call Stop() more than once, so it must be possible to
+     * call Stop() on a stopped transport.
+     */
     m_stopping = true;
 
     /*
      * Tell the name service to stop calling us back if it's there (we may get
-     * called more than once in the chain of destruction).
+     * called more than once in the chain of destruction) so the pointer is not
+     * required to be non-NULL.
      */
     if (m_ns) {
         m_ns->SetCallback(NULL);
@@ -454,6 +510,7 @@ QStatus DaemonTCPTransport::Stop(void)
     if (m_ns) {
         m_ns->Stop();
     }
+
     return ER_OK;
 }
 
@@ -462,7 +519,10 @@ QStatus DaemonTCPTransport::Join(void)
     QCC_DbgTrace(("DaemonTCPTransport::Join()"));
 
     /*
-     * Wait for the server accept loop thread to exit.
+     * It is legal to call Join() more than once, so it must be possible to
+     * call Join() on a joined transport.
+     *
+     * First, wait for the server accept loop thread to exit.
      */
     QStatus status = Thread::Join();
     if (status != ER_OK) {
@@ -471,10 +531,10 @@ QStatus DaemonTCPTransport::Join(void)
     }
 
     /*
-     * A call to Stop() above will ask all of the endpoints to stop; and will
-     * also cause any authenticating endpoints to stop.  We still need to wait
-     * here until all of the threads running in those endpoints actually stop
-     * running.
+     * A requred call to Stop() that needs to happen before this Join will ask
+     * all of the endpoints to stop; and will also cause any authenticating
+     * endpoints to stop.  We still need to wait here until all of the threads
+     * running in those endpoints actually stop running.
      *
      * Since Stop() is a request to stop, and this is what has ultimately been
      * done to both authentication threads and Rx and Tx threads, it is possible
@@ -576,6 +636,20 @@ QStatus DaemonTCPTransport::GetListenAddresses(const SessionOpts& opts, std::vec
     }
 
     /*
+     * The name service is allocated in Start(), Started by the call to Init()
+     * in Start(), Stopped in our Stop() method and deleted in our Join().  In
+     * this case, the transport will probably be started, and we will probably
+     * find m_ns set, but there is no requirement to ensure this.  If m_ns is
+     * NULL, we need to complain so the user learns to Start() the transport
+     * before calling IfConfig.  A call to IsRunning() here is superfluous since
+     * we really don't care about anything but the name service in this method.
+     */
+    if (m_ns == NULL) {
+        QCC_LogError(ER_BUS_TRANSPORT_NOT_STARTED, ("DaemonTCPTransport::GetListenAddresses(): NameService not initialized"));
+        return ER_BUS_TRANSPORT_NOT_STARTED;
+    }
+
+    /*
      * Our goal is here is to match a list of interfaces provided in the
      * configuration database (or a wildcard) to a list of interfaces that are
      * IFF_UP in the system.  The first order of business is to get the list of
@@ -587,7 +661,7 @@ QStatus DaemonTCPTransport::GetListenAddresses(const SessionOpts& opts, std::vec
      * as DHCP doles out whatever it feels like at any moment.
      */
     QCC_DbgPrintf(("DaemonTCPTransport::GetListenAddresses(): IfConfig()"));
-    assert(m_ns);
+
     std::vector<NameService::IfConfigEntry> entries;
     QStatus status = m_ns->IfConfig(entries);
     if (status != ER_OK) {
@@ -767,6 +841,12 @@ void DaemonTCPTransport::EndpointExit(RemoteEndpoint* ep)
 void* DaemonTCPTransport::Run(void* arg)
 {
     QCC_DbgTrace(("DaemonTCPTransport::Run()"));
+    /*
+     * This is the Thread Run function for our server accept loop.  We require
+     * that the name service be started before the Thread that will call us
+     * here.
+     */
+    assert(m_ns);
 
     /*
      * We need to find the defaults for our connection limits.  These limits
@@ -803,6 +883,12 @@ void* DaemonTCPTransport::Run(void* arg)
     QStatus status = ER_OK;
 
     while (!IsStopping()) {
+        /*
+         * We require that the name service be created and started before the
+         * Thread that called us here; and we require that the name service stay
+         * around until after we leave.
+         */
+        assert(m_ns);
 
         /*
          * Each time through the loop we create a set of events to wait on.
@@ -997,6 +1083,9 @@ static const uint16_t PORT_DEFAULT = 9955;
 QStatus DaemonTCPTransport::NormalizeListenSpec(const char* inSpec, qcc::String& outSpec, map<qcc::String, qcc::String>& argMap) const
 {
     /*
+     * We don't make any calls that require us to be in any particular state
+     * with respect to threading so we don't bother to call IsRunning() here.
+     *
      * Take the string in inSpec, which must start with "tcp:" and parse it,
      * looking for comma-separated "key=value" pairs and initialize the
      * argMap with those pairs.
@@ -1052,6 +1141,9 @@ QStatus DaemonTCPTransport::NormalizeListenSpec(const char* inSpec, qcc::String&
 QStatus DaemonTCPTransport::NormalizeTransportSpec(const char* inSpec, qcc::String& outSpec, map<qcc::String, qcc::String>& argMap) const
 {
     /*
+     * We don't make any calls that require us to be in any particular state
+     * with respect to threading so we don't bother to call IsRunning() here.
+     *
      * Unlike a listenSpec a transportSpec (actually a connectSpec) must have
      * a specific address (INADDR_ANY isn't a valid IP address to connect to).
      */
@@ -1082,12 +1174,31 @@ QStatus DaemonTCPTransport::Connect(const char* connectSpec, const SessionOpts& 
     bool isConnected = false;
 
     /*
-     * Don't bother trying to create new endpoints if we're shutting down.
+     * We only want to allow this call to proceed if we have a running server
+     * accept thread that isn't in the process of shutting down.  We use the
+     * thread response from IsRunning to give us an idea of what our server
+     * accept (Run) thread is doing.  See the comment in Start() for details
+     * about what IsRunning actually means, which might be subtly different from
+     * your intuitition.
+     *
+     * If we see IsRunning(), the thread might actually have gotten a Stop(),
+     * but has not yet exited its Run routine and become STOPPING.  To plug this
+     * hole, we need to check IsRunning() and also m_stopping, which is set in
+     * our Stop() method.
      */
     if (IsRunning() == false || m_stopping == true) {
-        QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Shutting down; exiting"));
+        QCC_LogError(ER_BUS_TRANSPORT_NOT_STARTED, ("DaemonTCPTransport::Connect(): Not running or stopping; exiting"));
         return ER_BUS_TRANSPORT_NOT_STARTED;
     }
+
+    /*
+     * If we pass the IsRunning() gate above, we must have a server accept
+     * thread spinning up or shutting down but not yet joined.  Since the name
+     * service is created before the server accept thread is spun up, and
+     * deleted after it is joined, we must have a valid name service or someone
+     * isn't playing by the rules; so an assert is appropriate here.
+     */
+    assert(m_ns);
 
     /*
      * Parse and normalize the connectArgs.  When connecting to the outside
@@ -1187,6 +1298,7 @@ QStatus DaemonTCPTransport::Connect(const char* connectSpec, const SessionOpts& 
     if (anyEncountered) {
         QCC_DbgHLPrintf(("DaemonTCPTransport::Connect(): Checking for implicit connection to self"));
         std::vector<NameService::IfConfigEntry> entries;
+        assert(m_ns);
         QStatus status = m_ns->IfConfig(entries);
 
         /*
@@ -1333,6 +1445,34 @@ QStatus DaemonTCPTransport::Disconnect(const char* connectSpec)
     QCC_DbgHLPrintf(("DaemonTCPTransport::Disconnect(): %s", connectSpec));
 
     /*
+     * We only want to allow this call to proceed if we have a running server
+     * accept thread that isn't in the process of shutting down.  We use the
+     * thread response from IsRunning to give us an idea of what our server
+     * accept (Run) thread is doing, and by extension the endpoint threads which
+     * must be running to properly clean up.  See the comment in Start() for
+     * details about what IsRunning actually means, which might be subtly
+     * different from your intuitition.
+     *
+     * If we see IsRunning(), the thread might actually have gotten a Stop(),
+     * but has not yet exited its Run routine and become STOPPING.  To plug this
+     * hole, we need to check IsRunning() and also m_stopping, which is set in
+     * our Stop() method.
+     */
+    if (IsRunning() == false || m_stopping == true) {
+        QCC_LogError(ER_BUS_TRANSPORT_NOT_STARTED, ("DaemonTCPTransport::Disconnect(): Not running or stopping; exiting"));
+        return ER_BUS_TRANSPORT_NOT_STARTED;
+    }
+
+    /*
+     * If we pass the IsRunning() gate above, we must have a server accept
+     * thread spinning up or shutting down but not yet joined.  Since the name
+     * service is created before the server accept thread is spun up, and
+     * deleted after it is joined, we must have a valid name service or someone
+     * isn't playing by the rules; so an assert is appropriate here.
+     */
+    assert(m_ns);
+
+    /*
      * Higher level code tells us which connection is refers to by giving us the
      * same connect spec it used in the Connect() call.  We have to determine the
      * address and port in exactly the same way
@@ -1373,12 +1513,31 @@ QStatus DaemonTCPTransport::Disconnect(const char* connectSpec)
 QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
 {
     /*
-     * Don't bother trying to create new listeners if we're stopped or shutting
-     * down.
+     * We only want to allow this call to proceed if we have a running server
+     * accept thread that isn't in the process of shutting down.  We use the
+     * thread response from IsRunning to give us an idea of what our server
+     * accept (Run) thread is doing.  See the comment in Start() for details
+     * about what IsRunning actually means, which might be subtly different from
+     * your intuitition.
+     *
+     * If we see IsRunning(), the thread might actually have gotten a Stop(),
+     * but has not yet exited its Run routine and become STOPPING.  To plug this
+     * hole, we need to check IsRunning() and also m_stopping, which is set in
+     * our Stop() method.
      */
     if (IsRunning() == false || m_stopping == true) {
+        QCC_LogError(ER_BUS_TRANSPORT_NOT_STARTED, ("DaemonTCPTransport::StartListen(): Not running or stopping; exiting"));
         return ER_BUS_TRANSPORT_NOT_STARTED;
     }
+
+    /*
+     * If we pass the IsRunning() gate above, we must have a server accept
+     * thread spinning up or shutting down but not yet joined.  Since the name
+     * service is created before the server accept thread is spun up, and
+     * deleted after it is joined, we must have a valid name service or someone
+     * isn't playing by the rules; so an assert is appropriate here.
+     */
+    assert(m_ns);
 
     /*
      * Normalize the listen spec.  Although this looks like a connectSpec it is
@@ -1518,6 +1677,7 @@ QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
                               listenPort));
     }
 
+
     /*
      * The name service is very flexible about what to advertise.  Empty
      * strings tell the name service to use IP addreses discovered from
@@ -1548,6 +1708,33 @@ QStatus DaemonTCPTransport::StartListen(const char* listenSpec)
 
 QStatus DaemonTCPTransport::StopListen(const char* listenSpec)
 {
+    /*
+     * We only want to allow this call to proceed if we have a running server
+     * accept thread that isn't in the process of shutting down.  We use the
+     * thread response from IsRunning to give us an idea of what our server
+     * accept (Run) thread is doing.  See the comment in Start() for details
+     * about what IsRunning actually means, which might be subtly different from
+     * your intuitition.
+     *
+     * If we see IsRunning(), the thread might actually have gotten a Stop(),
+     * but has not yet exited its Run routine and become STOPPING.  To plug this
+     * hole, we need to check IsRunning() and also m_stopping, which is set in
+     * our Stop() method.
+     */
+    if (IsRunning() == false || m_stopping == true) {
+        QCC_LogError(ER_BUS_TRANSPORT_NOT_STARTED, ("DaemonTCPTransport::StopListen(): Not running or stopping; exiting"));
+        return ER_BUS_TRANSPORT_NOT_STARTED;
+    }
+
+    /*
+     * If we pass the IsRunning() gate above, we must have a server accept
+     * thread spinning up or shutting down but not yet joined.  Since the name
+     * service is created before the server accept thread is spun up, and
+     * deleted after it is joined, we must have a valid name service or someone
+     * isn't playing by the rules; so an assert is appropriate here.
+     */
+    assert(m_ns);
+
     /*
      * Normalize the listen spec.  We are going to use the name string that was
      * put together for the StartListen call to find the listener instance to
@@ -1596,6 +1783,33 @@ QStatus DaemonTCPTransport::StopListen(const char* listenSpec)
 void DaemonTCPTransport::EnableDiscovery(const char* namePrefix)
 {
     /*
+     * We only want to allow this call to proceed if we have a running server
+     * accept thread that isn't in the process of shutting down.  We use the
+     * thread response from IsRunning to give us an idea of what our server
+     * accept (Run) thread is doing.  See the comment in Start() for details
+     * about what IsRunning actually means, which might be subtly different from
+     * your intuitition.
+     *
+     * If we see IsRunning(), the thread might actually have gotten a Stop(),
+     * but has not yet exited its Run routine and become STOPPING.  To plug this
+     * hole, we need to check IsRunning() and also m_stopping, which is set in
+     * our Stop() method.
+     */
+    if (IsRunning() == false || m_stopping == true) {
+        QCC_LogError(ER_BUS_TRANSPORT_NOT_STARTED, ("DaemonTCPTransport::EnableDiscovery(): Not running or stopping; exiting"));
+        return;
+    }
+
+    /*
+     * If we pass the IsRunning() gate above, we must have a server accept
+     * thread spinning up or shutting down but not yet joined.  Since the name
+     * service is created before the server accept thread is spun up, and
+     * deleted after it is joined, we must have a valid name service or someone
+     * isn't playing by the rules; so an assert is appropriate here.
+     */
+    assert(m_ns);
+
+    /*
      * When a bus name is advertised, the source may append a string that
      * identifies a specific instance of advertised name.  For example, one
      * might advertise something like
@@ -1619,25 +1833,50 @@ void DaemonTCPTransport::EnableDiscovery(const char* namePrefix)
     String starPrefix = namePrefix;
     starPrefix.append('*');
 
-    assert(m_ns);
     QStatus status = m_ns->Locate(starPrefix);
     if (status != ER_OK) {
-        QCC_LogError(status, ("Failure enable discovery for \"%s\" on TCP", namePrefix));
+        QCC_LogError(status, ("DaemonTCPTransport::EnableDiscovery(): Failure on \"%s\"", namePrefix));
     }
 }
 
 QStatus DaemonTCPTransport::EnableAdvertisement(const qcc::String& advertiseName)
 {
     /*
+     * We only want to allow this call to proceed if we have a running server
+     * accept thread that isn't in the process of shutting down.  We use the
+     * thread response from IsRunning to give us an idea of what our server
+     * accept (Run) thread is doing.  See the comment in Start() for details
+     * about what IsRunning actually means, which might be subtly different from
+     * your intuitition.
+     *
+     * If we see IsRunning(), the thread might actually have gotten a Stop(),
+     * but has not yet exited its Run routine and become STOPPING.  To plug this
+     * hole, we need to check IsRunning() and also m_stopping, which is set in
+     * our Stop() method.
+     */
+    if (IsRunning() == false || m_stopping == true) {
+        QCC_LogError(ER_BUS_TRANSPORT_NOT_STARTED, ("DaemonTCPTransport::EnableAdvertisement(): Not running or stopping; exiting"));
+        return ER_BUS_TRANSPORT_NOT_STARTED;
+    }
+
+    /*
+     * If we pass the IsRunning() gate above, we must have a server accept
+     * thread spinning up or shutting down but not yet joined.  Since the name
+     * service is created before the server accept thread is spun up, and
+     * deleted after it is joined, we must have a valid name service or someone
+     * isn't playing by the rules; so an assert is appropriate here.
+     */
+    assert(m_ns);
+
+    /*
      * Give the provided name to the name service and have it start advertising
      * the name on the network as reachable through the daemon having this
      * transport.  The name service handles periodic retransmission of the name
      * and manages the coming and going of network interfaces for us.
      */
-    assert(m_ns);
     QStatus status = m_ns->Advertise(advertiseName);
     if (status != ER_OK) {
-        QCC_LogError(status, ("DaemonTCPTransport::EnableAdvertisment(%s) failure", advertiseName.c_str()));
+        QCC_LogError(status, ("DaemonTCPTransport::EnableAdvertisment(): Failure on \"%s\"", advertiseName.c_str()));
     }
     return status;
 }
@@ -1645,12 +1884,38 @@ QStatus DaemonTCPTransport::EnableAdvertisement(const qcc::String& advertiseName
 void DaemonTCPTransport::DisableAdvertisement(const qcc::String& advertiseName, bool nameListEmpty)
 {
     /*
+     * We only want to allow this call to proceed if we have a running server
+     * accept thread that isn't in the process of shutting down.  We use the
+     * thread response from IsRunning to give us an idea of what our server
+     * accept (Run) thread is doing.  See the comment in Start() for details
+     * about what IsRunning actually means, which might be subtly different from
+     * your intuitition.
+     *
+     * If we see IsRunning(), the thread might actually have gotten a Stop(),
+     * but has not yet exited its Run routine and become STOPPING.  To plug this
+     * hole, we need to check IsRunning() and also m_stopping, which is set in
+     * our Stop() method.
+     */
+    if (IsRunning() == false || m_stopping == true) {
+        QCC_LogError(ER_BUS_TRANSPORT_NOT_STARTED, ("DaemonTCPTransport::DisableAdvertisement(): Not running or stopping; exiting"));
+        return;
+    }
+
+    /*
+     * If we pass the IsRunning() gate above, we must have a server accept
+     * thread spinning up or shutting down but not yet joined.  Since the name
+     * service is created before the server accept thread is spun up, and
+     * deleted after it is joined, we must have a valid name service or someone
+     * isn't playing by the rules; so an assert is appropriate here.
+     */
+    assert(m_ns);
+
+    /*
      * Tell the name service to stop advertising the provided name on the
      * network as reachable through the daemon having this transport.  The name
      * service sends out a no-longer-here message and stops periodic
      * retransmission of the name as a result of the Cancel() call.
      */
-    assert(m_ns);
     QStatus status = m_ns->Cancel(advertiseName);
     if (status != ER_OK) {
         QCC_LogError(status, ("Failure stop advertising \"%s\" for TCP", advertiseName.c_str()));
