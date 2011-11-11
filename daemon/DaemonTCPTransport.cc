@@ -476,7 +476,7 @@ QStatus DaemonTCPTransport::Stop(void)
      * data structure.  We call Abort() to stop that thread from running.  The
      * endpoint Rx and Tx threads will not be running yet.
      */
-    for (list<DaemonTCPEndpoint*>::iterator i = m_authList.begin(); i != m_authList.end();) {
+    for (list<DaemonTCPEndpoint*>::iterator i = m_authList.begin(); i != m_authList.end(); ++i) {
         (*i)->Abort();
     }
 
