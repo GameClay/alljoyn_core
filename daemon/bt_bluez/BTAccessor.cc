@@ -1746,6 +1746,7 @@ QStatus BTTransport::BTAccessor::ProcessXMLAdvertisementsAttr(const XmlElement* 
                     gotNames = true;
                 }
                 if (gotGUID && gotBDAddr && gotPSM && gotNames) {
+                    assert(psm != bt::INVALID_PSM);
                     nodeInfo->SetBusAddress(BTBusAddress(addr, psm));
                     adInfo.AddNode(nodeInfo);
                 } else {

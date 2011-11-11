@@ -543,6 +543,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                 BTNodeDB::const_iterator nodeit;
                 for (nodeit = newAdInfo.Begin(); nodeit != newAdInfo.End(); ++nodeit) {
                     BTNodeInfo node = *nodeit;
+                    assert(connNode->IsValid());
                     node->SetConnectNode(connNode);
                     if (node->GetBusAddress().addr == adBdAddr) {
                         node->SetEIRCapable(eirCapable);
@@ -1484,6 +1485,7 @@ void BTController::HandleConnectAddrChanged(const InterfaceDescription::Member* 
             BTNodeInfo changedNode = nodeDB.FindNode(oldAddr);
             if (changedNode->IsValid()) {
                 nodeDB.RemoveNode(changedNode);
+                assert(newAddr.IsValid());
                 changedNode->SetBusAddress(newAddr);
                 nodeDB.AddNode(changedNode);
             }
@@ -1492,6 +1494,7 @@ void BTController::HandleConnectAddrChanged(const InterfaceDescription::Member* 
         if (!IsMaster()) {
             lock.Lock(MUTEX_CONTEXT);
             if (masterNode->GetBusAddress() == oldAddr) {
+                assert(newAddr.IsValid());
                 masterNode->SetBusAddress(newAddr);
             }
             lock.Unlock(MUTEX_CONTEXT);
@@ -2213,13 +2216,17 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
             node->SetUniqueName(busName);
         } else {
             node = BTNodeInfo(nodeAddr, busName, guid);
+            assert(connectingNode->IsValid());
             node->SetConnectNode(connectingNode);
-            node->SetRelationship(_BTNodeInfo::INDIRECT_MINION);
-
+            if (!skipNodeDB) {
+                node->SetRelationship(_BTNodeInfo::INDIRECT_MINION);
+            }
         }
         node->SetEIRCapable(eirCapable);
-        if (eirCapable) {
-            ++eirMinions;
+        if (!skipNodeDB) {
+            if (eirCapable) {
+                ++eirMinions;
+            }
         }
 
         /*
@@ -2228,8 +2235,10 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
          * disconnects.
          */
 
-        advertise.dirty = advertise.dirty || (anSize > 0);
-        find.dirty = find.dirty || (fnSize > 0);
+        if (!skipNodeDB) {
+            advertise.dirty = advertise.dirty || (anSize > 0);
+            find.dirty = find.dirty || (fnSize > 0);
+        }
 
         for (j = 0; j < anSize; ++j) {
             char* n;
@@ -2486,6 +2495,7 @@ QStatus BTController::ExtractNodeInfo(const MsgArg* entries, size_t size, BTNode
 
             // If the node is in our subnet, then use the real connect address.
             BTNodeInfo n = nodeDB.FindNode(nodeAddr);
+            assert((n->IsValid() ? n->GetConnectNode() : connNode)->IsValid());
             node->SetConnectNode(n->IsValid() ? n->GetConnectNode() : connNode);
 
             String guidStr(guidRaw);
@@ -2663,6 +2673,7 @@ void BTController::SetSelfAddress(const BTBusAddress& newAddr)
 
     nodeDB.Lock();
     nodeDB.RemoveNode(self);
+    assert(newAddr.IsValid());
     self->SetBusAddress(newAddr);
     nodeDB.AddNode(self);
     for (nit = nodeDB.Begin(); nit != nodeDB.End(); ++nit) {
