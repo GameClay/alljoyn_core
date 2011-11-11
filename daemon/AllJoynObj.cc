@@ -2545,7 +2545,7 @@ void AllJoynObj::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
                         ep->DecrementWaiters();
                         AcquireLocks();
                         it2 = b2bEndpoints.lower_bound(key2);
-                        if (it2->first == key2) {
+                        if ((it2 != b2bEndpoints.end()) && (it2->first == key2)) {
                             ++it2;
                         }
                         it = virtualEndpoints.lower_bound(key);
@@ -2805,7 +2805,7 @@ void AllJoynObj::NameChangedSignalHandler(const InterfaceDescription::Member* me
                 Message m2(msg, true);
                 m2->ReMarshal(bus.GetInternal().GetLocalEndpoint().GetUniqueName().c_str(), true);
 
-                StringMapKey key = it->first;
+                String key = it->first.c_str();
                 RemoteEndpoint*ep = it->second;
                 ep->IncrementWaiters();
                 ReleaseLocks();
@@ -2816,7 +2816,7 @@ void AllJoynObj::NameChangedSignalHandler(const InterfaceDescription::Member* me
                 ep->DecrementWaiters();
                 AcquireLocks();
                 it = b2bEndpoints.lower_bound(key);
-                if (it->first == key) {
+                if ((it != b2bEndpoints.end()) && (it->first == key)) {
                     ++it;
                 }
             } else {
@@ -3266,13 +3266,20 @@ QStatus AllJoynObj::SendLostAdvertisedName(const String& name, TransportMask tra
                 args[1].Set("q", transport);
                 args[2].Set("s", dit->first.c_str());
                 QCC_DbgPrintf(("Sending LostAdvertisedName(%s, 0x%x, %s) to %s", name.c_str(), transport, dit->first.c_str(), dit->second.c_str()));
+                String curPrefix = dit->first;
+                String curDest = dit->second;
+                ReleaseLocks();
                 QStatus tStatus = Signal(dit->second.c_str(), 0, *lostAdvNameSignal, args, ArraySize(args));
+                AcquireLocks();
+                dit = discoverMap.lower_bound(curPrefix);
                 if (ER_OK != tStatus) {
                     status = (ER_OK == status) ? tStatus : status;
-                    QCC_LogError(tStatus, ("Failed to send LostAdvertisedName to %s (name=%s)", dit->second.c_str(), name.c_str()));
+                    QCC_LogError(tStatus, ("Failed to send LostAdvertisedName to %s (name=%s)", curDest.c_str(), name.c_str()));
                 }
             }
-            ++dit;
+            if (dit != discoverMap.end()) {
+                ++dit;
+            }
         }
     }
     ReleaseLocks();

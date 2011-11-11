@@ -61,6 +61,9 @@ class UnixEndpoint : public RemoteEndpoint {
     {
     }
 
+    /* Destructor */
+    virtual ~UnixEndpoint() { }
+
     /**
      * Set the user id of the endpoint.
      *

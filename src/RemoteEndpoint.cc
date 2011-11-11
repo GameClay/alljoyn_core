@@ -122,6 +122,9 @@ QStatus RemoteEndpoint::Start()
         endpointType = BusEndpoint::ENDPOINT_TYPE_BUS2BUS;
     }
 
+    /* Set the send timeout for this endpoint */
+    stream.SetSendTimeout(120000);
+
     /* Start the TX thread */
     status = txThread.Start(this, this);
     isTxStarted = (ER_OK == status);
@@ -441,7 +444,7 @@ void* RemoteEndpoint::TxThread::Run(void* arg)
 
 QStatus RemoteEndpoint::PushMessage(Message& msg)
 {
-    static const size_t MAX_TX_QUEUE_SIZE = 10;
+    static const size_t MAX_TX_QUEUE_SIZE = 30;
 
     QStatus status = ER_OK;
 
