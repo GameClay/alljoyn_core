@@ -181,6 +181,7 @@ void* BTTransport::Run(void* arg)
                 }
 
                 if (ER_OK == status) {
+                    connNodeDB.Lock();
                     const BTNodeInfo& connNode = reinterpret_cast<BTEndpoint*>(conn)->GetNode();
                     BTNodeInfo node = connNodeDB.FindNode(connNode->GetBusAddress().addr);
                     if (!node->IsValid()) {
@@ -190,6 +191,8 @@ void* BTTransport::Run(void* arg)
 
                     node->IncConnCount();
                     QCC_DbgPrintf(("Increment connection count for %s to %u: ACCEPT", node->GetBusAddress().ToString().c_str(), node->GetConnectionCount()));
+                    connNodeDB.Unlock();
+
                 } else {
                     QCC_LogError(status, ("Error starting RemoteEndpoint"));
                     EndpointExit(conn);
@@ -412,6 +415,8 @@ void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
 
     BTNodeInfo node;
 
+    connNodeDB.Lock();
+
     /* Remove thread from thread list */
     threadListLock.Lock(MUTEX_CONTEXT);
     set<RemoteEndpoint*>::iterator eit = threadList.find(endpoint);
@@ -437,6 +442,8 @@ void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
             btController->LostLastConnection(node->GetBusAddress().addr);
         }
     }
+
+    connNodeDB.Unlock();
 
     delete endpoint;
 }
@@ -604,6 +611,7 @@ exit:
         if (newep) {
             *newep = conn;
 
+            connNodeDB.Lock();
             BTNodeInfo connNode = reinterpret_cast<BTEndpoint*>(conn)->GetNode();
             BTNodeInfo node = connNodeDB.FindNode(connNode->GetBusAddress().addr);
             if (!node->IsValid() || (node->GetBusAddress().psm == bt::INCOMING_PSM)) {
@@ -623,6 +631,8 @@ exit:
 
             node->IncConnCount();
             QCC_DbgPrintf(("Increment connection count for %s to %u: CONNECT", node->GetBusAddress().ToString().c_str(), node->GetConnectionCount()));
+            connNodeDB.Unlock();
+
         }
     } else {
         if (newep) {
