@@ -144,6 +144,7 @@ BusAttachment::BusAttachment(const char* applicationName, bool allowRemoteMessag
 }
 
 BusAttachment::BusAttachment(Internal* busInternal) :
+    hasStarted(false),
     isStarted(false),
     isStopping(false),
     busInternal(busInternal),
