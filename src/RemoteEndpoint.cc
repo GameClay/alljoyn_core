@@ -235,8 +235,18 @@ void RemoteEndpoint::ThreadExit(Thread* thread)
     /* If one thread stops, the other must too */
     if ((&rxThread == thread) && txThread.IsRunning()) {
         txThread.Stop();
-    } else if (rxThread.IsRunning()) {
+    } else if ((&txThread == thread) && rxThread.IsRunning()) {
         rxThread.Stop();
+    } else {
+        /* This is notification of a txQueue waiter has died. Remove him */
+        txQueueLock.Lock(MUTEX_CONTEXT);
+        deque<Thread*>::iterator it = find(txWaitQueue.begin(), txWaitQueue.end(), thread);
+        if (it != txWaitQueue.end()) {
+            (*it)->RemoveAuxListener(this);
+            txWaitQueue.erase(it);
+        }
+        txQueueLock.Unlock(MUTEX_CONTEXT);
+        return;
     }
 
     /* Unregister endpoint when both rx and tx exit */
@@ -396,7 +406,7 @@ void* RemoteEndpoint::TxThread::Run(void* arg)
             stopEvent.ResetEvent();
             status = ER_OK;
             queueLock.Lock(MUTEX_CONTEXT);
-            while (!queue.empty() && !IsStopping()) {
+            while ((status == ER_OK) && !queue.empty() && !IsStopping()) {
 
                 /* Get next message */
                 Message msg = queue.back();
@@ -410,7 +420,6 @@ void* RemoteEndpoint::TxThread::Run(void* arg)
                         QCC_LogError(status, ("Failed to alert thread blocked on full tx queue"));
                     }
                 }
-
                 queueLock.Unlock(MUTEX_CONTEXT);
 
                 /* Deliver message */
@@ -486,40 +495,34 @@ QStatus RemoteEndpoint::PushMessage(Message& msg)
                 status = ER_OK;
                 break;
             } else {
+                /* This thread will have to wait for room in the queue */
                 Thread* thread = Thread::GetThread();
                 assert(thread);
 
-                /* This thread will have to wait for room in the queue */
+                thread->AddAuxListener(this);
                 txWaitQueue.push_front(thread);
                 txQueueLock.Unlock(MUTEX_CONTEXT);
                 status = Event::Wait(Event::neverSet, maxWait);
                 txQueueLock.Lock(MUTEX_CONTEXT);
+
+                /* Reset alert status */
                 if (ER_ALERTED_THREAD == status) {
                     if (thread->GetAlertCode() == ENDPOINT_IS_DEAD_ALERTCODE) {
                         status = ER_BUS_ENDPOINT_CLOSING;
-                    } else {
-                        thread->GetStopEvent().ResetEvent();
                     }
-                } else {
-                    /* There was a timeout or some other non-expected exit from wait. Remove thread from wait queue. */
-                    /* If thread isn't on queue, this means there is an alert in progress that we must clear */
-                    bool foundThread = false;
-                    deque<Thread*>::iterator eit = txWaitQueue.begin();
-                    while (eit != txWaitQueue.end()) {
-                        if (*eit == thread) {
-                            txWaitQueue.erase(eit);
-                            foundThread = true;
-                            break;
-                        }
-                        ++eit;
-                    }
-                    if (!foundThread) {
-                        thread->GetStopEvent().ResetEvent();
-                    }
+                    thread->GetStopEvent().ResetEvent();
                 }
+                /* Remove thread from wait queue. */
+                thread->RemoveAuxListener(this);
+                deque<Thread*>::iterator eit = find(txWaitQueue.begin(), txWaitQueue.end(), thread);
+                if (eit != txWaitQueue.end()) {
+                    txWaitQueue.erase(eit);
+                }
+
                 if ((ER_OK != status) && (ER_ALERTED_THREAD != status) && (ER_TIMEOUT != status)) {
                     break;
                 }
+
             }
         }
     }
@@ -558,7 +561,12 @@ void RemoteEndpoint::DecrementRef()
     int refs = DecrementAndFetch(&refCount);
     QCC_DbgPrintf(("RemoteEndpoint::DecrementRef(%s) refs=%d\n", GetUniqueName().c_str(), refs));
     if (refs <= 0) {
-        StopAfterTxEmpty(20000);
+        Thread* curThread = Thread::GetThread();
+        if ((curThread == &rxThread) || (curThread == &txThread)) {
+            Stop();
+        } else {
+            StopAfterTxEmpty(500);
+        }
     }
 }
 

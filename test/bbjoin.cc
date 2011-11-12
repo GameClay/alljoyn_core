@@ -72,60 +72,15 @@ static volatile sig_atomic_t g_interrupt = false;
 
 static void SigIntHandler(int sig)
 {
+    if (g_msgBus) {
+        g_msgBus->Stop();
+    }
     g_interrupt = true;
 }
 
 class MyBusListener : public BusListener, public SessionPortListener, public SessionListener, public BusAttachment::JoinSessionAsyncCB {
 
   public:
-    MyBusListener(BusAttachment* bus = NULL) : leaveSessionThread(bus, *this) { }
-
-    class LeaveSessionThread : public Thread {
-      public:
-        LeaveSessionThread(BusAttachment* bus, MyBusListener& listener) : Thread("LSThread"), bus(bus), listener(listener) { }
-
-      protected:
-        ThreadReturn STDCALL Run(void* arg)
-        {
-            AsyncJoinCBCtx* ctx = reinterpret_cast<AsyncJoinCBCtx*>(arg);
-            SessionId sessionId = ctx->id;
-            String name = ctx->name;
-            SessionOpts opts = ctx->opts;
-            delete ctx;
-
-            QCC_SyncPrintf("Calling LeaveSession(%u)\n", sessionId);
-            QStatus status = bus->LeaveSession(sessionId);
-            QCC_SyncPrintf("LeaveSession(%u) returned %s\n", sessionId, QCC_StatusText(status));
-
-            if (status == ER_OK) {
-                if (g_sleepBeforeRejoin) {
-                    qcc::Sleep(g_sleepBeforeRejoin);
-                }
-                do {
-                    status = bus->JoinSessionAsync(name.c_str(), 26, &listener, opts, &listener, ::strdup(name.c_str()));
-                } while (status == ER_ALLJOYN_JOINSESSION_REPLY_ALREADY_JOINED);
-                if (status != ER_OK) {
-                    QCC_LogError(status, ("JoinSessionAsync failed"));
-                }
-            } else {
-                QCC_LogError(status, ("LeaveSession failed"));
-            }
-            DecrementAndFetch(&g_useCount);
-            return 0;
-        }
-
-      private:
-        BusAttachment* bus;
-        MyBusListener& listener;
-    };
-
-    struct AsyncJoinCBCtx {
-        SessionId id;
-        String name;
-        SessionOpts opts;
-
-        AsyncJoinCBCtx(SessionId id, const char* name, const SessionOpts& opts) : id(id), name(name), opts(opts) { }
-    };
 
     bool AcceptSessionJoiner(SessionPort sessionPort, const char* joiner, const SessionOpts& opts)
     {
@@ -163,19 +118,39 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
 
         if (status == ER_OK) {
             QCC_SyncPrintf("JoinSessionAsync succeeded. SessionId=%u\n", sessionId);
+        } else if (status == ER_ALLJOYN_JOINSESSION_REPLY_ALREADY_JOINED) {
+            /* Retry join since we joined before leave was complete */
+            QCC_SyncPrintf("JoinSessionAsync was too early. Trying again.\n");
+            char* retryContext = ::strdup(name);
+            status = g_msgBus->JoinSessionAsync(name, 26, this, opts, this, retryContext);
+            if (status != ER_OK) {
+                QCC_SyncPrintf("JoinSessionAsync retry failed\n");
+                delete retryContext;
+            }
+            return;
         } else {
             QCC_LogError(status, ("JoinSessionAsych failed"));
             QCC_SyncPrintf("JoinSession failed with %s\n", QCC_StatusText(status));
         }
 
-        /* LeaveSession on a non-callback thread since this call can block when tx queues are full */
+        /* Start over if we are in stress mode */
         if ((status == ER_OK) && g_stressTest) {
-            leaveSessionThread.Join();
-            IncrementAndFetch(&g_useCount);
-            status = leaveSessionThread.Start(new AsyncJoinCBCtx(sessionId, name, opts));
-            if (status != ER_OK) {
-                QCC_LogError(status, ("LeaveSessionThread::Start failed"));
-                g_interrupt = 1;
+            QCC_SyncPrintf("Calling LeaveSession(%u)\n", sessionId);
+            QStatus status = g_msgBus->LeaveSession(sessionId);
+            QCC_SyncPrintf("LeaveSession(%u) returned %s\n", sessionId, QCC_StatusText(status));
+
+            if (status == ER_OK) {
+                if (g_sleepBeforeRejoin) {
+                    qcc::Sleep(g_sleepBeforeRejoin);
+                }
+                char* retryContext = ::strdup(name);
+                status = g_msgBus->JoinSessionAsync(name, 26, this, opts, this, retryContext);
+                if (status != ER_OK) {
+                    QCC_LogError(status, ("JoinSessionAsync failed"));
+                    delete retryContext;
+                }
+            } else {
+                QCC_LogError(status, ("LeaveSession failed"));
             }
         }
         free(context);
@@ -198,9 +173,6 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
     {
         QCC_SyncPrintf("Session Lost  %u\n", sessid);
     }
-
-  private:
-    LeaveSessionThread leaveSessionThread;
 };
 
 static void usage(void)
@@ -299,7 +271,7 @@ int main(int argc, char** argv)
     /* Connect to the daemon */
     status = g_msgBus->Connect(clientArgs.c_str());
 
-    MyBusListener myBusListener(g_msgBus);
+    MyBusListener myBusListener;
     g_msgBus->RegisterBusListener(myBusListener);
 
     /* Register local objects and connect to the daemon */
@@ -343,9 +315,9 @@ int main(int argc, char** argv)
 
     /* Clean up msg bus */
     if (g_msgBus) {
-        BusAttachment* deleteMe = g_msgBus;
-        g_msgBus = NULL;
-        delete deleteMe;
+        g_msgBus->Stop();
+        g_msgBus->Join();
+        delete g_msgBus;
     }
 
     printf("\n %s exiting with status %d (%s)\n", argv[0], status, QCC_StatusText(status));
