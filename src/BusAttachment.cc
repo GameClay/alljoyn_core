@@ -60,8 +60,6 @@
 
 #define QCC_MODULE "ALLJOYN"
 
-#define OPTIONAL_START 0
-
 using namespace std;
 using namespace qcc;
 
@@ -136,6 +134,7 @@ class LocalTransportFactoryContainer : public TransportFactoryContainer {
 } localTransportsContainer;
 
 BusAttachment::BusAttachment(const char* applicationName, bool allowRemoteMessages) :
+    hasStarted(false),
     isStarted(false),
     isStopping(false),
     busInternal(new Internal(applicationName, *this, localTransportsContainer, NULL, allowRemoteMessages, NULL)),
@@ -188,47 +187,62 @@ QStatus BusAttachment::Start()
 
     QCC_DbgTrace(("BusAttachment::Start()"));
 
-    if (isStarted) {
-#if OPTIONAL_START
-        /*
-         * Optional implies it may be called multiple times.
-         */
-        QCC_DbgTrace(("BusAttachment::Start(): Optional restart"));
-        return ER_OK;
-#else
+    /*
+     * The variable isStarted indicates that the bus has been Start()ed, and has
+     * not yet been Stop()ed.  As soon as a Join is completed, isStarted is set
+     * to false.  We want to prevent the bus attachment from being started
+     * multiple times to prevent very hard to debug problems where users try to
+     * reuse bus attachments in the mistaken belief that it will somehow be more
+     * efficient.  There are three state variables here and we check them all
+     * separately (in order to be specific with error messages) before
+     * continuing to allow a Start.
+     */
+    if (hasStarted) {
         status = ER_BUS_BUS_ALREADY_STARTED;
-        QCC_LogError(status, ("BusAttachment::Start already started"));
-#endif
-    } else if (isStopping) {
-        status = ER_BUS_STOPPING;
-        QCC_LogError(status, ("BusAttachment::Start bus is stopping call WaitStopInternal() before calling Start()"));
-    } else {
-        isStarted = true;
-        /*
-         * Start the alljoyn signal dispatcher first because the dispatcher thread is responsible,
-         * via the Internal::ThreadListener, for stopping the timer thread and the transports.
-         */
-        status = busInternal->dispatcher.Start();
-        if (ER_OK == status) {
-            /* Start the timer */
-            status = busInternal->timer.Start();
-        }
-        if (ER_OK == status) {
-            /* Start the transports */
-            status = busInternal->transportList.Start(busInternal->GetListenAddresses());
-        }
-        if ((status == ER_OK) && isStopping) {
-            status = ER_BUS_STOPPING;
-            QCC_LogError(status, ("BusAttachment::Start bus was stopped while starting"));
-        }
-        if (status != ER_OK) {
-            QCC_LogError(status, ("BusAttachment::Start failed to start"));
-            busInternal->dispatcher.Stop();
-            busInternal->timer.Stop();
-            busInternal->transportList.Stop();
-            WaitStopInternal();
-        }
+        QCC_LogError(status, ("BusAttachment::Start(): Start may not ever be called more than once"));
+        return status;
+    }
 
+    if (isStarted) {
+        status = ER_BUS_BUS_ALREADY_STARTED;
+        QCC_LogError(status, ("BusAttachment::Start(): Start called, but currently started."));
+        return status;
+    }
+
+    if (isStopping) {
+        status = ER_BUS_STOPPING;
+        QCC_LogError(status, ("BusAttachment::Start(): Start called while stopping"));
+        return status;
+    }
+
+    isStarted = hasStarted = true;
+
+    /*
+     * Start the alljoyn signal dispatcher first because the dispatcher thread is responsible,
+     * via the Internal::ThreadListener, for stopping the timer thread and the transports.
+     */
+    status = busInternal->dispatcher.Start();
+    if (ER_OK == status) {
+        /* Start the timer */
+        status = busInternal->timer.Start();
+    }
+
+    if (ER_OK == status) {
+        /* Start the transports */
+        status = busInternal->transportList.Start(busInternal->GetListenAddresses());
+    }
+
+    if ((status == ER_OK) && isStopping) {
+        status = ER_BUS_STOPPING;
+        QCC_LogError(status, ("BusAttachment::Start bus was stopped while starting"));
+    }
+
+    if (status != ER_OK) {
+        QCC_LogError(status, ("BusAttachment::Start failed to start"));
+        busInternal->dispatcher.Stop();
+        busInternal->timer.Stop();
+        busInternal->transportList.Stop();
+        WaitStopInternal();
     }
     return status;
 }

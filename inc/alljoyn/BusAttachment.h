@@ -1030,6 +1030,7 @@ class BusAttachment : public MessageReceiver {
     QStatus TryConnect(const char* connectSpec, RemoteEndpoint** newep);
 
     qcc::String connectSpec;  /**< The connect spec used to connect to the bus */
+    bool hasStarted;          /**< Indicates if the bus has ever been started */
     bool isStarted;           /**< Indicates if the bus has been started */
     bool isStopping;          /**< Indicates Stop has been called */
     Internal* busInternal;    /**< Internal state information */
