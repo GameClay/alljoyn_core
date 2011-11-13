@@ -21,7 +21,7 @@ Features added in this release
    than serially.
 
 3) Added new callbacks (SessionMemberAdded and SessionMemberRemoved) to
-   inform clients of multi-point session participant changes.
+   inform clients of multipoint session participant changes.
 
 4) Added support for user-controlled link supervision timeout.  See
    BusAttachment::SetLinkTimeout().
@@ -81,17 +81,18 @@ manifest permissions needed to access wifi and Bluetooth in order to reach
 external AllJoyn nodes. These permissions are INTERNET,
 CHANGE_WIFI_MULTICAST_STATE, BLUETOOTH and BLUETOOTH_ADMIN.
 
-Starting with verison 2.2.0 BusAttachment::Stop(bool) and
-BusAttachment::WaitStop() were changed to BusAttachement::Stop() and
+Starting with version 2.2.0 BusAttachment::Stop(bool) and
+BusAttachment::WaitStop() were changed to BusAttachment::Stop() and
 BusAttachment::Join() to be more consistent with the internal threading model
 of AllJoyn (ALLJOYN-803).
 
 
 Change history
 --------------
-2.2.0 - Added AllJoyn.apk for non-rooted devices (wifi only).
-        Support for Android permissions.
+2.2.0 - Support for Android permissions. IPV6 discovery. Multipoint session improvements. 
+        Added Bundled AllJoyn daemon. Same binaries run on froyo and gingerbread. 
 2.1.0 - Added Java thread safety. Security fixes. Minor mods to security API.
+        Added AllJoyn.apk for non-rooted devices (wifi only).
 2.0.1 - Bug fixes.
 2.0.0 - Added sessions and topology management.
         API's and daemon protocols changed.
