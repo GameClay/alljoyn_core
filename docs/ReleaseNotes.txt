@@ -6,11 +6,35 @@ Platform Support
 1) Linux Ubuntu 10.10 64-bit (x86-64)
 2) Android Froyo 2.2 (ARM7)
 3) Android Gingerbread 2.3.4 (ARM7)
-
+4) Windows XP (32 bit x86)
+5) Windows 7 (32 and 64 bit x86)
 
 Features added in this release
 ------------------------------
 
+1) Add security option to enforce Android manifest permissions.
+   On Android, Alljoyn clients that want to access remote services must have
+   INTERNET, CHANGE_WIFI_MULTICAST_STATE, BLUETOOTH and BLUETOOTH_ADMIN
+   manifest permissions.
+
+2) Multipoint session authentications are now done in parallel rather
+   than serially.
+
+3) Added new callbacks (SessionMemberAdded and SessionMemberRemoved) to
+   inform clients of multi-point session participant changes.
+
+4) Added support for user-controller link supervision timeout.  See
+   BusAttachment::SetLinkTimeout().
+
+5) AllJoyn daemon can now be bundled with an end-user application.
+   This bundled daemon is a "last resort" in the case where neither
+   a preinstalled nor a stand-alone APK version of the daemon can
+   be located.
+
+6) Added new method BusAttachment.release() which immediately frees
+   all resources for a BusAttachment. Using this new method 
+   avoids the possibility of consuming system resources while waiting
+   for the Java garbage collector to finalize the BusAttachment.
 
 
 Issues Addressed in this Release
@@ -19,10 +43,13 @@ Issues Addressed in this Release
 1) ALLJOYN-580: The same AllJoyn binaries can now run on both Froyo and
    Gingerbread.
 
-2) ALLJOYN-584: An AllJoyn client and service on the same device can now
-   share the same keystore (new -k option).
+2) ALLJOYN-729: IPV6 based Advertising/Discovery is now working.
 
-3) ALLJOYN-593: test/sessions sample now handles LostAdvertisedName.
+3) ALLJOYN-706: Simultaneous cross-joining between multiple devices now
+   works as expected.
+
+4) ALLJOYN-(various): Stability when using Bluetooth is greatly 
+   improved
 
 
 Known issues and limitations with this release
@@ -46,11 +73,21 @@ starting with version 2.1.0. Earlier versions of AllJoyn which attempt to
 send messages that are greater than 128kB will not interoperate with versions
 greater than or equal to 2.1.0.
 
+Starting with version 2.2.0, AllJoyn clients on Android must obtain the 
+manifest permissions needed to access wifi and Bluetooth in order to reach
+external AllJoyn nodes. These permissions are INTERNET,
+CHANGE_WIFI_MULTICAST_STATE, BLUETOOTH and BLUETOOTH_ADMIN.
+
+Starting with verison 2.2.0 BusAttachment::Stop(bool) and
+BusAttachment::WaitStop() were changed to BusAttachement::Stop() and
+BusAttachment::Join() to be more consistent with the internal threading model
+of AllJoyn (ALLJOYN-803).
+
 
 Change history
 --------------
-2.2.0 - Added AllJoyn.apk for non-rooted devices (but no bluetooth).
-        Shared keystores added to security API. Android emulator support.
+2.2.0 - Added AllJoyn.apk for non-rooted devices (wifi only).
+        Support for Android permissions.
 2.1.0 - Added Java thread safety. Security fixes. Minor mods to security API.
 2.0.1 - Bug fixes.
 2.0.0 - Added sessions and topology management.
