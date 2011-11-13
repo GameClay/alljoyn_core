@@ -89,8 +89,6 @@ of AllJoyn (ALLJOYN-803).
 
 Change history
 --------------
-2.2.0 - Support for Android permissions. IPV6 discovery. Multipoint session improvements. 
-        Added Bundled AllJoyn daemon. Same binaries run on froyo and gingerbread. 
 2.1.0 - Added Java thread safety. Security fixes. Minor mods to security API.
         Added AllJoyn.apk for non-rooted devices (wifi only).
 2.0.1 - Bug fixes.
