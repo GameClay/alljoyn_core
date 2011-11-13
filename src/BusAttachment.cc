@@ -1328,8 +1328,10 @@ QStatus BusAttachment::JoinSessionAsync(const char* sessionHost, SessionPort ses
                                                 "JoinSession",
                                                 busInternal,
                                                 static_cast<MessageReceiver::ReplyHandler>(&BusAttachment::Internal::JoinSessionMethodCB),
-                                                args, ArraySize(args),
-                                                reinterpret_cast<void*>(new _JoinSessionMethodCBContext(callback, sessionListener, context)));
+                                                args,
+                                                ArraySize(args),
+                                                reinterpret_cast<void*>(new _JoinSessionMethodCBContext(callback, sessionListener, context)),
+                                                90000);
     return status;
 }
 

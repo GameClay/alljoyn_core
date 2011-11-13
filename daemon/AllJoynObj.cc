@@ -1736,7 +1736,8 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
                                           "AttachSession",
                                           attachArgs,
                                           ArraySize(attachArgs),
-                                          reply);
+                                          reply,
+                                          3000);
     }
 
     /* Free the stable reference */
