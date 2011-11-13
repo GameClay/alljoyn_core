@@ -23,7 +23,7 @@ Features added in this release
 3) Added new callbacks (SessionMemberAdded and SessionMemberRemoved) to
    inform clients of multi-point session participant changes.
 
-4) Added support for user-controller link supervision timeout.  See
+4) Added support for user-controlled link supervision timeout.  See
    BusAttachment::SetLinkTimeout().
 
 5) AllJoyn daemon can now be bundled with an end-user application.
@@ -35,6 +35,9 @@ Features added in this release
    all resources for a BusAttachment. Using this new method 
    avoids the possibility of consuming system resources while waiting
    for the Java garbage collector to finalize the BusAttachment.
+
+7) Added BusAttachment::Set/GetKeyExpiration() to allow clients to
+   interact more directly with the keystore.
 
 
 Issues Addressed in this Release
