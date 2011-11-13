@@ -47,7 +47,7 @@ using namespace qcc;
 #define ReplyHander(_a) static_cast<MessageReceiver::ReplyHandler>(_a)
 
 static const uint32_t ABSOLUTE_MAX_CONNECTIONS = 7; /* BT can't have more than 7 direct connections */
-static const uint32_t DEFAULT_MAX_CONNECTIONS =  4; /* Gotta allow 1 connection for car-kit/headset/headphones */
+static const uint32_t DEFAULT_MAX_CONNECTIONS =  3; /* Gotta allow 1 connection for car-kit/headset/headphones */
 
 /*
  * Timeout for detecting lost devices.  The nominal timeout is 60 seconds.
