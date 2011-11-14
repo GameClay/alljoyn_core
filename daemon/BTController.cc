@@ -988,6 +988,9 @@ QStatus BTController::DoNameOp(const qcc::String& name,
                         self->GetBusAddress().psm,
                         name.c_str());
             status = Signal(masterNode->GetUniqueName().c_str(), masterNode->GetSessionID(), signal, args, argsSize);
+            if (status != ER_OK) {
+                QCC_LogError(status, ("Failed to send %s signal to %s (%s)", signal.name.c_str(), masterNode->GetBusAddress().ToString().c_str(), masterNode->GetUniqueName().c_str()));
+            }
         }
     }
 
