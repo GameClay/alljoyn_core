@@ -596,6 +596,11 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
     bool repeat;
     bool newDevice;
 
+    assert(addr != self->GetBusAddress());
+    if (addr == self->GetBusAddress()) {
+        return node;  // Return an invalid bus address to cause a connect failure.
+    }
+
     do {
         repeat = false;
         newDevice = false;
