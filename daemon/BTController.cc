@@ -596,9 +596,15 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
     bool repeat;
     bool newDevice;
 
-    assert(addr != self->GetBusAddress());
     if (addr == self->GetBusAddress()) {
-        return node;  // Return an invalid bus address to cause a connect failure.
+        // If a remote device has a stale advertisement, it may try to
+        // establish a session based on that advertisement, but because the
+        // advertised name is no longer valid, the session management code may
+        // try to tell us to connect to ourself.  Returning an invalid node
+        // here will cause the connection to fail which is the proper thing to
+        // do in this case.
+        QCC_LogError(ER_FAIL, ("Attempt to connect to ourself (%s)", addr.ToString().c_str()));
+        return node;
     }
 
     do {
