@@ -209,6 +209,7 @@ class BTNodeDB {
      */
     void GetNodesFromConnectNode(const BTNodeInfo& connNode, BTNodeDB& subDB) const
     {
+        Lock();
         ConnAddrMap::const_iterator cmit = connMap.lower_bound(connNode);
         ConnAddrMap::const_iterator end = connMap.upper_bound(connNode);
 
@@ -216,6 +217,7 @@ class BTNodeDB {
             subDB.AddNode(cmit->second);
             ++cmit;
         }
+        Unlock();
     }
 
     void PopExpiredNodes(BTNodeDB& expiredDB)

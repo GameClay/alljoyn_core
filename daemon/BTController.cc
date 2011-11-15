@@ -551,10 +551,18 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                 }
 
                 oldAdInfo.Diff(newAdInfo, &added, &removed);
+                foundNodeDB.UpdateDB(&added, &removed, false);  // Remove names only.
 
-                foundNodeDB.DumpTable("foundNodeDB - Before update");
-                foundNodeDB.UpdateDB(&added, &removed);
+                removed.Clear();
+                oldAdInfo.NodeDiff(newAdInfo, NULL, &removed);  // Remove nodes that are actually gone.
+                foundNodeDB.UpdateDB(NULL, &removed);
+
+
                 connNode->SetUUIDRev(newUUIDRev);
+                if (!foundNodeDB.FindNode(connNode->GetBusAddress())->IsValid()) {
+                    // connNode somehow got removed from foundNodeDB.  Need to add it back in.
+                    foundNodeDB.AddNode(connNode);
+                }
                 foundNodeDB.RefreshExpiration(connNode, LOST_DEVICE_TIMEOUT);
                 foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices due to remote device advertisement change");
 
@@ -1244,8 +1252,7 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
 
         FillNodeStateMsgArgs(nodeStateArgsStorage);
 
-        status = ImportState(masterNode, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs, true);
-        //status = ImportState(masterNode, NULL, 0, foundNodeArgs, numFoundNodeArgs);
+        status = ImportState(masterNode, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs);
         if (status != ER_OK) {
             lock.Unlock(MUTEX_CONTEXT);
             MethodReply(msg, "org.alljoyn.Bus.BTController.InternalError", QCC_StatusText(status));
@@ -1405,6 +1412,8 @@ void BTController::HandleFoundNamesChange(const InterfaceDescription::Member* me
     if (IsMaster() || (strcmp(sourcePath, bluetoothObjPath) != 0) ||
         (master->GetServiceName() != msg->GetSender())) {
         // We only accept FoundNames signals from our direct master!
+        QCC_LogError(ER_FAIL, ("Received %s from %s who is NOT our master",
+                               msg->GetMemberName(), msg->GetSender()));
         return;
     }
 
@@ -1719,8 +1728,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
                     dispatcher.RemoveAlarm(expireAlarm);
                 }
 
-                status = ImportState(masterNode, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs, true);
-                //status = ImportState(masterNode, NULL, 0, foundNodeArgs, numFoundNodeArgs);
+                status = ImportState(masterNode, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs);
                 if (status != ER_OK) {
                     QCC_LogError(status, ("Dropping %s due to import state error", joinSessionNode->GetBusAddress().ToString().c_str()));
                     bt.Disconnect(joinSessionNode->GetUniqueName());
@@ -2163,10 +2171,9 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
                                   MsgArg* nodeStateArgs,
                                   size_t numNodeStates,
                                   MsgArg* foundNodeArgs,
-                                  size_t numFoundNodes,
-                                  bool skipNodeDB)
+                                  size_t numFoundNodes)
 {
-    QCC_DbgTrace(("BTController::ImportState(addr = (%s), nodeStateArgs = <>, numNodeStates = %u, foundNodeArgs = <>, numFoundNodes = %u)",
+    QCC_DbgTrace(("BTController::ImportState(addr = %s, nodeStateArgs = <>, numNodeStates = %u, foundNodeArgs = <>, numFoundNodes = %u)",
                   connectingNode->GetBusAddress().ToString().c_str(), numNodeStates, numFoundNodes));
 
     /*
@@ -2234,12 +2241,12 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
             node = BTNodeInfo(nodeAddr, busName, guid);
             assert(connectingNode->IsValid());
             node->SetConnectNode(connectingNode);
-            if (!skipNodeDB) {
+            if (IsMaster()) {
                 node->SetRelationship(_BTNodeInfo::INDIRECT_MINION);
             }
         }
         node->SetEIRCapable(eirCapable);
-        if (!skipNodeDB) {
+        if (IsMaster()) {
             if (eirCapable) {
                 ++eirMinions;
             }
@@ -2251,7 +2258,7 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
          * disconnects.
          */
 
-        if (!skipNodeDB) {
+        if (IsMaster()) {
             advertise.dirty = advertise.dirty || (anSize > 0);
             find.dirty = find.dirty || (fnSize > 0);
         }
@@ -2264,7 +2271,7 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
             }
             QCC_DbgPrintf(("    Ad Name: %s", n));
             qcc::String name(n);
-            if (!skipNodeDB) {
+            if (IsMaster()) {
                 advertise.AddName(name, node);
             } else {
                 node->AddAdvertiseName(name);
@@ -2279,13 +2286,13 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
             }
             QCC_DbgPrintf(("    Find Name: %s", n));
             qcc::String name(n);
-            if (!skipNodeDB) {
+            if (IsMaster()) {
                 find.AddName(name, node);
             }
         }
 
         incomingDB.AddNode(node);
-        if (!skipNodeDB) {
+        if (IsMaster()) {
             nodeDB.AddNode(node);
         }
     }
@@ -2334,11 +2341,11 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
 
     addedDB.UpdateDB(&newFoundDB, NULL);
 
-    if (skipNodeDB) {
-        foundNodeDB.UpdateDB(&addedDB, &staleDB);
-    } else {
+    if (IsMaster()) {
         foundNodeDB.UpdateDB(&newFoundDB, &staleDB);
         foundNodeDB.UpdateDB(NULL, &incomingDB);
+    } else {
+        foundNodeDB.UpdateDB(&addedDB, &staleDB);
     }
     foundNodeDB.DumpTable("foundNodeDB - Updated set of found devices from imported state information from new connection");
 
