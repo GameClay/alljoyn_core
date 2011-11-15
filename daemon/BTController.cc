@@ -1963,16 +1963,28 @@ void BTController::DeferredNameLostHander(const String& name)
             find.active = false;
         }
 
+        // the entire foundNodeDB will cause their advertised names to expire
+        // as well.  No need to distribute lost names at this time.
+        if (!find.Empty()) {
+            // We're going to be doing discovery so set the expiration all
+            // found nodes to half the normal expiration.
+            foundNodeDB.RefreshExpiration(LOST_DEVICE_TIMEOUT / 2);
+        } else {
+            // We're not going to do any discovery so set the expiration for a
+            // short time.
+            foundNodeDB.RefreshExpiration(5000);
+        }
+        // Our master and all of our master's minions excluding ourself and
+        // our minions are in foundNodeDB so refreshing the expiration time on
+        // all devices connectable via the masterNode to the default
+        // expiration time.  (This overrides the expiration time set above for
+        // all nodes.)
+        foundNodeDB.RefreshExpiration(masterNode, LOST_DEVICE_TIMEOUT);
+        ResetExpireNameAlarm();
+
         delete master;
         master = NULL;
         masterNode = BTNodeInfo();
-
-        // Our master and all of our master's minions excluding ourself and
-        // our minions are in foundNodeDB so refreshing the expiration time on
-        // the entire foundNodeDB will cause their advertised names to expire
-        // as well.  No need to distribute lost names at this time.
-        foundNodeDB.RefreshExpiration(LOST_DEVICE_TIMEOUT);
-        ResetExpireNameAlarm();
 
         // We need to prepare for controlling discovery.
         find.dirty = true;  // Update ignore addrs
@@ -1985,6 +1997,8 @@ void BTController::DeferredNameLostHander(const String& name)
 
         if (minion->IsValid()) {
             // We are a master or a drone and one of our minions has left.
+            // (Note: all minions including indirect minions leaving cause
+            // this code path to be executed.)
 
             QCC_DbgPrintf(("One of our minions left us: %s", minion->GetBusAddress().ToString().c_str()));
 
