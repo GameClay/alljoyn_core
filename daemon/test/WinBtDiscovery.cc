@@ -209,7 +209,7 @@ void DumpKernelState(void)
     if (success) {
         _tprintf_s(TEXT("Get Kernel State: %S.\n"), QCC_StatusText(messageOut.commandStatus.status));
 
-        if (success && ER_OK == messageOut.commandStatus.status) {
+        if (ER_OK == messageOut.commandStatus.status) {
             _tprintf_s(TEXT("Kernel version: %d %s\n"), -messageOut.version,
                        messageOut.is64Bit ? TEXT("64-bit") : TEXT("32-bit"));
 
