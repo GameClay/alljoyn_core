@@ -2713,13 +2713,11 @@ void AllJoynObj::ExchangeNamesSignalHandler(const InterfaceDescription::Member* 
         while (it != b2bEndpoints.end()) {
             if ((bit == b2bEndpoints.end()) || (bit->second->GetRemoteGUID() != it->second->GetRemoteGUID())) {
                 QCC_DbgPrintf(("Propagating ExchangeName signal to %s", it->second->GetUniqueName().c_str()));
-                Message m2(msg, true);
-                m2->ReMarshal(bus.GetInternal().GetLocalEndpoint().GetUniqueName().c_str(), true);
                 StringMapKey key = it->first;
                 RemoteEndpoint*ep = it->second;
                 ep->IncrementWaiters();
                 ReleaseLocks();
-                QStatus status = ep->PushMessage(m2);
+                QStatus status = ep->PushMessage(msg);
                 if (ER_OK != status) {
                     QCC_LogError(status, ("Failed to forward ExchangeNames to %s", ep->GetUniqueName().c_str()));
                 }
@@ -2803,14 +2801,11 @@ void AllJoynObj::NameChangedSignalHandler(const InterfaceDescription::Member* me
         while (it != b2bEndpoints.end()) {
             if ((bit == b2bEndpoints.end()) || (bit->second->GetRemoteGUID() != it->second->GetRemoteGUID())) {
                 QCC_DbgPrintf(("Propagating NameChanged signal to %s", it->second->GetUniqueName().c_str()));
-                Message m2(msg, true);
-                m2->ReMarshal(bus.GetInternal().GetLocalEndpoint().GetUniqueName().c_str(), true);
-
                 String key = it->first.c_str();
                 RemoteEndpoint*ep = it->second;
                 ep->IncrementWaiters();
                 ReleaseLocks();
-                QStatus status = ep->PushMessage(m2);
+                QStatus status = ep->PushMessage(msg);
                 if (ER_OK != status) {
                     QCC_LogError(status, ("Failed to forward NameChanged to %s", ep->GetUniqueName().c_str()));
                 }
@@ -3258,32 +3253,33 @@ QStatus AllJoynObj::SendLostAdvertisedName(const String& name, TransportMask tra
 
     /* Send LostAdvertisedName to anyone who is discovering name */
     AcquireLocks();
+    vector<pair<String, String> > sigVec;
     if (0 < discoverMap.size()) {
         multimap<String, String>::const_iterator dit = discoverMap.lower_bound(name[0]);
         while ((dit != discoverMap.end()) && (dit->first.compare(name) <= 0)) {
             if (name.compare(0, dit->first.size(), dit->first) == 0) {
-                MsgArg args[3];
-                args[0].Set("s", name.c_str());
-                args[1].Set("q", transport);
-                args[2].Set("s", dit->first.c_str());
-                QCC_DbgPrintf(("Sending LostAdvertisedName(%s, 0x%x, %s) to %s", name.c_str(), transport, dit->first.c_str(), dit->second.c_str()));
-                String curPrefix = dit->first;
-                String curDest = dit->second;
-                ReleaseLocks();
-                QStatus tStatus = Signal(dit->second.c_str(), 0, *lostAdvNameSignal, args, ArraySize(args));
-                AcquireLocks();
-                dit = discoverMap.lower_bound(curPrefix);
-                if (ER_OK != tStatus) {
-                    status = (ER_OK == status) ? tStatus : status;
-                    QCC_LogError(tStatus, ("Failed to send LostAdvertisedName to %s (name=%s)", curDest.c_str(), name.c_str()));
-                }
+                sigVec.push_back(pair<String, String>(dit->first, dit->second));
             }
-            if (dit != discoverMap.end()) {
-                ++dit;
-            }
+            ++dit;
         }
     }
     ReleaseLocks();
+
+    /* Send the signals now that we aren't holding the lock */
+    vector<pair<String, String> >::const_iterator it = sigVec.begin();
+    while (it != sigVec.end()) {
+        MsgArg args[3];
+        args[0].Set("s", name.c_str());
+        args[1].Set("q", transport);
+        args[2].Set("s", it->first.c_str());
+        QCC_DbgPrintf(("Sending LostAdvertisedName(%s, 0x%x, %s) to %s", name.c_str(), transport, it->first.c_str(), it->second.c_str()));
+        QStatus tStatus = Signal(it->second.c_str(), 0, *lostAdvNameSignal, args, ArraySize(args));
+        if (ER_OK != tStatus) {
+            status = (ER_OK == status) ? tStatus : status;
+            QCC_LogError(tStatus, ("Failed to send LostAdvertisedName to %s (name=%s)", it->second.c_str(), name.c_str()));
+        }
+        ++it;
+    }
     return status;
 }
 
