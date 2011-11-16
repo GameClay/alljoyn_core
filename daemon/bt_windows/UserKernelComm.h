@@ -61,9 +61,6 @@ typedef enum _L2CAP_CHANNEL_STATE_TYPE {
     CHAN_STATE_CONNECT_COMPLETE, // The outgoing connection request has been completed.
     CHAN_STATE_CLOSED,           // The L2CAP channel has being disconnected but user mode has
                                  // not been informed.
-    CHAN_STATE_CLOSE_PENDING     // The L2CAP channel is in the process of being disconnected
-                                 // and the state will be changed to CHAN_STATE_CLOSED after the
-                                 // disconnect is completed.
 } L2CAP_CHANNEL_STATE_TYPE;
 
 /**

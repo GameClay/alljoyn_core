@@ -2127,7 +2127,6 @@ const char* ChannelStateText(L2CAP_CHANNEL_STATE_TYPE state)
         CASE(CHAN_STATE_ACCEPT_COMPLETE);
         CASE(CHAN_STATE_CONNECT_COMPLETE);
         CASE(CHAN_STATE_CLOSED);
-        CASE(CHAN_STATE_CLOSE_PENDING);
 
     default:
         return "<unknown>";
@@ -2159,14 +2158,17 @@ void BTTransport::BTAccessor::DebugDumpKernelState(void) const
 
             QCC_DbgPrintf(("    Channel %d:", i));
             QCC_DbgPrintf(("        status: %s", QCC_StatusText(channel->status)));
-            QCC_DbgPrintf(("        ntStatus: 0x%08X", channel->ntStatus));
-            QCC_DbgPrintf(("        messageType: %s", ChannelStateText(channel->stateType)));
-            QCC_DbgPrintf(("        address: 0x%012I64X", channel->address));
-            QCC_DbgPrintf(("        bytesInBuffer: %Iu", channel->bytesInBuffer));
-            QCC_DbgPrintf(("        channelHandle: %p", channel->channelHandle));
-            QCC_DbgPrintf(("        incomingMtus: %d", channel->incomingMtus));
-            QCC_DbgPrintf(("        outgoingMtus: %d", channel->outgoingMtus));
-            QCC_DbgPrintf(("        channelFlags: 0x%08X", channel->channelFlags));
+
+            if (ER_SOCK_OTHER_END_CLOSED != channel->status || CHAN_STATE_NONE != channel->stateType) {
+                QCC_DbgPrintf(("        ntStatus: 0x%08X", channel->ntStatus));
+                QCC_DbgPrintf(("        state: %s", ChannelStateText(channel->stateType)));
+                QCC_DbgPrintf(("        address: 0x%012I64X", channel->address));
+                QCC_DbgPrintf(("        bytesInBuffer: %Iu", channel->bytesInBuffer));
+                QCC_DbgPrintf(("        channelHandle: %p", channel->channelHandle));
+                QCC_DbgPrintf(("        incomingMtus: %d", channel->incomingMtus));
+                QCC_DbgPrintf(("        outgoingMtus: %d", channel->outgoingMtus));
+                QCC_DbgPrintf(("        channelFlags: 0x%08X", channel->channelFlags));
+            }
         }
     }
 }

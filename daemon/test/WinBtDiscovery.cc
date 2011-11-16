@@ -184,7 +184,6 @@ const char* ChannelStateText(L2CAP_CHANNEL_STATE_TYPE state)
         CASE(CHAN_STATE_ACCEPT_COMPLETE);
         CASE(CHAN_STATE_CONNECT_COMPLETE);
         CASE(CHAN_STATE_CLOSED);
-        CASE(CHAN_STATE_CLOSE_PENDING);
 
     default:
         return "<unknown>";
@@ -227,14 +226,17 @@ void DumpKernelState(void)
 
                     _tprintf_s(TEXT("    Channel %d:\n"), i);
                     _tprintf_s(TEXT("        status: %S\n"), QCC_StatusText(channel->status));
-                    _tprintf_s(TEXT("        ntStatus: 0x%08X\n"), channel->ntStatus);
-                    _tprintf_s(TEXT("        messageType: %S\n"), ChannelStateText(channel->stateType));
-                    _tprintf_s(TEXT("        address: 0x%012I64X\n"), channel->address);
-                    _tprintf_s(TEXT("        bytesInBuffer: %Iu\n"), channel->bytesInBuffer);
-                    _tprintf_s(TEXT("        channelHandle: %p\n"), channel->channelHandle);
-                    _tprintf_s(TEXT("        incomingMtus: %d\n"), channel->incomingMtus);
-                    _tprintf_s(TEXT("        outgoingMtus: %d\n"), channel->outgoingMtus);
-                    _tprintf_s(TEXT("        channelFlags: 0x%08X\n"), channel->channelFlags);
+
+                    if (ER_SOCK_OTHER_END_CLOSED != channel->status || CHAN_STATE_NONE != channel->stateType) {
+                        _tprintf_s(TEXT("        ntStatus: 0x%08X\n"), channel->ntStatus);
+                        _tprintf_s(TEXT("        state: %S\n"), ChannelStateText(channel->stateType));
+                        _tprintf_s(TEXT("        address: 0x%012I64X\n"), channel->address);
+                        _tprintf_s(TEXT("        bytesInBuffer: %Iu\n"), channel->bytesInBuffer);
+                        _tprintf_s(TEXT("        channelHandle: %p\n"), channel->channelHandle);
+                        _tprintf_s(TEXT("        incomingMtus: %d\n"), channel->incomingMtus);
+                        _tprintf_s(TEXT("        outgoingMtus: %d\n"), channel->outgoingMtus);
+                        _tprintf_s(TEXT("        channelFlags: 0x%08X\n"), channel->channelFlags);
+                    }
                 }
             }
         }
