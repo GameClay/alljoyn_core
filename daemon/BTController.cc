@@ -543,10 +543,21 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                 BTNodeDB::const_iterator nodeit;
                 for (nodeit = newAdInfo.Begin(); nodeit != newAdInfo.End(); ++nodeit) {
                     BTNodeInfo node = *nodeit;
+                    BTNodeInfo fnode = foundNodeDB.FindNode(node->GetBusAddress());
                     assert(connNode->IsValid());
                     node->SetConnectNode(connNode);
                     if (node->GetBusAddress().addr == adBdAddr) {
                         node->SetEIRCapable(eirCapable);
+                    }
+                    if (fnode->IsValid()) {
+                        // Node is already known to us, so update the connect
+                        // node and EIR capability as appropriate.
+                        foundNodeDB.RemoveNode(fnode);
+                        fnode->SetConnectNode(connNode);
+                        if (fnode->GetBusAddress().addr == adBdAddr) {
+                            fnode->SetEIRCapable(eirCapable);
+                        }
+                        foundNodeDB.AddNode(fnode);
                     }
                 }
 
