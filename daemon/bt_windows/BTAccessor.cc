@@ -273,11 +273,12 @@ qcc::ThreadReturn STDCALL BTTransport::BTAccessor::MessageThread::Run(void* arg)
         if (!IsStopping()) {
             USER_KERNEL_MESSAGE messageIn = { USRKRNCMD_GETMESSAGE };
             USER_KERNEL_MESSAGE messageOut;
+            QStatus status = btAccessor.DeviceSendMessage(&messageIn, &messageOut);
 
-            btAccessor.DeviceSendMessage(&messageIn, &messageOut);
-
-            // We have a message from the kernel. Deal with it.
-            btAccessor.HandleMessageFromKernel(&messageOut);
+            if (ER_OK == status) {
+                // We have a message from the kernel. Deal with it.
+                btAccessor.HandleMessageFromKernel(&messageOut);
+            }
         }
     }
     return 0;
@@ -2142,32 +2143,35 @@ void BTTransport::BTAccessor::DebugDumpKernelState(void) const
 
     bool success = DeviceIo(&messageIn, sizeof(messageIn), &messageOut, sizeof(messageOut), &returnedSize);
 
-    QCC_DbgPrintf(("Get Kernel State:DeviceIo: %s.", success ? "Success" : "Failure!"));
-    QCC_DbgPrintf(("Get Kernel State: %s.", QCC_StatusText(messageOut.commandStatus.status)));
+    QCC_DbgPrintf(("Get Kernel State:DeviceIo: %s", success ? "Success." : "Failure!"));
 
-    if (success && ER_OK == messageOut.commandStatus.status) {
-        QCC_DbgPrintf(("    eventHandle = %p", messageOut.messageData.state.eventHandle));
-        QCC_DbgPrintf(("    psm = 0x%04X", messageOut.messageData.state.psm));
-        QCC_DbgPrintf(("    l2CapServerHandle = %p", messageOut.messageData.state.l2CapServerHandle));
+    if (success) {
+        QCC_DbgPrintf(("Get Kernel State: %s.", QCC_StatusText(messageOut.commandStatus.status)));
 
-        const int maxIndex = _countof(messageOut.messageData.state.channelState) - 1;
-        int i;
+        if (ER_OK == messageOut.commandStatus.status) {
+            QCC_DbgPrintf(("    eventHandle = %p", messageOut.messageData.state.eventHandle));
+            QCC_DbgPrintf(("    psm = 0x%04X", messageOut.messageData.state.psm));
+            QCC_DbgPrintf(("    l2CapServerHandle = %p", messageOut.messageData.state.l2CapServerHandle));
 
-        for (i = 0; i <= maxIndex; i++) {
-            L2CAP_CHANNEL_STATE* channel = &messageOut.messageData.state.channelState[i];
+            const int maxIndex = _countof(messageOut.messageData.state.channelState) - 1;
+            int i;
 
-            QCC_DbgPrintf(("    Channel %d:", i));
-            QCC_DbgPrintf(("        status: %s", QCC_StatusText(channel->status)));
+            for (i = 0; i <= maxIndex; i++) {
+                L2CAP_CHANNEL_STATE* channel = &messageOut.messageData.state.channelState[i];
 
-            if (ER_SOCK_OTHER_END_CLOSED != channel->status || CHAN_STATE_NONE != channel->stateType) {
-                QCC_DbgPrintf(("        ntStatus: 0x%08X", channel->ntStatus));
-                QCC_DbgPrintf(("        state: %s", ChannelStateText(channel->stateType)));
-                QCC_DbgPrintf(("        address: 0x%012I64X", channel->address));
-                QCC_DbgPrintf(("        bytesInBuffer: %Iu", channel->bytesInBuffer));
-                QCC_DbgPrintf(("        channelHandle: %p", channel->channelHandle));
-                QCC_DbgPrintf(("        incomingMtus: %d", channel->incomingMtus));
-                QCC_DbgPrintf(("        outgoingMtus: %d", channel->outgoingMtus));
-                QCC_DbgPrintf(("        channelFlags: 0x%08X", channel->channelFlags));
+                QCC_DbgPrintf(("    Channel %d:", i));
+                QCC_DbgPrintf(("        status: %s", QCC_StatusText(channel->status)));
+
+                if (ER_SOCK_OTHER_END_CLOSED != channel->status || CHAN_STATE_NONE != channel->stateType) {
+                    QCC_DbgPrintf(("        ntStatus: 0x%08X", channel->ntStatus));
+                    QCC_DbgPrintf(("        state: %s", ChannelStateText(channel->stateType)));
+                    QCC_DbgPrintf(("        address: 0x%012I64X", channel->address));
+                    QCC_DbgPrintf(("        bytesInBuffer: %Iu", channel->bytesInBuffer));
+                    QCC_DbgPrintf(("        channelHandle: %p", channel->channelHandle));
+                    QCC_DbgPrintf(("        incomingMtus: %d", channel->incomingMtus));
+                    QCC_DbgPrintf(("        outgoingMtus: %d", channel->outgoingMtus));
+                    QCC_DbgPrintf(("        channelFlags: 0x%08X", channel->channelFlags));
+                }
             }
         }
     }
