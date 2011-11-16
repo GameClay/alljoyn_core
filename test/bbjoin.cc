@@ -65,6 +65,7 @@ static bool g_stressTest = false;
 static char* g_findPrefix = NULL;
 static int g_sleepBeforeRejoin = 0;
 static int g_useCount = 0;
+static bool g_useMultipoint = true;
 
 SessionPort SESSION_PORT_MESSAGES_MP1 = 26;
 
@@ -101,7 +102,7 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
         QCC_SyncPrintf("FoundAdvertisedName(name=%s, transport=0x%x, prefix=%s)\n", name, transport, namePrefix);
         if (strcmp(name, g_wellKnownName.c_str()) != 0) {
             SessionOpts::TrafficType traffic = SessionOpts::TRAFFIC_MESSAGES;
-            SessionOpts opts(traffic, true, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
+            SessionOpts opts(traffic, g_useMultipoint, SessionOpts::PROXIMITY_ANY, TRANSPORT_ANY);
 
             QCC_SyncPrintf("Calling JoinSessionAsync(%s)\n", name);
             QStatus status = g_msgBus->JoinSessionAsync(name, 26, this, opts, this, ::strdup(name));
@@ -187,6 +188,7 @@ static void usage(void)
     printf("   -b           = Advertise over Bluetooth (enables selective advertising)\n");
     printf("   -t           = Advertise over TCP (enables selective advertising)\n");
     printf("   -dj <ms>     = Number of ms to delay between leaving and re-joining\n");
+    printf("   -p           = Use point-to-point sessions rather than multi-point\n");
     printf("\n");
 }
 
@@ -233,6 +235,8 @@ int main(int argc, char** argv)
             transportOpts |= TRANSPORT_WLAN;
         } else if (0 == strcmp("-dj", argv[i])) {
             g_sleepBeforeRejoin = qcc::StringToU32(argv[++i], 0);
+        } else if (0 == strcmp("-p", argv[i])) {
+            g_useMultipoint = false;
         } else {
             status = ER_FAIL;
             printf("Unknown option %s\n", argv[i]);
@@ -278,7 +282,7 @@ int main(int argc, char** argv)
     if (ER_OK == status) {
 
         /* Create session opts */
-        SessionOpts optsmp(SessionOpts::TRAFFIC_MESSAGES, true,  SessionOpts::PROXIMITY_ANY, transportOpts);
+        SessionOpts optsmp(SessionOpts::TRAFFIC_MESSAGES, g_useMultipoint,  SessionOpts::PROXIMITY_ANY, transportOpts);
 
         /* Create a session for incoming client connections */
         status = g_msgBus->BindSessionPort(SESSION_PORT_MESSAGES_MP1, optsmp, myBusListener);
