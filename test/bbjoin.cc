@@ -126,7 +126,7 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
             status = g_msgBus->JoinSessionAsync(name, 26, this, opts, this, retryContext);
             if (status != ER_OK) {
                 QCC_SyncPrintf("JoinSessionAsync retry failed\n");
-                delete retryContext;
+                free(retryContext);
             }
             return;
         } else {
@@ -148,7 +148,7 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
                 status = g_msgBus->JoinSessionAsync(name, 26, this, opts, this, retryContext);
                 if (status != ER_OK) {
                     QCC_LogError(status, ("JoinSessionAsync failed"));
-                    delete retryContext;
+                    free(retryContext);
                 }
             } else {
                 QCC_LogError(status, ("LeaveSession failed"));
