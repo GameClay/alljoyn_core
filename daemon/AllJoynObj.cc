@@ -1221,10 +1221,9 @@ qcc::ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunAttach()
                 optsOut = sme.opts;
                 BusEndpoint* ep = ajObj.router.FindEndpoint(srcB2B);
                 srcB2BEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
-                ep = ajObj.router.FindEndpoint(srcStr);
-                VirtualEndpoint* srcEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
 
-                if (srcEp && srcB2BEp) {
+                if (srcB2BEp) {
+                    VirtualEndpoint*srcEp = &(ajObj.AddVirtualEndpoint(srcStr, *srcB2BEp));
                     if (status == ER_OK) {
                         /* Store ep for raw sessions (for future close and fd extract) */
                         if (optsOut.traffic != SessionOpts::TRAFFIC_MESSAGES) {
@@ -1292,7 +1291,7 @@ qcc::ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunAttach()
                 } else {
                     status = ER_FAIL;
                     replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
-                    QCC_LogError(status, ("Cannot locate srcEp(%p, src=%s) or srcB2BEp(%p, src=%s)", srcEp, src, srcB2BEp, srcB2B));
+                    QCC_LogError(status, ("Cannot locate srcB2BEp(%p, src=%s)", srcB2BEp, srcB2B));
                 }
             }
         } else {

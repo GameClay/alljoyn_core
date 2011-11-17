@@ -138,9 +138,37 @@ bool VirtualEndpoint::RemoveBusToBusEndpoint(RemoteEndpoint& endpoint)
         }
     }
 
+    /*
+     * This Virtual endpoint reports itself as empty (of b2b endpoints) when any of the following are true:
+     * 1) The last b2b ep is being removed.
+     * 2) A last session route through this vep is being removed and the b2bEp being removed doesnt connect to the same
+     *    remote daemon as a different b2bEp in the vep.
+     *
+     * This algorithm allows for cleanup of the following triangular routing problem:
+     * - Device A connects to device B
+     * - Device A connects to device C
+     * - Device B connects to device C
+     * - At this point, each device has a vep for A with 2 b2bEps.
+     * - Now device A leaves the bus.
+     * - B knows to remove the direct B2BEp to A but it (would otherwise) think it can still reach A through C
+     * - C knows to remove the direct B2bEp to A but it (would otherwise) think it can still reach A through B
+     * This algorithm solves this problem by removing the veps when they no longer route for any session AND
+     * when they are suseptible to the triangular route problem.
+     */
     bool isEmpty;
     if (m_hasRefs) {
         isEmpty = (m_b2bEndpoints.lower_bound(1) == m_b2bEndpoints.end());
+        if (isEmpty) {
+            const qcc::GUID128& guid = endpoint.GetRemoteGUID();
+            it = m_b2bEndpoints.begin();
+            while (it != m_b2bEndpoints.end()) {
+                if (it->second->GetRemoteGUID() == guid) {
+                    isEmpty = false;
+                    break;
+                }
+                ++it;
+            }
+        }
     } else {
         isEmpty = m_b2bEndpoints.empty();
     }
