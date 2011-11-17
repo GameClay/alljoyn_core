@@ -1370,8 +1370,7 @@ qcc::ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunAttach()
                     }
                     BusEndpoint* ep = ajObj.router.FindEndpoint(srcB2B);
                     RemoteEndpoint* srcB2BEp2 = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_BUS2BUS)) ? static_cast<RemoteEndpoint*>(ep) : NULL;
-                    ep = ajObj.router.FindEndpoint(srcStr);
-                    VirtualEndpoint* srcEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
+                    VirtualEndpoint* srcEp = srcB2BEp2 ? &(ajObj.AddVirtualEndpoint(srcStr, *srcB2BEp2)) : NULL;
                     /* Add bi-directional session routes */
                     if (srcB2BEp2 && srcEp && vDestEp && b2bEp) {
                         id = tempId;
@@ -1737,7 +1736,7 @@ QStatus AllJoynObj::SendAttachSession(SessionPort sessionPort,
                                           attachArgs,
                                           ArraySize(attachArgs),
                                           reply,
-                                          3000);
+                                          30000);
     }
 
     /* Free the stable reference */
