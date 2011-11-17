@@ -743,14 +743,14 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
             uint32_t startTime = GetTimestamp();
             b2bEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
             while (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
-                /* Does vSessionEp route through b2bEp? If so, we're done */
+                /* Do we route through b2bEp? If so, we're done */
                 ep = b2bEp ? ajObj.router.FindEndpoint(b2bEp->GetRemoteName()) : NULL;
-                vSessionEp = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
+                VirtualEndpoint* vep = (ep && (ep->GetEndpointType() == BusEndpoint::ENDPOINT_TYPE_VIRTUAL)) ? static_cast<VirtualEndpoint*>(ep) : NULL;
                 if (!b2bEp) {
                     QCC_LogError(ER_FAIL, ("B2B endpoint %s disappeared during JoinSession", b2bEpName.c_str()));
                     replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
                     break;
-                } else if (vSessionEp && vSessionEp->CanUseRoute(*b2bEp)) {
+                } else if (vep && vep->CanUseRoute(*b2bEp)) {
                     break;
                 }
 
@@ -773,7 +773,6 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
 
             /* Step 3: Send a session attach */
             if (replyCode == ALLJOYN_JOINSESSION_REPLY_SUCCESS) {
-                vSessionEpName = vSessionEp->GetUniqueName();
                 const String nextControllerName = b2bEp->GetRemoteName();
                 ajObj.ReleaseLocks();
                 status = ajObj.SendAttachSession(sessionPort, sender.c_str(), sessionHost, sessionHost, b2bEpName.c_str(),
@@ -785,10 +784,15 @@ ThreadReturn STDCALL AllJoynObj::JoinSessionThread::RunJoin()
                 }
                 /* Re-acquire locks and endpoints */
                 ajObj.AcquireLocks();
+                vSessionEp = static_cast<VirtualEndpoint*>(ajObj.router.FindEndpoint(sessionHost));
+                vSessionEpName = vSessionEp ? vSessionEp->GetUniqueName() : "";
+                if (!vSessionEp) {
+                    replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
+                    QCC_LogError(ER_FAIL, ("SessionHost endpoint (%s) not found", sessionHost));
+                }
+
                 b2bEp = static_cast<RemoteEndpoint*>(ajObj.router.FindEndpoint(b2bEpName));
-                if (b2bEp) {
-                    vSessionEp = &(ajObj.AddVirtualEndpoint(vSessionEpName, *b2bEp));
-                } else {
+                if (!b2bEp) {
                     replyCode = ALLJOYN_JOINSESSION_REPLY_FAILED;
                     QCC_LogError(ER_FAIL, ("SessionHost b2bEp (%s) disappeared during join", b2bEpName.c_str()));
                 }
