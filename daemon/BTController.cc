@@ -751,6 +751,23 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
         if ((node == joinSessionNode) && (node->GetConnectionCount() == 0)) {
             JoinSessionNodeComplete();
         }
+
+        foundNodeDB.Lock();
+        if (foundNodeDB.FindNode(node->GetBusAddress())->IsValid()) {
+            // Failed to connect to the device.  Send out a lost advertised
+            // name for all names in all nodes connectable via this node so
+            // that if we find the name of interest again, we will send out a
+            // found advertised name and the client app can try to connect
+            // again.
+            BTNodeDB reapDB;
+            foundNodeDB.GetNodesFromConnectNode(node, reapDB);
+            foundNodeDB.UpdateDB(NULL, &reapDB);
+            foundNodeDB.Unlock();
+
+            DistributeAdvertisedNameChanges(NULL, &reapDB);
+        } else {
+            foundNodeDB.Unlock();
+        }
     }
 }
 
