@@ -66,6 +66,7 @@ static char* g_findPrefix = NULL;
 static int g_sleepBeforeRejoin = 0;
 static int g_useCount = 0;
 static bool g_useMultipoint = true;
+static bool g_suppressNameOwnerChanged = false;
 
 SessionPort SESSION_PORT_MESSAGES_MP1 = 26;
 
@@ -164,10 +165,12 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
 
     void NameOwnerChanged(const char* name, const char* previousOwner, const char* newOwner)
     {
-        QCC_SyncPrintf("NameOwnerChanged(%s, %s, %s)\n",
-                       name,
-                       previousOwner ? previousOwner : "null",
-                       newOwner ? newOwner : "null");
+        if (!g_suppressNameOwnerChanged) {
+            QCC_SyncPrintf("NameOwnerChanged(%s, %s, %s)\n",
+                           name,
+                           previousOwner ? previousOwner : "null",
+                           newOwner ? newOwner : "null");
+        }
     }
 
     void SessionLost(SessionId sessid)
@@ -189,6 +192,7 @@ static void usage(void)
     printf("   -t           = Advertise over TCP (enables selective advertising)\n");
     printf("   -dj <ms>     = Number of ms to delay between leaving and re-joining\n");
     printf("   -p           = Use point-to-point sessions rather than multi-point\n");
+    printf("   -qnoc        = Suppress NameOwnerChanged printing\n");
     printf("\n");
 }
 
@@ -237,6 +241,8 @@ int main(int argc, char** argv)
             g_sleepBeforeRejoin = qcc::StringToU32(argv[++i], 0);
         } else if (0 == strcmp("-p", argv[i])) {
             g_useMultipoint = false;
+        } else if (0 == strcmp("-qnoc", argv[i])) {
+            g_suppressNameOwnerChanged = true;
         } else {
             status = ER_FAIL;
             printf("Unknown option %s\n", argv[i]);
