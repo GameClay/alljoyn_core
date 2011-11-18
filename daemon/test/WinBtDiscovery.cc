@@ -204,7 +204,7 @@ void DumpKernelState(void)
                DRIVER_VERSION, IS_64BIT ? TEXT("64-bit") : TEXT("32-bit"));
     bool success = DeviceIo(&messageIn, sizeof(messageIn), &messageOut, sizeof(messageOut), &returnedSize);
 
-    _tprintf_s(TEXT("Get Kernel State:DeviceIo: %s.\n"), success ? TEXT("Success") : TEXT("Failure!"));
+    _tprintf_s(TEXT("Get Kernel State:DeviceIo: %s\n"), success ? TEXT("Success.") : TEXT("Failure!"));
 
     if (success) {
         _tprintf_s(TEXT("Get Kernel State: %S.\n"), QCC_StatusText(messageOut.commandStatus.status));
