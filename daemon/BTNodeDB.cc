@@ -564,8 +564,8 @@ void BTNodeDB::DumpTable(const char* info) const
             expireTime = expireTime.substr(0, expireTime.size() - 3) + '.' + expireTime.substr(expireTime.size() - 3);
         }
         QCC_DbgPrintf(("    %s (connect addr: %s  unique name: \"%s\"  uuidRev: %08x  direct: %s  expire time: %s):",
-                       node->GetBusAddress().ToString().c_str(),
-                       node->GetConnectNode()->GetBusAddress().ToString().c_str(),
+                       node->ToString().c_str(),
+                       node->GetConnectNode()->ToString().c_str(),
                        node->GetUniqueName().c_str(),
                        node->GetUUIDRev(),
                        node->IsDirectMinion() ? "true" : "false",

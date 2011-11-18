@@ -451,7 +451,8 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
             // We've see this advertising node before and nothing has changed
             // so just refresh the expiration time of all the nodes.
             foundNodeDB.RefreshExpiration(adNode->GetConnectNode(), LOST_DEVICE_TIMEOUT);
-            foundNodeDB.DumpTable((String("foundNodeDB: Refresh Expiration for nodes with connect address: ") + adNode->GetConnectNode()->GetBusAddress().ToString()).c_str());
+            String msg = String("foundNodeDB: Refresh Expiration for nodes with connect address: ") + adNode->GetConnectNode()->ToString();
+            foundNodeDB.DumpTable(msg.c_str());
             ResetExpireNameAlarm();
 
         } else if (getInfo) {
@@ -667,7 +668,7 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
                 }
             } else {
                 joinSessionNode = node->GetConnectNode();
-                QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->GetBusAddress().ToString().c_str()));
+                QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->ToString().c_str()));
             }
         }
     } while (repeat);
@@ -700,7 +701,7 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
     QCC_DEBUG_ONLY(connectStartTimes[node->GetBusAddress().addr] = connectTimer.StartTime());
 
     QCC_DbgPrintf(("Connect address %s for %s is %s",
-                   node->GetConnectNode()->GetBusAddress().ToString().c_str(),
+                   node->GetConnectNode()->ToString().c_str(),
                    addr.ToString().c_str(),
                    (foundNodeDB.FindNode(addr) == node) ? "in foundNodeDB" :
                    ((nodeDB.FindNode(addr) == node) ? "in nodeDB" :
@@ -712,7 +713,7 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
 
 void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& remoteName)
 {
-    QCC_DbgPrintf(("Connect to %s resulted in status %s, remoteName = \"%s\"", node->GetBusAddress().ToString().c_str(), QCC_StatusText(status), remoteName.c_str()));
+    QCC_DbgPrintf(("Connect to %s resulted in status %s, remoteName = \"%s\"", node->ToString().c_str(), QCC_StatusText(status), remoteName.c_str()));
 
     if (status == ER_OK) {
         QCC_DEBUG_ONLY(connectTimer.RecordTime(node->GetBusAddress().addr, connectStartTimes[node->GetBusAddress().addr]));
@@ -731,7 +732,7 @@ void BTController::PostConnect(QStatus status, BTNodeInfo& node, const String& r
         if ((node == joinSessionNode) && (node->GetSessionState() == _BTNodeInfo::NO_SESSION)) {
             assert(node.iden(joinSessionNode));
             if (IsMaster() && !inNodeDB) {
-                QCC_DbgPrintf(("Joining BT topology manager session for %s", node->GetBusAddress().ToString().c_str()));
+                QCC_DbgPrintf(("Joining BT topology manager session for %s", node->ToString().c_str()));
                 node->SetSessionState(_BTNodeInfo::JOINING_SESSION);
 
                 status = bus.JoinSessionAsync(remoteName.c_str(),
@@ -930,7 +931,7 @@ bool BTController::AcceptSessionJoiner(SessionPort sessionPort,
 
     QCC_DbgPrintf(("%s session join from %s",
                    accept ? "Accepting" : "Rejecting",
-                   node->IsValid() ? node->GetBusAddress().ToString().c_str() : uniqueName.c_str()));
+                   node->IsValid() ? node->ToString().c_str() : uniqueName.c_str()));
 
     return accept;
 }
@@ -942,7 +943,7 @@ void BTController::SessionJoined(SessionPort sessionPort, SessionId id, const ch
     BTNodeInfo node = nodeDB.FindNode(uniqueName);
 
     if (node->IsValid()) {
-        QCC_DbgPrintf(("Session joined by %s", node->GetBusAddress().ToString().c_str()));
+        QCC_DbgPrintf(("Session joined by %s", node->ToString().c_str()));
         nodeDB.UpdateNodeSessionID(id, node);
     }
 }
@@ -1031,7 +1032,7 @@ QStatus BTController::DoNameOp(const qcc::String& name,
                         name.c_str());
             status = Signal(masterNode->GetUniqueName().c_str(), masterNode->GetSessionID(), signal, args, argsSize);
             if (status != ER_OK) {
-                QCC_LogError(status, ("Failed to send %s signal to %s (%s)", signal.name.c_str(), masterNode->GetBusAddress().ToString().c_str(), masterNode->GetUniqueName().c_str()));
+                QCC_LogError(status, ("Failed to send %s signal to %s (%s)", signal.name.c_str(), masterNode->ToString().c_str(), masterNode->GetUniqueName().c_str()));
             }
         }
     }
@@ -1076,7 +1077,7 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
                            nameStr,
                            addName ? "to" : "from",
                            findOp ? "find" : "advertise",
-                           node->GetBusAddress().ToString().c_str()));
+                           node->ToString().c_str()));
 
             lock.Lock(MUTEX_CONTEXT);
 
@@ -1625,7 +1626,7 @@ void BTController::DeferredBTDeviceAvailable(bool on)
 
 void BTController::DeferredSendSetState()
 {
-    QCC_DbgTrace(("BTController::DeferredSendSetState()  [joinSessionNode = %s]", joinSessionNode->GetBusAddress().ToString().c_str()));
+    QCC_DbgTrace(("BTController::DeferredSendSetState()  [joinSessionNode = %s]", joinSessionNode->ToString().c_str()));
     assert(!master);
 
     QStatus status;
@@ -1659,7 +1660,7 @@ void BTController::DeferredSendSetState()
     lock.Unlock(MUTEX_CONTEXT);
 
     if (status != ER_OK) {
-        QCC_LogError(status, ("Dropping %s due to internal error", joinSessionNode->GetBusAddress().ToString().c_str()));
+        QCC_LogError(status, ("Dropping %s due to internal error", joinSessionNode->ToString().c_str()));
         goto exit;
     }
 
@@ -1671,14 +1672,14 @@ void BTController::DeferredSendSetState()
      * in the same thread as that HandleSetState function.
      */
     QCC_DbgPrintf(("Sending SetState method call to %s (%s)",
-                   joinSessionNode->GetUniqueName().c_str(), joinSessionNode->GetBusAddress().ToString().c_str()));
+                   joinSessionNode->GetUniqueName().c_str(), joinSessionNode->ToString().c_str()));
     status = newMaster->MethodCallAsync(*org.alljoyn.Bus.BTController.SetState,
                                         this, ReplyHandler(&BTController::HandleSetStateReply),
                                         args, ArraySize(args),
                                         newMaster);
 
     if (status != ER_OK) {
-        QCC_LogError(status, ("Dropping %s due to internal error", joinSessionNode->GetBusAddress().ToString().c_str()));
+        QCC_LogError(status, ("Dropping %s due to internal error", joinSessionNode->ToString().c_str()));
     }
 
 exit:
@@ -1696,7 +1697,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
                                                 ProxyBusObject* newMaster)
 {
     QCC_DbgTrace(("BTController::DeferredProcessSetStateReply(reply = <>, newMaster = %p)  [joinSessionNode = %s]",
-                  newMaster, joinSessionNode->GetBusAddress().ToString().c_str()));
+                  newMaster, joinSessionNode->ToString().c_str()));
 
     lock.Lock(MUTEX_CONTEXT);
     QStatus status = ER_FAIL;;
@@ -1729,7 +1730,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
                                   (joinSessionNode->GetBusAddress().psm != psm))) {
             delete newMaster;
             QCC_LogError(status, ("Dropping %s due to error parsing the args (sig: \"%s\")",
-                                  joinSessionNode->GetBusAddress().ToString().c_str(), SIG_SET_STATE_OUT));
+                                  joinSessionNode->ToString().c_str(), SIG_SET_STATE_OUT));
             bt.Disconnect(joinSessionNode->GetUniqueName());
             goto exit;
         }
@@ -1758,7 +1759,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
 
                 status = ImportState(masterNode, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs);
                 if (status != ER_OK) {
-                    QCC_LogError(status, ("Dropping %s due to import state error", joinSessionNode->GetBusAddress().ToString().c_str()));
+                    QCC_LogError(status, ("Dropping %s due to import state error", joinSessionNode->ToString().c_str()));
                     bt.Disconnect(joinSessionNode->GetUniqueName());
                     goto exit;
                 }
@@ -1771,7 +1772,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
 
                 status = ImportState(joinSessionNode, nodeStateArgs, numNodeStateArgs, foundNodeArgs, numFoundNodeArgs);
                 if (status != ER_OK) {
-                    QCC_LogError(status, ("Dropping %s due to import state error", joinSessionNode->GetBusAddress().ToString().c_str()));
+                    QCC_LogError(status, ("Dropping %s due to import state error", joinSessionNode->ToString().c_str()));
                     bt.Disconnect(joinSessionNode->GetUniqueName());
                     goto exit;
                 }
@@ -1785,7 +1786,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
 
             QCC_DbgPrintf(("We are %s, %s is now our %s",
                            IsMaster() ? "still the master" : (IsDrone() ? "now a drone" : "just a minion"),
-                           joinSessionNode->GetBusAddress().ToString().c_str(), IsMaster() ? "minion" : "master"));
+                           joinSessionNode->ToString().c_str(), IsMaster() ? "minion" : "master"));
 
             if (IsMaster()) {
                 // Can't let the to-be-updated masterUUIDRev have a value that is
@@ -1812,7 +1813,7 @@ void BTController::DeferredProcessSetStateReply(Message& reply,
         delete newMaster;
         qcc::String errMsg;
         const char* errName = reply->GetErrorName(&errMsg);
-        QCC_LogError(ER_FAIL, ("Dropping %s due to internal error: %s - %s", joinSessionNode->GetBusAddress().ToString().c_str(), errName, errMsg.c_str()));
+        QCC_LogError(ER_FAIL, ("Dropping %s due to internal error: %s - %s", joinSessionNode->ToString().c_str(), errName, errMsg.c_str()));
         bt.Disconnect(joinSessionNode->GetUniqueName());
     }
 
@@ -1870,7 +1871,7 @@ void BTController::DeferredHandleDelegateFind(Message& msg)
 
         // Pick a minion to do the work for us.
         assert(nodeDB.FindNode(find.minion->GetBusAddress())->IsValid());
-        QCC_DbgPrintf(("Selected %s as our find minion.", find.minion->GetBusAddress().ToString().c_str()));
+        QCC_DbgPrintf(("Selected %s as our find minion.", find.minion->ToString().c_str()));
 
         Signal(delegate->GetUniqueName().c_str(), delegate->GetSessionID(), *find.delegateSignal, args, numArgs);
     }
@@ -1923,7 +1924,7 @@ void BTController::DeferredHandleDelegateAdvertise(Message& msg)
 
         // Pick a minion to do the work for us.
         assert(nodeDB.FindNode(advertise.minion->GetBusAddress())->IsValid());
-        QCC_DbgPrintf(("Selected %s as our advertise minion.", advertise.minion->GetBusAddress().ToString().c_str()));
+        QCC_DbgPrintf(("Selected %s as our advertise minion.", advertise.minion->ToString().c_str()));
 
         Signal(delegate->GetUniqueName().c_str(), delegate->GetSessionID(), *advertise.delegateSignal, args, numArgs);
     }
@@ -1941,7 +1942,7 @@ void BTController::DeferredNameLostHander(const String& name)
     if (master && (master->GetServiceName() == name)) {
         // We are a minion or a drone and our master has left us.
 
-        QCC_DbgPrintf(("Our master left us: %s", masterNode->GetBusAddress().ToString().c_str()));
+        QCC_DbgPrintf(("Our master left us: %s", masterNode->ToString().c_str()));
         // We are the master now.
 
         masterNode->SetSessionState(_BTNodeInfo::NO_SESSION);
@@ -2028,7 +2029,7 @@ void BTController::DeferredNameLostHander(const String& name)
             // (Note: all minions including indirect minions leaving cause
             // this code path to be executed.)
 
-            QCC_DbgPrintf(("One of our minions left us: %s", minion->GetBusAddress().ToString().c_str()));
+            QCC_DbgPrintf(("One of our minions left us: %s", minion->ToString().c_str()));
 
             nodeDB.RemoveNode(minion);
             assert(!devAvailable || (nodeDB.Size() > 0));
@@ -2131,7 +2132,7 @@ void BTController::DistributeAdvertisedNameChanges(const BTNodeDB* newAdInfo,
             const BTNodeInfo& node = *it;
             if (node->IsDirectMinion()) {
                 assert(node != self);  // We can't be a direct minion of ourself.
-                QCC_DbgPrintf(("Notify %s of the name changes.", node->GetBusAddress().ToString().c_str()));
+                QCC_DbgPrintf(("Notify %s of the name changes.", node->ToString().c_str()));
                 if (oldAdInfo && oldAdInfo->Size() > 0) {
                     destNodesOld.insert(node);
                 }
@@ -2183,7 +2184,7 @@ void BTController::SendFoundNamesChange(const BTNodeInfo& destNode,
                                         bool lost)
 {
     QCC_DbgTrace(("BTController::SendFoundNamesChange(destNode = \"%s\", adInfo = <>, <%s>)",
-                  destNode->GetBusAddress().ToString().c_str(),
+                  destNode->ToString().c_str(),
                   lost ? "lost" : "found/changed"));
 
     vector<MsgArg> nodeList;
@@ -2205,7 +2206,7 @@ void BTController::SendFoundNamesChange(const BTNodeInfo& destNode,
     if (status != ER_OK) {
         QCC_LogError(status, ("Failed to send org.alljoyn.Bus.BTController.%s signal to %s",
                               lost ? "LostNames" : "FoundNames",
-                              destNode->GetBusAddress().ToString().c_str()));
+                              destNode->ToString().c_str()));
     }
 }
 
@@ -2217,7 +2218,7 @@ QStatus BTController::ImportState(BTNodeInfo& connectingNode,
                                   size_t numFoundNodes)
 {
     QCC_DbgTrace(("BTController::ImportState(addr = %s, nodeStateArgs = <>, numNodeStates = %u, foundNodeArgs = <>, numFoundNodes = %u)",
-                  connectingNode->GetBusAddress().ToString().c_str(), numNodeStates, numFoundNodes));
+                  connectingNode->ToString().c_str(), numNodeStates, numFoundNodes));
 
     /*
      * Here we need to bring in the state information from one or more nodes
@@ -2599,7 +2600,7 @@ void BTController::FillNodeStateMsgArgs(vector<MsgArg>& args) const
     args.reserve(nodeDB.Size());
     for (it = nodeDB.Begin(); it != nodeDB.End(); ++it) {
         const BTNodeInfo& node = *it;
-        QCC_DbgPrintf(("    Node State node %s:", node->GetBusAddress().ToString().c_str()));
+        QCC_DbgPrintf(("    Node State node %s:", node->ToString().c_str()));
         NameSet::const_iterator nit;
 
         vector<const char*> nodeAdNames;
@@ -2781,7 +2782,7 @@ void BTController::JoinSessionNodeComplete()
     lock.Lock(MUTEX_CONTEXT);
     if (joinSessionNode->IsValid()) {
         joinSessionNode = BTNodeInfo();
-        QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->GetBusAddress().ToString().c_str()));
+        QCC_DbgPrintf(("joinSessionNode set to %s", joinSessionNode->ToString().c_str()));
         int ic = DecrementAndFetch(&incompleteConnections);
         QCC_DbgPrintf(("incompleteConnections = %d", ic));
         assert(ic >= 0);
@@ -2895,7 +2896,7 @@ void BTController::PickNextDelegate(NameArgInfo& nameOp)
     }
 
     QCC_DbgPrintf(("Selected %s as %s delegate.  (UseLocal(): %s  EIR: %s  Num EIR Minions: %u  Num Minions: %u)",
-                   (nameOp.minion == self) ? "ourself" : nameOp.minion->GetBusAddress().ToString().c_str(),
+                   (nameOp.minion == self) ? "ourself" : nameOp.minion->ToString().c_str(),
                    (&nameOp == static_cast<NameArgInfo*>(&find)) ? "find" : "advertise",
                    nameOp.UseLocal() ? "true" : "false",
                    bt.IsEIRCapable() ? "true" : "false",
@@ -2929,7 +2930,7 @@ void BTController::NameArgInfo::AlarmTriggered(const Alarm& alarm, QStatus reaso
 QStatus BTController::NameArgInfo::SendDelegateSignal()
 {
     QCC_DbgPrintf(("Sending %s signal to %s (via session %x)", delegateSignal->name.c_str(),
-                   minion->GetBusAddress().ToString().c_str(), minion->GetSessionID()));
+                   minion->ToString().c_str(), minion->GetSessionID()));
     assert(minion != bto.self);
 
     NameArgs largs = args;
@@ -3236,8 +3237,8 @@ void BTController::DumpNodeStateTable() const
         const BTNodeInfo& node = *nodeit;
         NameSet::const_iterator nameit;
         QCC_DbgPrintf(("    %s (conn: %s) %s (%s%s%s%s):",
-                       node->GetBusAddress().ToString().c_str(),
-                       node->GetConnectNode()->GetBusAddress().ToString().c_str(),
+                       node->ToString().c_str(),
+                       node->GetConnectNode()->ToString().c_str(),
                        node->GetUniqueName().c_str(),
                        (node == self) ? "local" : (node->IsDirectMinion() ? "direct minion" : "indirect minion"),
                        ((node == find.minion) || (node == advertise.minion)) ? " -" : "",

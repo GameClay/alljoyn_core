@@ -190,7 +190,7 @@ void* BTTransport::Run(void* arg)
                     }
 
                     node->IncConnCount();
-                    QCC_DbgPrintf(("Increment connection count for %s to %u: ACCEPT", node->GetBusAddress().ToString().c_str(), node->GetConnectionCount()));
+                    QCC_DbgPrintf(("Increment connection count for %s to %u: ACCEPT", node->ToString().c_str(), node->GetConnectionCount()));
                     connNodeDB.Unlock();
 
                 } else {
@@ -430,7 +430,7 @@ void BTTransport::EndpointExit(RemoteEndpoint* endpoint)
     if (node->IsValid()) {
         BTNodeInfo rnode = connNodeDB.FindNode(node->GetBusAddress().addr);
         uint32_t connCount = rnode->DecConnCount();
-        QCC_DbgPrintf(("Decrement connection count for %s to %u: ENDPOINT_EXIT", node->GetBusAddress().ToString().c_str(), connCount));
+        QCC_DbgPrintf(("Decrement connection count for %s to %u: ENDPOINT_EXIT", node->ToString().c_str(), connCount));
         if (connCount == 0) {
             connNodeDB.RemoveNode(rnode);
 
@@ -581,7 +581,7 @@ QStatus BTTransport::Connect(const BTBusAddress& addr,
     threadList.insert(conn);
     threadListLock.Unlock(MUTEX_CONTEXT);
     QCC_DbgPrintf(("BTTransport::Connect: Calling conn->Establish() [addr = %s via %s]",
-                   addr.ToString().c_str(), connNode->GetBusAddress().ToString().c_str()));
+                   addr.ToString().c_str(), connNode->ToString().c_str()));
     status = conn->Establish("ANONYMOUS", authName);
     if (status != ER_OK) {
         QCC_LogError(status, ("BTEndpoint::Establish failed"));
@@ -590,7 +590,7 @@ QStatus BTTransport::Connect(const BTBusAddress& addr,
         goto exit;
     }
 
-    QCC_DbgPrintf(("Starting endpoint [addr = %s via %s]", addr.ToString().c_str(), connNode->GetBusAddress().ToString().c_str()));
+    QCC_DbgPrintf(("Starting endpoint [addr = %s via %s]", addr.ToString().c_str(), connNode->ToString().c_str()));
     /* Start the endpoint */
     conn->SetListener(this);
     status = conn->Start();
@@ -623,14 +623,14 @@ exit:
                     }
                     connNodeDB.RemoveNode(node);
 
-                    QCC_DbgPrintf(("Set connection count for %s to %u: CONNECT", connNode->GetBusAddress().ToString().c_str(), connNode->GetConnectionCount()));
+                    QCC_DbgPrintf(("Set connection count for %s to %u: CONNECT", connNode->ToString().c_str(), connNode->GetConnectionCount()));
                 }
                 node = connNode;
                 connNodeDB.AddNode(node);
             }
 
             node->IncConnCount();
-            QCC_DbgPrintf(("Increment connection count for %s to %u: CONNECT", node->GetBusAddress().ToString().c_str(), node->GetConnectionCount()));
+            QCC_DbgPrintf(("Increment connection count for %s to %u: CONNECT", node->ToString().c_str(), node->GetConnectionCount()));
             connNodeDB.Unlock();
 
         }

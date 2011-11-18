@@ -29,6 +29,7 @@
 #include <qcc/GUID.h>
 #include <qcc/ManagedObj.h>
 #include <qcc/String.h>
+#include <qcc/StringUtil.h>
 
 #include <alljoyn/Session.h>
 
@@ -517,6 +518,17 @@ class _BTNodeInfo {
 
     SessionState GetSessionState() const { return sessionState; }
     void SetSessionState(SessionState state) { sessionState = state; }
+
+    /**
+     * Create in a human readable form for the node (includes the memory
+     * address of the managed object instance.
+     *
+     * @return  a string representation of node: "XX:XX:XX:XX:XX:XX-XXXX (0xXXXXXXX)"
+     */
+    qcc::String ToString() const
+    {
+        return nodeAddr.ToString() + " (0x" + qcc::U64ToString(reinterpret_cast<uint64_t>(this), 16) + ")";
+    }
 
     /**
      * Equivalence operator.

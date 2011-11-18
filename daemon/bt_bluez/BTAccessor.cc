@@ -502,7 +502,7 @@ QStatus BTTransport::BTAccessor::SetSDPInfo(uint32_t uuidRev,
         for (nodeit = adInfo.Begin(); nodeit != adInfo.End(); ++nodeit) {
             const BTNodeInfo& node = *nodeit;
             NameSet::const_iterator nameit;
-            QCC_DbgPrintf(("    %s:", node->GetBusAddress().ToString().c_str()));
+            QCC_DbgPrintf(("    %s:", node->ToString().c_str()));
             nameList +=
                 "<sequence>"
                 "  <text value=\"" + node->GetGUID().ToString() + "\"/>"
@@ -1643,7 +1643,7 @@ QStatus BTTransport::BTAccessor::ProcessSDPXML(XmlParseContext& xmlctx,
                         BTNodeDB::const_iterator nodeit;
                         for (nodeit = adInfo->Begin(); nodeit != adInfo->End(); ++nodeit) {
                             const BTNodeInfo& node = *nodeit;
-                            QCC_DbgPrintf(("       %s (GUID: %s)", node->GetBusAddress().ToString().c_str(), node->GetGUID().ToString().c_str()));
+                            QCC_DbgPrintf(("       %s (GUID: %s)", node->ToString().c_str(), node->GetGUID().ToString().c_str()));
                             NameSet::const_iterator name;
                             for (name = node->GetAdvertiseNamesBegin(); name != node->GetAdvertiseNamesEnd(); ++name) {
                                 QCC_DbgPrintf(("           \"%s\"", name->c_str()));
