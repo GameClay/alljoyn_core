@@ -700,12 +700,16 @@ BTNodeInfo BTController::PrepConnect(const BTBusAddress& addr)
 
     QCC_DEBUG_ONLY(connectStartTimes[node->GetBusAddress().addr] = connectTimer.StartTime());
 
-    QCC_DbgPrintf(("Connect address %s for %s is %s",
+    QCC_DbgPrintf(("Connect address %s for %s (add = %s) is %s as %s  (nodeDB size = %d  maxConnections = %d)",
                    node->GetConnectNode()->ToString().c_str(),
+                   node->ToString().c_str(),
                    addr.ToString().c_str(),
+                   !node->IsValid() ? "<unkown>" :
                    (foundNodeDB.FindNode(addr) == node) ? "in foundNodeDB" :
                    ((nodeDB.FindNode(addr) == node) ? "in nodeDB" :
-                    ((node == masterNode) ? "masterNode" : "<unknown>"))));
+                    ((node == masterNode) ? "masterNode" : "<impossible>")),
+                   IsMaster() ? "Master" : (IsDrone() ? "Drone" : (IsMinion() ? "Minion" : "<invalid>")),
+                   nodeDB.Size(), maxConnections));
 
     return node->GetConnectNode();
 }
