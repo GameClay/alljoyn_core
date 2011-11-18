@@ -64,6 +64,7 @@ static bool g_acceptSession = true;
 static bool g_stressTest = false;
 static char* g_findPrefix = NULL;
 static int g_sleepBeforeRejoin = 0;
+static int g_sleepBeforeLeave = 0;
 static int g_useCount = 0;
 static bool g_useMultipoint = true;
 static bool g_suppressNameOwnerChanged = false;
@@ -137,6 +138,10 @@ class MyBusListener : public BusListener, public SessionPortListener, public Ses
 
         /* Start over if we are in stress mode */
         if ((status == ER_OK) && g_stressTest) {
+            if (g_sleepBeforeLeave) {
+                qcc::Sleep(g_sleepBeforeLeave);
+            }
+
             QCC_SyncPrintf("Calling LeaveSession(%u)\n", sessionId);
             QStatus status = g_msgBus->LeaveSession(sessionId);
             QCC_SyncPrintf("LeaveSession(%u) returned %s\n", sessionId, QCC_StatusText(status));
@@ -191,6 +196,7 @@ static void usage(void)
     printf("   -b           = Advertise over Bluetooth (enables selective advertising)\n");
     printf("   -t           = Advertise over TCP (enables selective advertising)\n");
     printf("   -dj <ms>     = Number of ms to delay between leaving and re-joining\n");
+    printf("   -dl <ms>     = Number of ms to delay before leaving the session\n");
     printf("   -p           = Use point-to-point sessions rather than multi-point\n");
     printf("   -qnoc        = Suppress NameOwnerChanged printing\n");
     printf("\n");
@@ -239,6 +245,8 @@ int main(int argc, char** argv)
             transportOpts |= TRANSPORT_WLAN;
         } else if (0 == strcmp("-dj", argv[i])) {
             g_sleepBeforeRejoin = qcc::StringToU32(argv[++i], 0);
+        } else if (0 == strcmp("-dl", argv[i])) {
+            g_sleepBeforeLeave = qcc::StringToU32(argv[++i], 0);
         } else if (0 == strcmp("-p", argv[i])) {
             g_useMultipoint = false;
         } else if (0 == strcmp("-qnoc", argv[i])) {
