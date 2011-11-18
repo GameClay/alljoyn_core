@@ -55,7 +55,21 @@ QStatus VirtualEndpoint::PushMessage(Message& msg, SessionId id)
     m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
     multimap<SessionId, RemoteEndpoint*>::iterator it = (id == 0) ? m_b2bEndpoints.begin() : m_b2bEndpoints.lower_bound(id);
     while ((it != m_b2bEndpoints.end()) && (id == it->first)) {
-        status = it++->second->PushMessage(msg);
+        RemoteEndpoint* ep = it->second;
+        ep->IncrementWaiters();
+        m_b2bEndpointsLock.Unlock(MUTEX_CONTEXT);
+        status = ep->PushMessage(msg);
+        m_b2bEndpointsLock.Lock(MUTEX_CONTEXT);
+        it = m_b2bEndpoints.lower_bound(id);
+        while ((it != m_b2bEndpoints.end()) && (it->first == id)) {
+            if (it->second == ep) {
+                it->second->DecrementWaiters();
+                ++it;
+                break;
+            } else {
+                ++it;
+            }
+        }
         if (status != ER_BUS_ENDPOINT_CLOSING) {
             break;
         }
