@@ -1206,7 +1206,15 @@ void BTController::HandleSetState(const InterfaceDescription::Member* member, Me
     vector<MsgArg> nodeStateArgsStorage;
     vector<MsgArg> foundNodeArgsStorage;
 
-    BTNodeInfo connectingNode(addr, sender);
+
+    // Get the known node if we know it in order to keep things consistent.
+    BTNodeInfo connectingNode = foundNodeDB.FindNode(addr);
+
+    if (connectingNode->IsValid()) {
+        connectingNode->SetUniqueName(sender);
+    } else {
+        connectingNode = BTNodeInfo(addr, sender);
+    }
     connectingNode->SetUUIDRev(otherUUIDRev);
     connectingNode->SetSessionID(msg->GetSessionId());
     connectingNode->SetEIRCapable(remoteEIRCapable);
