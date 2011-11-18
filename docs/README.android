@@ -6,22 +6,25 @@ What's inside:
 
  * alljoyn_2_2_0_dbg : AllJoyn SDK for Android (debug), version 2.2.0
  * alljoyn_2_2_0_rel : AllJoyn SDK for Android (release), version 2.2.0
-    The above folders are identical, except for compilation options.
-    The file and folder structure inside them is described below. 
+    The above directorys are identical, except for compilation options.
+    The file and directory structure inside them is described below. 
 
  * ReleaseNotes
     New features, known issues, etc.
 
 
-Summary of NDK file and folder structure:
+Summary of NDK file and directory structure:
 ----------------------------------------
  * In each copy of the AllJoyn SDK for Android (debug or release), five of
-   the six top-level folders support C++ application development within the
+   the top-level directories support C++ application development within the
    Android NDK:
 
-    ./docs
-        AllJoyn C++ API (HTML documentation)
-
+    ./alljoyn_android
+        Contains the Alljoyn daemon project 
+            alljoyn - The 'alljoyn' project is the AllJoyn.apk.  A precompiled 
+                      binary of the AllJoyn.apk can be found in
+                      ./alljoyn_android/alljoyn/bin            
+        
     ./bin
         Executable binaries and prebuilt APK's (bus daemon, C++ samples, test programs)
         ./bin/bbdaemon
@@ -36,6 +39,9 @@ Summary of NDK file and folder structure:
             Bus client example.
         ./bin/bbservice
             Bus service example.
+    
+    ./docs
+        AllJoyn C++ API (HTML documentation)
 
     ./inc
         AllJoyn C++ header files
@@ -46,21 +52,21 @@ Summary of NDK file and folder structure:
     ./samples
         C++ sample programs for AllJoyn (see Developers Guide)
 
- * The remaining top-level folder (java) contains a similar structure
+ * The remaining top-level directory (java) contains a similar structure
    underneath it, supporting the AllJoyn Java language binding:
 
     ./java/docs
         AllJoyn Java API (HTML documentation)
 
+    ./java/jar
+        alljoyn.jar, alljoyn_test.jar
+        
     ./java/lib
         liballjoyn_java.so
 
     ./java/samples
         Java sample programs for AllJoyn (see README)
+        Each sample contains a bin directory containing the prebuilt apks for 
+        that sample.
 
-    ./java/samples/bin
-        prebuilt APK's
-
-    ./java/jar
-        alljoyn.jar, alljoyn_test.jar
 

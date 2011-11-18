@@ -38,6 +38,12 @@ Features added in this release
 
 7) Added BusAttachment::Set/GetKeyExpiration() to allow clients to
    interact more directly with the keystore.
+ 
+8) Added support for Windows Cryptography API: Next Generation (CNG).
+   It's now possible to build AllJoyn on Windows without using the
+   OpenSSL libraries.  Using CNG requires having Windows SDK 7.0 or 
+   newer installed.  OpenSSL libraries are still required to build for
+   Windows XP.
 
 
 Issues Addressed in this Release
