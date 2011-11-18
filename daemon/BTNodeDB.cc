@@ -380,6 +380,7 @@ void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool rem
                 if (connNode->IsValid()) {
                     anode->SetConnectNode(connNode);
                 }
+                assert(anode->GetConnectNode()->IsValid());
                 AddNode(anode);
             } else {
                 // Add names to existing node
@@ -402,6 +403,7 @@ void BTNodeDB::UpdateDB(const BTNodeDB* added, const BTNodeDB* removed, bool rem
                 if (!connNode->IsValid()) {
                     connNode = added->FindNode(anode->GetConnectNode()->GetBusAddress());
                 }
+                assert(connNode->IsValid());
                 node->SetConnectNode(connNode);
                 connMap.insert(pair<BTNodeInfo, BTNodeInfo>(node->GetConnectNode(), node));
                 // Update the UUIDRev

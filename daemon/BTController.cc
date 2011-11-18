@@ -2030,7 +2030,11 @@ void BTController::DeferredNameLostHander(const String& name)
 
             QCC_DbgPrintf(("One of our minions left us: %s", minion->GetBusAddress().ToString().c_str()));
 
+            nodeDB.RemoveNode(minion);
+            assert(!devAvailable || (nodeDB.Size() > 0));
+
             minion->SetSessionState(_BTNodeInfo::NO_SESSION);
+            minion->SetRelationship(_BTNodeInfo::UNAFFILIATED);
 
             bool wasAdvertiseMinion = minion == advertise.minion;
             bool wasFindMinion = minion == find.minion;
@@ -2045,9 +2049,6 @@ void BTController::DeferredNameLostHander(const String& name)
 
             find.count -= minion->FindNamesSize();
             find.dirty = true;
-
-            nodeDB.RemoveNode(minion);
-            assert(!devAvailable || (nodeDB.Size() > 0));
 
             if (minion->IsEIRCapable()) {
                 --eirMinions;
