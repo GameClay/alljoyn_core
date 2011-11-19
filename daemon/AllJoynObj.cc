@@ -2677,37 +2677,44 @@ void AllJoynObj::ExchangeNamesSignalHandler(const InterfaceDescription::Member* 
     map<qcc::StringMapKey, RemoteEndpoint*>::iterator bit = b2bEndpoints.find(msg->GetRcvEndpointName());
     const size_t numItems = args[0].v_array.GetNumElements();
     if (bit != b2bEndpoints.end()) {
-        for (size_t i = 0; i < numItems; ++i) {
-            assert(items[i].typeId == ALLJOYN_STRUCT);
-            qcc::String uniqueName = items[i].v_struct.members[0].v_string.str;
-            if (!IsLegalUniqueName(uniqueName.c_str())) {
-                QCC_LogError(ER_FAIL, ("Invalid unique name \"%s\" in ExchangeNames message", uniqueName.c_str()));
-                continue;
-            } else if (0 == ::strncmp(uniqueName.c_str() + 1, shortGuidStr.c_str(), shortGuidStr.size())) {
-                /* Cant accept a request to change a local name */
-                continue;
-            } else if (uniqueName == msg->GetSender()) {
-                /* Ignore all bus controller object that we recieved this from since its virtual endpoint is preset (assumed) */
-                continue;
-            }
+        qcc::GUID128 otherGuid = bit->second->GetRemoteGUID();
+        bit = b2bEndpoints.begin();;
+        while (bit != b2bEndpoints.end()) {
+            if (bit->second->GetRemoteGUID() == otherGuid) {
+                for (size_t i = 0; i < numItems; ++i) {
+                    assert(items[i].typeId == ALLJOYN_STRUCT);
+                    qcc::String uniqueName = items[i].v_struct.members[0].v_string.str;
+                    if (!IsLegalUniqueName(uniqueName.c_str())) {
+                        QCC_LogError(ER_FAIL, ("Invalid unique name \"%s\" in ExchangeNames message", uniqueName.c_str()));
+                        continue;
+                    } else if (0 == ::strncmp(uniqueName.c_str() + 1, shortGuidStr.c_str(), shortGuidStr.size())) {
+                        /* Cant accept a request to change a local name */
+                        continue;
+                    } else if (uniqueName == msg->GetSender()) {
+                        /* Ignore all bus controller object that we recieved this from since its virtual endpoint is preset (assumed) */
+                        continue;
+                    }
 
-            bool madeChange;
-            VirtualEndpoint& vep = AddVirtualEndpoint(uniqueName, *(bit->second), &madeChange);
+                    bool madeChange;
+                    VirtualEndpoint& vep = AddVirtualEndpoint(uniqueName, *(bit->second), &madeChange);
 
-            if (madeChange) {
-                madeChanges = true;
-            }
+                    if (madeChange) {
+                        madeChanges = true;
+                    }
 
-            /* Add virtual aliases (remote well-known names) */
-            const MsgArg* aliasItems = items[i].v_struct.members[1].v_array.GetElements();
-            const size_t numAliases = items[i].v_struct.members[1].v_array.GetNumElements();
-            for (size_t j = 0; j < numAliases; ++j) {
-                assert(ALLJOYN_STRING == aliasItems[j].typeId);
-                bool madeChange = router.SetVirtualAlias(aliasItems[j].v_string.str, &vep, vep);
-                if (madeChange) {
-                    madeChanges = true;
+                    /* Add virtual aliases (remote well-known names) */
+                    const MsgArg* aliasItems = items[i].v_struct.members[1].v_array.GetElements();
+                    const size_t numAliases = items[i].v_struct.members[1].v_array.GetNumElements();
+                    for (size_t j = 0; j < numAliases; ++j) {
+                        assert(ALLJOYN_STRING == aliasItems[j].typeId);
+                        bool madeChange = router.SetVirtualAlias(aliasItems[j].v_string.str, &vep, vep);
+                        if (madeChange) {
+                            madeChanges = true;
+                        }
+                    }
                 }
             }
+            ++bit;
         }
     } else {
         QCC_LogError(ER_BUS_NO_ENDPOINT, ("Cannot find b2b endpoint %s", msg->GetRcvEndpointName()));
