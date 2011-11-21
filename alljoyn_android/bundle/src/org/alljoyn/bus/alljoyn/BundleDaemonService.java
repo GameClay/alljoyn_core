@@ -38,7 +38,7 @@ public class BundleDaemonService extends Service {
         public void run()
         {
             WifiManager wifi = (android.net.wifi.WifiManager)getSystemService(android.content.Context.WIFI_SERVICE);
-            MulticastLock lock = wifi.createMulticastLock("BundleDaemonService");
+            WifiManager.MulticastLock lock = wifi.createMulticastLock("BundleDaemonService");
             lock.setReferenceCounted(false);
             lock.acquire();
 
