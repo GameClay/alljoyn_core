@@ -2046,6 +2046,13 @@ void BTController::DeferredNameLostHander(const String& name)
             nodeDB.RemoveNode(minion);
             assert(!devAvailable || (nodeDB.Size() > 0));
 
+            if (!minion->IsDirectMinion() && nodeDB.FindNode(minion->GetConnectNode()->GetBusAddress())->IsValid()) {
+                // An indirect minion is leaving but its connect node is still
+                // connected (maybe).  Set its connect node to itself.  If
+                // we're wrong, we'll figure it out eventually.
+                minion->SetConnectNode(minion);
+            }
+
             minion->SetSessionState(_BTNodeInfo::NO_SESSION);
             minion->SetRelationship(_BTNodeInfo::UNAFFILIATED);
 
