@@ -1000,6 +1000,7 @@ QStatus NameService::IfConfig(std::vector<IfConfigEntry>& entries)
         }
 
         strncpy(if_item.ifr_name, if_addr->ifa_name, IFNAMSIZ);
+        if_item.ifr_name[IFNAMSIZ - 1] = '\0';
         if (ioctl(sck, SIOCGIFMTU, &if_item) < 0) {
             status = ER_OS_ERROR;
             QCC_LogError(status, ("Calling IOCtl: %s", strerror(errno)));
