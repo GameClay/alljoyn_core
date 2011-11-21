@@ -70,7 +70,7 @@ size_t StringData::Serialize(uint8_t* buffer) const
     QCC_DbgPrintf(("StringData::Serialize(): %s to buffer 0x%x", m_string.c_str(), buffer));
     assert(m_size == m_string.size());
     buffer[0] = static_cast<uint8_t>(m_size);
-    strncpy(reinterpret_cast<char*>(&buffer[1]), m_string.c_str(), m_size);
+    memcpy(reinterpret_cast<void*>(&buffer[1]), const_cast<void*>(reinterpret_cast<const void*>(m_string.c_str())), m_size);
 
     return 1 + m_size;
 }
