@@ -19,6 +19,7 @@ package org.alljoyn.bus.alljoyn;
 import android.app.Service;
 import android.content.Intent;
 import android.net.Uri;
+import android.net.wifi.WifiManager;
 import android.os.IBinder;
 import android.util.Log;
 import java.util.ArrayList;
@@ -36,7 +37,14 @@ public class BundleDaemonService extends Service {
     class BundleDaemonThread extends Thread {
         public void run()
         {
+            WifiManager wifi = (android.net.wifi.WifiManager)getSystemService(android.content.Context.WIFI_SERVICE);
+            MulticastLock lock = wifi.createMulticastLock("BundleDaemonService");
+            lock.setReferenceCounted(false);
+            lock.acquire();
+
         	AllJoynDaemon.runDaemon(mArgv.toArray(), mConfig);
+
+            lock.release();
         }
     }
 

@@ -21,6 +21,7 @@ import android.content.Intent;
 import android.app.PendingIntent;
 import android.os.IBinder;
 import android.util.Log;
+import android.net.wifi.WifiManager;
 
 public class AllJoynService extends Service {
 	private static final String TAG = "alljoyn.AllJoynService";
@@ -29,11 +30,16 @@ public class AllJoynService extends Service {
         Log.i(TAG, "onBind()");
         return null;
 	}
-	
+
 	public void onCreate() {
         super.onCreate();
         Log.i(TAG, "onCreate()");
         
+        WifiManager wifi = (android.net.wifi.WifiManager)getSystemService(android.content.Context.WIFI_SERVICE);
+        mMulticastLock = wifi.createMulticastLock("AllJoynService");
+        mMulticastLock.setReferenceCounted(false);
+        mMulticastLock.acquire();
+
         CharSequence title = "AllJoyn";
         CharSequence message = "Service started.";
         Intent intent = new Intent(this, AllJoynActivity.class);
@@ -49,8 +55,14 @@ public class AllJoynService extends Service {
 	public void onDestroy() {
         super.onDestroy();
 		Log.i(TAG, "onDestroy()");
+        if (mMulticastLock != null) {
+            mMulticastLock.release();
+            mMulticastLock = null;
+        }
  	}
-    
+
+    WifiManager.MulticastLock mMulticastLock = null;
+   
 	public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
 		Log.i(TAG, "onStartCommand()");
