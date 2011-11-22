@@ -227,7 +227,7 @@ void BTNodeDB::Diff(const BTNodeDB& other, BTNodeDB* added, BTNodeDB* removed) c
             if (addrit == other.addrMap.end()) {
                 removed->AddNode(node);
             } else {
-                BTNodeInfo diffNode(node->GetBusAddress(), node->GetUniqueName(), node->GetGUID());
+                BTNodeInfo diffNode = node->Clone();
                 bool include = false;
                 const BTNodeInfo& onode = addrit->second;
                 NameSet::const_iterator nameit;
@@ -255,7 +255,7 @@ void BTNodeDB::Diff(const BTNodeDB& other, BTNodeDB* added, BTNodeDB* removed) c
             if (addrit == addrMap.end()) {
                 added->AddNode(onode);
             } else {
-                BTNodeInfo diffNode(onode->GetBusAddress(), onode->GetUniqueName(), onode->GetGUID());
+                BTNodeInfo diffNode = onode->Clone();
                 bool include = false;
                 const BTNodeInfo& node = addrit->second;
                 NameSet::const_iterator nameit;

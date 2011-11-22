@@ -563,6 +563,36 @@ class _BTNodeInfo {
         return (nodeAddr < other.nodeAddr);
     }
 
+    /**
+     * Clone this node into a new instance of BTNodeInfo.  Advertise and find
+     * names may optionally be included in the clone.  They are excluded by
+     * default.  Modifications to the new instance will not magically show up
+     * in this instance.
+     *
+     * @param includeNames  [optional] Include advertise/find names in clone.
+     *
+     * @return  A new, independent instance of this.
+     */
+    BTNodeInfo Clone(bool includeNames = false) const
+    {
+        BTNodeInfo clone(nodeAddr, uniqueName, guid);
+        clone->relationship = relationship;
+        clone->connectProxyNode = connectProxyNode ? new BTNodeInfo(*connectProxyNode) : NULL;
+        if (includeNames) {
+            clone->adNames.insert(adNames.begin(), adNames.end());
+            clone->findNames.insert(findNames.begin(), findNames.end());
+        }
+        clone->uuidRev = uuidRev;
+        clone->expireTime = expireTime;
+        clone->eirCapable = eirCapable;
+        clone->connectionCount = connectionCount;
+        clone->sessionID = sessionID;
+        clone->sessionState = sessionState;
+
+        return clone;
+    }
+
+
   private:
     /**
      * Private copy constructor to catch potential coding errors.
@@ -578,7 +608,6 @@ class _BTNodeInfo {
     qcc::String uniqueName;         /**< Unique bus name of the daemon on the node. */
     BTBusAddress nodeAddr;          /**< Bus address of the node. */
     NodeRelationships relationship; /**< Relationship of node with respect to self. */
-    bool directMinion;              /**< Flag indicating if the node is a directly connected minion or not. */
     BTNodeInfo* connectProxyNode;   /**< Node that will accept connections for us. */
     NameSet adNames;                /**< Set of advertise names. */
     NameSet findNames;              /**< Set of find names. */

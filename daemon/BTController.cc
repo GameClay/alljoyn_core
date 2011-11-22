@@ -328,8 +328,8 @@ QStatus BTController::AddAdvertiseName(const qcc::String& name)
     if (isMaster && (status == ER_OK)) {
         if (lDevAvailable) {
             BTNodeDB newAdInfo;
-            BTNodeInfo node(addr, self->GetUniqueName(), self->GetGUID());  // make an actual copy of self
-            node->AddAdvertiseName(name);  // copy of self only gets the new names (not the existing names)
+            BTNodeInfo node = self->Clone();  // make an actual copy of self
+            node->AddAdvertiseName(name);     // clone of self only gets the new names (not all existing names)
             newAdInfo.AddNode(node);
             DistributeAdvertisedNameChanges(&newAdInfo, NULL);
         }
@@ -352,8 +352,8 @@ QStatus BTController::RemoveAdvertiseName(const qcc::String& name)
     if (isMaster && (status == ER_OK)) {
         if (lDevAvailable) {
             BTNodeDB oldAdInfo;
-            BTNodeInfo node(addr, self->GetUniqueName(), self->GetGUID());  // make an actual copy of self
-            node->AddAdvertiseName(name);  // Yes 'Add' the name being removed (it goes in the old ad info).
+            BTNodeInfo node = self->Clone();  // make an actual copy of self
+            node->AddAdvertiseName(name);     // clone of self only gets the new names (not all existing names)
             oldAdInfo.AddNode(node);
             DistributeAdvertisedNameChanges(NULL, &oldAdInfo);
         }
@@ -563,6 +563,7 @@ void BTController::ProcessDeviceChange(const BDAddress& adBdAddr,
                 }
 
                 oldAdInfo.Diff(newAdInfo, &added, &removed);
+
                 foundNodeDB.UpdateDB(&added, &removed, false);  // Remove names only.
 
                 removed.Clear();
@@ -1110,7 +1111,7 @@ void BTController::HandleNameSignal(const InterfaceDescription::Member* member,
                 } else {
                     BTNodeDB newAdInfo;
                     BTNodeDB oldAdInfo;
-                    BTNodeInfo nodeChange(node->GetBusAddress(), node->GetUniqueName(), node->GetGUID());
+                    BTNodeInfo nodeChange = node->Clone();
                     nodeChange->AddAdvertiseName(name);
                     if (addName) {
                         newAdInfo.AddNode(nodeChange);
