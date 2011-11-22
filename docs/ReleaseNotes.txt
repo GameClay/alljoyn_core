@@ -67,6 +67,13 @@ Known issues and limitations with this release
 1) ALLJOYN-557: Signals can be delivered twice when eavsdropping mode is
    enabled in the AllJoyn daemon.
 
+2) ALLJOYN-829: Link timeout changes made via  BusAttachment::SetLinkTimeout()
+   do not take effect until after the involved endpoints receive one more
+   message with the original linke timeout values.
+
+3) ALLJOYN-830: SetLinkTimeout cannot be called from within the
+   SessionPortListener::SessionJoined callback.
+
 
 Compatibility
 -------------
