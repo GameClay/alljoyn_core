@@ -102,7 +102,7 @@ QStatus RemoteEndpoint::SetLinkTimeout(uint32_t idleTimeout, uint32_t probeTimeo
         this->idleTimeout = idleTimeout,
         this->probeTimeout = probeTimeout;
         this->maxIdleProbes = maxIdleProbes;
-        return rxThread.Alert();
+        return ER_OK;
     } else {
         return ER_ALLJOYN_SETLINKTIMEOUT_REPLY_NO_DEST_SUPPORT;
     }

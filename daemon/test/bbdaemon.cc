@@ -449,7 +449,9 @@ int main(int argc, char** argv)
 #endif
 
 #if !defined(QCC_OS_DARWIN)
-    cntr.Add(new TransportFactory<BTTransport>("bluetooth", false));
+    if (!noBT) {
+        cntr.Add(new TransportFactory<BTTransport>("bluetooth", false));
+    }
 #endif
 
     /* Create message bus with support for alternate transports */
