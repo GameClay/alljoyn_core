@@ -18,7 +18,9 @@ Features added in this release
    manifest permissions.
 
 2) Multipoint session authentications are now done in parallel rather
-   than serially.
+   than serially. As part of this change, peer authentications can now
+   only be triggered by method calls. In previous releases, peer authentications
+   could also be triggered by signals. This is no longer supported.
 
 3) Added new callbacks (SessionMemberAdded and SessionMemberRemoved) to
    inform clients of multipoint session participant changes.
@@ -28,7 +30,7 @@ Features added in this release
 
 5) AllJoyn daemon can now be bundled with an end-user application.
    This bundled daemon is a "last resort" in the case where neither
-   a preinstalled nor a stand-alone APK version of the daemon can
+   a pre-installed nor a stand-alone APK version of the daemon can
    be located.
 
 6) Added new method BusAttachment.release() which immediately frees
@@ -64,12 +66,12 @@ Issues Addressed in this Release
 Known issues and limitations with this release
 ----------------------------------------------
 
-1) ALLJOYN-557: Signals can be delivered twice when eavsdropping mode is
+1) ALLJOYN-557: Signals can be delivered twice when eavesdropping mode is
    enabled in the AllJoyn daemon.
 
 2) ALLJOYN-829: Link timeout changes made via  BusAttachment::SetLinkTimeout()
    do not take effect until after the involved endpoints receive one more
-   message with the original linke timeout values.
+   message with the original link timeout values.
 
 3) ALLJOYN-830: SetLinkTimeout cannot be called from within the
    SessionPortListener::SessionJoined callback.
@@ -81,12 +83,12 @@ Applications written for AllJoyn 1.X will need to be modified and rebuilt
 for use with AllJoyn 2.0 and later.
 
 The AllJoyn wire protocol related to encryption and authentication has changed
-in the 2.1.0 release. AllJoyn interfaces that use security will not interoperate
+in the 2.1.0 release. AllJoyn interfaces that use security will not inter-operate
 with devices whose AllJoyn version is less than 2.1.0.
 
 The AllJoyn wire protocol was modified to have a 128kB maximum message size
 starting with version 2.1.0. Earlier versions of AllJoyn which attempt to
-send messages that are greater than 128kB will not interoperate with versions
+send messages that are greater than 128kB will not inter-operate with versions
 greater than or equal to 2.1.0.
 
 Starting with version 2.2.0, AllJoyn clients on Android must obtain the 
